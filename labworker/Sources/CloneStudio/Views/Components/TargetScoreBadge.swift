@@ -1,0 +1,127 @@
+import SwiftUI
+import CloneStudioCore
+
+/// 靶点可靠性评分胶囊微徽章与诊断悬浮窗 (TargetScoreBadge)
+public struct TargetScoreBadge: View {
+    public let score: TargetScore
+    public var compact: Bool = false
+    
+    @State private var showPopover: Bool = false
+    
+    public init(score: TargetScore, compact: Bool = false) {
+        self.score = score
+        self.compact = compact
+    }
+    
+    public var body: some View {
+        Button(action: {
+            showPopover.toggle()
+        }) {
+            HStack(spacing: 3.5) {
+                Text(score.formattedScore)
+                    .font(.system(size: compact ? 10.5 : 11, weight: .bold, design: .monospaced))
+                
+                Text(score.tier.stars)
+                    .font(.system(size: compact ? 9.5 : 10, weight: .semibold))
+            }
+            .padding(.horizontal, compact ? 5 : 7)
+            .padding(.vertical, compact ? 1.5 : 2.5)
+            .background(
+                Capsule()
+                    .fill(score.tier.color.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(score.tier.color.opacity(0.4), lineWidth: 0.8)
+                    )
+            )
+            .foregroundColor(score.tier.color)
+        }
+        .buttonStyle(.plain)
+        .help("序列启发式评分组成：GC 含量、二级结构/自互补、Poly-T 终止信号与位置权重（未包含全基因组脱靶搜索，当前: \(score.formattedScore)分）")
+        .popover(isPresented: $showPopover, arrowEdge: .trailing) {
+            scoreDetailPopover
+        }
+    }
+    
+    private var scoreDetailPopover: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // 顶栏：评分与评级
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("\(score.formattedScore) 分")
+                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .foregroundColor(score.tier.color)
+                
+                Text(score.tier.displayName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(score.tier.color.opacity(0.15))
+                    .foregroundColor(score.tier.color)
+                    .cornerRadius(4)
+                
+                Spacer()
+                
+                Text("GC \(String(format: "%.0f", score.gcPercent))%")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+            
+            Text(score.tier.recommendation)
+                .font(.system(size: 11))
+                .foregroundColor(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            Divider()
+            
+            // 致命缺陷提示 (如 TTTT)
+            if let warning = score.fatalWarning {
+                HStack(alignment: .top, spacing: 6) {
+                    Text("⚠️")
+                    Text(warning)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.red)
+                }
+                .padding(6)
+                .background(Color.red.opacity(0.08))
+                .cornerRadius(5)
+            }
+            
+            // 规则诊断标签明细
+            VStack(alignment: .leading, spacing: 4) {
+                Text("序列启发式评分明细（GC / 二级结构 / Poly-T / 位置权重）：")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundColor(.secondary)
+                
+                ForEach(score.tags) { tag in
+                    HStack(spacing: 6) {
+                        Text(tag.formattedPoints)
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(tag.tagColor.opacity(0.15))
+                            .foregroundColor(tag.tagColor)
+                            .cornerRadius(3)
+                            .frame(width: 38, alignment: .center)
+                        
+                        Text(tag.name)
+                            .font(.system(size: 11))
+                            .foregroundColor(.primary)
+                        
+                        Spacer()
+                    }
+                }
+            }
+            
+            Divider()
+            
+            HStack {
+                Text("基于序列启发式规则（Doench RS2 / Reynolds 与 U6 转录特征，未含全基因组脱靶搜索）")
+                    .font(.system(size: 9.5))
+                    .foregroundColor(.secondary.opacity(0.8))
+                Spacer()
+            }
+        }
+        .padding(12)
+        .frame(width: 290)
+    }
+}

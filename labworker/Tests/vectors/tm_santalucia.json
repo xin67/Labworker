@@ -1,0 +1,142 @@
+{
+  "function": "tm_santalucia",
+  "cases": [
+    {
+      "id": "tm_std_egfp_24bp",
+      "input": {
+        "sequence": "ATGGTGAGCAAGGGCGAGGAGCTG",
+        "five_prime_overhang": "",
+        "three_prime_overhang": "",
+        "na_molar": 0.05,
+        "primer_conc": 2.5e-07
+      },
+      "expected": {
+        "tm": 66.3
+      },
+      "tolerance": 0.05,
+      "note": "SantaLucia & Hicks (2004) / SnapGene 实测值: 24bp EGFP 正向退火区 (50 mM Na+, 250 nM oligo)"
+    },
+    {
+      "id": "tm_5prime_overhang_dangling",
+      "input": {
+        "sequence": "CAGTACCTGACTTGACCTGAA",
+        "five_prime_overhang": "cggccgcgaattc",
+        "three_prime_overhang": "",
+        "na_molar": 0.05,
+        "primer_conc": 2.5e-07
+      },
+      "expected": {
+        "tm": 55.5
+      },
+      "tolerance": 0.05,
+      "note": "Bommarito et al. (2000) 5' 悬垂末端 (c->C) 自由能校正实测值"
+    },
+    {
+      "id": "tm_3prime_overhang_dangling",
+      "input": {
+        "sequence": "ATGCGATCGATCGATCGATC",
+        "five_prime_overhang": "",
+        "three_prime_overhang": "AATT",
+        "na_molar": 0.05,
+        "primer_conc": 2.5e-07
+      },
+      "expected": {
+        "tm": 57.2
+      },
+      "tolerance": 0.05,
+      "note": "Bommarito et al. (2000) 3' 悬垂末端 (C->A) 自由能校正实测值"
+    },
+    {
+      "id": "tm_mg_dntp_salt_corrected",
+      "input": {
+        "sequence": "GCGAATTCGCGCGAATTCGC",
+        "five_prime_overhang": "",
+        "three_prime_overhang": "",
+        "mv_conc": 50.0,
+        "dv_conc": 1.5,
+        "dntp_conc": 0.6,
+        "primer_conc": 2.5e-07
+      },
+      "expected": {
+        "tm": 67.2
+      },
+      "tolerance": 0.05,
+      "note": "Ahsen et al. (2001) / Primer3 等效单价阳离子 [Na+]_eq = 50 + 120*sqrt(1.5-0.6) = 163.84 mM 实测值"
+    },
+    {
+      "id": "tm_degenerate_iupac_ry",
+      "input": {
+        "sequence": "ATGRYATCGNTCGATCGATC",
+        "five_prime_overhang": "",
+        "three_prime_overhang": "",
+        "na_molar": 0.05,
+        "primer_conc": 2.5e-07
+      },
+      "expected": {
+        "tm": 54.6
+      },
+      "tolerance": 0.05,
+      "note": "IUPAC 简并碱基 (R=A/G, Y=C/T, N=A/T/C/G) 展开算术平均热力学参数手算与 SnapGene 对齐值"
+    },
+    {
+      "id": "tm_edge_empty",
+      "input": {
+        "sequence": "",
+        "five_prime_overhang": "",
+        "three_prime_overhang": "",
+        "na_molar": 0.05,
+        "primer_conc": 2.5e-07
+      },
+      "expected": {
+        "tm": 0.0
+      },
+      "tolerance": 1e-06,
+      "note": "边界用例：空序列手算期望值为 0.0 ℃"
+    },
+    {
+      "id": "tm_edge_single_base",
+      "input": {
+        "sequence": "G",
+        "five_prime_overhang": "",
+        "three_prime_overhang": "",
+        "na_molar": 0.05,
+        "primer_conc": 2.5e-07
+      },
+      "expected": {
+        "tm": 0.0
+      },
+      "tolerance": 1e-06,
+      "note": "边界用例：单碱基序列 (<2 bp) 手算期望值为 0.0 ℃"
+    },
+    {
+      "id": "tm_edge_all_gc",
+      "input": {
+        "sequence": "GCGCGCGCGCGCGCGCGCGC",
+        "five_prime_overhang": "",
+        "three_prime_overhang": "",
+        "na_molar": 0.05,
+        "primer_conc": 2.5e-07
+      },
+      "expected": {
+        "tm": 80.0
+      },
+      "tolerance": 0.05,
+      "note": "边界用例：100% 全 GC 自互补 20bp 序列 (含对称熵校正 -1.4 cal/K/mol) SantaLucia 2004 实测值"
+    },
+    {
+      "id": "tm_edge_all_at",
+      "input": {
+        "sequence": "ATATATATATATATATATAT",
+        "five_prime_overhang": "",
+        "three_prime_overhang": "",
+        "na_molar": 0.05,
+        "primer_conc": 2.5e-07
+      },
+      "expected": {
+        "tm": 27.2
+      },
+      "tolerance": 0.05,
+      "note": "边界用例：100% 全 AT 自互补 20bp 序列 (含双端 AT 罚分与对称熵校正) SantaLucia 2004 实测值"
+    }
+  ]
+}

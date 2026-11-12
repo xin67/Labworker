@@ -1,0 +1,199 @@
+{
+  "function": "qpcr_ddct",
+  "cases": [
+    {
+      "id": "qpcr_3v3_biological_replicates_welch_ci95",
+      "input": {
+        "reference_gene": "GAPDH",
+        "control_group": "Control",
+        "control_sample": "C1",
+        "multiple_comparison": "holm",
+        "records": [
+          {
+            "sample": "C1",
+            "group": "Control",
+            "gene": "GAPDH",
+            "ct": 18.0
+          },
+          {
+            "sample": "C1",
+            "group": "Control",
+            "gene": "TP53",
+            "ct": 23.0
+          },
+          {
+            "sample": "C2",
+            "group": "Control",
+            "gene": "GAPDH",
+            "ct": 18.1
+          },
+          {
+            "sample": "C2",
+            "group": "Control",
+            "gene": "TP53",
+            "ct": 23.25
+          },
+          {
+            "sample": "C3",
+            "group": "Control",
+            "gene": "GAPDH",
+            "ct": 17.9
+          },
+          {
+            "sample": "C3",
+            "group": "Control",
+            "gene": "TP53",
+            "ct": 22.75
+          },
+          {
+            "sample": "T1",
+            "group": "Treated",
+            "gene": "GAPDH",
+            "ct": 18.05
+          },
+          {
+            "sample": "T1",
+            "group": "Treated",
+            "gene": "TP53",
+            "ct": 21.05
+          },
+          {
+            "sample": "T2",
+            "group": "Treated",
+            "gene": "GAPDH",
+            "ct": 18.0
+          },
+          {
+            "sample": "T2",
+            "group": "Treated",
+            "gene": "TP53",
+            "ct": 20.8
+          },
+          {
+            "sample": "T3",
+            "group": "Treated",
+            "gene": "GAPDH",
+            "ct": 18.15
+          },
+          {
+            "sample": "T3",
+            "group": "Treated",
+            "gene": "TP53",
+            "ct": 21.35
+          }
+        ]
+      },
+      "expected": {
+        "target_group": "Treated",
+        "n_biological": 3,
+        "mean_dct": 3.0,
+        "p_value": 0.00024957,
+        "p_adjusted": 0.00024957,
+        "ddct_ci95_low": -2.413446,
+        "ddct_ci95_high": -1.586554,
+        "fold_ci95_low": 3.003313,
+        "fold_ci95_high": 5.327452,
+        "stat_note": "ok"
+      },
+      "tolerance": 0.0001,
+      "note": "scipy.stats.ttest_ind([3.0, 2.8, 3.2], [5.0, 5.15, 4.85], equal_var=False) 精确期望值 (df=3.709199, p=0.00024957)"
+    },
+    {
+      "id": "qpcr_pseudo_replication_1bio_3tech_blocked",
+      "input": {
+        "reference_gene": "GAPDH",
+        "control_group": "Control",
+        "control_sample": "C1",
+        "multiple_comparison": "holm",
+        "records": [
+          {
+            "sample": "C1",
+            "group": "Control",
+            "gene": "GAPDH",
+            "ct": 18.0
+          },
+          {
+            "sample": "C1",
+            "group": "Control",
+            "gene": "GAPDH",
+            "ct": 18.04
+          },
+          {
+            "sample": "C1",
+            "group": "Control",
+            "gene": "GAPDH",
+            "ct": 17.96
+          },
+          {
+            "sample": "C1",
+            "group": "Control",
+            "gene": "TP53",
+            "ct": 23.0
+          },
+          {
+            "sample": "C1",
+            "group": "Control",
+            "gene": "TP53",
+            "ct": 23.06
+          },
+          {
+            "sample": "C1",
+            "group": "Control",
+            "gene": "TP53",
+            "ct": 22.94
+          },
+          {
+            "sample": "T1",
+            "group": "Treated",
+            "gene": "GAPDH",
+            "ct": 18.0
+          },
+          {
+            "sample": "T1",
+            "group": "Treated",
+            "gene": "GAPDH",
+            "ct": 18.02
+          },
+          {
+            "sample": "T1",
+            "group": "Treated",
+            "gene": "GAPDH",
+            "ct": 17.98
+          },
+          {
+            "sample": "T1",
+            "group": "Treated",
+            "gene": "TP53",
+            "ct": 21.0
+          },
+          {
+            "sample": "T1",
+            "group": "Treated",
+            "gene": "TP53",
+            "ct": 21.03
+          },
+          {
+            "sample": "T1",
+            "group": "Treated",
+            "gene": "TP53",
+            "ct": 20.97
+          }
+        ]
+      },
+      "expected": {
+        "target_group": "Treated",
+        "n_biological": 1,
+        "mean_dct": 3.0,
+        "p_value": null,
+        "p_adjusted": null,
+        "ddct_ci95_low": null,
+        "ddct_ci95_high": null,
+        "fold_ci95_low": null,
+        "fold_ci95_high": null,
+        "stat_note": "insufficientBiologicalReplicates"
+      },
+      "tolerance": 0.0001,
+      "note": "伪重复阻断边界用例 (P02)：每组仅 1 个生物学样品 × 3 个技术复孔时禁止计算 p 值与 CI"
+    }
+  ]
+}

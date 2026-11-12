@@ -1,0 +1,58 @@
+{
+  "function": "holm_adjust",
+  "cases": [
+    {
+      "id": "holm_standard_4_comparisons",
+      "input": {
+        "p_values": [
+          0.01,
+          0.04,
+          0.03,
+          0.005
+        ]
+      },
+      "expected": {
+        "p_adjusted": [
+          0.03,
+          0.06,
+          0.06,
+          0.02
+        ]
+      },
+      "tolerance": 1e-12,
+      "note": "R p.adjust(c(0.01, 0.04, 0.03, 0.005), method='holm') 标准期望值"
+    },
+    {
+      "id": "holm_step_down_monotonicity_clamp",
+      "input": {
+        "p_values": [
+          0.02,
+          0.025,
+          0.4,
+          0.6
+        ]
+      },
+      "expected": {
+        "p_adjusted": [
+          0.08,
+          0.08,
+          0.8,
+          0.8
+        ]
+      },
+      "tolerance": 1e-12,
+      "note": "R p.adjust(c(0.02, 0.025, 0.40, 0.60), method='holm') 逐步下降单调性累积最大值与 1.0 上界截断"
+    },
+    {
+      "id": "holm_edge_empty_and_single",
+      "input": {
+        "p_values": []
+      },
+      "expected": {
+        "p_adjusted": []
+      },
+      "tolerance": 1e-12,
+      "note": "边界用例：空数组输入返回空数组"
+    }
+  ]
+}

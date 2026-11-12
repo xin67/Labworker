@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+*.textClipping
+
+# Swift Package Manager & Xcode Build Artifacts
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+
+# Packaged App Bundles & Binaries
+*.app/
+CloneStudio.app/
+Labworker.app/
+
+# Private Plasmid Sequences & Local Runtime State (Never Commit User Plasmids)
+*.dna
+*.ab1
+*.seq
+*.gb
+*.gbk
+.clonestudio_plasmid_pool.json
+.clonestudio_mcp_sync.json
+plasmid_pool.json
+workspace_autosave.json
+analysis_runs_index.json
+本地个人备份_勿上传/
+
+# Generated Order Exports & Backups
+*_MCP_*.xlsx
+*订购表_*.xlsx
+!**/DNA测序订购表_V9(1).xlsx
+*.bak*
+
+# Local AI / IDE Scratch Directories & External Reference Repos
+.workbuddy/
+SPICE_GUI-main/
+CloneCanvasRef*/
+
+# Python Cache
+**/__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/

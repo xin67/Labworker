@@ -1,0 +1,588 @@
+import Foundation
+
+/// NEB 双酶切缓冲液活性兼容矩阵模型
+public struct NEBBufferCompatibility: Sendable, Equatable {
+    public let r1_1: Int
+    public let r2_1: Int
+    public let r3_1: Int
+    public let cutSmart: Int
+    public let preferredBuffer: String
+    public let heatInactivation: Bool
+    
+    public init(
+        r1_1: Int,
+        r2_1: Int,
+        r3_1: Int,
+        cutSmart: Int,
+        preferredBuffer: String = "CutSmart",
+        heatInactivation: Bool = true
+    ) {
+        self.r1_1 = r1_1
+        self.r2_1 = r2_1
+        self.r3_1 = r3_1
+        self.cutSmart = cutSmart
+        self.preferredBuffer = preferredBuffer
+        self.heatInactivation = heatInactivation
+    }
+}
+
+/// 质粒全序列真实酶切位点扫描结果 (1:1 OVE Cutsite 几何结构)
+public struct ConstructCutsite: Identifiable, Sendable, Equatable {
+    public let id: UUID
+    public let name: String
+    public let recognitionSite: String
+    /// 1-based 识别起点坐标
+    public let position1Based: Int
+    /// 0-based 识别序列起始偏移
+    public let recognitionStart0Based: Int
+    /// 0-based 识别序列终止偏移 (inclusive)
+    public let recognitionEnd0Based: Int
+    /// 0-based 正义链 (5'->3') 裂解切口偏移（位于第 topSnip0Based 个碱基之前）
+    public let topSnip0Based: Int
+    /// 0-based 互补链 (3'->5') 裂解切口偏移（位于第 bottomSnip0Based 个碱基之前）
+    public let bottomSnip0Based: Int
+    /// 黏性末端悬垂序列
+    public let overhangBps: String
+    /// 该酶在当前质粒中的总切点数
+    public var cutCountInPlasmid: Int
+    public let isType2S: Bool
+    public let colorHex: String
+    
+    public var isUniqueCutter: Bool {
+        cutCountInPlasmid == 1
+    }
+    
+    public init(
+        id: UUID = UUID(),
+        name: String,
+        recognitionSite: String,
+        position1Based: Int,
+        recognitionStart0Based: Int,
+        recognitionEnd0Based: Int,
+        topSnip0Based: Int,
+        bottomSnip0Based: Int,
+        overhangBps: String = "",
+        cutCountInPlasmid: Int = 1,
+        isType2S: Bool = false,
+        colorHex: String = "#38bdf8"
+    ) {
+        self.id = id
+        self.name = name
+        self.recognitionSite = recognitionSite
+        self.position1Based = position1Based
+        self.recognitionStart0Based = recognitionStart0Based
+        self.recognitionEnd0Based = recognitionEnd0Based
+        self.topSnip0Based = topSnip0Based
+        self.bottomSnip0Based = bottomSnip0Based
+        self.overhangBps = overhangBps
+        self.cutCountInPlasmid = cutCountInPlasmid
+        self.isType2S = isType2S
+        self.colorHex = colorHex
+    }
+}
+
+/// 预设限制性内切酶组
+public struct EnzymePresetGroup: Identifiable, Sendable, Equatable {
+    public var id: String { name }
+    public let name: String
+    public let displayTitle: String
+    public let enzymeNames: [String]
+    public let isDynamicUnique: Bool
+    
+    public init(name: String, displayTitle: String, enzymeNames: [String], isDynamicUnique: Bool = false) {
+        self.name = name
+        self.displayTitle = displayTitle
+        self.enzymeNames = enzymeNames
+        self.isDynamicUnique = isDynamicUnique
+    }
+}
+
+/// 限制性核酸内切酶模型
+public struct RestrictionEnzyme: Identifiable, Hashable, Codable, Sendable {
+    public var id: String { name }
+    public let name: String
+    public let site: String
+    
+    public init(name: String, site: String) {
+        self.name = name
+        self.site = site.uppercased()
+    }
+    
+    private enum CodingKeys: String, CodingKey {
+        case name = "value"
+        case site = "key"
+    }
+    
+    /// 上下链精确裂解切口偏移 (topSnipOffset, bottomSnipOffset)，相对于识别序列 0-based 起点
+    public var snipOffsets: (top: Int, bottom: Int) {
+        if let known = Self.knownSnipTable[name.lowercased()] {
+            return known
+        }
+        let len = site.count
+        if len == 6 {
+            // 默认 6bp 回文酶按典型 5' 悬垂 (1, 5) 解算
+            return (1, 5)
+        } else if len == 4 {
+            // 默认 4bp 酶按中间平切 (2, 2) 解算
+            return (2, 2)
+        } else if len == 8 {
+            return (2, 6)
+        }
+        return (len / 2, len / 2)
+    }
+    
+    public var topSnipOffset: Int { snipOffsets.top }
+    public var bottomSnipOffset: Int { snipOffsets.bottom }
+    
+    /// 是否为 Type IIS (识别区外切割) 内切酶
+    public var isType2S: Bool {
+        let s = snipOffsets
+        return s.top > site.count || s.bottom > site.count || s.top < 0 || s.bottom < 0
+    }
+    
+    /// 推荐视觉配色 Hex (还原 CloneCanvas 酶切色彩层级)
+    public var colorHex: String {
+        if isType2S { return "#fbbf24" } // 琥珀金 Type IIS (BsaI, BbsI, FokI)
+        let s = snipOffsets
+        if s.top == s.bottom { return "#f87171" } // 珊瑚红 平末端 (StuI, HaeIII, EcoRV, PvuII)
+        switch name.lowercased() {
+        case "ecori", "bamhi", "hindiii", "xhoi", "noti":
+            return "#4ade80" // 翠绿 核心克隆酶
+        case "psti", "saci", "sali", "kpni", "spei":
+            return "#fb923c" // 亮橙 高频多克隆位点酶
+        case "ndei", "ncoi", "agei", "nhci", "nhei", "xbai", "bglii":
+            return "#c084fc" // 紫罗兰 表达载体起止酶
+        default:
+            return "#38bdf8" // 天青蓝
+        }
+    }
+    
+    /// 常见内切酶精确裂解切口坐标表 (Ported from TeselaGen / REBASE)
+    private static let knownSnipTable: [String: (top: Int, bottom: Int)] = [
+        // 5' 黏性末端 (top < bottom)
+        "ecori": (1, 5),     // G^AATT_C
+        "bamhi": (1, 5),     // G^GATC_C
+        "hindiii": (1, 5),   // A^AGCT_T
+        "xhoi": (1, 5),      // C^TCGA_G
+        "sali": (1, 5),      // G^TCGA_C
+        "ndei": (2, 4),      // CA^TA_TG
+        "noti": (2, 6),      // GC^GGCC_GC
+        "nhei": (1, 5),      // G^CTAG_C
+        "spei": (1, 5),      // A^CTAG_T
+        "bglii": (1, 5),     // A^GATC_T
+        "xbai": (1, 5),      // T^CTAG_A
+        "agei": (1, 5),      // A^CCGG_T
+        "clai": (2, 4),      // AT^CG_AT
+        "ncoi": (1, 5),      // C^CATG_G
+        "mlui": (1, 5),      // A^CGCG_T
+        "aflii": (1, 5),     // C^TTAA_G
+        "avrii": (1, 5),     // C^CTAG_G
+        "xmai": (1, 5),      // C^CCGG_G
+        "bsiwi": (1, 5),     // C^GTAC_G
+        "bsshii": (1, 5),    // G^CGCG_C
+        "eagi": (1, 5),      // C^GGCC_G
+        "asci": (2, 6),      // GG^CGCG_CC
+        "bcli": (1, 5),      // T^GATC_A
+        "mfeI": (1, 5),      // C^AATT_G
+        "mfei": (1, 5),
+        // 3' 黏性末端 (top > bottom)
+        "kpni": (5, 1),      // G_GTAC^C
+        "psti": (5, 1),      // C_TGCA^G
+        "saci": (5, 1),      // G_AGCT^C
+        "sacii": (4, 2),     // CC_GC^GG
+        "sphi": (5, 1),      // G_CATG^C
+        "apai": (5, 1),      // G_GGCC^C
+        "nsii": (5, 1),      // A_TGCA^T
+        "pvui": (4, 2),      // CG_AT^CG
+        "sbffi": (6, 2),     // CC_TGCA^GG
+        "sbfi": (6, 2),
+        "fsei": (6, 2),      // GG_CCGG^CC
+        "paci": (5, 3),      // TTA_AT^TAA
+        // 平末端 Blunt (top == bottom)
+        "ecorv": (3, 3),     // GAT^ATC
+        "smai": (3, 3),      // CCC^GGG
+        "stui": (3, 3),      // AGG^CCT
+        "haeiii": (2, 2),    // GG^CC
+        "drai": (3, 3),      // TTT^AAA
+        "pvuii": (3, 3),     // CAG^CTG
+        "scai": (3, 3),      // AGT^ACT
+        "hpai": (3, 3),      // GTT^AAC
+        "hincii": (3, 3),    // GTY^RAC
+        "sspi": (3, 3),      // AAT^ATT
+        "alui": (2, 2),      // AG^CT
+        "dpni": (2, 2),      // GA^TC
+        "pmei": (4, 4),      // GTTT^AAAC
+        "swai": (4, 4),      // ATTT^AAAT
+        "naei": (3, 3),      // GCC^GGC
+        "fsphi": (3, 3),     // TGC^GCA
+        // Type IIS (识别位点外裂解)
+        "bsai": (7, 11),     // GGTCTC(1/5)
+        "bbsi": (8, 12),     // GAAGAC(2/6)
+        "bsmbi": (7, 11),    // CGTCTC(1/5)
+        "sapi": (8, 11),     // GCTCTTC(1/4)
+        "bspqi": (8, 11),    // GCTCTTC(1/4)
+        "aari": (11, 15),    // CACCTGC(4/8)
+        "foki": (14, 18)     // GGATG(9/13)
+    ]
+    
+    /// 将包含 IUPAC 简并碱基的酶切位点转换为正则表达式模式
+    public var regexPattern: String {
+        var pattern = ""
+        for char in site {
+            switch char {
+            case "A", "T", "C", "G": pattern.append(char)
+            case "R": pattern.append("[AG]")
+            case "Y": pattern.append("[CT]")
+            case "M": pattern.append("[AC]")
+            case "K": pattern.append("[GT]")
+            case "S": pattern.append("[GC]")
+            case "W": pattern.append("[AT]")
+            case "H": pattern.append("[ACT]")
+            case "B": pattern.append("[CGT]")
+            case "V": pattern.append("[ACG]")
+            case "D": pattern.append("[AGT]")
+            case "N": pattern.append("[ACGT]")
+            default:  pattern.append(char)
+            }
+        }
+        return pattern
+    }
+    
+    /// 预编译正则表达式缓存，避免每次扫描重复编译 NSRegularExpression
+    private static let regexCacheLock = NSLock()
+    nonisolated(unsafe) private static var compiledRegexCache: [String: NSRegularExpression] = [:]
+    
+    private var compiledRegex: NSRegularExpression? {
+        let pat = regexPattern
+        Self.regexCacheLock.lock()
+        defer { Self.regexCacheLock.unlock() }
+        if let cached = Self.compiledRegexCache[pat] {
+            return cached
+        }
+        if let created = try? NSRegularExpression(pattern: pat, options: []) {
+            Self.compiledRegexCache[pat] = created
+            return created
+        }
+        return nil
+    }
+    
+    /// 是否仅包含标准 A/T/C/G 碱基（可使用高速字面量搜索代替正则）
+    public var isPureLiteralSite: Bool {
+        for ch in site {
+            if ch != "A" && ch != "T" && ch != "C" && ch != "G" {
+                return false
+            }
+        }
+        return !site.isEmpty
+    }
+    
+    /// 检查指定 DNA 序列中是否包含该酶切位点
+    public func isIn(sequence: String) -> Bool {
+        let cleanSeq = BioSequence.clean(sequence)
+        if isPureLiteralSite {
+            return cleanSeq.range(of: site) != nil
+        }
+        guard let regex = compiledRegex else { return false }
+        let range = NSRange(location: 0, length: cleanSeq.utf16.count)
+        return regex.firstMatch(in: cleanSeq, options: [], range: range) != nil
+    }
+    
+    /// 查找在指定已清洗序列中的所有位点索引 (0-based)
+    public func findSitesInCleaned(_ cleanSeq: String) -> [Int] {
+        guard !cleanSeq.isEmpty, site.count <= cleanSeq.count else { return [] }
+        if isPureLiteralSite {
+            var results: [Int] = []
+            var searchStart = cleanSeq.startIndex
+            while let range = cleanSeq.range(of: site, options: .literal, range: searchStart..<cleanSeq.endIndex) {
+                let offset = cleanSeq.distance(from: cleanSeq.startIndex, to: range.lowerBound)
+                results.append(offset)
+                searchStart = cleanSeq.index(after: range.lowerBound)
+            }
+            return results
+        }
+        guard let regex = compiledRegex else { return [] }
+        let range = NSRange(location: 0, length: cleanSeq.utf16.count)
+        return regex.matches(in: cleanSeq, options: [], range: range).map { $0.range.location }
+    }
+    
+    /// 查找在指定序列中的所有位点索引 (0-based)
+    public func findSites(in sequence: String) -> [Int] {
+        findSitesInCleaned(BioSequence.clean(sequence))
+    }
+}
+
+/// 限制性内切酶数据库管理类
+public final class RestrictionEnzymeDatabase: @unchecked Sendable {
+    public static let shared = RestrictionEnzymeDatabase()
+    
+    public private(set) var enzymes: [RestrictionEnzyme] = []
+    
+    /// 预设酶切组合列表 (对齐 CloneCanvas EnzymeSelector)
+    public static let presetGroups: [EnzymePresetGroup] = [
+        EnzymePresetGroup(
+            name: "NEB Standard",
+            displayTitle: "SET: NEB STANDARD",
+            enzymeNames: [
+                "EcoRI", "BamHI", "HindIII", "SacI", "SalI", "KpnI", "PstI", "NotI", "XbaI",
+                "XhoI", "NdeI", "NcoI", "BglII", "SpeI", "AgeI", "StuI", "HaeIII", "DraI",
+                "PvuII", "ScaI", "HincII", "BsaI", "BbsI", "FokI", "AarI", "NheI", "SacII"
+            ]
+        ),
+        EnzymePresetGroup(
+            name: "Unique Cutters",
+            displayTitle: "SET: UNIQUE CUTTERS (单酶切)",
+            enzymeNames: commonEnzymeNames,
+            isDynamicUnique: true
+        ),
+        EnzymePresetGroup(
+            name: "Standard Lab Cloning",
+            displayTitle: "SET: LAB CLONING (18 常用酶)",
+            enzymeNames: commonEnzymeNames
+        ),
+        EnzymePresetGroup(
+            name: "Golden Gate (Type IIS)",
+            displayTitle: "SET: GOLDEN GATE (Type IIS)",
+            enzymeNames: ["BsaI", "BbsI", "BsmBI", "SapI", "BspQI", "AarI", "FokI"]
+        ),
+        EnzymePresetGroup(
+            name: "Blunt End Cutters",
+            displayTitle: "SET: BLUNT END (平末端)",
+            enzymeNames: ["EcoRV", "SmaI", "HpaI", "DraI", "PvuII", "ScaI", "StuI", "NaeI", "HaeIII", "HincII"]
+        ),
+        EnzymePresetGroup(
+            name: "Rare Cutters (8bp+)",
+            displayTitle: "SET: RARE CUTTERS (8bp+)",
+            enzymeNames: ["NotI", "AscI", "FseI", "PacI", "PmeI", "SbfI", "SfiI", "SwaI"]
+        ),
+        EnzymePresetGroup(
+            name: "BioBrick Standard",
+            displayTitle: "SET: BIOBRICK STANDARD",
+            enzymeNames: ["EcoRI", "XbaI", "SpeI", "PstI"]
+        )
+    ]
+    
+    public init() {
+        loadEnzymes()
+    }
+    
+    private func loadEnzymes() {
+        var loaded: [RestrictionEnzyme] = []
+        if let url = CloneStudioResourceLocator.url(forResource: "select", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let list = try? JSONDecoder().decode([RestrictionEnzyme].self, from: data) {
+            loaded = list
+        }
+        
+        if loaded.isEmpty {
+            loaded = Self.fallbackEnzymes
+        } else {
+            // 确保所有预设高频酶（如 HaeIII, StuI, FokI, BsaI, BbsI, AarI）一定在库中可查
+            let existingNames = Set(loaded.map { $0.name.lowercased() })
+            for fb in Self.fallbackEnzymes where !existingNames.contains(fb.name.lowercased()) {
+                loaded.append(fb)
+            }
+        }
+        self.enzymes = loaded
+    }
+    
+    /// 常用核心克隆酶列表
+    public static let commonEnzymeNames: [String] = [
+        "BamHI", "EcoRI", "HindIII", "XhoI", "NdeI", "NotI", "SalI", "KpnI", "PstI",
+        "SacI", "NheI", "ClaI", "SpeI", "BglII", "XbaI", "EcoRV", "SmaI", "AgeI"
+    ]
+    
+    public var commonEnzymes: [RestrictionEnzyme] {
+        enzymes.filter { Self.commonEnzymeNames.contains($0.name) }
+    }
+    
+    public func find(name: String) -> RestrictionEnzyme? {
+        enzymes.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+    }
+    
+    public func filter(query: String) -> [RestrictionEnzyme] {
+        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return enzymes
+        }
+        let q = query.lowercased()
+        return enzymes.filter { $0.name.lowercased().contains(q) || $0.site.lowercased().contains(q) }
+    }
+    
+    /// 查询指定内切酶的 NEB Buffer 活性兼容数据
+    public func bufferCompatibility(for enzymeName: String) -> NEBBufferCompatibility {
+        if let hit = Self.nebBufferTable[enzymeName.lowercased()] {
+            return hit
+        }
+        return NEBBufferCompatibility(r1_1: 75, r2_1: 100, r3_1: 75, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true)
+    }
+    
+    private let scanCacheLock = NSLock()
+    private var constructScanCache: [String: [ConstructCutsite]] = [:]
+    
+    /// 对完整质粒或线性序列进行高速全酶切扫描（带内存缓存与字面量加速），返回带精确上下链裂解切口的 ConstructCutsite 数组
+    public func scanConstructCutsites(
+        sequence: String,
+        circular: Bool = true,
+        enzymeNames: [String],
+        uniqueOnly: Bool = false
+    ) -> [ConstructCutsite] {
+        let cleanSeq = BioSequence.clean(sequence)
+        let seqLen = cleanSeq.count
+        guard seqLen >= 10 else { return [] }
+        
+        let cacheKey = "\(cleanSeq.hashValue)_\(seqLen)_\(circular)_\(uniqueOnly)_\(enzymeNames.joined(separator: ","))"
+        scanCacheLock.lock()
+        if let hit = constructScanCache[cacheKey] {
+            scanCacheLock.unlock()
+            return hit
+        }
+        scanCacheLock.unlock()
+        
+        let targetEnzymes: [RestrictionEnzyme] = {
+            if uniqueOnly {
+                let poolNames = Self.presetGroups[0].enzymeNames + Self.commonEnzymeNames
+                var seen = Set<String>()
+                var list: [RestrictionEnzyme] = []
+                for n in poolNames {
+                    let low = n.lowercased()
+                    if !seen.contains(low), let e = find(name: n) {
+                        seen.insert(low)
+                        list.append(e)
+                    }
+                }
+                return list
+            } else {
+                return enzymeNames.compactMap { find(name: $0) }
+            }
+        }()
+        
+        let chars = Array(cleanSeq)
+        var rawSites: [ConstructCutsite] = []
+        
+        for enz in targetEnzymes {
+            let siteLen = enz.site.count
+            guard siteLen > 0 && siteLen <= seqLen else { continue }
+            let hits = enz.findSitesInCleaned(cleanSeq)
+            guard !hits.isEmpty else { continue }
+            if uniqueOnly && hits.count != 1 { continue }
+            
+            let snips = enz.snipOffsets
+            for matchIdx in hits {
+                let recStart = matchIdx
+                let recEnd = min(seqLen - 1, matchIdx + siteLen - 1)
+                let topSnip = (recStart + snips.top + seqLen) % seqLen
+                let botSnip = (recStart + snips.bottom + seqLen) % seqLen
+                
+                let minS = min(topSnip, botSnip)
+                let maxS = max(topSnip, botSnip)
+                var ovh = ""
+                if maxS > minS && maxS <= seqLen && (maxS - minS) <= 8 {
+                    ovh = String(chars[minS..<maxS])
+                }
+                
+                rawSites.append(
+                    ConstructCutsite(
+                        name: enz.name,
+                        recognitionSite: enz.site,
+                        position1Based: recStart + 1,
+                        recognitionStart0Based: recStart,
+                        recognitionEnd0Based: recEnd,
+                        topSnip0Based: topSnip,
+                        bottomSnip0Based: botSnip,
+                        overhangBps: ovh,
+                        cutCountInPlasmid: hits.count,
+                        isType2S: enz.isType2S,
+                        colorHex: enz.colorHex
+                    )
+                )
+            }
+        }
+        
+        let sorted = rawSites.sorted { $0.position1Based < $1.position1Based }
+        scanCacheLock.lock()
+        if constructScanCache.count > 48 {
+            constructScanCache.removeAll()
+        }
+        constructScanCache[cacheKey] = sorted
+        scanCacheLock.unlock()
+        return sorted
+    }
+    
+    private static let nebBufferTable: [String: NEBBufferCompatibility] = [
+        "ecori": NEBBufferCompatibility(r1_1: 25, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "bamhi": NEBBufferCompatibility(r1_1: 75, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: false),
+        "hindiii": NEBBufferCompatibility(r1_1: 50, r2_1: 100, r3_1: 50, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "sali": NEBBufferCompatibility(r1_1: 10, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "r3.1", heatInactivation: true),
+        "xhoi": NEBBufferCompatibility(r1_1: 75, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "ndei": NEBBufferCompatibility(r1_1: 75, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "saci": NEBBufferCompatibility(r1_1: 10, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "kpni": NEBBufferCompatibility(r1_1: 25, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: false),
+        "bsai": NEBBufferCompatibility(r1_1: 50, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "bbsi": NEBBufferCompatibility(r1_1: 10, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "bsmbi": NEBBufferCompatibility(r1_1: 50, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "r3.1", heatInactivation: true),
+        "noti": NEBBufferCompatibility(r1_1: 10, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "xbai": NEBBufferCompatibility(r1_1: 25, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "psti": NEBBufferCompatibility(r1_1: 75, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "r3.1", heatInactivation: true),
+        "smai": NEBBufferCompatibility(r1_1: 50, r2_1: 25, r3_1: 10, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "spei": NEBBufferCompatibility(r1_1: 100, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "clai": NEBBufferCompatibility(r1_1: 100, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "bglii": NEBBufferCompatibility(r1_1: 10, r2_1: 100, r3_1: 100, cutSmart: 10, preferredBuffer: "r3.1", heatInactivation: false),
+        "ecorv": NEBBufferCompatibility(r1_1: 50, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "ncoi": NEBBufferCompatibility(r1_1: 50, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "scai": NEBBufferCompatibility(r1_1: 50, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "aari": NEBBufferCompatibility(r1_1: 10, r2_1: 50, r3_1: 100, cutSmart: 100, preferredBuffer: "r3.1", heatInactivation: true),
+        "pvuii": NEBBufferCompatibility(r1_1: 50, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: false),
+        "dpni": NEBBufferCompatibility(r1_1: 100, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "haeiii": NEBBufferCompatibility(r1_1: 100, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "stui": NEBBufferCompatibility(r1_1: 50, r2_1: 100, r3_1: 50, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "drai": NEBBufferCompatibility(r1_1: 75, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "foki": NEBBufferCompatibility(r1_1: 100, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "hincii": NEBBufferCompatibility(r1_1: 100, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "sacii": NEBBufferCompatibility(r1_1: 10, r2_1: 100, r3_1: 10, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "nhei": NEBBufferCompatibility(r1_1: 100, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "agei": NEBBufferCompatibility(r1_1: 100, r2_1: 75, r3_1: 25, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true)
+    ]
+    
+    private static let fallbackEnzymes: [RestrictionEnzyme] = [
+        RestrictionEnzyme(name: "BamHI", site: "GGATCC"),
+        RestrictionEnzyme(name: "EcoRI", site: "GAATTC"),
+        RestrictionEnzyme(name: "HindIII", site: "AAGCTT"),
+        RestrictionEnzyme(name: "XhoI", site: "CTCGAG"),
+        RestrictionEnzyme(name: "NdeI", site: "CATATG"),
+        RestrictionEnzyme(name: "NotI", site: "GCGGCCGC"),
+        RestrictionEnzyme(name: "SalI", site: "GTCGAC"),
+        RestrictionEnzyme(name: "KpnI", site: "GGTACC"),
+        RestrictionEnzyme(name: "PstI", site: "CTGCAG"),
+        RestrictionEnzyme(name: "SacI", site: "GAGCTC"),
+        RestrictionEnzyme(name: "SacII", site: "CCGCGG"),
+        RestrictionEnzyme(name: "NheI", site: "GCTAGC"),
+        RestrictionEnzyme(name: "ClaI", site: "ATCGAT"),
+        RestrictionEnzyme(name: "SpeI", site: "ACTAGT"),
+        RestrictionEnzyme(name: "BglII", site: "AGATCT"),
+        RestrictionEnzyme(name: "XbaI", site: "TCTAGA"),
+        RestrictionEnzyme(name: "EcoRV", site: "GATATC"),
+        RestrictionEnzyme(name: "SmaI", site: "CCCGGG"),
+        RestrictionEnzyme(name: "AgeI", site: "ACCGGT"),
+        RestrictionEnzyme(name: "StuI", site: "AGGCCT"),
+        RestrictionEnzyme(name: "HaeIII", site: "GGCC"),
+        RestrictionEnzyme(name: "DraI", site: "TTTAAA"),
+        RestrictionEnzyme(name: "PvuII", site: "CAGCTG"),
+        RestrictionEnzyme(name: "ScaI", site: "AGTACT"),
+        RestrictionEnzyme(name: "HincII", site: "GTYRAC"),
+        RestrictionEnzyme(name: "NcoI", site: "CCATGG"),
+        RestrictionEnzyme(name: "BsaI", site: "GGTCTC"),
+        RestrictionEnzyme(name: "BbsI", site: "GAAGAC"),
+        RestrictionEnzyme(name: "BsmBI", site: "CGTCTC"),
+        RestrictionEnzyme(name: "SapI", site: "GCTCTTC"),
+        RestrictionEnzyme(name: "BspQI", site: "GCTCTTC"),
+        RestrictionEnzyme(name: "AarI", site: "CACCTGC"),
+        RestrictionEnzyme(name: "FokI", site: "GGATG"),
+        RestrictionEnzyme(name: "HpaI", site: "GTTAAC"),
+        RestrictionEnzyme(name: "NaeI", site: "GCCGGC"),
+        RestrictionEnzyme(name: "AscI", site: "GGCGCGCC"),
+        RestrictionEnzyme(name: "FseI", site: "GGCCGGCC"),
+        RestrictionEnzyme(name: "PacI", site: "TTAATTAA"),
+        RestrictionEnzyme(name: "PmeI", site: "GTTTAAAC"),
+        RestrictionEnzyme(name: "SbfI", site: "CCTGCAGG"),
+        RestrictionEnzyme(name: "SwaI", site: "ATTTAAAT")
+    ]
+}

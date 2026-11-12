@@ -1,0 +1,105 @@
+{
+  "function": "reverse_complement",
+  "cases": [
+    {
+      "id": "rc_standard_mixed_case_whitespace",
+      "input": {
+        "mode": "rev_comp",
+        "sequence": "  atg cga tcg 123 \n !? "
+      },
+      "expected": {
+        "cleaned": "ATGCGATCG",
+        "reverse_complement": "CGATCGCAT",
+        "gc_percent": 55.6
+      },
+      "tolerance": 0.05,
+      "note": "Biopython Seq('ATGCGATCG').reverse_complement() 与手算核对"
+    },
+    {
+      "id": "rc_edge_empty",
+      "input": {
+        "mode": "rev_comp",
+        "sequence": "   \n\t 12345 "
+      },
+      "expected": {
+        "cleaned": "",
+        "reverse_complement": "",
+        "gc_percent": 0.0
+      },
+      "tolerance": 1e-06,
+      "note": "边界用例：空序列/纯非碱基字符清洗后为空串"
+    },
+    {
+      "id": "rc_edge_single_base_a",
+      "input": {
+        "mode": "rev_comp",
+        "sequence": "A"
+      },
+      "expected": {
+        "cleaned": "A",
+        "reverse_complement": "T",
+        "gc_percent": 0.0
+      },
+      "tolerance": 1e-06,
+      "note": "边界用例：单碱基 A 反向互补为 T，GC%=0.0"
+    },
+    {
+      "id": "rc_edge_degenerate_filtered_clean",
+      "input": {
+        "mode": "rev_comp",
+        "sequence": "ATGNRYSWKMBDHVATCG"
+      },
+      "expected": {
+        "cleaned": "ATGATCG",
+        "reverse_complement": "CGATCAT",
+        "gc_percent": 42.9
+      },
+      "tolerance": 0.05,
+      "note": "边界用例：标准 DNA 清洗函数仅保留确定性 ATCG 碱基并剔除简并字符"
+    },
+    {
+      "id": "rc_edge_all_gc_and_all_at",
+      "input": {
+        "mode": "rev_comp",
+        "sequence": "GGGGCCCC"
+      },
+      "expected": {
+        "cleaned": "GGGGCCCC",
+        "reverse_complement": "GGGGCCCC",
+        "gc_percent": 100.0
+      },
+      "tolerance": 1e-06,
+      "note": "边界用例：全 GC 回文序列 GGGGCCCC 反向互补等于自身"
+    },
+    {
+      "id": "rc_circular_origin_spanning_plus",
+      "input": {
+        "mode": "circular_subseq",
+        "sequence": "AAACCCGGGTTTACTG",
+        "start_1based": 14,
+        "end_1based": 4,
+        "strand": "+"
+      },
+      "expected": {
+        "subsequence": "CTGAAAC"
+      },
+      "tolerance": 0.0,
+      "note": "边界用例：环状序列跨原点坐标 (14..4 on 16bp) 正链截取手算值: 末尾 CTG (14..16) + 开头 AAAC (1..4) = CTGAAAC"
+    },
+    {
+      "id": "rc_circular_origin_spanning_minus",
+      "input": {
+        "mode": "circular_subseq",
+        "sequence": "AAACCCGGGTTTACTG",
+        "start_1based": 14,
+        "end_1based": 4,
+        "strand": "-"
+      },
+      "expected": {
+        "subsequence": "GTTTCAG"
+      },
+      "tolerance": 0.0,
+      "note": "边界用例：环状序列跨原点坐标 (14..4 on 16bp) 负链截取手算值: rev_comp('CTGAAAC') = GTTTCAG"
+    }
+  ]
+}

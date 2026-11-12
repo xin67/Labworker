@@ -1,0 +1,132 @@
+{
+  "function": "primer_thermo_dg",
+  "cases": [
+    {
+      "id": "thermo_hairpin_gcgaattcgc_std",
+      "input": {
+        "kind": "hairpin",
+        "seq1": "GCGAATTCGC",
+        "mv_conc": 50.0,
+        "dv_conc": 1.5,
+        "dntp_conc": 0.6,
+        "dna_conc": 50.0,
+        "temp_c": 37.0
+      },
+      "expected": {
+        "structure_found": true,
+        "dg": -1.7,
+        "dh": -26.4,
+        "ds": -79.65,
+        "tm": 58.3
+      },
+      "tolerance": 0.05,
+      "note": "primer3-py 2.4.0 calc_hairpin('GCGAATTCGC', mv_conc=50, dv_conc=1.5, dntp_conc=0.6) 实测对齐值 (dg=-1.70 kcal/mol)"
+    },
+    {
+      "id": "thermo_homodimer_gcgaattcgc_std",
+      "input": {
+        "kind": "homodimer",
+        "seq1": "GCGAATTCGC",
+        "mv_conc": 50.0,
+        "dv_conc": 1.5,
+        "dntp_conc": 0.6,
+        "dna_conc": 50.0,
+        "temp_c": 37.0
+      },
+      "expected": {
+        "structure_found": true,
+        "dg": -10.5,
+        "dh": -80.0,
+        "ds": -224.09,
+        "tm": 37.5
+      },
+      "tolerance": 0.05,
+      "note": "primer3-py 2.4.0 calc_homodimer('GCGAATTCGC', mv_conc=50, dv_conc=1.5, dntp_conc=0.6) 实测值 (dg=-10.50 kcal/mol, dh=-80.0, tm=37.5)"
+    },
+    {
+      "id": "thermo_homodimer_no_mg",
+      "input": {
+        "kind": "homodimer",
+        "seq1": "GCGAATTCGC",
+        "mv_conc": 50.0,
+        "dv_conc": 0.0,
+        "dntp_conc": 0.0,
+        "dna_conc": 50.0,
+        "temp_c": 37.0
+      },
+      "expected": {
+        "structure_found": true,
+        "dg": -9.28,
+        "dh": -80.0,
+        "ds": -228.02,
+        "tm": 32.9
+      },
+      "tolerance": 0.05,
+      "note": "primer3-py 2.4.0 无二价镁离子 (dv_conc=0, dntp_conc=0) 实测值 (dg=-9.28 kcal/mol, tm=32.9)"
+    },
+    {
+      "id": "thermo_homodimer_high_mg",
+      "input": {
+        "kind": "homodimer",
+        "seq1": "GCGAATTCGC",
+        "mv_conc": 50.0,
+        "dv_conc": 2.0,
+        "dntp_conc": 0.2,
+        "dna_conc": 50.0,
+        "temp_c": 37.0
+      },
+      "expected": {
+        "structure_found": true,
+        "dg": -10.76,
+        "dh": -80.0,
+        "ds": -223.25,
+        "tm": 38.5
+      },
+      "tolerance": 0.05,
+      "note": "primer3-py 2.4.0 高游离镁离子 (dv_conc=2.0, dntp_conc=0.2) 实测值 (dg=-10.76 kcal/mol, tm=38.6)"
+    },
+    {
+      "id": "thermo_heterodimer_3prime_anchored",
+      "input": {
+        "kind": "heterodimer",
+        "seq1": "ATGCGATCGATCGATCGATC",
+        "seq2": "GCTAGCTAGCTAGCGATCGCAT",
+        "mv_conc": 50.0,
+        "dv_conc": 1.5,
+        "dntp_conc": 0.6,
+        "dna_conc": 50.0,
+        "temp_c": 37.0
+      },
+      "expected": {
+        "structure_found": true,
+        "dg": -10.33,
+        "dh": -66.7,
+        "ds": -181.76,
+        "tm": 36.8
+      },
+      "tolerance": 0.05,
+      "note": "primer3-py 2.4.0 calc_dimer 3' 端 10bp 互补异二聚体实测对齐值"
+    },
+    {
+      "id": "thermo_edge_short_seq",
+      "input": {
+        "kind": "hairpin",
+        "seq1": "ATGC",
+        "mv_conc": 50.0,
+        "dv_conc": 1.5,
+        "dntp_conc": 0.6,
+        "dna_conc": 50.0,
+        "temp_c": 37.0
+      },
+      "expected": {
+        "structure_found": false,
+        "dg": 0.0,
+        "dh": 0.0,
+        "ds": 0.0,
+        "tm": 0.0
+      },
+      "tolerance": 1e-06,
+      "note": "边界用例：长度 < 7 bp 无法形成最小茎环结构 (stem>=3, loop>=3)"
+    }
+  ]
+}

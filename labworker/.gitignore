@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager & Xcode
+.build/
+.swiftpm/
+DerivedData/
+
+# Packaged App Bundles
+*.app/
+CloneStudio.app/
+Labworker.app/
+
+# Plasmid Sequences & Runtime Caches
+*.dna
+.clonestudio_plasmid_pool.json
+.clonestudio_mcp_sync.json
+plasmid_pool.json
+
+# Generated Order Exports & Backups
+*_MCP_*.xlsx
+*订购表_*.xlsx
+!**/DNA测序订购表_V9(1).xlsx
+*.bak*
+
+# Python Cache
+**/__pycache__/
+*.py[cod]
