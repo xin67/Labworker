@@ -47,11 +47,12 @@ public struct MutationView: View {
     }
     
     public var body: some View {
-        StudioPageLayout(title: "定点突变") {
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                PlasmidPreviewToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil)
-                
-                PlasmidFileToolbarGroup(
+        StudioPageLayout(
+            title: "定点突变",
+            toolbar: [
+                .plasmidToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil),
+                .plasmidFile(
+                    id: "mutation_plasmid_file",
                     roleTitle: "质粒",
                     tint: .pink,
                     info: vm.plasmidDNAInfo,
@@ -66,14 +67,11 @@ public struct MutationView: View {
                             )
                         }
                     }
-                )
-                
-                StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "示例", icon: "sparkles", action: loadSampleMutation),
-                    StudioPillGroupItem(title: "清空", icon: "trash", tint: .red, action: vm.clear)
-                ])
-            }
-        } content: {
+                ),
+                .action(title: "示例", icon: "sparkles", help: "载入定点突变示例", action: loadSampleMutation),
+                .action(id: "clear_mutation", title: "", icon: "trash", tint: .red, help: "清空当前突变配置", action: vm.clear)
+            ]
+        ) {
                 
                 AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {
                     VStack(alignment: .leading, spacing: 12) {

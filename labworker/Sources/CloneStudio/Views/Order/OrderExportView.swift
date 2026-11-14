@@ -15,17 +15,33 @@ public struct OrderExportView: View {
     public init() {}
     
     public var body: some View {
-        StudioPageLayout(title: "订购中心") {
-            HStack(spacing: 8) {
-                StudioSegmentedPicker(
-                    selection: $vm.selectedCategory,
+        StudioPageLayout(
+            title: "订购中心",
+            toolbar: [
+                .picker(
+                    id: "order_category",
+                    label: "订购类别",
                     options: [
-                        StudioSegmentedOption(value: .primerSynthesis, title: "引物合成 (\(appState.primersCart.count))", tint: .blue),
-                        StudioSegmentedOption(value: .dnaSequencing, title: "DNA 测序 (\(appState.sangonSamples.count))", tint: .purple)
+                        StudioToolbarPickerOption(
+                            id: "primerSynthesis",
+                            title: "引物合成 (\(appState.primersCart.count))",
+                            tint: .blue,
+                            isSelected: vm.selectedCategory == .primerSynthesis
+                        ) {
+                            vm.selectedCategory = .primerSynthesis
+                        },
+                        StudioToolbarPickerOption(
+                            id: "dnaSequencing",
+                            title: "DNA 测序 (\(appState.sangonSamples.count))",
+                            tint: .purple,
+                            isSelected: vm.selectedCategory == .dnaSequencing
+                        ) {
+                            vm.selectedCategory = .dnaSequencing
+                        }
                     ]
                 )
-            }
-        } content: {
+            ]
+        ) {
                 
                 StudioCard(title: "订购信息") {
                     Button(isEditingProfile ? "完成" : "编辑") {

@@ -9,26 +9,40 @@ public struct CHOPCHOPWebView: View {
     public init() {}
     
     public var body: some View {
-        StudioPageLayout(title: "CHOPCHOP 靶点对比") {
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                SpeciesSwitchBar(species: $vm.species) {
-                    if !vm.targets.isEmpty {
-                        vm.fetchTargets()
+        StudioPageLayout(
+            title: "CHOPCHOP 靶点对比",
+            toolbar: [
+                .picker(
+                    id: "chopchop_species",
+                    label: "物种",
+                    options: TargetSpecies.allCases.map { spec in
+                        StudioToolbarPickerOption(
+                            id: spec.rawValue,
+                            title: spec == .human ? "人源 (hg38)" : "鼠源 (mm39)",
+                            tint: spec == .human ? .blue : .orange,
+                            isSelected: vm.species == spec
+                        ) {
+                            if vm.species != spec {
+                                vm.species = spec
+                                if !vm.targets.isEmpty {
+                                    vm.fetchTargets()
+                                }
+                            }
+                        }
                     }
-                }
-                
-                StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "网页版", icon: "safari", action: vm.openInSafari),
-                    StudioPillGroupItem(
-                        title: "清空",
-                        icon: "trash",
-                        tint: .red,
-                        isDisabled: vm.gene.isEmpty && vm.targets.isEmpty && vm.activeUserLocalTargets.isEmpty,
-                        action: vm.clear
-                    )
-                ])
-            }
-        } content: {
+                ),
+                .action(title: "网页版", icon: "safari", help: "在 Safari 中打开 CHOPCHOP", action: vm.openInSafari),
+                .action(
+                    id: "clear_chopchop",
+                    title: "",
+                    icon: "trash",
+                    tint: .red,
+                    isDisabled: vm.gene.isEmpty && vm.targets.isEmpty && vm.activeUserLocalTargets.isEmpty,
+                    help: "清空靶点检索结果",
+                    action: vm.clear
+                )
+            ]
+        ) {
                 
                 StudioCard(title: "靶点检索与比对") {
                     HStack(spacing: 6) {

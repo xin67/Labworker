@@ -35,23 +35,41 @@ public struct SgRNADesignView: View {
     }
     
     public var body: some View {
-        StudioPageLayout(title: "CRISPR/Cas9 sgRNA 设计") {
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                PlasmidPreviewToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil)
-                
-                SpeciesSwitchBar(species: $vm.species) {
-                    if !vm.searchQuery.isEmpty {
-                        vm.search()
+        StudioPageLayout(
+            title: "CRISPR/Cas9 sgRNA 设计",
+            toolbar: [
+                .plasmidToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil),
+                .picker(
+                    id: "sgrna_species",
+                    label: "物种",
+                    options: TargetSpecies.allCases.map { spec in
+                        StudioToolbarPickerOption(
+                            id: spec.rawValue,
+                            title: spec == .human ? "人源 (hg38)" : "鼠源 (mm39)",
+                            tint: spec == .human ? .blue : .orange,
+                            isSelected: vm.species == spec
+                        ) {
+                            if vm.species != spec {
+                                vm.species = spec
+                                if !vm.searchQuery.isEmpty {
+                                    vm.search()
+                                }
+                            }
+                        }
                     }
-                }
-                
-                StudioSectionClearButton(
-                    title: "一键清除",
+                ),
+                .action(
+                    id: "clear_sgrna",
+                    groupKey: nil,
+                    title: "",
+                    icon: "trash",
+                    tint: .red,
                     isDisabled: vm.searchQuery.isEmpty && vm.searchResults.isEmpty && vm.customSequence.isEmpty && vm.generatedPrimers.isEmpty,
+                    help: "一键清除",
                     action: vm.clear
                 )
-            }
-        } content: {
+            ]
+        ) {
                 
                 AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {
                     VStack(alignment: .leading, spacing: 12) {

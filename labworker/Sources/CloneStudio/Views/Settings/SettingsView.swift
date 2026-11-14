@@ -31,27 +31,32 @@ public struct SettingsView: View {
     public init() {}
 
     public var body: some View {
-        let visibleCount = NavItem.allCases.filter { appState.isNavItemVisible($0) }.count
-        StudioPageLayout(title: "系统设置与功能说明书") {
-            StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
-                StudioSegmentedPicker(
-                    selection: $activeTab,
-                    options: SettingsSubTab.allCases.map {
-                        StudioSegmentedOption(value: $0, title: $0.title, tint: .blue)
+        StudioPageLayout(
+            title: "系统设置与功能说明书",
+            toolbar: [
+                .picker(
+                    id: "settings_tab",
+                    label: "设置分页",
+                    options: SettingsSubTab.allCases.map { tab in
+                        StudioToolbarPickerOption(
+                            id: tab.title,
+                            title: tab.title,
+                            tint: .blue,
+                            isSelected: activeTab == tab
+                        ) {
+                            activeTab = tab
+                        }
                     }
-                )
-                StudioMetricBadge(
-                    label: "侧边栏显示",
-                    value: "\(visibleCount) / \(NavItem.allCases.count)",
-                    color: visibleCount == NavItem.allCases.count ? .green : .orange
-                )
-                StudioActionPillButton(
+                ),
+                .action(
+                    groupKey: nil,
                     title: "恢复默认",
                     icon: "arrow.counterclockwise",
+                    help: "将全部外观与实验默认参数恢复为出厂默认值",
                     action: appState.resetSettingsToDefaults
                 )
-            }
-        } content: {
+            ]
+        ) {
             switch activeTab {
             case .preferences:
                 preferencesWorkspaceView
@@ -87,14 +92,22 @@ public struct SettingsView: View {
     // MARK: - 子页面 ②：侧边栏功能自定义显隐（自适应网格 + 快捷预设）
 
     private var sidebarCustomizationWorkspaceView: some View {
+        let visibleCount = NavItem.allCases.filter { appState.isNavItemVisible($0) }.count
         let hiddenCount = appState.hiddenSidebarItems.count
         return VStack(alignment: .leading, spacing: 12) {
             StudioCard(title: "侧边栏模块可见性快捷方案") {
-                StudioMetricBadge(
-                    label: "当前已隐藏",
-                    value: "\(hiddenCount) 项",
-                    color: hiddenCount == 0 ? .green : .orange
-                )
+                StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
+                    StudioMetricBadge(
+                        label: "侧边栏显示",
+                        value: "\(visibleCount) / \(NavItem.allCases.count)",
+                        color: visibleCount == NavItem.allCases.count ? .green : .orange
+                    )
+                    StudioMetricBadge(
+                        label: "当前已隐藏",
+                        value: "\(hiddenCount) 项",
+                        color: hiddenCount == 0 ? .green : .orange
+                    )
+                }
             } content: {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("勾选需要在左侧导航栏常驻显示的工具模块；取消勾选即可隐藏不常用的功能（注：即使隐藏，仍可通过侧边栏搜索框、Finder 文件快导或「全局功能说明书」随时直达）。")
@@ -593,37 +606,15 @@ public struct SettingsView: View {
                     }
                 }
 
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        Text("液态玻璃材质 (macOS 26/27):")
-                            .font(.system(size: 11.5, weight: .medium))
-                            .fixedSize(horizontal: true, vertical: false)
-                        Spacer()
-                        StudioSegmentedPicker(
-                            selection: $appState.liquidGlassStyle,
-                            options: LiquidGlassStyleMode.allCases.map {
-                                StudioSegmentedOption(value: $0, title: $0.shortTitle, tint: appState.accentTheme.color)
-                            }
-                        )
-                    }
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("液态玻璃材质 (macOS 26/27):")
-                            .font(.system(size: 11.5, weight: .medium))
-                        StudioSegmentedPicker(
-                            selection: $appState.liquidGlassStyle,
-                            options: LiquidGlassStyleMode.allCases.map {
-                                StudioSegmentedOption(value: $0, title: $0.shortTitle, tint: appState.accentTheme.color)
-                            }
-                        )
-                    }
+                HStack(spacing: 8) {
+                    Text("界面材质:")
+                        .font(.system(size: 11.5, weight: .medium))
+                    Text("静态纯静白/黑工作区 · 侧边栏与顶栏采用 macOS 系统磨砂模糊")
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.secondary)
                 }
 
                 Divider().opacity(0.5)
-
-                Toggle("启用工作区背景环境折射光晕 (Liquid Glass Ambient Glow)", isOn: $appState.enableAmbientGlassGlow)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .font(.system(size: 11.5, weight: .medium))
 
                 Toggle("在 macOS 顶部菜单栏显示 Labworker 快捷图标", isOn: $appState.showStatusBarIcon)
                     .toggleStyle(.switch)

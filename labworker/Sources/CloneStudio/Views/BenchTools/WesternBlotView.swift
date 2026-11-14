@@ -138,42 +138,16 @@ public struct WesternBlotView: View {
     }
     
     public var body: some View {
-        StudioPageLayout(title: "WB 灰度定量") {
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                if let res = currentResult {
-                    StudioMetricBadge(
-                        label: "",
-                        value: "\(res.bitDepth)-bit",
-                        color: res.bitDepth == 16 ? .teal : .blue
-                    )
-                    StudioMetricBadge(
-                        label: "",
-                        value: "\(res.lanes.count)L · \(res.bands.count)B",
-                        color: .indigo
-                    )
-                    if res.bands.contains(where: \.isSaturated) {
-                        StudioMetricBadge(label: "", value: "过曝", color: .red)
-                    }
-                }
-                StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "导入", icon: "folder.badge.plus", help: "导入 WB 曝光目录或 TIFF 图像") {
-                        openImportPanel()
-                    },
-                    StudioPillGroupItem(title: "圈定", icon: "sparkles", tint: .blue, help: "重新自动识别泳道并圈定条带") {
-                        runAutoAnalysis()
-                    },
-                    StudioPillGroupItem(title: "视窗", icon: "waveform.path.ecg.rectangle", tint: .teal, help: "启动 PySide6 + pyqtgraph 科学密度视窗") {
-                        launchPyQtViewer()
-                    },
-                    StudioPillGroupItem(title: "Prism", icon: "doc.on.doc", help: "复制 GraphPad Prism / Excel TSV") {
-                        copyPrismTSV()
-                    },
-                    StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", tint: .green, help: "导出条带定量 CSV 报表") {
-                        exportAnalysisCSV()
-                    }
-                ])
-            }
-        } content: {
+        StudioPageLayout(
+            title: "WB 灰度定量",
+            toolbar: [
+                .action(title: "导入", icon: "folder.badge.plus", help: "导入 WB 曝光目录或 TIFF 图像", action: openImportPanel),
+                .action(title: "圈定", icon: "sparkles", tint: .blue, help: "重新自动识别泳道并圈定条带", action: runAutoAnalysis),
+                .action(title: "视窗", icon: "waveform.path.ecg.rectangle", tint: .teal, help: "启动 PySide6 + pyqtgraph 科学密度视窗", action: launchPyQtViewer),
+                .action(title: "Prism", icon: "doc.on.doc", help: "复制 GraphPad Prism / Excel TSV", action: copyPrismTSV),
+                .action(title: "导出", icon: "square.and.arrow.up", tint: .green, help: "导出条带定量 CSV 报表", action: exportAnalysisCSV)
+            ]
+        ) {
             // 顶部曝光批次与图层快速切换栏（完全声明式自适应流式布局）
             sampleAndLayerBar
             
@@ -230,6 +204,24 @@ public struct WesternBlotView: View {
     
     private var sampleAndLayerBar: some View {
         StudioCard(title: "样本与图层") {
+            if let res = currentResult {
+                StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
+                    StudioMetricBadge(
+                        label: "",
+                        value: "\(res.bitDepth)-bit",
+                        color: res.bitDepth == 16 ? .teal : .blue
+                    )
+                    StudioMetricBadge(
+                        label: "",
+                        value: "\(res.lanes.count)L · \(res.bands.count)B",
+                        color: .indigo
+                    )
+                    if res.bands.contains(where: \.isSaturated) {
+                        StudioMetricBadge(label: "", value: "过曝", color: .red)
+                    }
+                }
+            }
+        } content: {
             VStack(alignment: .leading, spacing: 10) {
                 // 样本批次胶囊列表（包含真实 gapdh_*.tif 批次 + 内置双排目的/内参示范膜）
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {

@@ -26,7 +26,14 @@ public struct TargetScoreBadge: View {
             }
             .padding(.horizontal, compact ? 5.5 : 7.5)
             .padding(.vertical, compact ? 2 : 3)
-            .glassEffect(.clear.tint(score.tier.color.opacity(0.32)).interactive(), in: .capsule)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(score.tier.color.opacity(0.14))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(score.tier.color.opacity(0.30), lineWidth: 1)
+                    )
+            )
             .foregroundColor(score.tier.color)
         }
         .buttonStyle(.plain)

@@ -73,24 +73,16 @@ public struct ColonyCounterView: View {
     public var body: some View {
         StudioPageLayout(
             title: "菌落计数",
-            trailing: {
-                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "导入", icon: "photo.badge.plus", tint: .blue, help: "导入平板照片 (.jpg / .png / .tif)") {
-                            importPlateImage()
-                        },
-                        StudioPillGroupItem(title: "示范", icon: "sparkles", help: "载入蓝白斑转化平板示范图") {
-                            sourceImageURL = nil
-                            plane = BioImageProcessor.generateDemoColonyPlatePlane()
-                            runSegmentation()
-                            appState.showToast("已载入蓝白斑转化平板示范图并完成自动计数")
-                        },
-                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出菌落计数 CSV 明细") {
-                            exportColonyCSV()
-                        }
-                    ])
-                }
-            }
+            toolbar: [
+                .action(title: "导入", icon: "photo.badge.plus", tint: .blue, help: "导入平板照片 (.jpg / .png / .tif)", action: importPlateImage),
+                .action(title: "示范", icon: "sparkles", help: "载入蓝白斑转化平板示范图") {
+                    sourceImageURL = nil
+                    plane = BioImageProcessor.generateDemoColonyPlatePlane()
+                    runSegmentation()
+                    appState.showToast("已载入蓝白斑转化平板示范图并完成自动计数")
+                },
+                .action(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出菌落计数 CSV 明细", action: exportColonyCSV)
+            ]
         ) {
             StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.38) {
                 leftColumn

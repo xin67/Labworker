@@ -66,29 +66,35 @@ public struct PhylogeneticTreeView: View {
     public var body: some View {
         StudioPageLayout(
             title: "进化树",
-            trailing: {
-                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    StudioSegmentedPicker(selection: $layoutMode, options: modeOptions)
-                    
-                    StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "阶梯", icon: "list.number", tint: .blue, help: "完成进化树阶梯化排序 (Ladderize)") {
-                            rootNode = PhylogeneticTreeEngine.ladderize(rootNode, descending: false)
-                            appState.showToast("已完成进化树阶梯化排序 (Ladderize)")
-                        },
-                        StudioPillGroupItem(title: "定根", icon: "arrow.triangle.branch", tint: .teal, help: "按最长路径中点重新定根 (Midpoint Rooting)") {
-                            if let rerooted = PhylogeneticTreeEngine.midpointRoot(rootNode) {
-                                rootNode = rerooted
-                                appState.showToast("已按最长路径中点重新定根 (Midpoint Rooting)")
-                            } else {
-                                appState.showToast("当前进化树无有效正枝长，无法执行中点定根")
-                            }
-                        },
-                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", tint: .green, help: "导出编辑后的 Newick 树文件") {
-                            exportEditedNewick()
+            toolbar: [
+                .picker(
+                    id: "phylo_layout",
+                    label: "布局模式",
+                    options: PhyloLayoutMode.allCases.map { mode in
+                        StudioToolbarPickerOption(
+                            id: mode.shortTitle,
+                            title: mode.shortTitle,
+                            tint: .green,
+                            isSelected: layoutMode == mode
+                        ) {
+                            layoutMode = mode
                         }
-                    ])
-                }
-            }
+                    }
+                ),
+                .action(title: "阶梯", icon: "list.number", tint: .blue, help: "完成进化树阶梯化排序 (Ladderize)") {
+                    rootNode = PhylogeneticTreeEngine.ladderize(rootNode, descending: false)
+                    appState.showToast("已完成进化树阶梯化排序 (Ladderize)")
+                },
+                .action(title: "定根", icon: "arrow.triangle.branch", tint: .teal, help: "按最长路径中点重新定根 (Midpoint Rooting)") {
+                    if let rerooted = PhylogeneticTreeEngine.midpointRoot(rootNode) {
+                        rootNode = rerooted
+                        appState.showToast("已按最长路径中点重新定根 (Midpoint Rooting)")
+                    } else {
+                        appState.showToast("当前进化树无有效正枝长，无法执行中点定根")
+                    }
+                },
+                .action(title: "导出", icon: "square.and.arrow.up", tint: .green, help: "导出编辑后的 Newick 树文件", action: exportEditedNewick)
+            ]
         ) {
             StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.37) {
                 leftColumn

@@ -44,30 +44,36 @@ public struct QPCRAnalysisView: View {
     public var body: some View {
         StudioPageLayout(
             title: "qPCR 定量",
-            trailing: {
-                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    StudioSegmentedPicker(selection: $mode, options: modeOptions)
-                    
-                    StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "同步板", icon: "square.grid.3x3.fill", tint: .blue, help: "关联微孔板设计器中的样品与分组映射") {
-                            wells = QPCRAnalysisEngine.mergeWithPlateAssignments(
-                                existingWells: wells,
-                                assignments: plateStore.assignments
-                            )
-                            syncDefaultRefAndControlIfNeeded()
-                            appState.showToast("已关联微孔板设计器中的样品与分组映射")
-                        },
-                        StudioPillGroupItem(title: "示范", icon: "sparkles", help: "载入 TP53 / MYC 标准 qPCR 示范数据集") {
-                            rawCSVText = QPCRAnalysisEngine.defaultExampleCSV
-                            reloadFromRawCSV()
-                            appState.showToast("已载入 TP53 / MYC 标准 qPCR 示范数据集")
-                        },
-                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出 qPCR ΔΔCt 与显著性统计 CSV") {
-                            exportResultsCSV()
+            toolbar: [
+                .picker(
+                    id: "qpcr_mode",
+                    label: "分析模式",
+                    options: QPCRAnalysisMode.allCases.map { m in
+                        StudioToolbarPickerOption(
+                            id: m.title,
+                            title: m.title,
+                            tint: m == .ddct ? .teal : .blue,
+                            isSelected: mode == m
+                        ) {
+                            mode = m
                         }
-                    ])
-                }
-            }
+                    }
+                ),
+                .action(title: "同步板", icon: "square.grid.3x3.fill", tint: .blue, help: "关联微孔板设计器中的样品与分组映射") {
+                    wells = QPCRAnalysisEngine.mergeWithPlateAssignments(
+                        existingWells: wells,
+                        assignments: plateStore.assignments
+                    )
+                    syncDefaultRefAndControlIfNeeded()
+                    appState.showToast("已关联微孔板设计器中的样品与分组映射")
+                },
+                .action(title: "示范", icon: "sparkles", help: "载入 TP53 / MYC 标准 qPCR 示范数据集") {
+                    rawCSVText = QPCRAnalysisEngine.defaultExampleCSV
+                    reloadFromRawCSV()
+                    appState.showToast("已载入 TP53 / MYC 标准 qPCR 示范数据集")
+                },
+                .action(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出 qPCR ΔΔCt 与显著性统计 CSV", action: exportResultsCSV)
+            ]
         ) {
             StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.40) {
                 leftColumn

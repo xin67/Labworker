@@ -20,38 +20,35 @@ public struct EntryCloneView: View {
     }
     
     public var body: some View {
-        StudioPageLayout(title: "入门克隆") {
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                PlasmidPreviewToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil)
-                
-                StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "导入", icon: "folder.badge.plus", help: "导入 FASTA / .dna / 文本序列") {
-                        FinderFileDropHelper.presentOpenPanel { url in
-                            Task { @MainActor in
-                                await FinderFileDropHelper.loadSequence(from: url) { seq, name in
-                                    vm.sequence = seq
-                                    AppState.shared.showToast("已导入 \(name) (\(seq.count) bp)")
-                                }
+        StudioPageLayout(
+            title: "入门克隆",
+            toolbar: [
+                .plasmidToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil),
+                .action(title: "导入", icon: "folder.badge.plus", help: "导入 FASTA / .dna / 文本序列") {
+                    FinderFileDropHelper.presentOpenPanel { url in
+                        Task { @MainActor in
+                            await FinderFileDropHelper.loadSequence(from: url) { seq, name in
+                                vm.sequence = seq
+                                AppState.shared.showToast("已导入 \(name) (\(seq.count) bp)")
                             }
                         }
-                    },
-                    StudioPillGroupItem(title: "算用量", icon: "function", tint: .purple, help: "将载体与片段长度送入体系用量计算") {
-                        vm.sendLengthsToCalculator(navigate: true)
-                    },
-                    StudioPillGroupItem(title: "示例", icon: "sparkles", help: "载入 EGFP 标准示例序列") {
-                        loadSampleEGFP()
-                    },
-                    StudioPillGroupItem(
-                        title: "",
-                        icon: "trash",
-                        tint: .red,
-                        isDisabled: vm.sequence.isEmpty && !vm.hasEnzymes && vm.primerF == nil && vm.primerR == nil,
-                        help: "清空当前入门克隆配置",
-                        action: vm.clear
-                    )
-                ])
-            }
-        } content: {
+                    }
+                },
+                .action(title: "算用量", icon: "function", tint: .purple, help: "将载体与片段长度送入体系用量计算") {
+                    vm.sendLengthsToCalculator(navigate: true)
+                },
+                .action(title: "示例", icon: "sparkles", help: "载入 EGFP 标准示例序列", action: loadSampleEGFP),
+                .action(
+                    id: "clear_entry",
+                    title: "",
+                    icon: "trash",
+                    tint: .red,
+                    isDisabled: vm.sequence.isEmpty && !vm.hasEnzymes && vm.primerF == nil && vm.primerR == nil,
+                    help: "清空当前入门克隆配置",
+                    action: vm.clear
+                )
+            ]
+        ) {
             AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {
                 VStack(alignment: .leading, spacing: 14) {
                     StudioCard(title: "插入片段与载体长度") {

@@ -30,25 +30,29 @@ public struct FigureAnnotatorView: View {
     public var body: some View {
         StudioPageLayout(
             title: "多图拼版",
-            trailing: {
-                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    StudioSegmentedPicker(selection: $labelStyle, options: labelStyleOptions)
-                    
-                    StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "添图", icon: "photo.badge.plus", tint: .pink, help: "添加图像面板") {
-                            importPanelImage()
-                        },
-                        StudioPillGroupItem(title: "示范", icon: "sparkles", help: "载入 DAPI / TP53-EGFP / MitoTracker 四通道示范图") {
-                            panels = FigureAnnotatorEngine.generateDemoFluorescencePanels()
-                            selectedPanelID = panels.last?.id ?? ""
-                            appState.showToast("已载入 DAPI / TP53-EGFP / MitoTracker 四通道共定位示范图")
-                        },
-                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出荧光共定位强度剖面 CSV") {
-                            exportProfileCSV()
+            toolbar: [
+                .picker(
+                    id: "figure_label_style",
+                    label: "标号风格",
+                    options: FigureLabelStyle.allCases.map { style in
+                        StudioToolbarPickerOption(
+                            id: style.title,
+                            title: style.title,
+                            tint: .pink,
+                            isSelected: labelStyle == style
+                        ) {
+                            labelStyle = style
                         }
-                    ])
-                }
-            }
+                    }
+                ),
+                .action(title: "添图", icon: "photo.badge.plus", tint: .pink, help: "添加图像面板", action: importPanelImage),
+                .action(title: "示范", icon: "sparkles", help: "载入 DAPI / TP53-EGFP / MitoTracker 四通道示范图") {
+                    panels = FigureAnnotatorEngine.generateDemoFluorescencePanels()
+                    selectedPanelID = panels.last?.id ?? ""
+                    appState.showToast("已载入 DAPI / TP53-EGFP / MitoTracker 四通道共定位示范图")
+                },
+                .action(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出荧光共定位强度剖面 CSV", action: exportProfileCSV)
+            ]
         ) {
             StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.38) {
                 leftColumn

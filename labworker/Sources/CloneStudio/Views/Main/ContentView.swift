@@ -97,59 +97,24 @@ private struct ImmersiveWindowConfigurator: NSViewRepresentable {
     }
 }
 
-/// 主窗口视图 (macOS 26/27 原生 Liquid Glass 侧边栏 + 顶部胶囊搜索框 + 小箭头折叠分组 + 环境折射光晕主工作区)
+/// 主窗口视图 (macOS 系统磨砂侧边栏 + 顶部胶囊搜索框 + 静态黑白高对比右栏工作区)
 public struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @ObservedObject private var plasmidPool = PlasmidPoolManager.shared
-    @Namespace private var sidebarGlassNS
     @State private var isWindowDropTargeted: Bool = false
     
     public init() {}
     
-    private var workspaceBackgroundColor: Color {
-        appState.isLightAppearance
-            ? Color(red: 0.957, green: 0.960, blue: 0.969)
-            : Color(red: 0.118, green: 0.122, blue: 0.135)
-    }
-
     @ViewBuilder
     private var mainWorkspaceBackground: some View {
-        ZStack {
-            workspaceBackgroundColor
-
-            if appState.enableAmbientGlassGlow {
-                GeometryReader { geo in
-                    ZStack {
-                        RadialGradient(
-                            colors: [
-                                appState.accentTheme.color.opacity(appState.isLightAppearance ? 0.065 : 0.095),
-                                Color.clear
-                            ],
-                            center: .topTrailing,
-                            startRadius: 20,
-                            endRadius: max(geo.size.width, geo.size.height) * 0.72
-                        )
-                        RadialGradient(
-                            colors: [
-                                Color.cyan.opacity(appState.isLightAppearance ? 0.045 : 0.065),
-                                Color.clear
-                            ],
-                            center: .bottomLeading,
-                            startRadius: 20,
-                            endRadius: max(geo.size.width, geo.size.height) * 0.65
-                        )
-                    }
-                    .allowsHitTesting(false)
-                }
-            }
-        }
-        .ignoresSafeArea(.container, edges: .top)
+        StudioPalette.workspaceBg(isLight: appState.isLightAppearance)
+            .ignoresSafeArea(.container, edges: .top)
     }
     
     private var subtleHairlineColor: Color {
         appState.isLightAppearance
             ? Color.black.opacity(0.08)
-            : Color.white.opacity(0.09)
+            : Color.white.opacity(0.10)
     }
     
     public var body: some View {
@@ -161,16 +126,17 @@ public struct ContentView: View {
                         VisualEffectBlurView(
                             material: .sidebar,
                             blendingMode: .behindWindow,
-                            state: .followsWindowActiveState
+                            state: .active
                         )
-                        Color.primary.opacity(appState.isLightAppearance ? 0.015 : 0.04)
+                        Color.primary.opacity(appState.isLightAppearance ? 0.015 : 0.03)
                     }
                     .ignoresSafeArea(.container, edges: .top)
                 )
             
-            // 右侧主工作区：直接置顶铺满，彻底去除顶栏空白条
+            // 右侧主工作区：纯净静态白/黑渲染 + 系统级顶部模糊栏
             VStack(spacing: 0) {
                 detailContent
+                    .animation(nil, value: appState.selectedNav)
                     .frame(minWidth: 540, maxWidth: .infinity, minHeight: 420, maxHeight: .infinity)
             }
             .background(mainWorkspaceBackground)
@@ -192,11 +158,15 @@ public struct ContentView: View {
                     }
                     .padding(.horizontal, 18)
                     .padding(.vertical, 10)
-                    .glassEffect(
-                        .regular.tint(appState.accentTheme.color.opacity(0.85)).interactive(),
-                        in: .capsule
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(appState.accentTheme.color.opacity(0.95))
                     )
-                    .shadow(color: appState.accentTheme.color.opacity(0.28), radius: 10, x: 0, y: 4)
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(Color.white.opacity(0.28), lineWidth: 1)
+                    )
+                    .shadow(color: appState.accentTheme.color.opacity(0.26), radius: 10, x: 0, y: 4)
                     .padding(.top, 18)
                 }
             }
@@ -242,11 +212,15 @@ public struct ContentView: View {
                         .font(.system(size: 12.5, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: 28, height: 28)
-                        .contentShape(Circle())
-                        .glassEffect(
-                            .regular.tint(appState.accentTheme.color.opacity(0.78)).interactive(),
-                            in: .capsule
+                        .background(
+                            Circle()
+                                .fill(appState.accentTheme.color)
                         )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.24), lineWidth: 0.75)
+                        )
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .help("从 Finder 导入实验文件 (.dna / .tif / .pdb / .nwk / .csv / .fasta)，自动识别并直达对应功能模块")
@@ -278,16 +252,19 @@ public struct ContentView: View {
             }
             .padding(.horizontal, 11)
             .padding(.vertical, 6.5)
-            .glassEffect(
-                appState.liquidGlassStyle.resolvedGlass(accentColor: appState.accentTheme.color, interactive: true),
-                in: .capsule
+            .background(
+                Capsule(style: .continuous)
+                    .fill(appState.isLightAppearance ? Color.black.opacity(0.055) : Color.white.opacity(0.09))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(appState.isLightAppearance ? Color.black.opacity(0.08) : Color.white.opacity(0.12), lineWidth: 1)
             )
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
             
             ScrollView(.vertical, showsIndicators: false) {
-                GlassEffectContainer(spacing: 6) {
-                    VStack(alignment: .leading, spacing: 13) {
+                VStack(alignment: .leading, spacing: 13) {
                     sidebarCollapsibleSection(.cloning) {
                         sidebarRow(
                             item: .plasmidPool,
@@ -331,7 +308,6 @@ public struct ContentView: View {
                         )
                         sidebarRow(item: .settings, tint: .gray)
                     }
-                }
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
@@ -394,15 +370,17 @@ public struct ContentView: View {
         if shouldShow {
             let isSelected = (appState.selectedNav == item)
             Button(action: {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                    appState.selectedNav = item
-                }
+                appState.selectedNav = item
             }) {
                 HStack(spacing: 10) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .fill(isSelected ? Color.white.opacity(0.24) : tint.opacity(0.92))
+                            .fill(tint.opacity(0.94))
                             .frame(width: 23, height: 23)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                    .stroke(Color.white.opacity(isSelected ? 0.45 : 0.16), lineWidth: 0.75)
+                            )
                         Image(systemName: item.systemImage)
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.white)
@@ -429,12 +407,9 @@ public struct ContentView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5.5)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .modifier(
-                    SidebarRowGlassModifier(
-                        isSelected: isSelected,
-                        accentColor: appState.accentTheme.color,
-                        namespace: sidebarGlassNS
-                    )
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(isSelected ? appState.accentTheme.color : Color.clear)
                 )
                 .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
@@ -504,28 +479,15 @@ public struct ContentView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .glassEffect(.regular.tint(Color.green.opacity(0.28)).interactive(), in: .capsule)
+        .background(
+            Capsule(style: .continuous)
+                .fill(appState.isLightAppearance ? Color.white : Color(red: 0.16, green: 0.17, blue: 0.18))
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .stroke(Color.green.opacity(0.42), lineWidth: 1)
+        )
         .shadow(color: .black.opacity(0.14), radius: 10, x: 0, y: 4)
         .padding(.bottom, 20)
-    }
-}
-
-private struct SidebarRowGlassModifier: ViewModifier {
-    let isSelected: Bool
-    let accentColor: Color
-    let namespace: Namespace.ID
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if isSelected {
-            content
-                .glassEffect(
-                    .regular.tint(accentColor.opacity(0.85)).interactive(),
-                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                )
-                .glassEffectID("sidebar_active_item", in: namespace)
-        } else {
-            content
-        }
     }
 }

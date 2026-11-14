@@ -8,35 +8,41 @@ public struct RestructureCalculatorView: View {
     public init() {}
     
     public var body: some View {
-        StudioPageLayout(title: "DNA 使用量计算器") {
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                StudioSegmentedPicker(
-                    selection: $vm.cloneType,
-                    options: DNAMolarCalculator.CloneType.allCases.map {
-                        StudioSegmentedOption(value: $0, title: $0.title, tint: .purple)
+        StudioPageLayout(
+            title: "DNA 使用量计算器",
+            toolbar: [
+                .picker(
+                    id: "calculator_clone_type",
+                    label: "组装类型",
+                    options: DNAMolarCalculator.CloneType.allCases.map { t in
+                        StudioToolbarPickerOption(
+                            id: t.title,
+                            title: t.title,
+                            tint: .purple,
+                            isSelected: vm.cloneType == t
+                        ) {
+                            vm.cloneType = t
+                        }
                     }
-                )
-                
-                StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(
-                        title: "从单片段同步",
-                        icon: "arrow.down.doc",
-                        tint: .teal,
-                        action: {
-                            WorkspaceSessionManager.shared.singleFragmentVM.sendLengthsToCalculator(navigate: false)
-                        }
-                    ),
-                    StudioPillGroupItem(
-                        title: "从多片段同步",
-                        icon: "square.stack.3d.up",
-                        tint: .indigo,
-                        action: {
-                            WorkspaceSessionManager.shared.multiFragmentVM.sendLengthsToCalculator(navigate: false)
-                        }
-                    )
-                ])
-            }
-        } content: {
+                ),
+                .action(
+                    title: "从单片段同步",
+                    icon: "arrow.down.doc",
+                    tint: .teal,
+                    help: "从单片段无缝克隆模块同步载体与插入长度"
+                ) {
+                    WorkspaceSessionManager.shared.singleFragmentVM.sendLengthsToCalculator(navigate: false)
+                },
+                .action(
+                    title: "从多片段同步",
+                    icon: "square.stack.3d.up",
+                    tint: .indigo,
+                    help: "从多片段无缝克隆模块同步载体与插入长度"
+                ) {
+                    WorkspaceSessionManager.shared.multiFragmentVM.sendLengthsToCalculator(navigate: false)
+                }
+            ]
+        ) {
             AdaptiveTwoColumnWorkspace(breakpoint: 820) {
                 VStack(alignment: .leading, spacing: 14) {
                     // 1. 载体参数（支持自定义 ng 投入量与快捷档位）

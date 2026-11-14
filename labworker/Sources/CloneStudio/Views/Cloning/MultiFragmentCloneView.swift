@@ -40,11 +40,12 @@ public struct MultiFragmentCloneView: View {
     }
     
     public var body: some View {
-        StudioPageLayout(title: "多片段无缝克隆") {
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                PlasmidPreviewToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil)
-                
-                PlasmidFileToolbarGroup(
+        StudioPageLayout(
+            title: "多片段无缝克隆",
+            toolbar: [
+                .plasmidToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil),
+                .plasmidFile(
+                    id: "multi_vector_file",
                     roleTitle: "载体",
                     tint: .blue,
                     info: vm.vectorDNAInfo,
@@ -54,17 +55,14 @@ public struct MultiFragmentCloneView: View {
                             PlasmidWindowPresenter.shared.openPreviewWindow(for: vec, roleLabel: "原始载体质粒预览", highlightRange: nil)
                         }
                     }
-                )
-                
-                StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "算用量", icon: "function", tint: .purple, help: "将多片段与载体长度送入用量计算") {
-                        vm.sendLengthsToCalculator(navigate: true)
-                    },
-                    StudioPillGroupItem(title: "示例", icon: "sparkles", help: "载入多片段组装示例", action: loadSampleMultiFragments),
-                    StudioPillGroupItem(title: "", icon: "trash", tint: .red, help: "清空当前多片段配置", action: vm.clear)
-                ])
-            }
-        } content: {
+                ),
+                .action(title: "算用量", icon: "function", tint: .purple, help: "将多片段与载体长度送入用量计算") {
+                    vm.sendLengthsToCalculator(navigate: true)
+                },
+                .action(title: "示例", icon: "sparkles", help: "载入多片段组装示例", action: loadSampleMultiFragments),
+                .action(id: "clear_multi", title: "", icon: "trash", tint: .red, help: "清空当前多片段配置", action: vm.clear)
+            ]
+        ) {
             AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {
                 VStack(alignment: .leading, spacing: 12) {
                     // 0. 多片段同源重组载体长度与各插入片段长度汇总栏

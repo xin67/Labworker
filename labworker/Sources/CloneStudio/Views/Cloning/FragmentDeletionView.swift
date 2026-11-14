@@ -33,11 +33,12 @@ public struct FragmentDeletionView: View {
     }
     
     public var body: some View {
-        StudioPageLayout(title: "质粒片段删除") {
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                PlasmidPreviewToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil)
-                
-                PlasmidFileToolbarGroup(
+        StudioPageLayout(
+            title: "质粒片段删除",
+            toolbar: [
+                .plasmidToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil),
+                .plasmidFile(
+                    id: "deletion_plasmid_file",
                     roleTitle: "质粒",
                     tint: .purple,
                     info: vm.plasmidDNAInfo,
@@ -47,14 +48,11 @@ public struct FragmentDeletionView: View {
                             PlasmidWindowPresenter.shared.openPreviewWindow(for: info, roleLabel: "原始质粒预览", highlightRange: nil)
                         }
                     }
-                )
-                
-                StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "示例", icon: "sparkles", help: "载入质粒片段删除示例", action: vm.loadSampleData),
-                    StudioPillGroupItem(title: "", icon: "trash", tint: .red, help: "清空当前删除配置", action: vm.clear)
-                ])
-            }
-        } content: {
+                ),
+                .action(title: "示例", icon: "sparkles", help: "载入质粒片段删除示例", action: vm.loadSampleData),
+                .action(id: "clear_deletion", title: "", icon: "trash", tint: .red, help: "清空当前删除配置", action: vm.clear)
+            ]
+        ) {
                 
                 // 2. 主体区
                 AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {

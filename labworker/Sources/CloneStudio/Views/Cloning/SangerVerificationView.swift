@@ -68,50 +68,35 @@ public struct SangerVerificationView: View {
     public init() {}
 
     public var body: some View {
-        StudioPageLayout(title: "Sanger 测序 (.ab1) 峰图与质粒比对验证") {
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                Button {
-                    selectSangerFileFromFinder()
-                } label: {
-                    Label("打开 .ab1 / 文件夹", systemImage: "waveform.path.badge.plus")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-
-                Menu {
-                    ForEach(DemoPreset.allCases) { preset in
-                        Button {
+        StudioPageLayout(
+            title: "Sanger 测序 (.ab1) 峰图与质粒比对验证",
+            toolbar: [
+                .action(
+                    title: "打开 .ab1",
+                    icon: "waveform.path.badge.plus",
+                    tint: .blue,
+                    isProminent: true,
+                    help: "打开 .ab1 测序文件或批量验证文件夹",
+                    action: selectSangerFileFromFinder
+                ),
+                .action(
+                    title: "示范",
+                    icon: "wand.and.stars",
+                    help: "加载内置 Sanger 测序示范峰图",
+                    menuItems: DemoPreset.allCases.map { preset in
+                        StudioToolbarMenuItem(
+                            id: preset.id,
+                            title: "加载示例：\(preset.rawValue)",
+                            icon: "sparkles"
+                        ) {
                             loadBuiltinDemo(preset)
-                        } label: {
-                            Label("加载示例：\(preset.rawValue)", systemImage: "sparkles")
                         }
                     }
-                } label: {
-                    Label("示范峰图", systemImage: "wand.and.stars")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .controlSize(.small)
-
-                Button {
-                    copyVerificationSummary()
-                } label: {
-                    Label("复制质检报告", systemImage: "doc.on.doc")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-
-                Button {
-                    exportVerificationReport()
-                } label: {
-                    Label("导出报告", systemImage: "square.and.arrow.up")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            }
-        } content: {
+                ),
+                .action(title: "复制报告", icon: "doc.on.doc", help: "复制质检报告", action: copyVerificationSummary),
+                .action(title: "导出报告", icon: "square.and.arrow.up", tint: .teal, help: "导出验证报告", action: exportVerificationReport)
+            ]
+        ) {
             VStack(alignment: .leading, spacing: 14) {
                 // 0. 批量克隆验证看板（拖入多文件或文件夹时自动展开 P11）
                 if isBatchRunning || batchResult != nil {

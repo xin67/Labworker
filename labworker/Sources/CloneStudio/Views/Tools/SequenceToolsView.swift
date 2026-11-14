@@ -8,16 +8,24 @@ public struct SequenceToolsView: View {
     public init() {}
     
     public var body: some View {
-        StudioPageLayout(title: "序列工具与 Tm 测算") {
-            StudioSectionClearButton(
-                title: "清空",
-                isDisabled: vm.inputSeq.isEmpty && vm.outputSeq.isEmpty && vm.tmResult == nil
-            ) {
-                vm.inputSeq = ""
-                vm.outputSeq = ""
-                vm.tmResult = nil
-            }
-        } content: {
+        StudioPageLayout(
+            title: "序列工具与 Tm 测算",
+            toolbar: [
+                .action(
+                    id: "clear_seqtools",
+                    groupKey: nil,
+                    title: "",
+                    icon: "trash",
+                    tint: .red,
+                    isDisabled: vm.inputSeq.isEmpty && vm.outputSeq.isEmpty && vm.tmResult == nil,
+                    help: "清空序列工具输入与计算结果"
+                ) {
+                    vm.inputSeq = ""
+                    vm.outputSeq = ""
+                    vm.tmResult = nil
+                }
+            ]
+        ) {
                 
                 StudioCard(title: "输入序列 (5' → 3')") {
                     HStack(spacing: 8) {

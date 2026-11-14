@@ -33,25 +33,15 @@ public struct GelFigureEditorView: View {
     public var body: some View {
         StudioPageLayout(
             title: "凝胶定量",
-            trailing: {
-                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "导入", icon: "photo.badge.plus", tint: .cyan, help: "导入电泳胶图") {
-                            importGelImage()
-                        },
-                        StudioPillGroupItem(title: "拟合", icon: "wand.and.stars", tint: .blue, help: "自动寻道并拟合 Ladder 标准曲线") {
-                            runAutoDetection()
-                            appState.showToast("已完成泳道寻峰与 \(activeLadder.name) 标准曲线拟合")
-                        },
-                        StudioPillGroupItem(title: "酶切道", icon: "scissors", tint: .teal, help: "从质粒池插入虚拟酶切对照道") {
-                            injectVirtualDigestLaneFromPool()
-                        },
-                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", help: "导出条带分子量回归 CSV") {
-                            exportGelCSV()
-                        }
-                    ])
-                }
-            }
+            toolbar: [
+                .action(title: "导入", icon: "photo.badge.plus", tint: .cyan, help: "导入电泳胶图", action: importGelImage),
+                .action(title: "拟合", icon: "wand.and.stars", tint: .blue, help: "自动寻道并拟合 Ladder 标准曲线") {
+                    runAutoDetection()
+                    appState.showToast("已完成泳道寻峰与 \(activeLadder.name) 标准曲线拟合")
+                },
+                .action(title: "酶切道", icon: "scissors", tint: .teal, help: "从质粒池插入虚拟酶切对照道", action: injectVirtualDigestLaneFromPool),
+                .action(title: "导出", icon: "square.and.arrow.up", help: "导出条带分子量回归 CSV", action: exportGelCSV)
+            ]
         ) {
             StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.40) {
                 leftColumn

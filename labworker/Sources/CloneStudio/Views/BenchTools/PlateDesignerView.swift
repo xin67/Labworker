@@ -65,33 +65,41 @@ public struct PlateDesignerView: View {
     public var body: some View {
         StudioPageLayout(
             title: "微孔板",
-            trailing: {
-                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    StudioSegmentedPicker(selection: $store.format, options: formatOptions)
-                        .onChange(of: store.format) { _, _ in
-                            store.regenerateLayout()
+            toolbar: [
+                .picker(
+                    id: "plate_format",
+                    label: "孔板规格",
+                    options: PlateFormat.allCases.map { fmt in
+                        StudioToolbarPickerOption(
+                            id: "\(fmt.rawValue)",
+                            title: "\(fmt.rawValue)孔",
+                            tint: .blue,
+                            isSelected: store.format == fmt
+                        ) {
+                            if store.format != fmt {
+                                store.format = fmt
+                            }
                         }
-                    
-                    StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "重排", icon: "dice.fill", tint: .blue, help: "按新随机种子生成孔位排布") {
-                            store.randomizeWithNewSeed()
-                            appState.showToast("已按新随机种子 #\(store.rules.seed) 生成孔板排布")
-                        },
-                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", help: "导出微孔板映射 CSV") {
-                            exportPlateCSVToFile()
-                        },
-                        StudioPillGroupItem(title: "qPCR", icon: "chart.bar.xaxis", tint: .teal, help: "将当前孔位映射同步至 qPCR 定量模块") {
-                            appState.selectedNav = .qpcrAnalysis
-                            appState.showToast("已将当前 \(store.format.title) 孔位映射同步至 qPCR 定量模块")
-                        }
-                    ])
+                    }
+                ),
+                .action(title: "重排", icon: "dice.fill", tint: .blue, help: "按新随机种子生成孔位排布") {
+                    store.randomizeWithNewSeed()
+                    appState.showToast("已按新随机种子 #\(store.rules.seed) 生成孔板排布")
+                },
+                .action(title: "导出", icon: "square.and.arrow.up", help: "导出微孔板映射 CSV", action: exportPlateCSVToFile),
+                .action(title: "qPCR", icon: "chart.bar.xaxis", tint: .teal, help: "将当前孔位映射同步至 qPCR 定量模块") {
+                    appState.selectedNav = .qpcrAnalysis
+                    appState.showToast("已将当前 \(store.format.title) 孔位映射同步至 qPCR 定量模块")
                 }
-            }
+            ]
         ) {
             StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.37) {
                 leftColumn
                 rightColumn
             }
+        }
+        .onChange(of: store.format) { _, _ in
+            store.regenerateLayout()
         }
         .onAppear {
             if let defaultFmt = PlateFormat(rawValue: appState.defaultPlateFormatRaw), store.format != defaultFmt {

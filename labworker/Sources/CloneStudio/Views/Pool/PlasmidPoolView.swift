@@ -13,31 +13,28 @@ public struct PlasmidPoolView: View {
     public init() {}
     
     public var body: some View {
-        StudioPageLayout(title: "质粒池") {
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                StudioMetricBadge(
-                    label: "共",
-                    value: "\(pool.items.count) 个",
-                    color: .blue
-                )
-                
-                StudioActionPillButton(
+        StudioPageLayout(
+            title: "质粒池",
+            toolbar: [
+                .action(
                     title: "导入质粒",
                     icon: "folder.badge.plus",
                     tint: .blue,
                     isProminent: true,
+                    help: "从 Finder 导入质粒或扫描文件夹",
                     action: presentImportFilesOrFolderPanel
-                )
-                
-                StudioActionPillButton(
-                    title: "清空",
+                ),
+                .action(
+                    id: "clear_pool",
+                    title: "",
                     icon: "trash",
                     tint: .red,
                     isDisabled: pool.items.isEmpty,
+                    help: "清空本地质粒池",
                     action: pool.clearAll
                 )
-            }
-        } content: {
+            ]
+        ) {
             AdaptiveTwoColumnWorkspace(breakpoint: 780, hasRight: pool.selectedItem != nil) {
                 plasmidListCard
             } right: {
@@ -59,6 +56,11 @@ public struct PlasmidPoolView: View {
     private var plasmidListCard: some View {
         StudioCard(title: "质粒筛选与列表 (\(pool.filteredItems.count)/\(pool.items.count))") {
             HStack(spacing: 8) {
+                StudioMetricBadge(
+                    label: "共",
+                    value: "\(pool.items.count) 个",
+                    color: .blue
+                )
                 if pool.isScanning {
                     ProgressView().controlSize(.small)
                 }
