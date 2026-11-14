@@ -3,27 +3,23 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-/// 沉浸式窗口配置器：开启全尺寸内容视图，彻底移除右侧工作区上方的系统标题栏背景与悬停遮挡，仅保留左侧边栏顶部的原生红黄绿窗口按钮
+/// 沉浸式窗口配置器：开启全尺寸内容视图，安全清理右侧工作区上方的系统标题栏装饰并消除布局反馈环与空闲重绘闪烁
 private struct ImmersiveWindowConfigurator: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         WindowConfigNSView()
     }
     
     func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? WindowConfigNSView)?.sanitizeTitlebarIfNeeded()
+        (nsView as? WindowConfigNSView)?.scheduleTitlebarSanitization()
     }
     
     private final class WindowConfigNSView: NSView {
         private weak var configuredWindow: NSWindow?
+        private var isSanitizeScheduled: Bool = false
         
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             configureWindowIfNeeded()
-        }
-        
-        override func layout() {
-            super.layout()
-            sanitizeTitlebarIfNeeded()
         }
         
         private func configureWindowIfNeeded() {
@@ -40,6 +36,11 @@ private struct ImmersiveWindowConfigurator: NSViewRepresentable {
                 window.isOpaque = false
                 window.backgroundColor = .windowBackgroundColor
                 window.isMovableByWindowBackground = false
+                // 确保新开/恢复窗口时默认不存在被自动强抢的 TextField 光标闪烁
+                window.autorecalculatesKeyViewLoop = false
+                if window.firstResponder is NSText || window.firstResponder is NSTextField {
+                    window.makeFirstResponder(nil)
+                }
                 
                 NotificationCenter.default.addObserver(
                     self,
@@ -54,36 +55,54 @@ private struct ImmersiveWindowConfigurator: NSViewRepresentable {
                     object: window
                 )
             }
-            sanitizeTitlebarIfNeeded()
+            scheduleTitlebarSanitization()
         }
         
         @objc private func handleWindowEvent(_ notification: Notification) {
-            sanitizeTitlebarIfNeeded()
+            scheduleTitlebarSanitization()
         }
         
-        func sanitizeTitlebarIfNeeded() {
+        func scheduleTitlebarSanitization() {
+            guard !isSanitizeScheduled else { return }
+            isSanitizeScheduled = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.isSanitizeScheduled = false
+                self.sanitizeTitlebarIfNeeded()
+            }
+        }
+        
+        private func sanitizeTitlebarIfNeeded() {
             guard let window = self.window,
                   let closeBtn = window.standardWindowButton(.closeButton),
                   let titlebarView = closeBtn.superview else { return }
             
-            titlebarView.wantsLayer = true
-            titlebarView.layer?.backgroundColor = NSColor.clear.cgColor
+            if !titlebarView.wantsLayer {
+                titlebarView.wantsLayer = true
+            }
+            if titlebarView.layer?.backgroundColor != NSColor.clear.cgColor {
+                titlebarView.layer?.backgroundColor = NSColor.clear.cgColor
+            }
             
-            // 隐藏标题栏内部除红黄绿标准按钮以外的所有装饰/毛玻璃背景视图，彻底消除鼠标悬停在上方时的黑条遮挡
+            // 仅在状态未就绪时隐藏装饰/毛玻璃子视图，避免重复标脏图层
             for sub in titlebarView.subviews where !(sub is NSButton) {
-                sub.isHidden = true
-                sub.alphaValue = 0
+                if !sub.isHidden { sub.isHidden = true }
+                if sub.alphaValue != 0 { sub.alphaValue = 0 }
             }
             
             if let container = titlebarView.superview {
-                container.wantsLayer = true
-                container.layer?.backgroundColor = NSColor.clear.cgColor
-                for sub in container.subviews where sub !== titlebarView {
-                    sub.isHidden = true
-                    sub.alphaValue = 0
+                if !container.wantsLayer {
+                    container.wantsLayer = true
                 }
-                // 将标题栏容器宽度限制在左侧红黄绿按钮区域 (100pt)，确保右侧主工作区上方零遮挡、零事件拦截
-                if container.frame.width > 110 {
+                if container.layer?.backgroundColor != NSColor.clear.cgColor {
+                    container.layer?.backgroundColor = NSColor.clear.cgColor
+                }
+                for sub in container.subviews where sub !== titlebarView {
+                    if !sub.isHidden { sub.isHidden = true }
+                    if sub.alphaValue != 0 { sub.alphaValue = 0 }
+                }
+                // 异步一次将标题栏容器限制在左侧红黄绿按钮区域 (100pt)，绝不在 layout() 中同步改帧引起抖动
+                if abs(container.frame.width - 100) > 1.0 && container.frame.width > 110 {
                     var f = container.frame
                     f.size.width = 100
                     container.frame = f
@@ -97,11 +116,12 @@ private struct ImmersiveWindowConfigurator: NSViewRepresentable {
     }
 }
 
-/// 主窗口视图 (macOS 系统磨砂侧边栏 + 顶部胶囊搜索框 + 静态黑白高对比右栏工作区)
+/// 主窗口视图 (macOS 系统磨砂侧边栏 + macOS 26/27 Liquid Glass HDR 搜索框与按钮 + 静态黑白工作区)
 public struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @ObservedObject private var plasmidPool = PlasmidPoolManager.shared
     @State private var isWindowDropTargeted: Bool = false
+    @State private var searchFocusTrigger: Int = 0
     
     public init() {}
     
@@ -187,6 +207,7 @@ public struct ContentView: View {
         }
         .background(ImmersiveWindowConfigurator())
         .tint(appState.accentTheme.color)
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
         .onChange(of: appState.appearanceMode) { _, newMode in
             CloneStudioApp.syncAppKitAppearance(mode: newMode, forceIconRefresh: false)
         }
@@ -195,160 +216,166 @@ public struct ContentView: View {
         }
     }
     
-    // MARK: - 侧边栏列表（极简上移 + 滚动穿透系统设置风格模糊搜索框 + 独立 Sanger 测序与 5 大分类）
+    // MARK: - 侧边栏列表（极简上移 + 原生 Liquid Glass 折射搜索框 + 顶部渐隐模糊 + 独立 Sanger 测序与 5 大分类）
     private var sidebarContent: some View {
         let isLight = appState.isLightAppearance
-        return ZStack(alignment: .top) {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 13) {
-                    sidebarCollapsibleSection(.cloning) {
-                        sidebarRow(
-                            item: .plasmidPool,
-                            tint: .cyan,
-                            badgeText: plasmidPool.items.isEmpty ? nil : "\(plasmidPool.items.count)"
-                        )
-                        sidebarRow(item: .entryClone, tint: .blue)
-                        sidebarRow(item: .singleFragment, tint: .teal)
-                        sidebarRow(item: .multiFragment, tint: .green)
-                        sidebarRow(item: .mutagenesis, tint: .pink)
-                        sidebarRow(item: .fragmentDeletion, tint: .purple)
-                        sidebarRow(item: .sangerVerify, tint: .indigo)
-                    }
-                    
-                    sidebarCollapsibleSection(.targeting) {
-                        sidebarRow(item: .sgRNADesign, tint: .cyan)
-                        sidebarRow(item: .shRNADesign, tint: .indigo)
-                        sidebarRow(item: .chopchopCompare, tint: .orange)
-                    }
-                    
-                    sidebarCollapsibleSection(.bioImaging) {
-                        sidebarRow(item: .westernBlot, tint: .indigo)
-                        sidebarRow(item: .gelFigure, tint: .cyan)
-                        sidebarRow(item: .colonyCounter, tint: .orange)
-                        sidebarRow(item: .figureAnnotator, tint: .pink)
-                    }
-                    
-                    sidebarCollapsibleSection(.benchTools) {
-                        sidebarRow(item: .plateDesigner, tint: .blue)
-                        sidebarRow(item: .qpcrAnalysis, tint: .teal)
-                        sidebarRow(item: .phylogeneticTree, tint: .green)
-                        sidebarRow(item: .proteinWorkbench, tint: .blue)
-                        sidebarRow(item: .dnaCalculator, tint: .purple)
-                        sidebarRow(item: .sequenceTools, tint: .mint)
-                    }
-                    
-                    sidebarCollapsibleSection(.orderAndSettings) {
-                        sidebarRow(
-                            item: .orderCenter,
-                            tint: .green,
-                            badgeText: appState.primersCart.isEmpty ? nil : "\(appState.primersCart.count)"
-                        )
-                        sidebarRow(item: .settings, tint: .gray)
-                    }
+        return ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 13) {
+                sidebarCollapsibleSection(.cloning) {
+                    sidebarRow(
+                        item: .plasmidPool,
+                        tint: .cyan,
+                        badgeText: plasmidPool.items.isEmpty ? nil : "\(plasmidPool.items.count)"
+                    )
+                    sidebarRow(item: .entryClone, tint: .blue)
+                    sidebarRow(item: .singleFragment, tint: .teal)
+                    sidebarRow(item: .multiFragment, tint: .green)
+                    sidebarRow(item: .mutagenesis, tint: .pink)
+                    sidebarRow(item: .fragmentDeletion, tint: .purple)
+                    sidebarRow(item: .sangerVerify, tint: .indigo)
                 }
-                .padding(.horizontal, 10)
-                .padding(.top, 78)
-                .padding(.bottom, 12)
+
+                sidebarCollapsibleSection(.targeting) {
+                    sidebarRow(item: .sgRNADesign, tint: .cyan)
+                    sidebarRow(item: .shRNADesign, tint: .indigo)
+                    sidebarRow(item: .chopchopCompare, tint: .orange)
+                }
+
+                sidebarCollapsibleSection(.bioImaging) {
+                    sidebarRow(item: .westernBlot, tint: .indigo)
+                    sidebarRow(item: .gelFigure, tint: .cyan)
+                    sidebarRow(item: .colonyCounter, tint: .orange)
+                    sidebarRow(item: .figureAnnotator, tint: .pink)
+                }
+
+                sidebarCollapsibleSection(.benchTools) {
+                    sidebarRow(item: .plateDesigner, tint: .blue)
+                    sidebarRow(item: .qpcrAnalysis, tint: .teal)
+                    sidebarRow(item: .phylogeneticTree, tint: .green)
+                    sidebarRow(item: .proteinWorkbench, tint: .blue)
+                    sidebarRow(item: .dnaCalculator, tint: .purple)
+                    sidebarRow(item: .sequenceTools, tint: .mint)
+                }
+
+                sidebarCollapsibleSection(.orderAndSettings) {
+                    sidebarRow(
+                        item: .orderCenter,
+                        tint: .green,
+                        badgeText: appState.primersCart.isEmpty ? nil : "\(appState.primersCart.count)"
+                    )
+                    sidebarRow(item: .settings, tint: .gray)
+                }
             }
-            .scrollEdgeEffectStyle(.soft, for: .top)
+            .padding(.horizontal, 10)
+            .padding(.top, 6)
+            .padding(.bottom, 12)
+        }
+        .scrollEdgeEffectStyle(.soft, for: .top)
+        .safeAreaBar(edge: .top, spacing: 0) {
+            // 顶部原生 macOS 26 Liquid Glass 搜索胶囊 + 等高 30pt 快导圆形按钮（无默认抢焦闪烁光标）
+            GlassEffectContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    HStack(spacing: 7) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundColor(
+                                isLight
+                                ? Color.primary.opacity(0.62)
+                                : Color.white.opacity(0.76)
+                            )
 
-            // 顶部系统设置风格羽化毛玻璃帘（仅模糊红黄绿灯区并令滚动列表条目柔和穿透搜索框下方）
-            VisualEffectBlurView(
-                material: .sidebar,
-                blendingMode: .withinWindow,
-                state: .active
-            )
-            .frame(height: 80)
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .black.opacity(0.92), location: 0.0),
-                        .init(color: .black.opacity(0.76), location: 0.36),
-                        .init(color: .black.opacity(0.24), location: 0.68),
-                        .init(color: .clear, location: 1.0)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .allowsHitTesting(false)
-
-            // 顶部上移胶囊搜索框 + 等高 30pt 快导圆形按钮
-            HStack(spacing: 8) {
-                HStack(spacing: 7) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 12.5, weight: .medium))
-                        .foregroundColor(.secondary.opacity(0.9))
-
-                    TextField("搜索", text: $appState.sidebarSearchText)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 13))
-
-                    if !appState.sidebarSearchText.isEmpty {
-                        Button(action: {
-                            appState.sidebarSearchText = ""
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary.opacity(0.75))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 11)
-                .frame(height: 30)
-                .frame(maxWidth: .infinity)
-                .background(
-                    ZStack {
-                        VisualEffectBlurView(
-                            material: .headerView,
-                            blendingMode: .withinWindow,
-                            state: .active
+                        StudioNoAutoFocusSearchField(
+                            placeholder: "搜索",
+                            text: $appState.sidebarSearchText,
+                            focusTrigger: $searchFocusTrigger
                         )
-                        Color.primary.opacity(isLight ? 0.045 : 0.085)
-                    }
-                    .clipShape(Capsule(style: .continuous))
-                )
-                .overlay(
-                    Capsule(style: .continuous)
-                        .stroke(
-                            isLight ? Color.white.opacity(0.65) : Color.white.opacity(0.18),
-                            lineWidth: 1
-                        )
-                )
 
-                Button(action: {
-                    CloneStudioApp.presentOpenDNAFilesPanel()
-                }) {
-                    Image(systemName: "folder.badge.plus")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundColor(appState.accentTheme.color)
-                        .frame(width: 30, height: 30)
-                        .background(
-                            ZStack {
-                                VisualEffectBlurView(
-                                    material: .headerView,
-                                    blendingMode: .withinWindow,
-                                    state: .active
-                                )
-                                appState.accentTheme.color.opacity(isLight ? 0.12 : 0.22)
+                        if !appState.sidebarSearchText.isEmpty {
+                            Button(action: {
+                                appState.sidebarSearchText = ""
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary.opacity(0.8))
                             }
-                            .clipShape(Circle())
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(
-                                    appState.accentTheme.color.opacity(isLight ? 0.30 : 0.38),
-                                    lineWidth: 1
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 11)
+                    .frame(height: 30)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Capsule(style: .continuous))
+                    .onTapGesture {
+                        searchFocusTrigger &+= 1
+                    }
+                    .glassEffect(
+                        StudioGlassSupport.buttonGlass(
+                            appState: appState,
+                            tint: nil,
+                            selected: false,
+                            interactive: true
+                        ),
+                        in: Capsule(style: .continuous)
+                    )
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(
+                                StudioGlassSupport.specularRimColor(
+                                    isLight: isLight,
+                                    tint: nil,
+                                    selected: false,
+                                    appState: appState
+                                ),
+                                lineWidth: 0.9
+                            )
+                            .allowsHitTesting(false)
+                    )
+
+                    Button(action: {
+                        CloneStudioApp.presentOpenDNAFilesPanel()
+                    }) {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundColor(
+                                StudioGlassSupport.hdrColor(
+                                    appState.accentTheme.color,
+                                    exposure: appState.enableAmbientGlassGlow ? 0.55 : 0.0,
+                                    appState: appState
                                 )
-                        )
-                        .contentShape(Circle())
+                            )
+                            .frame(width: 30, height: 30)
+                            .contentShape(Circle())
+                            .glassEffect(
+                                StudioGlassSupport.buttonGlass(
+                                    appState: appState,
+                                    tint: appState.accentTheme.color,
+                                    selected: false,
+                                    interactive: true
+                                ),
+                                in: Circle()
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        StudioGlassSupport.specularRimColor(
+                                            isLight: isLight,
+                                            tint: appState.accentTheme.color,
+                                            selected: false,
+                                            appState: appState
+                                        ),
+                                        lineWidth: 0.9
+                                    )
+                                    .allowsHitTesting(false)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help("导入实验文件 (.dna / .ab1 / .tif / .pdb / .nwk / .csv / .fasta)")
                 }
-                .buttonStyle(.plain)
-                .help("导入实验文件 (.dna / .ab1 / .tif / .pdb / .nwk / .csv / .fasta)")
             }
             .padding(.horizontal, 12)
             .padding(.top, 38)
+            .padding(.bottom, 8)
+            .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
         }
         .ignoresSafeArea(.container, edges: .top)
     }
@@ -508,24 +535,39 @@ public struct ContentView: View {
     
     // MARK: - 浮动提示通知
     private func toastBanner(message: String) -> some View {
-        HStack(spacing: 8) {
+        let isLight = appState.isLightAppearance
+        return HStack(spacing: 8) {
             Image(systemName: "checkmark.seal.fill")
-                .foregroundColor(.green)
+                .foregroundColor(StudioGlassSupport.hdrColor(.green, exposure: 0.32, appState: appState))
             Text(message)
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(2)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(
-            Capsule(style: .continuous)
-                .fill(appState.isLightAppearance ? Color.white : Color(red: 0.16, green: 0.17, blue: 0.18))
+        .glassEffect(
+            StudioGlassSupport.buttonGlass(
+                appState: appState,
+                tint: .green,
+                selected: true,
+                interactive: true
+            ),
+            in: Capsule(style: .continuous)
         )
         .overlay(
             Capsule(style: .continuous)
-                .stroke(Color.green.opacity(0.42), lineWidth: 1)
+                .stroke(
+                    StudioGlassSupport.specularRimColor(
+                        isLight: isLight,
+                        tint: .green,
+                        selected: true,
+                        appState: appState
+                    ),
+                    lineWidth: 0.75
+                )
         )
         .shadow(color: .black.opacity(0.14), radius: 10, x: 0, y: 4)
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
         .padding(.bottom, 20)
     }
 }

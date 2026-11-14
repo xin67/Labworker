@@ -587,13 +587,35 @@ public struct SettingsView: View {
                     }
                 }
 
-                HStack(spacing: 8) {
-                    Text("界面材质:")
-                        .font(.system(size: 11.5, weight: .medium))
-                    Text("静态纯静白/黑工作区 · 侧边栏与顶栏采用 macOS 系统磨砂模糊")
-                        .font(.system(size: 11.5))
-                        .foregroundColor(.secondary)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        Text("Liquid Glass 材质:")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer()
+                        StudioSegmentedPicker(
+                            selection: $appState.liquidGlassStyle,
+                            options: LiquidGlassStyleMode.allCases.map {
+                                StudioSegmentedOption(value: $0, title: $0.shortTitle, tint: appState.accentTheme.color)
+                            }
+                        )
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Liquid Glass 材质:")
+                            .font(.system(size: 11.5, weight: .medium))
+                        StudioSegmentedPicker(
+                            selection: $appState.liquidGlassStyle,
+                            options: LiquidGlassStyleMode.allCases.map {
+                                StudioSegmentedOption(value: $0, title: $0.shortTitle, tint: appState.accentTheme.color)
+                            }
+                        )
+                    }
                 }
+
+                Toggle("启用 HDR 液态玻璃动态高光 (macOS 26/27 XDR 广色域辉光)", isOn: $appState.enableAmbientGlassGlow)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .font(.system(size: 11.5, weight: .medium))
 
                 Divider().opacity(0.5)
 

@@ -59,7 +59,286 @@ public enum StudioPalette {
     }
 }
 
-// MARK: - 0. 原生 macOS 毛玻璃高斯模糊视图 (NSVisualEffectView 封装)
+// MARK: - 00B. macOS 26 / 27 原生 Liquid Glass 与 HDR 高动态范围光学辅助
+public enum StudioGlassSupport {
+    /// 支持 HDR 扩展动态范围的颜色暴露调节（开启 HDR 高光时提升高光余量，关闭时回归标准 SDR）
+    public static func hdrColor(_ base: Color, exposure: Double = 0.28, appState: AppState) -> Color {
+        guard appState.enableAmbientGlassGlow else { return base }
+        return base.exposureAdjust(exposure)
+    }
+
+    /// 针对亮色/暗色工作区卡片优化的 HDR 玻璃高光描边（确保纯白/纯黑静卡上玻璃轮廓依然锐利通透）
+    public static func specularRimColor(
+        isLight: Bool,
+        tint: Color? = nil,
+        prominent: Bool = false,
+        selected: Bool = false,
+        disabled: Bool = false,
+        appState: AppState
+    ) -> Color {
+        if disabled {
+            return isLight ? Color.black.opacity(0.07) : Color.white.opacity(0.07)
+        }
+        if prominent {
+            return hdrColor(.white, exposure: 0.45, appState: appState).opacity(isLight ? 0.52 : 0.38)
+        }
+        if selected, let tint {
+            return hdrColor(tint, exposure: 0.36, appState: appState).opacity(isLight ? 0.52 : 0.62)
+        }
+        if let tint {
+            return hdrColor(tint, exposure: 0.25, appState: appState).opacity(isLight ? 0.32 : 0.42)
+        }
+        return hdrColor(.white, exposure: 0.35, appState: appState).opacity(isLight ? 0.72 : 0.26)
+    }
+
+    /// 构建遵循设置项 (`LiquidGlassStyleMode`) 与 HDR 浸染规则的原生 SwiftUI `Glass`
+    public static func buttonGlass(
+        appState: AppState,
+        tint: Color? = nil,
+        prominent: Bool = false,
+        selected: Bool = false,
+        disabled: Bool = false,
+        interactive: Bool = true
+    ) -> Glass {
+        let resolvedTint = tint ?? appState.accentTheme.color
+        let isLight = appState.isLightAppearance
+        let baseGlass: Glass
+        switch appState.liquidGlassStyle {
+        case .regular:
+            baseGlass = .regular
+        case .clear:
+            baseGlass = .clear
+        case .tinted:
+            baseGlass = .regular.tint(
+                hdrColor(appState.accentTheme.color, exposure: 0.20, appState: appState)
+                    .opacity(isLight ? 0.14 : 0.22)
+            )
+        }
+
+        let configured: Glass
+        if disabled {
+            configured = .regular
+        } else if prominent {
+            configured = .regular.tint(
+                hdrColor(resolvedTint, exposure: 0.38, appState: appState)
+                    .opacity(isLight ? 0.86 : 0.82)
+            )
+        } else if selected {
+            configured = .regular.tint(
+                hdrColor(resolvedTint, exposure: 0.32, appState: appState)
+                    .opacity(isLight ? 0.28 : 0.44)
+            )
+        } else if let customTint = tint {
+            configured = baseGlass.tint(
+                hdrColor(customTint, exposure: 0.24, appState: appState)
+                    .opacity(isLight ? 0.14 : 0.26)
+            )
+        } else {
+            configured = baseGlass
+        }
+        return (interactive && !disabled) ? configured.interactive() : configured
+    }
+
+    public static func dynamicRange(for appState: AppState) -> Image.DynamicRange {
+        appState.enableAmbientGlassGlow ? .high : .standard
+    }
+}
+
+// MARK: - 00C. 防误聚焦玻璃搜索输入框（未点击时绝不自动获得焦点，彻底杜绝未点击光标闪烁）
+public struct StudioNoAutoFocusSearchField: NSViewRepresentable {
+    public let placeholder: String
+    @Binding public var text: String
+    @Binding public var focusTrigger: Int
+
+    public init(
+        placeholder: String,
+        text: Binding<String>,
+        focusTrigger: Binding<Int>
+    ) {
+        self.placeholder = placeholder
+        self._text = text
+        self._focusTrigger = focusTrigger
+    }
+
+    public func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    public func makeNSView(context: Context) -> PassiveFocusSearchNSTextField {
+        let field = PassiveFocusSearchNSTextField()
+        field.delegate = context.coordinator
+        field.isBordered = false
+        field.isBezeled = false
+        field.drawsBackground = false
+        field.backgroundColor = .clear
+        field.focusRingType = .none
+        field.usesSingleLineMode = true
+        field.lineBreakMode = .byTruncatingTail
+        field.maximumNumberOfLines = 1
+        field.font = .systemFont(ofSize: 13)
+        field.textColor = .labelColor
+        field.placeholderAttributedString = NSAttributedString(
+            string: placeholder,
+            attributes: [
+                .foregroundColor: NSColor.secondaryLabelColor,
+                .font: NSFont.systemFont(ofSize: 13)
+            ]
+        )
+        field.stringValue = text
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        field.onExternalFocusReset = { [weak coordinator = context.coordinator] in
+            coordinator?.installOutsideClickMonitor()
+        }
+        context.coordinator.textField = field
+        context.coordinator.lastFocusTrigger = focusTrigger
+        return field
+    }
+
+    public func updateNSView(_ nsView: PassiveFocusSearchNSTextField, context: Context) {
+        context.coordinator.parent = self
+        if nsView.stringValue != text {
+            nsView.stringValue = text
+        }
+        if nsView.placeholderString != placeholder {
+            nsView.placeholderAttributedString = NSAttributedString(
+                string: placeholder,
+                attributes: [
+                    .foregroundColor: NSColor.secondaryLabelColor,
+                    .font: NSFont.systemFont(ofSize: 13)
+                ]
+            )
+        }
+        if context.coordinator.lastFocusTrigger != focusTrigger {
+            context.coordinator.lastFocusTrigger = focusTrigger
+            context.coordinator.activateFocus(on: nsView)
+        }
+    }
+
+    public final class PassiveFocusSearchNSTextField: NSTextField {
+        var allowUserFocus: Bool = false
+        var onExternalFocusReset: (() -> Void)?
+
+        public override var acceptsFirstResponder: Bool {
+            allowUserFocus
+        }
+
+        public override func mouseDown(with event: NSEvent) {
+            allowUserFocus = true
+            window?.makeFirstResponder(self)
+            onExternalFocusReset?()
+            super.mouseDown(with: event)
+        }
+    }
+
+    public final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: StudioNoAutoFocusSearchField
+        weak var textField: PassiveFocusSearchNSTextField?
+        var lastFocusTrigger: Int = 0
+        nonisolated(unsafe) private var mouseMonitor: Any?
+
+        init(parent: StudioNoAutoFocusSearchField) {
+            self.parent = parent
+        }
+
+        deinit {
+            if let monitor = mouseMonitor {
+                NSEvent.removeMonitor(monitor)
+                mouseMonitor = nil
+            }
+        }
+
+        @MainActor
+        func activateFocus(on field: PassiveFocusSearchNSTextField) {
+            field.allowUserFocus = true
+            DispatchQueue.main.async { [weak self, weak field] in
+                guard let field, let window = field.window else { return }
+                window.makeFirstResponder(field)
+                self?.installOutsideClickMonitor()
+            }
+        }
+
+        @MainActor
+        func installOutsideClickMonitor() {
+            guard mouseMonitor == nil else { return }
+            mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+                guard let self,
+                      let field = self.textField,
+                      let window = field.window,
+                      event.window === window else {
+                    return event
+                }
+                let hitHost = field.superview ?? field
+                let pt = hitHost.convert(event.locationInWindow, from: nil)
+                let expanded = hitHost.bounds.insetBy(dx: -36, dy: -8)
+                if !expanded.contains(pt) {
+                    field.allowUserFocus = false
+                    window.makeFirstResponder(nil)
+                    self.removeOutsideClickMonitor()
+                }
+                return event
+            }
+        }
+
+        @MainActor
+        private func removeOutsideClickMonitor() {
+            if let monitor = mouseMonitor {
+                NSEvent.removeMonitor(monitor)
+                mouseMonitor = nil
+            }
+        }
+
+        public func controlTextDidBeginEditing(_ obj: Notification) {
+            MainActor.assumeIsolated {
+                installOutsideClickMonitor()
+            }
+        }
+
+        public func controlTextDidChange(_ obj: Notification) {
+            guard let field = obj.object as? NSTextField else { return }
+            let val = field.stringValue
+            MainActor.assumeIsolated {
+                if parent.text != val {
+                    parent.text = val
+                }
+            }
+        }
+
+        public func controlTextDidEndEditing(_ obj: Notification) {
+            MainActor.assumeIsolated {
+                textField?.allowUserFocus = false
+                removeOutsideClickMonitor()
+            }
+        }
+
+        public func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                return MainActor.assumeIsolated {
+                    if !parent.text.isEmpty {
+                        parent.text = ""
+                        textField?.stringValue = ""
+                    } else {
+                        textField?.allowUserFocus = false
+                        textField?.window?.makeFirstResponder(nil)
+                        removeOutsideClickMonitor()
+                    }
+                    return true
+                }
+            }
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                return MainActor.assumeIsolated {
+                    textField?.allowUserFocus = false
+                    textField?.window?.makeFirstResponder(nil)
+                    removeOutsideClickMonitor()
+                    return true
+                }
+            }
+            return false
+        }
+    }
+}
+
+// MARK: - 0. 原生 macOS 毛玻璃高斯模糊视图 (NSVisualEffectView 封装，供窗口级侧边栏背板使用)
 public struct VisualEffectBlurView: NSViewRepresentable {
     public var material: NSVisualEffectView.Material
     public var blendingMode: NSVisualEffectView.BlendingMode
@@ -122,7 +401,7 @@ public struct StudioPillGroupItem: Identifiable {
     }
 }
 
-/// 连体分段胶囊按钮组（统一 30pt Capsule 高度 + 静态黑白高对比质感）
+/// 连体分段胶囊按钮组（统一 30pt Capsule 高度 + macOS 26/27 原生 Liquid Glass 与 HDR 支持）
 public struct StudioSegmentedPillGroup: View {
     @ObservedObject private var appState = AppState.shared
     public let items: [StudioPillGroupItem]
@@ -135,53 +414,59 @@ public struct StudioSegmentedPillGroup: View {
     
     public var body: some View {
         let isLight = appState.isLightAppearance
-        HStack(spacing: 0) {
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                if index > 0 {
-                    Rectangle()
-                        .fill(StudioPalette.hairline(isLight: isLight))
-                        .frame(width: 1, height: 15)
-                }
-                
-                Button(action: item.action) {
-                    HStack(spacing: 4) {
-                        if let icon = item.icon, !icon.isEmpty {
-                            Image(systemName: icon)
-                                .font(.system(size: 11.5, weight: .semibold))
-                        }
-                        if !item.title.isEmpty {
-                            Text(item.title)
-                                .font(.system(size: 12, weight: .medium))
-                                .lineLimit(1)
-                        }
+        GlassEffectContainer(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    if index > 0 {
+                        Rectangle()
+                            .fill(StudioPalette.hairline(isLight: isLight))
+                            .frame(width: 1, height: 15)
                     }
-                    .foregroundColor(
-                        item.isDisabled
-                            ? .secondary.opacity(0.45)
-                            : (item.tint ?? .primary)
-                    )
-                    .padding(.horizontal, item.title.isEmpty ? 10 : 11)
-                    .frame(height: 30)
-                    .frame(maxWidth: expandEqually ? .infinity : nil)
-                    .contentShape(Rectangle())
+                    
+                    Button(action: item.action) {
+                        HStack(spacing: 4) {
+                            if let icon = item.icon, !icon.isEmpty {
+                                Image(systemName: icon)
+                                    .font(.system(size: 11.5, weight: .semibold))
+                            }
+                            if !item.title.isEmpty {
+                                Text(item.title)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .foregroundColor(
+                            item.isDisabled
+                                ? .secondary.opacity(0.45)
+                                : (item.tint ?? .primary)
+                        )
+                        .padding(.horizontal, item.title.isEmpty ? 10 : 11)
+                        .frame(height: 30)
+                        .frame(maxWidth: expandEqually ? .infinity : nil)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(item.isDisabled)
+                    .help(item.help ?? item.title)
                 }
-                .buttonStyle(.plain)
-                .disabled(item.isDisabled)
-                .help(item.help ?? item.title)
             }
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(appState: appState, interactive: true),
+                in: Capsule(style: .continuous)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(
+                        StudioGlassSupport.specularRimColor(isLight: isLight, appState: appState),
+                        lineWidth: 0.75
+                    )
+            )
         }
-        .background(
-            Capsule(style: .continuous)
-                .fill(StudioPalette.controlBg(isLight: isLight))
-        )
-        .overlay(
-            Capsule(style: .continuous)
-                .stroke(StudioPalette.controlBorder(isLight: isLight), lineWidth: 1)
-        )
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
     }
 }
 
-/// 独立饱满胶囊按钮（统一 30pt Capsule 高度，静态黑白高对比质感）
+/// 独立饱满胶囊按钮（统一 30pt Capsule 高度 + macOS 26/27 原生 Liquid Glass 与 HDR 支持）
 public struct StudioActionPillButton: View {
     @ObservedObject private var appState = AppState.shared
     public let title: String
@@ -215,30 +500,14 @@ public struct StudioActionPillButton: View {
     
     public var body: some View {
         let isLight = appState.isLightAppearance
-        let resolvedTint = tint ?? appState.accentTheme.color
         let isIconOnly = title.isEmpty && (icon?.isEmpty == false)
-        let fillColor: Color = {
-            if isDisabled {
-                return StudioPalette.controlSubtleBg(isLight: isLight)
-            } else if isProminent {
-                return resolvedTint.opacity(0.92)
-            } else if let customTint = tint {
-                return customTint.opacity(isLight ? 0.11 : 0.18)
-            } else {
-                return StudioPalette.controlBg(isLight: isLight)
-            }
-        }()
-        let borderColor: Color = {
-            if isDisabled {
-                return StudioPalette.controlBorder(isLight: isLight).opacity(0.55)
-            } else if isProminent {
-                return Color.white.opacity(0.20)
-            } else if let customTint = tint {
-                return customTint.opacity(0.32)
-            } else {
-                return StudioPalette.controlBorder(isLight: isLight)
-            }
-        }()
+        let borderColor = StudioGlassSupport.specularRimColor(
+            isLight: isLight,
+            tint: tint,
+            prominent: isProminent,
+            disabled: isDisabled,
+            appState: appState
+        )
         let btn = Button(action: action) {
             HStack(spacing: isIconOnly ? 0 : 5) {
                 if let icon = icon, !icon.isEmpty {
@@ -259,18 +528,25 @@ public struct StudioActionPillButton: View {
             .padding(.horizontal, isIconOnly ? 0 : 12)
             .frame(minWidth: isIconOnly ? 30 : nil, maxWidth: fillWidth ? .infinity : nil)
             .frame(height: 30)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(fillColor)
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(
+                    appState: appState,
+                    tint: tint,
+                    prominent: isProminent,
+                    disabled: isDisabled,
+                    interactive: !isDisabled
+                ),
+                in: Capsule(style: .continuous)
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(borderColor, lineWidth: 1)
+                    .stroke(borderColor, lineWidth: 0.75)
             )
             .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
         
         if let helpText = help, !helpText.isEmpty {
             btn.help(helpText)
@@ -280,7 +556,7 @@ public struct StudioActionPillButton: View {
     }
 }
 
-/// 紧凑内联胶囊按钮（统一 24pt Capsule 高度，专用于密集列表行、峰位跳转与卡片副操作）
+/// 紧凑内联胶囊按钮（统一 24pt Capsule 高度，专用于密集列表行、峰位跳转与卡片副操作 + Liquid Glass HDR）
 public struct StudioCompactPillButton: View {
     @ObservedObject private var appState = AppState.shared
     public let title: String
@@ -322,32 +598,14 @@ public struct StudioCompactPillButton: View {
         let isLight = appState.isLightAppearance
         let resolvedTint = tint ?? appState.accentTheme.color
         let isIconOnly = title.isEmpty && (icon?.isEmpty == false)
-        let fillColor: Color = {
-            if isDisabled {
-                return StudioPalette.controlSubtleBg(isLight: isLight)
-            } else if isProminent {
-                return resolvedTint.opacity(0.92)
-            } else if isSelected {
-                return resolvedTint.opacity(isLight ? 0.14 : 0.24)
-            } else if let customTint = tint {
-                return customTint.opacity(isLight ? 0.09 : 0.16)
-            } else {
-                return StudioPalette.controlBg(isLight: isLight)
-            }
-        }()
-        let borderColor: Color = {
-            if isDisabled {
-                return StudioPalette.controlBorder(isLight: isLight).opacity(0.55)
-            } else if isProminent {
-                return Color.white.opacity(0.20)
-            } else if isSelected, tint != nil || tint == nil {
-                return resolvedTint.opacity(0.45)
-            } else if let customTint = tint {
-                return customTint.opacity(0.30)
-            } else {
-                return StudioPalette.controlBorder(isLight: isLight)
-            }
-        }()
+        let borderColor = StudioGlassSupport.specularRimColor(
+            isLight: isLight,
+            tint: isSelected ? resolvedTint : tint,
+            prominent: isProminent,
+            selected: isSelected,
+            disabled: isDisabled,
+            appState: appState
+        )
         let fgColor: Color = {
             if isDisabled {
                 return .secondary.opacity(0.45)
@@ -380,18 +638,26 @@ public struct StudioCompactPillButton: View {
             .padding(.horizontal, isIconOnly ? 0 : 9)
             .frame(minWidth: isIconOnly ? 24 : nil)
             .frame(height: 24)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(fillColor)
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(
+                    appState: appState,
+                    tint: tint,
+                    prominent: isProminent,
+                    selected: isSelected,
+                    disabled: isDisabled,
+                    interactive: !isDisabled
+                ),
+                in: Capsule(style: .continuous)
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(borderColor, lineWidth: 1)
+                    .stroke(borderColor, lineWidth: 0.75)
             )
             .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
 
         if let helpText = help, !helpText.isEmpty {
             btn.help(helpText)
@@ -401,7 +667,7 @@ public struct StudioCompactPillButton: View {
     }
 }
 
-/// 统一胶囊下拉菜单按钮（支持 30pt 标准 / 24pt 紧凑，消除原生 Picker/Menu 高度不齐与灰框）
+/// 统一胶囊下拉菜单按钮（支持 30pt 标准 / 24pt 紧凑 + macOS 26/27 原生 Liquid Glass 与 HDR）
 public struct StudioMenuPillButton<MenuContent: View>: View {
     @ObservedObject private var appState = AppState.shared
     public let title: String
@@ -433,24 +699,12 @@ public struct StudioMenuPillButton<MenuContent: View>: View {
     public var body: some View {
         let isLight = appState.isLightAppearance
         let pillHeight: CGFloat = compact ? 24 : 30
-        let fillColor: Color = {
-            if isDisabled {
-                return StudioPalette.controlSubtleBg(isLight: isLight)
-            } else if let customTint = tint {
-                return customTint.opacity(isLight ? 0.11 : 0.18)
-            } else {
-                return StudioPalette.controlBg(isLight: isLight)
-            }
-        }()
-        let borderColor: Color = {
-            if isDisabled {
-                return StudioPalette.controlBorder(isLight: isLight).opacity(0.55)
-            } else if let customTint = tint {
-                return customTint.opacity(0.32)
-            } else {
-                return StudioPalette.controlBorder(isLight: isLight)
-            }
-        }()
+        let borderColor = StudioGlassSupport.specularRimColor(
+            isLight: isLight,
+            tint: tint,
+            disabled: isDisabled,
+            appState: appState
+        )
         let menu = Menu {
             menuContent
         } label: {
@@ -472,13 +726,18 @@ public struct StudioMenuPillButton<MenuContent: View>: View {
             .foregroundColor(isDisabled ? .secondary.opacity(0.45) : (tint ?? .primary))
             .padding(.horizontal, compact ? 9 : 11)
             .frame(height: pillHeight)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(fillColor)
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(
+                    appState: appState,
+                    tint: tint,
+                    disabled: isDisabled,
+                    interactive: !isDisabled
+                ),
+                in: Capsule(style: .continuous)
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(borderColor, lineWidth: 1)
+                    .stroke(borderColor, lineWidth: 0.75)
             )
             .contentShape(Capsule(style: .continuous))
         }
@@ -486,6 +745,7 @@ public struct StudioMenuPillButton<MenuContent: View>: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .disabled(isDisabled)
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
 
         if let helpText = help, !helpText.isEmpty {
             menu.help(helpText)
@@ -899,15 +1159,18 @@ public struct StudioOverflowToolbar: View {
                 measurementOverlay
             }
             .overlay(alignment: .trailing) {
-                HStack(spacing: 8) {
-                    ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
-                        renderRun(run)
-                    }
-                    
-                    if !overflowSlice.isEmpty {
-                        overflowMenu(items: Array(overflowSlice))
+                GlassEffectContainer(spacing: 8) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
+                            renderRun(run)
+                        }
+                        
+                        if !overflowSlice.isEmpty {
+                            overflowMenu(items: Array(overflowSlice))
+                        }
                     }
                 }
+                .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
                 .opacity(availableWidth > 1 ? 1 : 0)
             }
     }
@@ -986,13 +1249,16 @@ public struct StudioOverflowToolbar: View {
                     renderGroupedActionItem(item)
                 }
             }
-            .background(
-                Capsule(style: .continuous)
-                    .fill(StudioPalette.controlBg(isLight: isLight))
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(appState: appState, interactive: true),
+                in: Capsule(style: .continuous)
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(StudioPalette.controlBorder(isLight: isLight), lineWidth: 1)
+                    .stroke(
+                        StudioGlassSupport.specularRimColor(isLight: isLight, appState: appState),
+                        lineWidth: 0.75
+                    )
             )
         }
     }
@@ -1001,31 +1267,15 @@ public struct StudioOverflowToolbar: View {
     private func renderSingleItem(_ item: StudioToolbarItem) -> some View {
         switch item.payload {
         case let .action(_, title, icon, tint, isProminent, isDisabled, help, menuItems, action):
-            let resolvedTint = tint ?? appState.accentTheme.color
             let isIconOnly = title.isEmpty
             let slotW: CGFloat = isIconOnly ? 30 : actionSlotWidth
-            let fillColor: Color = {
-                if isDisabled {
-                    return StudioPalette.controlSubtleBg(isLight: isLight)
-                } else if isProminent {
-                    return resolvedTint.opacity(0.92)
-                } else if let customTint = tint {
-                    return customTint.opacity(isLight ? 0.11 : 0.18)
-                } else {
-                    return StudioPalette.controlBg(isLight: isLight)
-                }
-            }()
-            let borderColor: Color = {
-                if isDisabled {
-                    return StudioPalette.controlBorder(isLight: isLight).opacity(0.55)
-                } else if isProminent {
-                    return Color.white.opacity(0.20)
-                } else if let customTint = tint {
-                    return customTint.opacity(0.32)
-                } else {
-                    return StudioPalette.controlBorder(isLight: isLight)
-                }
-            }()
+            let borderColor = StudioGlassSupport.specularRimColor(
+                isLight: isLight,
+                tint: tint,
+                prominent: isProminent,
+                disabled: isDisabled,
+                appState: appState
+            )
             let fgColor: Color = isDisabled
                 ? .secondary.opacity(0.45)
                 : (isProminent ? .white : (tint ?? .primary))
@@ -1037,13 +1287,19 @@ public struct StudioOverflowToolbar: View {
                 fgColor: fgColor,
                 slotWidth: slotW
             )
-            .background(
-                Capsule(style: .continuous)
-                    .fill(fillColor)
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(
+                    appState: appState,
+                    tint: tint,
+                    prominent: isProminent,
+                    disabled: isDisabled,
+                    interactive: !isDisabled
+                ),
+                in: Capsule(style: .continuous)
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(borderColor, lineWidth: 1)
+                    .stroke(borderColor, lineWidth: 0.75)
             )
             .contentShape(Capsule(style: .continuous))
             
@@ -1169,34 +1425,46 @@ public struct StudioOverflowToolbar: View {
     
     @ViewBuilder
     private func toolbarPickerView(options: [StudioToolbarPickerOption]) -> some View {
-        HStack(spacing: 2) {
-            ForEach(options) { opt in
-                Button(action: opt.action) {
-                    Text(opt.title)
-                        .font(.system(size: 12, weight: opt.isSelected ? .semibold : .medium))
-                        .lineLimit(1)
-                        .padding(.horizontal, 10)
-                        .frame(height: 24)
-                        .foregroundColor(opt.isSelected ? .white : .primary.opacity(0.86))
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(opt.isSelected ? opt.tint.opacity(0.92) : Color.clear)
-                        )
-                        .contentShape(Capsule(style: .continuous))
+        GlassEffectContainer(spacing: 2) {
+            HStack(spacing: 2) {
+                ForEach(options) { opt in
+                    Button(action: opt.action) {
+                        Text(opt.title)
+                            .font(.system(size: 12, weight: opt.isSelected ? .semibold : .medium))
+                            .lineLimit(1)
+                            .padding(.horizontal, 10)
+                            .frame(height: 24)
+                            .foregroundColor(opt.isSelected ? .white : .primary.opacity(0.88))
+                            .glassEffect(
+                                opt.isSelected
+                                    ? StudioGlassSupport.buttonGlass(
+                                        appState: appState,
+                                        tint: opt.tint,
+                                        prominent: true,
+                                        interactive: true
+                                    )
+                                    : .identity,
+                                in: Capsule(style: .continuous)
+                            )
+                            .contentShape(Capsule(style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
+            .padding(2.5)
+            .frame(height: 30)
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(appState: appState, interactive: true),
+                in: Capsule(style: .continuous)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(
+                        StudioGlassSupport.specularRimColor(isLight: isLight, appState: appState),
+                        lineWidth: 0.75
+                    )
+            )
         }
-        .padding(2.5)
-        .frame(height: 30)
-        .background(
-            Capsule(style: .continuous)
-                .fill(StudioPalette.trackBg(isLight: isLight))
-        )
-        .overlay(
-            Capsule(style: .continuous)
-                .stroke(StudioPalette.controlBorder(isLight: isLight), lineWidth: 1)
-        )
         .fixedSize(horizontal: true, vertical: false)
     }
     
@@ -1207,19 +1475,22 @@ public struct StudioOverflowToolbar: View {
                 overflowMenuItemView(item)
             }
         } label: {
-            ZStack {
-                Circle()
-                    .fill(StudioPalette.controlBg(isLight: isLight))
-                    .overlay(
-                        Circle()
-                            .stroke(StudioPalette.controlBorder(isLight: isLight), lineWidth: 1)
-                    )
-                Image(systemName: "chevron.right.2")
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundColor(.primary)
-            }
-            .frame(width: 30, height: 30)
-            .contentShape(Circle())
+            Image(systemName: "chevron.right.2")
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundColor(.primary)
+                .frame(width: 30, height: 30)
+                .glassEffect(
+                    StudioGlassSupport.buttonGlass(appState: appState, interactive: true),
+                    in: Circle()
+                )
+                .overlay(
+                    Circle()
+                        .stroke(
+                            StudioGlassSupport.specularRimColor(isLight: isLight, appState: appState),
+                            lineWidth: 0.75
+                        )
+                )
+                .contentShape(Circle())
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -1337,21 +1608,12 @@ public struct StudioOverflowToolbar: View {
     }
 }
 
-private struct StudioScrollContentTopKey: PreferenceKey {
-    static var defaultValue: CGFloat = 64
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-/// 全局标准页面滚动容器：系统设置风格模糊渐变吸顶栏（仅窗口内模糊 + 永久 active 防失焦闪烁）与静态白/黑滚动工作区
+/// 全局标准页面滚动容器：macOS 26/27 原生 `.safeAreaBar` + `.scrollEdgeEffectStyle(.soft)` 渐进式模糊吸顶顶栏（参考系统设置）
 public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
     @ObservedObject private var appState = AppState.shared
     public let title: String
     public let trailingContent: TrailingContent
     public let bodyContent: BodyContent
-    
-    @State private var isScrolled: Bool = false
     
     public init(
         title: String,
@@ -1365,81 +1627,46 @@ public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
     
     public var body: some View {
         let isLight = appState.isLightAppearance
-        ZStack(alignment: .top) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    GeometryReader { geo in
-                        Color.clear.preference(
-                            key: StudioScrollContentTopKey.self,
-                            value: geo.frame(in: .named("StudioPageScroll")).minY
-                        )
-                    }
-                    .frame(height: 0)
-                    
-                    bodyContent
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 64)
-                .padding(.bottom, 18)
+        let baseBg = StudioPalette.workspaceBg(isLight: isLight)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                bodyContent
             }
-            .coordinateSpace(name: "StudioPageScroll")
-            .scrollEdgeEffectStyle(.soft, for: .top)
-            .onPreferenceChange(StudioScrollContentTopKey.self) { contentTopY in
-                let scrolledNow = contentTopY < 56.0
-                if scrolledNow != isScrolled {
-                    withAnimation(.easeInOut(duration: 0.16)) {
-                        isScrolled = scrolledNow
-                    }
-                }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 18)
+        }
+        .scrollEdgeEffectStyle(.soft, for: .top)
+        .safeAreaBar(edge: .top, spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                Text(title)
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
+                
+                trailingContent
+                    .frame(minWidth: 34, maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .trailing)
             }
-            
-            ZStack(alignment: .top) {
-                ZStack {
-                    VisualEffectBlurView(
-                        material: .headerView,
-                        blendingMode: .withinWindow,
-                        state: .active
-                    )
-                    StudioPalette.workspaceBg(isLight: isLight)
-                        .opacity(isScrolled ? (isLight ? 0.56 : 0.48) : 0.90)
-                }
-                .frame(height: 66)
-                .mask(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .black, location: 0.0),
-                            .init(color: .black, location: 0.72),
-                            .init(color: .black.opacity(0.45), location: 0.90),
-                            .init(color: .clear, location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+            .padding(.horizontal, 16)
+            .frame(height: 54)
+            .background(
+                LinearGradient(
+                    stops: [
+                        .init(color: baseBg.opacity(isLight ? 0.65 : 0.72), location: 0.0),
+                        .init(color: baseBg.opacity(isLight ? 0.28 : 0.34), location: 0.58),
+                        .init(color: .clear, location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
                 .allowsHitTesting(false)
-                
-                VStack(spacing: 0) {
-                    HStack(alignment: .center, spacing: 12) {
-                        Text(title)
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .layoutPriority(1)
-                        
-                        trailingContent
-                            .frame(minWidth: 34, maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .trailing)
-                    }
-                    .padding(.horizontal, 16)
-                    .frame(height: 52)
-                    
-                    Rectangle()
-                        .fill(StudioPalette.hairline(isLight: isLight).opacity(isScrolled ? 0.9 : 0))
-                        .frame(height: 1)
-                }
-            }
+            )
         }
+        .background(baseBg)
         .ignoresSafeArea(.container, edges: .top)
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
     }
 }
 
@@ -1605,6 +1832,7 @@ public struct StudioSegmentedPicker<T: Hashable>: View {
     @ObservedObject private var appState = AppState.shared
     @Binding public var selection: T
     public let options: [StudioSegmentedOption<T>]
+    @Namespace private var glassNS
     
     public init(selection: Binding<T>, options: [StudioSegmentedOption<T>]) {
         self._selection = selection
@@ -1613,44 +1841,61 @@ public struct StudioSegmentedPicker<T: Hashable>: View {
     
     public var body: some View {
         let isLight = appState.isLightAppearance
-        StudioFlowLayout(horizontalSpacing: 3, verticalSpacing: 4) {
-            ForEach(options) { opt in
-                let isSelected = (selection == opt.value)
-                Button(action: {
-                    selection = opt.value
-                }) {
-                    Text(opt.title)
-                        .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
-                        .lineLimit(1)
-                        .padding(.horizontal, 11)
-                        .frame(height: 24)
-                        .foregroundColor(isSelected ? .white : .primary.opacity(0.88))
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(isSelected ? opt.tint.opacity(0.92) : Color.clear)
-                        )
-                        .contentShape(Capsule(style: .continuous))
+        GlassEffectContainer(spacing: 3) {
+            StudioFlowLayout(horizontalSpacing: 3, verticalSpacing: 4) {
+                ForEach(Array(options.enumerated()), id: \.element.id) { index, opt in
+                    let isSelected = (selection == opt.value)
+                    Button(action: {
+                        withAnimation(.snappy(duration: 0.22)) {
+                            selection = opt.value
+                        }
+                    }) {
+                        Text(opt.title)
+                            .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+                            .lineLimit(1)
+                            .padding(.horizontal, 11)
+                            .frame(height: 24)
+                            .foregroundColor(isSelected ? .white : .primary.opacity(0.88))
+                            .glassEffect(
+                                isSelected
+                                    ? StudioGlassSupport.buttonGlass(
+                                        appState: appState,
+                                        tint: opt.tint,
+                                        prominent: true,
+                                        interactive: true
+                                    )
+                                    : .identity,
+                                in: Capsule(style: .continuous)
+                            )
+                            .glassEffectID(isSelected ? "sel_\(index)" : "item_\(index)", in: glassNS)
+                            .contentShape(Capsule(style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
+            .padding(3)
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(appState: appState, interactive: true),
+                in: RoundedRectangle(cornerRadius: 15, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .stroke(
+                        StudioGlassSupport.specularRimColor(isLight: isLight, appState: appState),
+                        lineWidth: 0.75
+                    )
+            )
         }
-        .padding(3)
-        .background(
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(StudioPalette.trackBg(isLight: isLight))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(StudioPalette.controlBorder(isLight: isLight), lineWidth: 1)
-        )
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
     }
 }
 
-// MARK: - 4. 物种切换胶囊 (SpeciesSwitchBar - 静态高对比版)
+// MARK: - 4. 物种切换胶囊 (SpeciesSwitchBar - macOS 26/27 原生 Liquid Glass HDR)
 public struct SpeciesSwitchBar: View {
     @ObservedObject private var appState = AppState.shared
     @Binding public var species: TargetSpecies
     public var onChanged: (() -> Void)? = nil
+    @Namespace private var glassNS
     
     public init(species: Binding<TargetSpecies>, onChanged: (() -> Void)? = nil) {
         self._species = species
@@ -1659,41 +1904,57 @@ public struct SpeciesSwitchBar: View {
     
     public var body: some View {
         let isLight = appState.isLightAppearance
-        HStack(spacing: 3) {
-            ForEach(TargetSpecies.allCases) { spec in
-                let isSelected = (species == spec)
-                let color: Color = (spec == .human) ? .blue : .orange
-                Button(action: {
-                    if species != spec {
-                        species = spec
-                        onChanged?()
+        GlassEffectContainer(spacing: 3) {
+            HStack(spacing: 3) {
+                ForEach(TargetSpecies.allCases) { spec in
+                    let isSelected = (species == spec)
+                    let color: Color = (spec == .human) ? .blue : .orange
+                    Button(action: {
+                        if species != spec {
+                            withAnimation(.snappy(duration: 0.22)) {
+                                species = spec
+                            }
+                            onChanged?()
+                        }
+                    }) {
+                        Text(spec == .human ? "人源 (hg38)" : "鼠源 (mm39)")
+                            .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+                            .padding(.horizontal, 11)
+                            .frame(height: 24)
+                            .foregroundColor(isSelected ? .white : .primary.opacity(0.85))
+                            .glassEffect(
+                                isSelected
+                                    ? StudioGlassSupport.buttonGlass(
+                                        appState: appState,
+                                        tint: color,
+                                        prominent: true,
+                                        interactive: true
+                                    )
+                                    : .identity,
+                                in: Capsule(style: .continuous)
+                            )
+                            .glassEffectID(spec.rawValue, in: glassNS)
+                            .contentShape(Capsule(style: .continuous))
                     }
-                }) {
-                    Text(spec == .human ? "人源 (hg38)" : "鼠源 (mm39)")
-                        .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
-                        .padding(.horizontal, 11)
-                        .frame(height: 24)
-                        .foregroundColor(isSelected ? .white : .primary.opacity(0.85))
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(isSelected ? color.opacity(0.92) : Color.clear)
-                        )
-                        .contentShape(Capsule(style: .continuous))
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
+            .padding(3)
+            .frame(height: 30)
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(appState: appState, interactive: true),
+                in: Capsule(style: .continuous)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(
+                        StudioGlassSupport.specularRimColor(isLight: isLight, appState: appState),
+                        lineWidth: 0.75
+                    )
+            )
         }
-        .padding(3)
-        .frame(height: 30)
-        .background(
-            Capsule(style: .continuous)
-                .fill(StudioPalette.trackBg(isLight: isLight))
-        )
-        .overlay(
-            Capsule(style: .continuous)
-                .stroke(StudioPalette.controlBorder(isLight: isLight), lineWidth: 1)
-        )
         .fixedSize(horizontal: true, vertical: false)
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
     }
 }
 
@@ -2043,7 +2304,7 @@ public struct AdaptiveTwoColumnWorkspace<Left: View, Right: View>: View {
     }
 }
 
-// MARK: - 8. 质粒预览开关 (统一 30pt 胶囊，静态高对比版)
+// MARK: - 8. 质粒预览开关 (统一 30pt 胶囊 + macOS 26/27 原生 Liquid Glass HDR)
 public struct PlasmidPreviewToggle: View {
     @ObservedObject private var appState = AppState.shared
     @Binding public var isOn: Bool
@@ -2057,13 +2318,19 @@ public struct PlasmidPreviewToggle: View {
     public var body: some View {
         let isLight = appState.isLightAppearance
         let active = (isOn && isAvailable)
+        let borderColor = StudioGlassSupport.specularRimColor(
+            isLight: isLight,
+            tint: active ? .cyan : nil,
+            selected: active,
+            appState: appState
+        )
         Button(action: {
             isOn.toggle()
         }) {
             HStack(spacing: 4) {
                 Image(systemName: active ? "circle.circle.fill" : "circle.circle")
                     .font(.system(size: 11.5, weight: .bold))
-                    .foregroundColor(active ? .cyan : (isAvailable ? .primary : .secondary))
+                    .foregroundColor(active ? StudioGlassSupport.hdrColor(.cyan, exposure: 0.30, appState: appState) : (isAvailable ? .primary : .secondary))
                 
                 Text("图谱")
                     .font(.system(size: 12, weight: .semibold))
@@ -2072,32 +2339,29 @@ public struct PlasmidPreviewToggle: View {
             }
             .padding(.horizontal, 11)
             .frame(height: 30)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(
-                        active
-                            ? Color.cyan.opacity(isLight ? 0.13 : 0.22)
-                            : StudioPalette.controlBg(isLight: isLight)
-                    )
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(
+                    appState: appState,
+                    tint: active ? .cyan : nil,
+                    selected: active,
+                    interactive: true
+                ),
+                in: Capsule(style: .continuous)
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(
-                        active
-                            ? Color.cyan.opacity(0.45)
-                            : StudioPalette.controlBorder(isLight: isLight),
-                        lineWidth: 1
-                    )
+                    .stroke(borderColor, lineWidth: 0.75)
             )
             .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .opacity(isAvailable ? 1.0 : 0.78)
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
         .help("切换质粒图谱预览抽屉")
     }
 }
 
-// MARK: - 9. 模块分区清除按钮 (30×30 圆形图标胶囊 + 悬停 Tooltip)
+// MARK: - 9. 模块分区清除按钮 (30×30 圆形图标胶囊 + Liquid Glass HDR)
 public struct StudioSectionClearButton: View {
     @ObservedObject private var appState = AppState.shared
     public let title: String
@@ -2130,37 +2394,40 @@ public struct StudioSectionClearButton: View {
     
     public var body: some View {
         let isLight = appState.isLightAppearance
+        let borderColor = StudioGlassSupport.specularRimColor(
+            isLight: isLight,
+            tint: .red,
+            disabled: isDisabled,
+            appState: appState
+        )
         Button(action: action) {
             Image(systemName: isResetIcon ? "arrow.counterclockwise" : "trash")
                 .font(.system(size: 11.5, weight: .semibold))
-                .foregroundColor(isDisabled ? .secondary.opacity(0.40) : .red.opacity(0.92))
+                .foregroundColor(isDisabled ? .secondary.opacity(0.40) : StudioGlassSupport.hdrColor(.red, exposure: 0.22, appState: appState).opacity(0.95))
                 .frame(width: 30, height: 30)
-                .background(
-                    Circle()
-                        .fill(
-                            isDisabled
-                                ? StudioPalette.controlSubtleBg(isLight: isLight)
-                                : Color.red.opacity(isLight ? 0.10 : 0.18)
-                        )
+                .glassEffect(
+                    StudioGlassSupport.buttonGlass(
+                        appState: appState,
+                        tint: .red,
+                        disabled: isDisabled,
+                        interactive: !isDisabled
+                    ),
+                    in: Circle()
                 )
                 .overlay(
                     Circle()
-                        .stroke(
-                            isDisabled
-                                ? StudioPalette.controlBorder(isLight: isLight).opacity(0.55)
-                                : Color.red.opacity(0.32),
-                            lineWidth: 1
-                        )
+                        .stroke(borderColor, lineWidth: 0.75)
                 )
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
         .help(title)
     }
 }
 
-// MARK: - 10. Finder 快捷交互组件 (30×30 圆形图标胶囊 + Tooltip)
+// MARK: - 10. Finder 快捷交互组件 (30×30 圆形图标胶囊 + Liquid Glass HDR)
 public struct FinderRevealButton: View {
     @ObservedObject private var appState = AppState.shared
     public let filePath: String
@@ -2174,6 +2441,7 @@ public struct FinderRevealButton: View {
     public var body: some View {
         let isLight = appState.isLightAppearance
         let iconOnly = label.isEmpty || label == "Finder"
+        let borderColor = StudioGlassSupport.specularRimColor(isLight: isLight, appState: appState)
         Button(action: {
             FinderFileDropHelper.revealInFinder(path: filePath)
         }) {
@@ -2189,23 +2457,25 @@ public struct FinderRevealButton: View {
             .padding(.horizontal, iconOnly ? 0 : 10)
             .frame(minWidth: iconOnly ? 30 : nil)
             .frame(height: 30)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(StudioPalette.controlBg(isLight: isLight))
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(appState: appState, interactive: true),
+                in: Capsule(style: .continuous)
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(StudioPalette.controlBorder(isLight: isLight), lineWidth: 1)
+                    .stroke(borderColor, lineWidth: 0.75)
             )
             .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
         .help("在 Finder 中定位: \(filePath)")
     }
 }
 
-// MARK: - 10B. 高辨识度主操作按钮 (34pt 全胶囊主按钮，静态高对比版)
+// MARK: - 10B. 高辨识度主操作按钮 (34pt 全胶囊主按钮 + macOS 26/27 原生 Liquid Glass HDR)
 public struct StudioPrimaryActionButton: View {
+    @ObservedObject private var appState = AppState.shared
     public let title: String
     public var icon: String = "sparkles"
     public var tint: Color = .blue
@@ -2213,8 +2483,6 @@ public struct StudioPrimaryActionButton: View {
     public var isDisabled: Bool = false
     public var fillWidth: Bool = false
     public let action: () -> Void
-    
-    @State private var isHovered: Bool = false
     
     public init(
         title: String,
@@ -2235,7 +2503,15 @@ public struct StudioPrimaryActionButton: View {
     }
     
     public var body: some View {
+        let isLight = appState.isLightAppearance
         let inactive = isDisabled || isLoading
+        let borderColor = StudioGlassSupport.specularRimColor(
+            isLight: isLight,
+            tint: tint,
+            prominent: true,
+            disabled: isDisabled,
+            appState: appState
+        )
         Button(action: action) {
             HStack(spacing: 6) {
                 if isLoading {
@@ -2249,21 +2525,27 @@ public struct StudioPrimaryActionButton: View {
                 Text(title)
                     .font(.system(size: 13.5, weight: .bold, design: .rounded))
             }
-            .foregroundColor(.white)
+            .foregroundColor(.white.opacity(isDisabled ? 0.55 : 1.0))
             .padding(.horizontal, 18)
             .frame(height: 34)
             .frame(maxWidth: fillWidth ? .infinity : nil)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(tint.opacity(isDisabled ? 0.35 : (isHovered ? 1.0 : 0.90)))
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(
+                    appState: appState,
+                    tint: tint,
+                    prominent: true,
+                    disabled: isDisabled,
+                    interactive: !inactive
+                ),
+                in: Capsule(style: .continuous)
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(Color.white.opacity(isDisabled ? 0.08 : 0.24), lineWidth: 1)
+                    .stroke(borderColor, lineWidth: 0.75)
             )
             .shadow(
-                color: isDisabled ? .clear : tint.opacity(isHovered ? 0.32 : 0.20),
-                radius: isHovered ? 7 : 5,
+                color: isDisabled ? .clear : StudioGlassSupport.hdrColor(tint, exposure: 0.25, appState: appState).opacity(0.24),
+                radius: 6,
                 x: 0,
                 y: 2
             )
@@ -2271,15 +2553,11 @@ public struct StudioPrimaryActionButton: View {
         }
         .buttonStyle(.plain)
         .disabled(inactive)
-        .onHover { hovering in
-            if isHovered != hovering {
-                isHovered = hovering
-            }
-        }
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
     }
 }
 
-/// 顶栏合并式质粒文件胶囊（统一 30pt Capsule 高度 + 精简图标操作，静态高对比版）
+/// 顶栏合并式质粒文件胶囊（统一 30pt Capsule 高度 + macOS 26/27 原生 Liquid Glass HDR）
 public struct PlasmidFileToolbarGroup: View {
     @ObservedObject private var appState = AppState.shared
     @ObservedObject private var poolManager = PlasmidPoolManager.shared
@@ -2307,123 +2585,120 @@ public struct PlasmidFileToolbarGroup: View {
     
     public var body: some View {
         let isLight = appState.isLightAppearance
-        let fillColor: Color = {
-            if isDropTargeted {
-                return tint.opacity(0.22)
-            } else if info != nil {
-                return tint.opacity(isLight ? 0.11 : 0.18)
-            } else {
-                return StudioPalette.controlBg(isLight: isLight)
-            }
-        }()
-        let borderColor: Color = {
-            if isDropTargeted {
-                return tint
-            } else if info != nil {
-                return tint.opacity(0.36)
-            } else {
-                return StudioPalette.controlBorder(isLight: isLight)
-            }
-        }()
-        HStack(spacing: 0) {
-            Button(action: {
-                FinderFileDropHelper.presentOpenPanel { url in
-                    AppState.shared.showPlasmidPreview = true
-                    onLoadURL(url)
-                    Task {
-                        await PlasmidPoolManager.shared.importFilesOrFolders(urls: [url], silent: true)
-                    }
-                }
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: info != nil ? "checkmark.circle.fill" : "folder.badge.plus")
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundColor(info != nil ? tint : .primary)
-                    Text(info != nil ? info!.fileName.replacingOccurrences(of: ".dna", with: "") : roleTitle)
-                        .font(.system(size: 12, weight: .medium))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                .padding(.horizontal, 11)
-                .frame(height: 30)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help(info != nil ? "更换\(roleTitle)文件 (当前: \(info!.fileName))" : "从 Finder 选择或拖入\(roleTitle) .dna 文件")
-            
-            if !poolManager.items.isEmpty {
-                Rectangle()
-                    .fill(StudioPalette.hairline(isLight: isLight))
-                    .frame(width: 1, height: 15)
-                
-                Menu {
-                    Text("从质粒池选择\(roleTitle)")
-                    Divider()
-                    ForEach(poolManager.items) { item in
-                        Button("\(item.name) (\(item.dnaInfo.length) bp)") {
-                            AppState.shared.showPlasmidPreview = true
-                            let url = URL(fileURLWithPath: item.dnaInfo.filePath)
-                            onLoadURL(url)
+        let isLoaded = (info != nil || isDropTargeted)
+        let borderColor = StudioGlassSupport.specularRimColor(
+            isLight: isLight,
+            tint: isLoaded ? tint : nil,
+            selected: isDropTargeted,
+            appState: appState
+        )
+        GlassEffectContainer(spacing: 0) {
+            HStack(spacing: 0) {
+                Button(action: {
+                    FinderFileDropHelper.presentOpenPanel { url in
+                        AppState.shared.showPlasmidPreview = true
+                        onLoadURL(url)
+                        Task {
+                            await PlasmidPoolManager.shared.importFilesOrFolders(urls: [url], silent: true)
                         }
                     }
-                    Divider()
-                    Button("打开质粒池...") {
-                        AppState.shared.selectedNav = .plasmidPool
-                    }
-                } label: {
-                    Image(systemName: "tray.full.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(tint)
-                        .padding(.horizontal, 7)
-                        .frame(height: 30)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .help("从质粒池选择\(roleTitle)")
-            }
-            
-            if let loaded = info {
-                Rectangle()
-                    .fill(StudioPalette.hairline(isLight: isLight))
-                    .frame(width: 1, height: 15)
-                
-                Button(action: onPreview) {
-                    Image(systemName: "eye.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(tint)
-                        .padding(.horizontal, 8)
-                        .frame(height: 30)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("预览\(roleTitle)质粒图谱")
-                
-                Rectangle()
-                    .fill(StudioPalette.hairline(isLight: isLight))
-                    .frame(width: 1, height: 15)
-                
-                Button(action: {
-                    FinderFileDropHelper.revealInFinder(path: loaded.filePath)
                 }) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 8)
-                        .frame(height: 30)
-                        .contentShape(Rectangle())
+                    HStack(spacing: 4) {
+                        Image(systemName: info != nil ? "checkmark.circle.fill" : "folder.badge.plus")
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .foregroundColor(info != nil ? StudioGlassSupport.hdrColor(tint, exposure: 0.25, appState: appState) : .primary)
+                        Text(info != nil ? info!.fileName.replacingOccurrences(of: ".dna", with: "") : roleTitle)
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    .padding(.horizontal, 11)
+                    .frame(height: 30)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help("在 Finder 中定位: \(loaded.filePath)")
+                .help(info != nil ? "更换\(roleTitle)文件 (当前: \(info!.fileName))" : "从 Finder 选择或拖入\(roleTitle) .dna 文件")
+                
+                if !poolManager.items.isEmpty {
+                    Rectangle()
+                        .fill(StudioPalette.hairline(isLight: isLight))
+                        .frame(width: 1, height: 15)
+                    
+                    Menu {
+                        Text("从质粒池选择\(roleTitle)")
+                        Divider()
+                        ForEach(poolManager.items) { item in
+                            Button("\(item.name) (\(item.dnaInfo.length) bp)") {
+                                AppState.shared.showPlasmidPreview = true
+                                let url = URL(fileURLWithPath: item.dnaInfo.filePath)
+                                onLoadURL(url)
+                            }
+                        }
+                        Divider()
+                        Button("打开质粒池...") {
+                            AppState.shared.selectedNav = .plasmidPool
+                        }
+                    } label: {
+                        Image(systemName: "tray.full.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(tint)
+                            .padding(.horizontal, 7)
+                            .frame(height: 30)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("从质粒池选择\(roleTitle)")
+                }
+                
+                if let loaded = info {
+                    Rectangle()
+                        .fill(StudioPalette.hairline(isLight: isLight))
+                        .frame(width: 1, height: 15)
+                    
+                    Button(action: onPreview) {
+                        Image(systemName: "eye.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(tint)
+                            .padding(.horizontal, 8)
+                            .frame(height: 30)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("预览\(roleTitle)质粒图谱")
+                    
+                    Rectangle()
+                        .fill(StudioPalette.hairline(isLight: isLight))
+                        .frame(width: 1, height: 15)
+                    
+                    Button(action: {
+                        FinderFileDropHelper.revealInFinder(path: loaded.filePath)
+                    }) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                            .frame(height: 30)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("在 Finder 中定位: \(loaded.filePath)")
+                }
             }
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(
+                    appState: appState,
+                    tint: isLoaded ? tint : nil,
+                    selected: isDropTargeted,
+                    interactive: true
+                ),
+                in: Capsule(style: .continuous)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(borderColor, lineWidth: isDropTargeted ? 1.5 : 0.75)
+            )
         }
-        .background(
-            Capsule(style: .continuous)
-                .fill(fillColor)
-        )
-        .overlay(
-            Capsule(style: .continuous)
-                .stroke(borderColor, lineWidth: isDropTargeted ? 1.5 : 1)
-        )
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
             FinderFileDropHelper.extractFirstFileURL(from: providers) { url in
                 AppState.shared.showPlasmidPreview = true

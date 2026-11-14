@@ -68,6 +68,7 @@ public struct RestrictionEnzymeInspectorView: View {
                 )
                 .shadow(color: Color.black.opacity(0.55), radius: 14, x: 0, y: 6)
         )
+        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
     }
     
     private var inspectorHeaderBar: some View {
@@ -85,9 +86,18 @@ public struct RestrictionEnzymeInspectorView: View {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white.opacity(0.65))
+                        .foregroundColor(.white.opacity(0.8))
                         .frame(width: 24, height: 24)
-                        .background(Circle().fill(Color.white.opacity(0.08)))
+                        .contentShape(Circle())
+                        .glassEffect(
+                            StudioGlassSupport.buttonGlass(
+                                appState: appState,
+                                tint: nil,
+                                selected: false,
+                                interactive: true
+                            ),
+                            in: Circle()
+                        )
                 }
                 .buttonStyle(.plain)
             }
@@ -95,56 +105,71 @@ public struct RestrictionEnzymeInspectorView: View {
     }
     
     private var presetSelectorRow: some View {
-        HStack(spacing: 6) {
-            Menu {
-                ForEach(RestrictionEnzymeDatabase.presetGroups) { group in
-                    Button(action: {
-                        appState.applyEnzymePreset(group)
-                    }) {
-                        Text("SET: \(group.name.uppercased())")
+        GlassEffectContainer(spacing: 6) {
+            HStack(spacing: 6) {
+                Menu {
+                    ForEach(RestrictionEnzymeDatabase.presetGroups) { group in
+                        Button(action: {
+                            appState.applyEnzymePreset(group)
+                        }) {
+                            Text("SET: \(group.name.uppercased())")
+                        }
                     }
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "flask.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.pink)
-                    Text("SET: \(appState.selectedEnzymePreset.uppercased())")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    Spacer(minLength: 2)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.white.opacity(0.6))
-                }
-                .padding(.horizontal, 9)
-                .frame(height: 24)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.07))
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .stroke(Color.cyan.opacity(0.35), lineWidth: 0.8)
-                        )
-                )
-            }
-            .menuStyle(.borderlessButton)
-            
-            Button(action: {
-                appState.clearSelectedEnzymes()
-            }) {
-                Text("Clear")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.85))
-                    .padding(.horizontal, 10)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "flask.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.pink)
+                        Text("SET: \(appState.selectedEnzymePreset.uppercased())")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        Spacer(minLength: 2)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .padding(.horizontal, 9)
                     .frame(height: 24)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.08))
+                    .contentShape(Capsule(style: .continuous))
+                    .glassEffect(
+                        StudioGlassSupport.buttonGlass(
+                            appState: appState,
+                            tint: .cyan,
+                            selected: false,
+                            interactive: true
+                        ),
+                        in: Capsule(style: .continuous)
                     )
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(Color.cyan.opacity(0.35), lineWidth: 0.8)
+                            .allowsHitTesting(false)
+                    )
+                }
+                .menuStyle(.borderlessButton)
+
+                Button(action: {
+                    appState.clearSelectedEnzymes()
+                }) {
+                    Text("Clear")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.9))
+                        .padding(.horizontal, 10)
+                        .frame(height: 24)
+                        .contentShape(Capsule(style: .continuous))
+                        .glassEffect(
+                            StudioGlassSupport.buttonGlass(
+                                appState: appState,
+                                tint: nil,
+                                selected: false,
+                                interactive: true
+                            ),
+                            in: Capsule(style: .continuous)
+                        )
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
     
@@ -153,7 +178,7 @@ public struct RestrictionEnzymeInspectorView: View {
             HStack(spacing: 5) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.45))
+                    .foregroundColor(.white.opacity(0.55))
                 TextField("Search 434+ restriction enzymes, press Enter...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 10.5))
@@ -168,20 +193,27 @@ public struct RestrictionEnzymeInspectorView: View {
                     Button(action: { searchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 10))
-                            .foregroundColor(.white.opacity(0.4))
+                            .foregroundColor(.white.opacity(0.5))
                     }
                     .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 9)
             .frame(height: 24)
-            .background(
+            .contentShape(Capsule(style: .continuous))
+            .glassEffect(
+                StudioGlassSupport.buttonGlass(
+                    appState: appState,
+                    tint: nil,
+                    selected: false,
+                    interactive: true
+                ),
+                in: Capsule(style: .continuous)
+            )
+            .overlay(
                 Capsule(style: .continuous)
-                    .fill(Color.black.opacity(0.35))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(Color.white.opacity(0.12), lineWidth: 0.8)
-                    )
+                    .stroke(Color.white.opacity(0.16), lineWidth: 0.8)
+                    .allowsHitTesting(false)
             )
             
             if !matchingSearchEnzymes.isEmpty {

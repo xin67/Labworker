@@ -1768,53 +1768,60 @@ public struct PlasmidPreviewPanel: View {
             
             Spacer(minLength: 4)
             
-            HStack(spacing: 3) {
-                circularToolbarBtn(icon: "cursorarrow", isActive: toolMode == .select, tooltip: "Select Mode") {
-                    toolMode = .select
-                }
-                circularToolbarBtn(icon: "hand.draw", isActive: toolMode == .pan, tooltip: "Pan Canvas") {
-                    toolMode = .pan
-                }
-                circularToolbarBtn(icon: "arrow.triangle.2.circlepath", isActive: toolMode == .rotate, tooltip: "Rotate +30°") {
-                    toolMode = .rotate
-                    withAnimation(.easeInOut(duration: 0.18)) {
-                        rotationDegrees = (rotationDegrees + 30).truncatingRemainder(dividingBy: 360)
+            GlassEffectContainer(spacing: 4) {
+                HStack(spacing: 4) {
+                    circularToolbarBtn(icon: "cursorarrow", isActive: toolMode == .select, tooltip: "Select Mode") {
+                        toolMode = .select
                     }
-                }
-                circularToolbarBtn(icon: "plus.magnifyingglass", isActive: false, tooltip: "Zoom In") {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        zoomScale = min(2.0, zoomScale + 0.18)
+                    circularToolbarBtn(icon: "hand.draw", isActive: toolMode == .pan, tooltip: "Pan Canvas") {
+                        toolMode = .pan
                     }
-                }
-                circularToolbarBtn(icon: "minus.magnifyingglass", isActive: false, tooltip: "Zoom Out") {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        zoomScale = max(0.70, zoomScale - 0.18)
+                    circularToolbarBtn(icon: "arrow.triangle.2.circlepath", isActive: toolMode == .rotate, tooltip: "Rotate +30°") {
+                        toolMode = .rotate
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            rotationDegrees = (rotationDegrees + 30).truncatingRemainder(dividingBy: 360)
+                        }
                     }
-                }
-                circularToolbarBtn(icon: "arrow.counterclockwise", isActive: false, tooltip: "Reset View") {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        zoomScale = 1.0
-                        panOffset = .zero
-                        rotationDegrees = 0
+                    circularToolbarBtn(icon: "plus.magnifyingglass", isActive: false, tooltip: "Zoom In") {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            zoomScale = min(2.0, zoomScale + 0.18)
+                        }
                     }
-                }
-                Button(action: {
-                    appState.showToast("已将「\(data.constructTitle)」环形图谱快照复制至剪贴板")
-                }) {
-                    HStack(spacing: 2) {
-                        Image(systemName: "camera")
-                            .font(.system(size: 9))
-                        Text("PNG")
-                            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                    circularToolbarBtn(icon: "minus.magnifyingglass", isActive: false, tooltip: "Zoom Out") {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            zoomScale = max(0.70, zoomScale - 0.18)
+                        }
                     }
-                    .foregroundColor(titleCol.opacity(0.85))
-                    .padding(.horizontal, 7)
-                    .frame(height: 22)
-                    .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.08)))
+                    circularToolbarBtn(icon: "arrow.counterclockwise", isActive: false, tooltip: "Reset View") {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            zoomScale = 1.0
+                            panOffset = .zero
+                            rotationDegrees = 0
+                        }
+                    }
+                    Button(action: {
+                        appState.showToast("已将「\(data.constructTitle)」环形图谱快照复制至剪贴板")
+                    }) {
+                        HStack(spacing: 2) {
+                            Image(systemName: "camera")
+                                .font(.system(size: 9))
+                            Text("PNG")
+                                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                        }
+                        .foregroundColor(titleCol.opacity(0.90))
+                        .padding(.horizontal, 8)
+                        .frame(height: 24)
+                        .glassEffect(
+                            StudioGlassSupport.buttonGlass(appState: appState, interactive: true),
+                            in: Capsule(style: .continuous)
+                        )
+                        .contentShape(Capsule(style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .help("导出高分辨率 PNG 图谱")
                 }
-                .buttonStyle(.plain)
-                .help("导出高分辨率 PNG 图谱")
             }
+            .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -2213,17 +2220,23 @@ public struct PlasmidPreviewPanel: View {
         tooltip: String,
         action: @escaping () -> Void
     ) -> some View {
-        let inactiveCol = isDark ? Color.white.opacity(0.75) : Color(red: 0.25, green: 0.32, blue: 0.42)
+        let inactiveCol = isDark ? Color.white.opacity(0.82) : Color(red: 0.22, green: 0.28, blue: 0.38)
         let activeCol = isDark ? Color.cyan : Color(red: 0.02, green: 0.48, blue: 0.85)
         return Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 9.5, weight: isActive ? .bold : .regular))
+                .font(.system(size: 10, weight: isActive ? .bold : .medium))
                 .foregroundColor(isActive ? activeCol : inactiveCol)
-                .frame(width: 22, height: 22)
-                .background(
-                    Circle()
-                        .fill(isActive ? activeCol.opacity(0.18) : Color.primary.opacity(0.06))
+                .frame(width: 24, height: 24)
+                .glassEffect(
+                    StudioGlassSupport.buttonGlass(
+                        appState: appState,
+                        tint: isActive ? activeCol : nil,
+                        selected: isActive,
+                        interactive: true
+                    ),
+                    in: Circle()
                 )
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .help(tooltip)
