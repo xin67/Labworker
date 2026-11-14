@@ -90,14 +90,14 @@ public struct PlasmidPoolView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 12)
+                .frame(height: 30)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color(NSColor.textBackgroundColor))
+                    Capsule(style: .continuous)
+                        .fill(StudioPalette.controlBg(isLight: appState.isLightAppearance))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                            Capsule(style: .continuous)
+                                .stroke(StudioPalette.controlBorder(isLight: appState.isLightAppearance), lineWidth: 1)
                         )
                 )
                 
@@ -127,16 +127,8 @@ public struct PlasmidPoolView: View {
                         tint: .green
                     )
                 }
-                .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(Color.primary.opacity(0.035))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-                        )
-                )
+                .studioInnerBox(paddingH: 10, paddingV: 10)
                 
                 // 3. 质粒列表
                 if pool.filteredItems.isEmpty {
@@ -164,7 +156,7 @@ public struct PlasmidPoolView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 28)
                     .background(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                             .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
                             .foregroundColor(.secondary.opacity(0.25))
                     )
@@ -202,28 +194,17 @@ public struct PlasmidPoolView: View {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                 ForEach(options, id: \.self) { opt in
                     let isSelected = (selection.wrappedValue.caseInsensitiveCompare(opt) == .orderedSame)
-                    Button(action: {
+                    StudioCompactPillButton(
+                        title: opt,
+                        tint: tint,
+                        isProminent: isSelected
+                    ) {
                         if isSelected && opt != "全部" {
                             selection.wrappedValue = "全部"
                         } else {
                             selection.wrappedValue = opt
                         }
-                    }) {
-                        Text(opt)
-                            .font(.system(size: 12, weight: isSelected ? .bold : .medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(isSelected ? tint : Color.primary.opacity(0.06))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .stroke(isSelected ? tint.opacity(0.3) : Color.primary.opacity(0.08), lineWidth: 0.8)
-                            )
-                            .foregroundColor(isSelected ? .white : .primary)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -257,38 +238,26 @@ public struct PlasmidPoolView: View {
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: true, vertical: false)
                 
-                Button(action: {
+                StudioCompactPillButton(
+                    title: "图谱",
+                    icon: "eye.fill",
+                    tint: .blue
+                ) {
                     PlasmidWindowPresenter.shared.openPreviewWindow(
                         for: item.dnaInfo,
                         roleLabel: item.name,
                         highlightRange: nil
                     )
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "eye.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                        Text("图谱")
-                            .font(.system(size: 11.5, weight: .semibold))
-                    }
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3.5)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.blue.opacity(0.12))
-                    )
-                    .fixedSize(horizontal: true, vertical: false)
                 }
-                .buttonStyle(.plain)
-                
-                Button(action: { pool.removeItem(item) }) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 11.5))
-                        .foregroundColor(.secondary)
-                        .padding(4)
+
+                StudioCompactPillButton(
+                    title: "",
+                    icon: "trash",
+                    tint: .secondary,
+                    help: "从质粒池移除"
+                ) {
+                    pool.removeItem(item)
                 }
-                .buttonStyle(.plain)
-                .help("从质粒池移除")
             }
             
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
@@ -398,12 +367,8 @@ public struct PlasmidPoolView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.primary.opacity(0.035))
-                )
+                .studioInnerBox(paddingH: 10, paddingV: 10)
                 
                 // 2. 参考图2的双列对称胶囊按钮矩阵（一键送入各分子克隆模块）
                 VStack(alignment: .leading, spacing: 7) {
@@ -492,7 +457,7 @@ public struct PlasmidPoolView: View {
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3.5)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        Capsule(style: .continuous)
                                             .fill(Color.orange.opacity(0.11))
                                     )
                             }
@@ -548,10 +513,10 @@ public struct PlasmidPoolView: View {
                                             Text(feat.type)
                                                 .font(.system(size: 10.5, weight: .semibold))
                                                 .foregroundColor(.secondary)
-                                                .padding(.horizontal, 5)
-                                                .padding(.vertical, 1.5)
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
                                                 .background(
-                                                    RoundedRectangle(cornerRadius: 4)
+                                                    Capsule(style: .continuous)
                                                         .fill(Color.primary.opacity(0.07))
                                                 )
                                                 .fixedSize(horizontal: true, vertical: false)
@@ -573,12 +538,7 @@ public struct PlasmidPoolView: View {
                                         .fixedSize(horizontal: true, vertical: false)
                                     }
                                 }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 7)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                        .fill(Color.primary.opacity(0.035))
-                                )
+                                .studioInnerBox(paddingH: 10, paddingV: 7)
                             }
                         }
                     }
@@ -609,12 +569,8 @@ public struct PlasmidPoolView: View {
                 Text("暂无关联的 Sanger / WB / qPCR 分析导出记录；在对应模块关联该质粒并导出即可自动归档至此。")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
-                    .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .fill(Color.primary.opacity(0.03))
-                    )
+                    .studioInnerBox(paddingH: 10, paddingV: 8)
             } else {
                 VStack(spacing: 6) {
                     ForEach(linkedEntries.prefix(10)) { entry in
@@ -642,12 +598,7 @@ public struct PlasmidPoolView: View {
                             
                             FinderRevealButton(filePath: entry.sidecarFilePath, label: ".run.json")
                         }
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(Color.primary.opacity(0.035))
-                        )
+                        .studioInnerBox(paddingH: 10, paddingV: 7)
                     }
                 }
             }

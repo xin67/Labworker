@@ -45,24 +45,22 @@ public struct CHOPCHOPWebView: View {
         ) {
                 
                 StudioCard(title: "靶点检索与比对") {
-                    HStack(spacing: 6) {
+                    StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                         ForEach(["TP53", "BRCA1", "MYC", "EGFR"], id: \.self) { sampleGene in
-                            Button(sampleGene) {
+                            StudioCompactPillButton(title: sampleGene, monospaced: true) {
                                 vm.gene = sampleGene
                                 vm.fetchTargets(forceRefresh: false)
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.mini)
                         }
-                        
+
                         if !vm.targets.isEmpty {
-                            Button(action: { vm.fetchTargets(forceRefresh: true) }) {
-                                Label("刷新", systemImage: "arrow.clockwise")
-                                    .font(.system(size: 10.5, weight: .medium))
+                            StudioCompactPillButton(
+                                title: "刷新",
+                                icon: "arrow.clockwise",
+                                isDisabled: vm.isLoading
+                            ) {
+                                vm.fetchTargets(forceRefresh: true)
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.mini)
-                            .disabled(vm.isLoading)
                         }
                     }
                 } content: {
@@ -133,21 +131,23 @@ public struct CHOPCHOPWebView: View {
                         vm.addManualCompareSequence()
                     }
                 
-                Button(action: vm.addManualCompareSequence) {
-                    Label("添加比对", systemImage: "plus.circle.fill")
-                        .font(.system(size: 11, weight: .medium))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(vm.manualCompareInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                
+                StudioActionPillButton(
+                    title: "添加比对",
+                    icon: "plus.circle.fill",
+                    isDisabled: vm.manualCompareInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    action: vm.addManualCompareSequence
+                )
+
                 if !vm.activeUserLocalTargets.isEmpty {
-                    Button("清空比对", role: .destructive, action: vm.clearUserLocalCompareTargets)
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                    StudioActionPillButton(
+                        title: "清空比对",
+                        icon: "trash",
+                        tint: .red,
+                        action: vm.clearUserLocalCompareTargets
+                    )
                 }
             }
-            
+
             if !vm.activeUserLocalTargets.isEmpty {
                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                     ForEach(vm.activeUserLocalTargets) { item in
@@ -181,23 +181,14 @@ public struct CHOPCHOPWebView: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(hit != nil ? Color.green.opacity(0.12) : Color.primary.opacity(0.05))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(hit != nil ? Color.green.opacity(0.55) : Color.primary.opacity(0.10), lineWidth: 1)
-                        )
+                        .studioInnerBox(tint: hit != nil ? .green : nil, isHighlighted: hit != nil, paddingH: 8, paddingV: 4)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
-    
+
     // MARK: - 预测结果列表卡片
     private var resultsListCard: some View {
         StudioCard(title: "靶点列表 (\(vm.sortedTargets.count))") {
@@ -205,48 +196,39 @@ public struct CHOPCHOPWebView: View {
                 Toggle("本地命中置顶", isOn: $vm.pinLocalMatchesFirst)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 11, weight: .medium))
-                
+
                 if vm.totalMatchedTargetsCount > 0 {
                     Toggle("仅看命中 (\(vm.totalMatchedTargetsCount))", isOn: $vm.showOnlyLocalMatches)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.green)
-                    
-                    Button("勾选命中", action: vm.selectLocalHitsOnly)
-                        .buttonStyle(.bordered)
-                        .controlSize(.mini)
+
+                    StudioCompactPillButton(title: "勾选命中", tint: .green, action: vm.selectLocalHitsOnly)
                 }
             }
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                     StudioMetricBadge(label: "已选", value: "\(vm.selectedTargetIDs.count)", color: .orange)
-                    
-                    Picker("", selection: $vm.sortMode) {
-                        ForEach(CHOPCHOPCompareViewModel.CHOPCHOPSortMode.allCases) { m in
-                            Text(verbatim: m.rawValue).tag(m)
+
+                    StudioMenuPicker(
+                        selection: $vm.sortMode,
+                        options: CHOPCHOPCompareViewModel.CHOPCHOPSortMode.allCases.map {
+                            StudioMenuPickerOption(value: $0, title: $0.rawValue)
                         }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .controlSize(.small)
-                    .frame(width: 220)
-                    
-                    Button("全选", action: vm.selectAll)
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    Button("清空", action: vm.deselectAll)
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    
-                    Button(action: vm.addSelectedToCart) {
-                        Label("加入引物池", systemImage: "cart.badge.plus")
-                            .font(.system(size: 11.5, weight: .semibold))
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
-                    .controlSize(.small)
-                    .disabled(vm.selectedTargetIDs.isEmpty)
+                    )
+
+                    StudioActionPillButton(title: "全选", action: vm.selectAll)
+                    StudioActionPillButton(title: "清空", tint: .red, action: vm.deselectAll)
+
+                    StudioActionPillButton(
+                        title: "加入引物池",
+                        icon: "cart.badge.plus",
+                        tint: .green,
+                        isProminent: true,
+                        isDisabled: vm.selectedTargetIDs.isEmpty,
+                        action: vm.addSelectedToCart
+                    )
                 }
                 
                 LazyVStack(spacing: 6) {
@@ -366,21 +348,23 @@ public struct CHOPCHOPWebView: View {
             
             TargetScoreBadge(score: target.combinedScore, compact: true)
             
-            Button(action: { vm.addPairToCart(target) }) {
-                Image(systemName: "cart.badge.plus")
-                    .font(.system(size: 11))
+            StudioCompactPillButton(
+                title: "",
+                icon: "cart.badge.plus",
+                tint: .green,
+                help: "加入引物池"
+            ) {
+                vm.addPairToCart(target)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.mini)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(
-            RoundedRectangle(cornerRadius: 7)
+            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                 .fill(rowBg)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 7)
+            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                 .stroke(rowBorder, lineWidth: isPrimaryHit ? 1.5 : 1.0)
         )
     }

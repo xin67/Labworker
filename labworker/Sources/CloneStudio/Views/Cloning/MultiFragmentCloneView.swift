@@ -87,27 +87,23 @@ public struct MultiFragmentCloneView: View {
                                         Text(delLen > 0 ? "替换区间: \(vm.cutStart)..\(vm.cutEnd) (Δ\(delLen)bp)" : "插入位点: @\(vm.cutStart) bp")
                                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                             .foregroundColor(.blue)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Color.blue.opacity(0.12))
-                                            .cornerRadius(4)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 2.5)
+                                            .background(Capsule().fill(Color.blue.opacity(0.12)))
                                         FinderRevealButton(filePath: vec.filePath, label: "")
-                                        Button(action: {
+                                        StudioActionPillButton(
+                                            title: "预览",
+                                            icon: "eye.fill",
+                                            tint: .blue,
+                                            isProminent: true,
+                                            help: "预览载体质粒图谱"
+                                        ) {
                                             PlasmidWindowPresenter.shared.openPreviewWindow(
                                                 for: vec,
                                                 roleLabel: "原始载体质粒预览",
                                                 highlightRange: nil
                                             )
-                                        }) {
-                                            HStack(spacing: 2.5) {
-                                                Image(systemName: "eye.fill")
-                                                Text("预览")
-                                            }
-                                            .font(.system(size: 10.5, weight: .semibold))
                                         }
-                                        .buttonStyle(.borderedProminent)
-                                        .tint(.blue)
-                                        .controlSize(.mini)
                                         StudioSectionClearButton(label: "一键清除载体", action: vm.clearVectorSection)
                                     }
                                     
@@ -128,22 +124,18 @@ public struct MultiFragmentCloneView: View {
                                                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                                 .foregroundColor(.blue)
                                             Spacer()
-                                            Button(action: {
+                                            StudioCompactPillButton(
+                                                title: "预览",
+                                                icon: "eye.fill",
+                                                tint: .blue,
+                                                isProminent: true
+                                            ) {
                                                 PlasmidWindowPresenter.shared.openPreviewWindow(
                                                     for: vec,
                                                     roleLabel: "原始载体质粒预览",
                                                     highlightRange: nil
                                                 )
-                                            }) {
-                                                HStack(spacing: 2.5) {
-                                                    Image(systemName: "eye.fill")
-                                                    Text("预览")
-                                                }
-                                                .font(.system(size: 10.5, weight: .semibold))
                                             }
-                                            .buttonStyle(.borderedProminent)
-                                            .tint(.blue)
-                                            .controlSize(.mini)
                                         }
                                     }
                                 }
@@ -251,9 +243,7 @@ public struct MultiFragmentCloneView: View {
                                     }
                                 }
                             }
-                            .padding(10)
-                            .background(Color.blue.opacity(0.07))
-                            .cornerRadius(8)
+                            .studioInnerBox(tint: .blue, paddingH: 10, paddingV: 10)
                         }
                         
                         // 2. 载体与线性化配置
@@ -311,24 +301,24 @@ public struct MultiFragmentCloneView: View {
                                                 Text("片段 \(idx + 1)").font(.system(size: 12, weight: .bold))
                                                 StudioMetricBadge(label: "长度", value: "\(count) bp", color: count >= 50 ? .green : .orange)
                                                 
-                                                Button("📂 载入供体 .dna") {
+                                                StudioActionPillButton(
+                                                    title: "载入 .dna",
+                                                    icon: "folder.badge.plus",
+                                                    help: "从 .dna 供体质粒载入并选择特征"
+                                                ) {
                                                     selectDNAFile { url in
                                                         Task { await vm.loadFragmentDonorDNA(at: idx, url: url) }
                                                     }
                                                 }
-                                                .buttonStyle(.bordered)
-                                                .controlSize(.mini)
-                                                
+
                                                 Spacer()
                                                 StudioSectionClearButton(label: "一键清除本片段") {
                                                     vm.clearFragment(at: idx)
                                                 }
                                                 if vm.fragments.count > 2 {
-                                                    Button("移除", role: .destructive) {
+                                                    StudioCompactPillButton(title: "移除", icon: "minus.circle", tint: .red) {
                                                         vm.removeFragment(at: idx)
                                                     }
-                                                    .buttonStyle(.borderless)
-                                                    .font(.system(size: 11))
                                                 }
                                             }
                                             
@@ -341,20 +331,20 @@ public struct MultiFragmentCloneView: View {
                                                         vm.clearFragment(at: idx)
                                                     }
                                                     if vm.fragments.count > 2 {
-                                                        Button("移除", role: .destructive) {
+                                                        StudioCompactPillButton(title: "移除", icon: "minus.circle", tint: .red) {
                                                             vm.removeFragment(at: idx)
                                                         }
-                                                        .buttonStyle(.borderless)
-                                                        .font(.system(size: 11))
                                                     }
                                                 }
-                                                Button("📂 从 .dna 载入并选特征") {
+                                                StudioActionPillButton(
+                                                    title: "载入 .dna",
+                                                    icon: "folder.badge.plus",
+                                                    help: "从 .dna 载入并选特征"
+                                                ) {
                                                     selectDNAFile { url in
                                                         Task { await vm.loadFragmentDonorDNA(at: idx, url: url) }
                                                     }
                                                 }
-                                                .buttonStyle(.bordered)
-                                                .controlSize(.mini)
                                             }
                                         }
                                         
@@ -395,27 +385,22 @@ public struct MultiFragmentCloneView: View {
                                                     ))
                                                     .textFieldStyle(.roundedBorder)
                                                     .frame(width: 55)
-                                                    Button("截取") {
+                                                    StudioCompactPillButton(title: "截取", icon: "scissors") {
                                                         vm.extractFragmentFromCoordinates(at: idx)
                                                     }
-                                                    .buttonStyle(.bordered)
-                                                    .controlSize(.mini)
-                                                    Button(action: {
+                                                    StudioCompactPillButton(
+                                                        title: "预览",
+                                                        icon: "eye.fill",
+                                                        tint: .green,
+                                                        isProminent: true,
+                                                        help: "预览供体原图谱"
+                                                    ) {
                                                         PlasmidWindowPresenter.shared.openPreviewWindow(
                                                             for: donorInfo,
                                                             roleLabel: "片段\(idx + 1)原始供体质粒预览",
                                                             highlightRange: nil
                                                         )
-                                                    }) {
-                                                        HStack(spacing: 3) {
-                                                            Image(systemName: "eye.fill")
-                                                            Text("预览供体原图谱")
-                                                        }
-                                                        .font(.system(size: 10, weight: .semibold))
                                                     }
-                                                    .buttonStyle(.borderedProminent)
-                                                    .tint(.green)
-                                                    .controlSize(.mini)
                                                     Spacer()
                                                 }
                                                 
@@ -458,26 +443,20 @@ public struct MultiFragmentCloneView: View {
                                                         ))
                                                         .textFieldStyle(.roundedBorder)
                                                         .frame(width: 55)
-                                                        Button("截取") {
+                                                        StudioCompactPillButton(title: "截取", icon: "scissors") {
                                                             vm.extractFragmentFromCoordinates(at: idx)
                                                         }
-                                                        .buttonStyle(.bordered)
-                                                        .controlSize(.mini)
                                                     }
                                                 }
                                             }
-                                            .padding(6)
-                                            .background(Color.green.opacity(0.08))
-                                            .cornerRadius(5)
+                                            .studioInnerBox(tint: .green, paddingH: 8, paddingV: 6)
                                         }
                                         
                                         SequenceEditorBox(text: $vm.fragments[idx], placeholder: "第 \(idx + 1) 个片段序列 (≥ 50 bp)...", minHeight: 55)
                                         
                                         fragmentExtraBasesRow(at: idx)
                                     }
-                                    .padding(8)
-                                    .background(Color.primary.opacity(0.03))
-                                    .cornerRadius(6)
+                                    .studioInnerBox(paddingH: 10, paddingV: 8)
                                 }
                                 
                                 multiTotalReadingFrameBar
@@ -672,24 +651,15 @@ public struct MultiFragmentCloneView: View {
                 )
                 Spacer()
                 if rem != 0 {
-                    Button("+5' 补 \(padSeq)") {
+                    StudioCompactPillButton(title: "+5' 补 \(padSeq)", tint: .orange, isProminent: true, monospaced: true) {
                         vm.fragmentExtra5Bases[0] = BioSequence.clean(vm.fragmentExtra5Bases[0] ?? "") + padSeq
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
-                    .controlSize(.mini)
-                    Button("+3' 补 \(padSeq)") {
+                    StudioCompactPillButton(title: "+3' 补 \(padSeq)", monospaced: true) {
                         vm.terminalExtra3Bases = BioSequence.clean(vm.terminalExtra3Bases) + padSeq
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.mini)
                 }
             }
-            .padding(8)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(rem == 0 ? Color.green.opacity(0.06) : Color.orange.opacity(0.08))
-            )
+            .studioInnerBox(tint: rem == 0 ? .green : .orange, paddingH: 10, paddingV: 8)
         }
     }
     

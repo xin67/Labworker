@@ -92,10 +92,9 @@ public struct MutationView: View {
                                         .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                                         .foregroundColor(.pink)
                                         .lineLimit(1)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(Color.pink.opacity(0.12))
-                                        .cornerRadius(4)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2.5)
+                                        .background(Capsule().fill(Color.pink.opacity(0.12)))
                                 }
                                 StudioMetricBadge(label: "上游", value: "\(upCount) bp", color: upCount >= 50 ? .green : .orange)
                                 StudioSectionClearButton(label: "一键清除", action: vm.clearUpstreamSection)
@@ -138,20 +137,12 @@ public struct MutationView: View {
                         // 4. 突变重叠同源臂长度
                         StudioCard(title: "重叠同源臂") {
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                                ForEach([15, 18, 20, 25], id: \.self) { len in
-                                    Button(action: {
-                                        vm.homologyLength = len
-                                    }) {
-                                        Text("\(len) bp")
-                                            .font(.system(size: 11.5, weight: vm.homologyLength == len ? .bold : .medium))
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 3)
-                                            .background(vm.homologyLength == len ? Color.pink : Color.primary.opacity(0.06))
-                                            .foregroundColor(vm.homologyLength == len ? .white : .primary)
-                                            .cornerRadius(5)
+                                StudioSegmentedPicker(
+                                    selection: $vm.homologyLength,
+                                    options: [15, 18, 20, 25].map {
+                                        StudioSegmentedOption(value: $0, title: "\($0) bp", tint: .pink)
                                     }
-                                    .buttonStyle(.plain)
-                                }
+                                )
                                 StudioSectionClearButton(label: "一键重置") {
                                     vm.homologyLength = 20
                                 }
@@ -317,7 +308,12 @@ public struct MutationView: View {
     }
     
     private var injectPrimersButton: some View {
-        Button(action: {
+        StudioActionPillButton(
+            title: "写入原质粒",
+            icon: "arrow.down.doc.fill",
+            tint: .orange,
+            help: "向原质粒 .dna 写入定点突变引物（自动留备份）"
+        ) {
             if let info = vm.plasmidDNAInfo {
                 let url = URL(fileURLWithPath: info.filePath)
                 Task {
@@ -342,15 +338,7 @@ public struct MutationView: View {
                     }
                 }
             }
-        }) {
-            HStack(spacing: 4) {
-                Image(systemName: "arrow.down.doc.fill")
-                Text("⚡ 写入原质粒 .dna (留备份)")
-            }
-            .font(.system(size: 11.5, weight: .semibold))
         }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
     }
     
     // MARK: - 载入质粒后的特征选择与交互式密码子/氨基酸点选卡片 (全响应式布局，彻底解决截断与拥挤)
@@ -486,8 +474,12 @@ public struct MutationView: View {
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4.5)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                            .fill(isSelected ? Color.pink : Color.primary.opacity(0.06))
+                                        RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                            .fill(isSelected ? Color.pink : StudioPalette.controlBg(isLight: appState.isLightAppearance))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                                    .stroke(isSelected ? Color.pink.opacity(0.45) : StudioPalette.controlBorder(isLight: appState.isLightAppearance), lineWidth: 1)
+                                            )
                                     )
                                 }
                                 .buttonStyle(.plain)
@@ -500,8 +492,8 @@ public struct MutationView: View {
                     }
                     .frame(height: 54)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.03))
+                        RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                            .fill(StudioPalette.controlSubtleBg(isLight: appState.isLightAppearance))
                     )
                     .onChange(of: vm.selectedResidueIndex) { _, newIdx in
                         withAnimation(.easeInOut(duration: 0.18)) {
@@ -540,8 +532,12 @@ public struct MutationView: View {
                                 .foregroundColor(isChosen ? .white : .primary)
                                 .padding(.vertical, 4)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                        .fill(isChosen ? Color.purple : Color.primary.opacity(0.07))
+                                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                        .fill(isChosen ? Color.purple : StudioPalette.controlBg(isLight: appState.isLightAppearance))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                                .stroke(isChosen ? Color.purple.opacity(0.45) : StudioPalette.controlBorder(isLight: appState.isLightAppearance), lineWidth: 1)
+                                        )
                                 )
                             }
                             .buttonStyle(.plain)
@@ -565,7 +561,7 @@ public struct MutationView: View {
                             .foregroundColor(vm.selectedTargetAA == "Δ" ? .white : .red)
                             .padding(.vertical, 4)
                             .background(
-                                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                                     .fill(vm.selectedTargetAA == "Δ" ? Color.red : Color.red.opacity(0.12))
                             )
                         }
@@ -603,15 +599,19 @@ public struct MutationView: View {
                 }
             }
         }
-        .padding(10)
-        .background(Color.pink.opacity(0.07))
-        .cornerRadius(8)
+        .studioInnerBox(tint: .pink, paddingH: 10, paddingV: 10)
     }
-    
+
     private func cardPopoutWindowButton(info: SnapGeneFileInfo) -> some View {
         HStack(spacing: 5) {
             FinderRevealButton(filePath: info.filePath, label: "")
-            Button(action: {
+            StudioActionPillButton(
+                title: "选位点",
+                icon: "eye.fill",
+                tint: .purple,
+                isProminent: true,
+                help: "打开质粒图谱预览，点选密码子直接定位突变"
+            ) {
                 PlasmidWindowPresenter.shared.openPreviewWindow(
                     for: info,
                     roleLabel: "原始质粒预览 · 按住拉取密码子可直接突变",
@@ -620,17 +620,7 @@ public struct MutationView: View {
                         vm.applyInteractiveCodonPayload(payload)
                     }
                 )
-            }) {
-                HStack(spacing: 3) {
-                    Image(systemName: "eye.fill")
-                    Text("选位点预览")
-                }
-                .font(.system(size: 10.5, weight: .semibold))
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.purple)
-            .controlSize(.mini)
-            .fixedSize()
         }
     }
     
@@ -674,33 +664,26 @@ public struct MutationView: View {
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundColor(.pink)
                 .lineLimit(1)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color.pink.opacity(0.12))
-                .cornerRadius(4)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2.5)
+                .background(Capsule().fill(Color.pink.opacity(0.12)))
         }
     }
-    
+
     private func synonymousCodonButton(synCodon: String, chosenOpt: CodonTranslator.AminoAcidOption) -> some View {
         let isCurrentCodon = (BioSequence.clean(vm.mutSite) == synCodon)
-        return Button(action: {
+        return StudioCompactPillButton(
+            title: synCodon,
+            tint: .pink,
+            isProminent: isCurrentCodon,
+            monospaced: true
+        ) {
             vm.selectResidueAndMutate(
                 residueIndex1Based: vm.selectedResidueIndex,
                 targetAA: String(chosenOpt.singleLetter),
                 customCodon: synCodon
             )
-        }) {
-            Text(synCodon)
-                .font(.system(size: 10.5, weight: isCurrentCodon ? .bold : .medium, design: .monospaced))
-                .foregroundColor(isCurrentCodon ? .white : .primary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(isCurrentCodon ? Color.pink : Color.primary.opacity(0.08))
-                )
         }
-        .buttonStyle(.plain)
     }
     
     private func loadSampleMutation() {

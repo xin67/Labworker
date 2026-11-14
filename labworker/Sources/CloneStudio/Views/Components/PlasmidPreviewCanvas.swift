@@ -1467,9 +1467,15 @@ public struct PlasmidPreviewPanel: View {
                     }
                 }
             }
-            .padding(2)
-            .background(Color(NSColor.controlBackgroundColor).opacity(0.6))
-            .cornerRadius(7)
+            .padding(3)
+            .background(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .fill(StudioPalette.trackBg(isLight: !isDark))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .stroke(StudioPalette.controlBorder(isLight: !isDark), lineWidth: 1)
+            )
             
             // 主视图区 (精细同屏 / 环形 / 微观序列 / 线性 / 谱系)
             Group {
@@ -1505,10 +1511,10 @@ public struct PlasmidPreviewPanel: View {
                                     Text(feat.name).font(.system(size: 10, weight: isSel ? .bold : .regular))
                                     Text("\(feat.lengthBp)bp").font(.system(size: 9, design: .monospaced)).foregroundColor(.secondary)
                                 }
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2.5)
+                                .padding(.horizontal, 8)
+                                .frame(height: 22)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 4)
+                                    Capsule(style: .continuous)
                                         .fill(isSel ? feat.color.opacity(0.25) : Color.primary.opacity(0.05))
                                 )
                             }
@@ -1535,9 +1541,12 @@ public struct PlasmidPreviewPanel: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
-                    .padding(4)
-                    .background(feat.color.opacity(0.08))
-                    .cornerRadius(4)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(feat.color.opacity(0.08))
+                    )
             }
         }
         .padding(10)
@@ -1553,59 +1562,33 @@ public struct PlasmidPreviewPanel: View {
     
     // MARK: - 顶栏控制按钮 (全宽同屏展开 / 关闭收起)
     private var expandToggleButton: some View {
-        Button(action: {
+        StudioCompactPillButton(
+            title: appState.isPreviewExpanded ? "恢复双栏" : "精细同屏",
+            icon: appState.isPreviewExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
+            tint: .cyan,
+            isProminent: appState.isPreviewExpanded,
+            help: appState.isPreviewExpanded ? "恢复左右双栏表单+预览模式" : "全宽展开精细同屏工作台（左环图 + 右序列同屏联动）"
+        ) {
             withAnimation(.easeInOut(duration: 0.22)) {
                 appState.isPreviewExpanded.toggle()
                 if appState.isPreviewExpanded {
                     selectedTab = .split
                 }
             }
-        }) {
-            HStack(spacing: 3) {
-                Image(systemName: appState.isPreviewExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                    .font(.system(size: 9.5, weight: .bold))
-                Text(appState.isPreviewExpanded ? "恢复双栏" : "精细同屏")
-                    .font(.system(size: 10, weight: .semibold))
-            }
-            .foregroundColor(appState.isPreviewExpanded ? .black : .cyan)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(appState.isPreviewExpanded ? Color.cyan : Color.cyan.opacity(0.14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.cyan.opacity(0.45), lineWidth: 0.8)
-                    )
-            )
         }
-        .buttonStyle(.plain)
-        .help(appState.isPreviewExpanded ? "恢复左右双栏表单+预览模式" : "全宽展开精细同屏工作台（左环图 + 右序列同屏联动）")
     }
     
     private func closePreviewButton(action: @escaping () -> Void) -> some View {
-        Button(action: {
+        StudioCompactPillButton(
+            title: "收起",
+            icon: "xmark",
+            help: "收起质粒预览窗口（可通过顶栏开关随时重新打开）"
+        ) {
             withAnimation(.easeInOut(duration: 0.22)) {
                 appState.isPreviewExpanded = false
                 action()
             }
-        }) {
-            HStack(spacing: 3) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 9.5, weight: .bold))
-                Text("收起")
-                    .font(.system(size: 10, weight: .medium))
-            }
-            .foregroundColor(.secondary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.primary.opacity(0.06))
-            )
         }
-        .buttonStyle(.plain)
-        .help("收起质粒预览窗口（可通过顶栏开关随时重新打开）")
     }
     
     private func selectFeature(_ feat: PlasmidFeatureItem) {
@@ -1660,33 +1643,18 @@ public struct PlasmidPreviewPanel: View {
     }
     
     private var popoutWindowButton: some View {
-        Button(action: {
+        StudioCompactPillButton(
+            title: "新窗口",
+            icon: "macwindow.badge.plus",
+            tint: .purple,
+            help: "弹出一个独立 macOS 新窗口预览该质粒图谱与序列"
+        ) {
             PlasmidWindowPresenter.shared.openPreviewWindow(
                 data: data,
                 title: "🧬 质粒独立窗口预览 — \(data.constructTitle) (\(data.totalLengthBp) bp)",
                 onMutateCodon: onMutateCodon
             )
-        }) {
-            HStack(spacing: 3) {
-                Image(systemName: "macwindow.badge.plus")
-                    .font(.system(size: 9.5, weight: .bold))
-                Text("新窗口预览")
-                    .font(.system(size: 10, weight: .semibold))
-            }
-            .foregroundColor(.purple)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.purple.opacity(0.14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.purple.opacity(0.45), lineWidth: 0.8)
-                    )
-            )
         }
-        .buttonStyle(.plain)
-        .help("弹出一个独立 macOS 新窗口预览该质粒图谱与序列")
     }
     
     private var sequenceMapView: some View {
@@ -1733,12 +1701,13 @@ public struct PlasmidPreviewPanel: View {
                     .font(.system(size: compact ? 10 : 11, weight: isSel ? .bold : .medium))
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, compact ? 4 : 5)
+            .frame(height: 24)
             .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isSel ? Color.accentColor : Color.primary.opacity(0.05))
+                Capsule(style: .continuous)
+                    .fill(isSel ? Color.accentColor : Color.clear)
             )
             .foregroundColor(isSel ? .white : .primary)
+            .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -1778,14 +1747,14 @@ public struct PlasmidPreviewPanel: View {
             circularBottomStatusBar
         }
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                 .fill(mapBg)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                         .stroke(borderCol, lineWidth: 1)
                 )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
     }
     
     private var circularTopToolbar: some View {
@@ -1839,9 +1808,9 @@ public struct PlasmidPreviewPanel: View {
                             .font(.system(size: 8.5, weight: .bold, design: .monospaced))
                     }
                     .foregroundColor(titleCol.opacity(0.85))
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 3)
-                    .background(RoundedRectangle(cornerRadius: 3.5).fill(Color.primary.opacity(0.08)))
+                    .padding(.horizontal, 7)
+                    .frame(height: 22)
+                    .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.08)))
                 }
                 .buttonStyle(.plain)
                 .help("导出高分辨率 PNG 图谱")
@@ -2229,10 +2198,10 @@ public struct PlasmidPreviewPanel: View {
         .padding(7)
         .frame(width: 146)
         .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                 .fill(cardBg)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                         .stroke(cardStroke, lineWidth: 0.8)
                 )
         )
@@ -2250,9 +2219,9 @@ public struct PlasmidPreviewPanel: View {
             Image(systemName: icon)
                 .font(.system(size: 9.5, weight: isActive ? .bold : .regular))
                 .foregroundColor(isActive ? activeCol : inactiveCol)
-                .frame(width: 20, height: 20)
+                .frame(width: 22, height: 22)
                 .background(
-                    RoundedRectangle(cornerRadius: 3.5)
+                    Circle()
                         .fill(isActive ? activeCol.opacity(0.18) : Color.primary.opacity(0.06))
                 )
         }
@@ -2270,9 +2239,9 @@ public struct PlasmidPreviewPanel: View {
                             Text(step.0)
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 8)
+                                .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
-                                .background(RoundedRectangle(cornerRadius: 5).fill(step.2))
+                                .background(Capsule(style: .continuous).fill(step.2))
                             
                             if idx < data.linearSummarySteps.count - 1 {
                                 Image(systemName: "link")
@@ -2292,18 +2261,16 @@ public struct PlasmidPreviewPanel: View {
                         Text(p.isForward ? "F" : "R")
                             .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                             .foregroundColor(.white)
-                            .padding(.horizontal, 4)
+                            .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(p.color)
-                            .cornerRadius(3)
+                            .clipShape(Capsule(style: .continuous))
                         Text(p.name).font(.system(size: 11, weight: .semibold)).frame(width: 80, alignment: .leading)
                         Text(p.sequence).font(.system(size: 10, design: .monospaced)).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
                         Spacer()
                         Text(p.tmText).font(.system(size: 10, design: .monospaced)).foregroundColor(.orange)
                     }
-                    .padding(4)
-                    .background(Color.primary.opacity(0.03))
-                    .cornerRadius(4)
+                    .studioInnerBox(paddingH: 8, paddingV: 5)
                 }
             }
         }
@@ -2434,9 +2401,7 @@ private struct StandalonePlasmidPreviewWindowView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                Button("关闭窗口", action: onCloseWindow)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                StudioActionPillButton(title: "关闭窗口", icon: "xmark", action: onCloseWindow)
             }
             .padding(.horizontal, 12)
             .padding(.top, 10)

@@ -122,7 +122,7 @@ public struct RestructureCalculatorView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                         .background(
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            Capsule(style: .continuous)
                                 .fill(Color.green.opacity(0.11))
                         )
                     }
@@ -237,10 +237,10 @@ public struct RestructureCalculatorView: View {
                         .font(.system(size: 13.5, weight: .bold, design: .monospaced))
                         .foregroundColor(.green)
                 }
-                .padding(.horizontal, 9)
+                .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    Capsule(style: .continuous)
                         .fill(Color.green.opacity(0.11))
                 )
                 .fixedSize(horizontal: true, vertical: false)
@@ -333,15 +333,7 @@ public struct RestructureCalculatorView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(11)
-        .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(Color.purple.opacity(0.04))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .stroke(Color.purple.opacity(0.12), lineWidth: 1)
-                )
-        )
+        .studioInnerBox(tint: .purple, paddingH: 11, paddingV: 11)
     }
     
     // MARK: - 3. 右侧：20 μL 推荐反应体系单
@@ -409,7 +401,7 @@ public struct RestructureCalculatorView: View {
                 .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
                 .frame(width: width)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 5)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .stroke(highlightColor?.opacity(0.45) ?? Color.clear, lineWidth: 1)
                 )
             Text(unit)
@@ -417,27 +409,21 @@ public struct RestructureCalculatorView: View {
                 .foregroundColor(.secondary)
         }
     }
-    
+
     private func ngPresetPill(
         title: String,
         isSelected: Bool,
         tint: Color,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 11.5, weight: isSelected ? .bold : .medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3.5)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(isSelected ? tint : Color.primary.opacity(0.06))
-                )
-                .foregroundColor(isSelected ? .white : .primary)
-        }
-        .buttonStyle(.plain)
+        StudioCompactPillButton(
+            title: title,
+            tint: tint,
+            isProminent: isSelected,
+            action: action
+        )
     }
-    
+
     private func pipetteRow(name: String, detail: String, vol: String, tint: Color) -> some View {
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
@@ -453,12 +439,7 @@ public struct RestructureCalculatorView: View {
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
                 .foregroundColor(tint == .secondary ? .primary : tint)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color.primary.opacity(0.035))
-        )
+        .studioInnerBox(paddingH: 10, paddingV: 8)
     }
     
     private func bindingForLength(at index: Int) -> Binding<String> {

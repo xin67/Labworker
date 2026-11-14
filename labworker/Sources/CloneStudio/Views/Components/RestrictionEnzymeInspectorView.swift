@@ -57,13 +57,13 @@ public struct RestrictionEnzymeInspectorView: View {
             Divider().background(Color.white.opacity(0.12))
             nebBufferMatrixSection
         }
-        .padding(10)
+        .padding(12)
         .frame(width: 268)
         .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
                 .fill(Color(red: 0.06, green: 0.09, blue: 0.16).opacity(0.97))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
                         .stroke(Color.cyan.opacity(0.35), lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.55), radius: 14, x: 0, y: 6)
@@ -86,7 +86,7 @@ public struct RestrictionEnzymeInspectorView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.white.opacity(0.65))
-                        .frame(width: 18, height: 18)
+                        .frame(width: 24, height: 24)
                         .background(Circle().fill(Color.white.opacity(0.08)))
                 }
                 .buttonStyle(.plain)
@@ -118,13 +118,13 @@ public struct RestrictionEnzymeInspectorView: View {
                         .font(.system(size: 8, weight: .bold))
                         .foregroundColor(.white.opacity(0.6))
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 9)
+                .frame(height: 24)
                 .background(
-                    RoundedRectangle(cornerRadius: 5)
+                    Capsule(style: .continuous)
                         .fill(Color.white.opacity(0.07))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 5)
+                            Capsule(style: .continuous)
                                 .stroke(Color.cyan.opacity(0.35), lineWidth: 0.8)
                         )
                 )
@@ -136,11 +136,11 @@ public struct RestrictionEnzymeInspectorView: View {
             }) {
                 Text("Clear")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.8))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
+                    .foregroundColor(.white.opacity(0.85))
+                    .padding(.horizontal, 10)
+                    .frame(height: 24)
                     .background(
-                        RoundedRectangle(cornerRadius: 5)
+                        Capsule(style: .continuous)
                             .fill(Color.white.opacity(0.08))
                     )
             }
@@ -173,13 +173,13 @@ public struct RestrictionEnzymeInspectorView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4.5)
+            .padding(.horizontal, 9)
+            .frame(height: 24)
             .background(
-                RoundedRectangle(cornerRadius: 5)
+                Capsule(style: .continuous)
                     .fill(Color.black.opacity(0.35))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 5)
+                        Capsule(style: .continuous)
                             .stroke(Color.white.opacity(0.12), lineWidth: 0.8)
                     )
             )
@@ -206,14 +206,14 @@ public struct RestrictionEnzymeInspectorView: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(Color.white.opacity(0.06))
-                            .cornerRadius(3)
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(3)
+                .padding(4)
                 .background(Color(red: 0.07, green: 0.10, blue: 0.18))
-                .cornerRadius(5)
+                .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
             }
         }
     }
@@ -270,7 +270,7 @@ public struct RestrictionEnzymeInspectorView: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
         .background(Color.white.opacity(0.03))
-        .cornerRadius(3)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
     
     private var detectedCutsitesSection: some View {
@@ -327,7 +327,7 @@ public struct RestrictionEnzymeInspectorView: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
             .background(
-                RoundedRectangle(cornerRadius: 3.5)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(Color.white.opacity(0.04))
             )
         }
@@ -399,7 +399,7 @@ public struct RestrictionEnzymeInspectorView: View {
         .padding(.horizontal, 4)
         .padding(.vertical, 1.5)
         .background(Color.white.opacity(0.025))
-        .cornerRadius(3)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
     
     @ViewBuilder

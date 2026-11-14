@@ -97,10 +97,8 @@ public struct SequenceToolsView: View {
                         Text(vm.outputSeq)
                             .font(.system(size: 13.5, weight: .medium, design: .monospaced))
                             .textSelection(.enabled)
-                            .padding(10)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(8)
+                            .studioInnerBox(paddingH: 10, paddingV: 10)
                     }
                 }
         }

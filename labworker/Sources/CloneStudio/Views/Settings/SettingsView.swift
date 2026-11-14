@@ -145,22 +145,18 @@ public struct SettingsView: View {
                                 value: "\(visibleInSec)/\(sectionItems.count)",
                                 color: visibleInSec > 0 ? .blue : .secondary
                             )
-                            Button("全选") {
+                            StudioCompactPillButton(title: "全选") {
                                 for item in sectionItems {
                                     appState.setNavItemVisible(item, visible: true)
                                 }
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.mini)
 
                             if section != .orderAndSettings {
-                                Button("全隐") {
+                                StudioCompactPillButton(title: "全隐") {
                                     for item in sectionItems where item.canBeHiddenInSidebar {
                                         appState.setNavItemVisible(item, visible: false)
                                     }
                                 }
-                                .buttonStyle(.bordered)
-                                .controlSize(.mini)
                             }
                         }
                     } content: {
@@ -206,8 +202,12 @@ public struct SettingsView: View {
                                 .padding(.horizontal, 9)
                                 .padding(.vertical, 7)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(isVis ? Color.accentColor.opacity(0.07) : Color.primary.opacity(0.03))
+                                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                        .fill(isVis ? Color.accentColor.opacity(0.08) : StudioPalette.controlSubtleBg(isLight: appState.isLightAppearance))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                                .stroke(StudioPalette.cardBorder(isLight: appState.isLightAppearance), lineWidth: 1)
+                                        )
                                 )
                             }
                         }
@@ -273,7 +273,7 @@ public struct SettingsView: View {
                                     }
                                     .padding(6)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.035)))
+                                    .studioInnerBox(paddingH: 8, paddingV: 6)
                                 }
                             }
                         } else if let lastSync = pool.lastMCPActivitySummary {
@@ -283,9 +283,8 @@ public struct SettingsView: View {
                                 Text("最近外部调用同步：\(lastSync)")
                                     .font(.system(size: 11.5, weight: .medium))
                             }
-                            .padding(8)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(RoundedRectangle(cornerRadius: 7).fill(Color.green.opacity(0.08)))
+                            .studioInnerBox(tint: .green, paddingH: 10, paddingV: 8)
                         }
                     }
                 }
@@ -299,11 +298,11 @@ public struct SettingsView: View {
                         .padding(10)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color(NSColor.textBackgroundColor))
+                            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                .fill(StudioPalette.controlBg(isLight: appState.isLightAppearance))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                        .stroke(StudioPalette.controlBorder(isLight: appState.isLightAppearance), lineWidth: 1)
                                 )
                         )
                 }
@@ -328,12 +327,8 @@ public struct SettingsView: View {
                                 .foregroundColor(.primary.opacity(0.88))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        .padding(9)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color.primary.opacity(0.035))
-                        )
+                        .studioInnerBox(paddingH: 10, paddingV: 9)
                     }
                 }
             }
@@ -382,15 +377,15 @@ public struct SettingsView: View {
                                 .buttonStyle(.plain)
                             }
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5.5)
+                        .padding(.horizontal, 11)
+                        .frame(height: 30)
                         .frame(minWidth: 240, maxWidth: 420)
                         .background(
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(Color(NSColor.textBackgroundColor))
+                            Capsule(style: .continuous)
+                                .fill(StudioPalette.controlBg(isLight: appState.isLightAppearance))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                        .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                                    Capsule(style: .continuous)
+                                        .stroke(StudioPalette.controlBorder(isLight: appState.isLightAppearance), lineWidth: 1)
                                 )
                         )
 
@@ -411,7 +406,7 @@ public struct SettingsView: View {
                         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                             HStack(spacing: 7) {
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                                         .fill(Color.accentColor.opacity(0.15))
                                         .frame(width: 24, height: 24)
                                     Image(systemName: item.systemImage)
@@ -429,20 +424,14 @@ public struct SettingsView: View {
                             }
 
                             if item != .settings {
-                                Button {
+                                StudioCompactPillButton(
+                                    title: "直达",
+                                    icon: "arrow.up.right",
+                                    tint: appState.accentTheme.color,
+                                    help: "跳转到「\(item.title)」工作台"
+                                ) {
                                     appState.selectedNav = item
-                                } label: {
-                                    HStack(spacing: 3) {
-                                        Text("直达功能")
-                                        Image(systemName: "arrow.up.right.circle.fill")
-                                    }
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3.5)
-                                    .background(Capsule().fill(Color.accentColor.opacity(0.14)))
-                                    .foregroundColor(.accentColor)
                                 }
-                                .buttonStyle(.plain)
                             }
 
                             if !isVis && item.canBeHiddenInSidebar {
@@ -487,18 +476,17 @@ public struct SettingsView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        .padding(8)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.035)))
+                        .studioInnerBox(paddingH: 10, paddingV: 8)
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color(NSColor.controlBackgroundColor))
+                        RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                            .fill(StudioPalette.controlBg(isLight: appState.isLightAppearance))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                    .stroke(StudioPalette.cardBorder(isLight: appState.isLightAppearance), lineWidth: 1)
                             )
                     )
                 }
@@ -508,20 +496,13 @@ public struct SettingsView: View {
 
     private func categoryFilterPill(title: String, section: SidebarSectionKind?) -> some View {
         let isSelected = (selectedManualSection == section)
-        return Button {
+        return StudioCompactPillButton(
+            title: title,
+            tint: appState.accentTheme.color,
+            isProminent: isSelected
+        ) {
             selectedManualSection = section
-        } label: {
-            Text(title)
-                .font(.system(size: 11.5, weight: isSelected ? .semibold : .medium))
-                .foregroundColor(isSelected ? .white : .primary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(isSelected ? Color.accentColor : Color.primary.opacity(0.07))
-                )
         }
-        .buttonStyle(.plain)
     }
 
     // MARK: - 原有 7 张默认参数配置卡片

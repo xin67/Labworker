@@ -290,11 +290,7 @@ public struct PlateDesignerView: View {
                             }
                         }
                     }
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color.primary.opacity(0.04))
-                    )
+                    .studioInnerBox(paddingH: 10, paddingV: 10)
                 }
                 
                 // 声明式自适应新增样品栏：宽窗口同行排列，窄窗口自动折行
@@ -393,42 +389,31 @@ public struct PlateDesignerView: View {
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                 .foregroundColor(.secondary)
             
-            Button(action: {
+            StudioCompactPillButton(
+                title: "",
+                icon: isSelectedBrush ? "paintbrush.pointed.fill" : "paintbrush",
+                tint: .teal,
+                isProminent: isSelectedBrush,
+                help: "选为画笔涂刷到指定孔位"
+            ) {
                 activeSampleIDForPaint = sample.id
                 paintTool = .paintSample
-            }) {
-                Image(systemName: isSelectedBrush ? "paintbrush.pointed.fill" : "paintbrush")
-                    .font(.system(size: 12))
-                    .foregroundColor(isSelectedBrush ? .white : .secondary)
-                    .padding(5)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(isSelectedBrush ? Color.teal : Color.primary.opacity(0.06))
-                    )
             }
-            .buttonStyle(.plain)
-            .help("选为画笔涂刷到指定孔位")
-            
-            Button(action: {
+
+            StudioCompactPillButton(
+                title: "",
+                icon: "xmark",
+                help: "移除此样品"
+            ) {
                 store.samples.removeAll { $0.id == sample.id }
                 store.regenerateLayout()
-            }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.secondary)
-                    .padding(5)
             }
-            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.primary.opacity(0.04))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(isSelectedBrush ? Color.teal : Color.clear, lineWidth: 1.2)
-                )
+        .studioInnerBox(
+            tint: isSelectedBrush ? .teal : nil,
+            isHighlighted: isSelectedBrush,
+            paddingH: 10,
+            paddingV: 6
         )
     }
     

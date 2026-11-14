@@ -176,55 +176,41 @@ public struct ProteinWorkbenchView: View {
                     value: importedPDBText != nil ? "外部实验/AlphaFold PDB" : "SPICE 启发式折叠",
                     color: importedPDBText != nil ? .green : .teal
                 )
-                Button {
+                StudioCompactPillButton(
+                    title: isShowingSourceEditor ? "收起配置" : "编辑序列 (pH \(String(format: "%.1f", env.ph)) · \(String(format: "%.0fK", env.temperatureK)))",
+                    icon: isShowingSourceEditor ? "chevron.up.circle.fill" : "slider.horizontal.3",
+                    tint: .accentColor,
+                    isSelected: isShowingSourceEditor
+                ) {
                     withAnimation(.easeInOut(duration: 0.16)) {
                         isShowingSourceEditor.toggle()
                     }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: isShowingSourceEditor ? "chevron.up.circle.fill" : "slider.horizontal.3")
-                        Text(isShowingSourceEditor ? "收起序列与环境" : "编辑序列与环境 (pH \(String(format: "%.1f", env.ph)) · \(String(format: "%.0fK", env.temperatureK)))")
-                    }
-                    .font(.system(size: 11, weight: .semibold))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.accentColor.opacity(0.12))
-                    )
-                    .foregroundColor(.accentColor)
                 }
-                .buttonStyle(.plain)
             }
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                     ForEach(ProteinBiophysicsEngine.builtinExamples) { ex in
                         let isSel = (selectedPresetID == ex.id && importedPDBText == nil)
-                        Button {
+                        StudioCompactPillButton(
+                            title: ex.name,
+                            icon: "atom",
+                            isProminent: isSel
+                        ) {
                             selectedPresetID = ex.id
                             importedPDBText = nil
                             rawSequence = ex.sequence
-                        } label: {
-                            HStack(spacing: 5) {
-                                Image(systemName: "atom")
-                                    .font(.system(size: 11, weight: .semibold))
-                                Text(ex.name)
-                                    .font(.system(size: 11.5, weight: isSel ? .semibold : .medium))
-                            }
-                            .foregroundColor(isSel ? .white : .primary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(isSel ? Color.accentColor : Color.primary.opacity(0.06))
-                            )
                         }
-                        .buttonStyle(.plain)
                     }
 
                     if !plasmidPool.items.isEmpty {
-                        Menu {
+                        StudioMenuPillButton(
+                            title: "质粒池 CDS 导入",
+                            icon: "tray.2.fill",
+                            tint: .purple,
+                            compact: true,
+                            help: "从质粒池选区 CDS 翻译导入蛋白序列"
+                        ) {
                             ForEach(plasmidPool.items) { item in
                                 ForEach(item.cdsAndGeneFeatures) { feat in
                                     Button("\(item.name) → \(feat.name)") {
@@ -232,22 +218,7 @@ public struct ProteinWorkbenchView: View {
                                     }
                                 }
                             }
-                        } label: {
-                            HStack(spacing: 5) {
-                                Image(systemName: "tray.2.fill")
-                                Text("从质粒池 CDS 翻译导入")
-                            }
-                            .font(.system(size: 11.5, weight: .semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(Color.purple.opacity(0.12))
-                            )
-                            .foregroundColor(.purple)
                         }
-                        .menuStyle(.borderlessButton)
-                        .fixedSize()
                     }
                 }
 
@@ -259,9 +230,9 @@ public struct ProteinWorkbenchView: View {
                             .padding(6)
                             .frame(height: 58)
                             .background(Color(NSColor.textBackgroundColor).opacity(0.92))
-                            .cornerRadius(7)
+                            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                                     .stroke(Color.primary.opacity(0.12), lineWidth: 1)
                             )
 
@@ -341,18 +312,13 @@ public struct ProteinWorkbenchView: View {
                             .frame(width: 72)
                     }
 
-                    Button {
+                    StudioCompactPillButton(title: "重置视角", icon: "arrow.counterclockwise") {
                         yawAngle = 0.45
                         pitchAngle = 0.25
                         lastYaw = 0.45
                         lastPitch = 0.25
                         zoomScale = 1.0
-                    } label: {
-                        Label("重置视角", systemImage: "arrow.counterclockwise")
-                            .font(.system(size: 10.5))
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.mini)
                 }
 
                 // 纯净 3D 画布（无右下角黑色胶囊浮层遮挡）
@@ -634,8 +600,7 @@ public struct ProteinWorkbenchView: View {
                         }
                         .frame(height: 5)
                     }
-                    .padding(7)
-                    .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.03)))
+                    .studioInnerBox(paddingH: 8, paddingV: 7)
                 }
             }
         }
@@ -705,12 +670,8 @@ public struct ProteinWorkbenchView: View {
                 .foregroundColor(.secondary)
                 .lineLimit(1)
         }
-        .padding(9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.primary.opacity(0.04))
-        )
+        .studioInnerBox(paddingH: 9, paddingV: 9)
     }
 
     // MARK: - 5. 四合一结构、对接盒子与突变分析面板
@@ -795,9 +756,8 @@ public struct ProteinWorkbenchView: View {
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(9)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
+            .studioInnerBox(paddingH: 9, paddingV: 9)
 
             // 4. 结构体检与可信度卡（流式徽章头 + 自动换行告警）
             VStack(alignment: .leading, spacing: 6) {
@@ -828,16 +788,8 @@ public struct ProteinWorkbenchView: View {
                     }
                 }
             }
-            .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.orange.opacity(0.07))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(Color.orange.opacity(0.25), lineWidth: 1)
-                    )
-            )
+            .studioInnerBox(tint: .orange, paddingH: 10, paddingV: 10)
         }
     }
 
@@ -930,9 +882,9 @@ public struct ProteinWorkbenchView: View {
                 .padding(6)
                 .frame(height: 64)
                 .background(Color(NSColor.textBackgroundColor).opacity(0.92))
-                .cornerRadius(7)
+                .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                         .stroke(Color.primary.opacity(0.12), lineWidth: 1)
                 )
 
@@ -968,13 +920,8 @@ public struct ProteinWorkbenchView: View {
                         )
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(Color.primary.opacity(0.04))
-                )
+                .studioInnerBox(paddingH: 8, paddingV: 6)
             }
         }
     }

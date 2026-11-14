@@ -44,11 +44,12 @@ public struct OrderExportView: View {
         ) {
                 
                 StudioCard(title: "订购信息") {
-                    Button(isEditingProfile ? "完成" : "编辑") {
+                    StudioActionPillButton(
+                        title: isEditingProfile ? "完成" : "编辑",
+                        icon: isEditingProfile ? "checkmark" : "pencil"
+                    ) {
                         isEditingProfile.toggle()
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
                 } content: {
                     if isEditingProfile {
                         profileEditView
@@ -127,17 +128,27 @@ public struct OrderExportView: View {
     private var primerOrderSection: some View {
         StudioCard(title: "引物合成池 (\(appState.primersCart.count))") {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                Button("复制 TSV", action: vm.copyAsTSV)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(appState.primersCart.isEmpty)
-                
-                Button("复制 FASTA", action: vm.copyAsFASTA)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(appState.primersCart.isEmpty)
-                
-                Button(action: {
+                StudioActionPillButton(
+                    title: "复制 TSV",
+                    icon: "doc.on.doc",
+                    isDisabled: appState.primersCart.isEmpty,
+                    action: vm.copyAsTSV
+                )
+
+                StudioActionPillButton(
+                    title: "复制 FASTA",
+                    icon: "text.alignleft",
+                    isDisabled: appState.primersCart.isEmpty,
+                    action: vm.copyAsFASTA
+                )
+
+                StudioActionPillButton(
+                    title: "写入 .dna",
+                    icon: "bolt.fill",
+                    tint: .purple,
+                    isProminent: true,
+                    isDisabled: appState.primersCart.isEmpty
+                ) {
                     selectDNAFile { url in
                         Task {
                             do {
@@ -149,24 +160,18 @@ public struct OrderExportView: View {
                             }
                         }
                     }
-                }) {
-                    Label("写入 .dna", systemImage: "bolt.fill")
-                        .font(.system(size: 11.5, weight: .semibold))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.purple)
-                .controlSize(.small)
-                .disabled(appState.primersCart.isEmpty)
-                
-                Button(action: vm.exportPrimersOrder) {
-                    Label("导出擎科订购表 (.xlsx)", systemImage: "arrow.down.doc.fill")
-                        .font(.system(size: 11.5, weight: .semibold))
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
-                .controlSize(.small)
-                .disabled(appState.primersCart.isEmpty || vm.isExporting)
-                
+
+                StudioActionPillButton(
+                    title: "导出 .xlsx",
+                    icon: "arrow.down.doc.fill",
+                    tint: .blue,
+                    isProminent: true,
+                    isDisabled: appState.primersCart.isEmpty || vm.isExporting,
+                    help: "导出擎科引物合成订购表 (.xlsx)",
+                    action: vm.exportPrimersOrder
+                )
+
                 StudioSectionClearButton(
                     title: "清空引物",
                     isDisabled: appState.primersCart.isEmpty,
@@ -215,18 +220,16 @@ public struct OrderExportView: View {
                                 .font(.system(size: 10, design: .monospaced))
                                 .foregroundColor(.secondary)
                             
-                            Button(role: .destructive) {
+                            StudioCompactPillButton(
+                                title: "",
+                                icon: "xmark",
+                                tint: .secondary,
+                                help: "移除引物"
+                            ) {
                                 appState.removePrimer(at: index)
-                            } label: {
-                                Image(systemName: "xmark.circle")
-                                    .foregroundColor(.secondary)
                             }
-                            .buttonStyle(.borderless)
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(Color(NSColor.textBackgroundColor).opacity(0.6))
-                        .cornerRadius(5)
+                        .studioInnerBox(paddingH: 10, paddingV: 6)
                     }
                 }
             }
@@ -237,25 +240,27 @@ public struct OrderExportView: View {
     private var sequencingOrderSection: some View {
         StudioCard(title: "测序样品 (\(appState.sangonSamples.count))") {
             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                Picker("", selection: $vm.selectedSeqTemplate) {
-                    Text("擎科测序专属单").tag(OrderFormTemplate.tsingkeSeq)
-                    Text("生工测序专属版").tag(OrderFormTemplate.sangonSeq)
-                    Text("生工通用 V9 版").tag(OrderFormTemplate.sangonV9Seq)
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .controlSize(.small)
-                .frame(width: 150)
-                
-                Button(action: vm.exportSequencingOrder) {
-                    Label("导出测序表 (.xlsx)", systemImage: "arrow.down.doc.fill")
-                        .font(.system(size: 11.5, weight: .semibold))
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.purple)
-                .controlSize(.small)
-                .disabled(appState.sangonSamples.isEmpty || vm.isExporting)
-                
+                StudioMenuPicker(
+                    selection: $vm.selectedSeqTemplate,
+                    options: [
+                        StudioMenuPickerOption(value: OrderFormTemplate.tsingkeSeq, title: "擎科测序专属单"),
+                        StudioMenuPickerOption(value: OrderFormTemplate.sangonSeq, title: "生工测序专属版"),
+                        StudioMenuPickerOption(value: OrderFormTemplate.sangonV9Seq, title: "生工通用 V9 版")
+                    ],
+                    icon: "doc.plaintext",
+                    help: "选择测序送样表格模板"
+                )
+
+                StudioActionPillButton(
+                    title: "导出 .xlsx",
+                    icon: "arrow.down.doc.fill",
+                    tint: .purple,
+                    isProminent: true,
+                    isDisabled: appState.sangonSamples.isEmpty || vm.isExporting,
+                    help: "导出商业 DNA 测序送样表 (.xlsx)",
+                    action: vm.exportSequencingOrder
+                )
+
                 StudioSectionClearButton(
                     title: "清空样品",
                     isDisabled: appState.sangonSamples.isEmpty,
@@ -273,19 +278,15 @@ public struct OrderExportView: View {
                         .frame(width: 75)
                     TextField("长度bp", text: $newFragLen)
                         .frame(width: 70)
-                    
-                    Button("＋ 添加样品") {
+
+                    StudioCompactPillButton(title: "添加样品", icon: "plus") {
                         let len = Int(newFragLen) ?? 1000
                         vm.addSample(name: newSampleName, vector: newVectorName, primer: newPrimerName, fragmentLength: len)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    
-                    Button("＋ 双向 (T7/BGH)") {
+
+                    StudioCompactPillButton(title: "双向 (T7/BGH)", icon: "plus.circle") {
                         vm.addPairSample(name: newSampleName, vector: newVectorName)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textFieldStyle(.roundedBorder)
@@ -314,11 +315,10 @@ public struct OrderExportView: View {
                                     .frame(width: 140, alignment: .leading)
                                 
                                 Text(sample.sampleType)
-                                    .font(.system(size: 10.5))
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1)
-                                    .background(Color.secondary.opacity(0.12))
-                                    .cornerRadius(3)
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(Color.secondary.opacity(0.12)))
                                 
                                 Text(sample.vectorName)
                                     .font(.system(size: 11, design: .monospaced))
@@ -336,18 +336,16 @@ public struct OrderExportView: View {
                                 
                                 Spacer()
                                 
-                                Button(role: .destructive) {
+                                StudioCompactPillButton(
+                                    title: "",
+                                    icon: "xmark",
+                                    tint: .secondary,
+                                    help: "移除样品"
+                                ) {
                                     vm.removeSample(at: index)
-                                } label: {
-                                    Image(systemName: "xmark.circle")
-                                        .foregroundColor(.secondary)
                                 }
-                                .buttonStyle(.borderless)
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(Color(NSColor.textBackgroundColor).opacity(0.6))
-                            .cornerRadius(5)
+                            .studioInnerBox(paddingH: 10, paddingV: 6)
                         }
                     }
                 }

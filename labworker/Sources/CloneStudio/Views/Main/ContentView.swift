@@ -195,74 +195,10 @@ public struct ContentView: View {
         }
     }
     
-    // MARK: - 侧边栏列表（顶部 Labworker 品牌栏 + Finder 智能快导按钮 + 胶囊搜索框 + 5 大直觉分类）
+    // MARK: - 侧边栏列表（极简上移 + 滚动穿透系统设置风格模糊搜索框 + 独立 Sanger 测序与 5 大分类）
     private var sidebarContent: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                AdaptiveCloneStudioAppIconView(size: 26)
-                Text("Labworker")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                Spacer(minLength: 6)
-                Button(action: {
-                    CloneStudioApp.presentOpenDNAFilesPanel()
-                }) {
-                    Image(systemName: "folder.badge.plus")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 28, height: 28)
-                        .background(
-                            Circle()
-                                .fill(appState.accentTheme.color)
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.24), lineWidth: 0.75)
-                        )
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .help("从 Finder 导入实验文件 (.dna / .tif / .pdb / .nwk / .csv / .fasta)，自动识别并直达对应功能模块")
-            }
-            .padding(.horizontal, 14)
-            .padding(.top, 38)
-            .padding(.bottom, 10)
-            
-            // 顶部圆角胶囊搜索栏
-            HStack(spacing: 7) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundColor(.secondary.opacity(0.85))
-                
-                TextField("搜索功能或工具", text: $appState.sidebarSearchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-                
-                if !appState.sidebarSearchText.isEmpty {
-                    Button(action: {
-                        appState.sidebarSearchText = ""
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary.opacity(0.75))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 6.5)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(appState.isLightAppearance ? Color.black.opacity(0.055) : Color.white.opacity(0.09))
-            )
-            .overlay(
-                Capsule(style: .continuous)
-                    .stroke(appState.isLightAppearance ? Color.black.opacity(0.08) : Color.white.opacity(0.12), lineWidth: 1)
-            )
-            .padding(.horizontal, 12)
-            .padding(.bottom, 8)
-            
+        let isLight = appState.isLightAppearance
+        return ZStack(alignment: .top) {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 13) {
                     sidebarCollapsibleSection(.cloning) {
@@ -276,6 +212,7 @@ public struct ContentView: View {
                         sidebarRow(item: .multiFragment, tint: .green)
                         sidebarRow(item: .mutagenesis, tint: .pink)
                         sidebarRow(item: .fragmentDeletion, tint: .purple)
+                        sidebarRow(item: .sangerVerify, tint: .indigo)
                     }
                     
                     sidebarCollapsibleSection(.targeting) {
@@ -310,9 +247,110 @@ public struct ContentView: View {
                     }
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.top, 78)
+                .padding(.bottom, 12)
             }
+            .scrollEdgeEffectStyle(.soft, for: .top)
+
+            // 顶部系统设置风格羽化毛玻璃帘（仅模糊红黄绿灯区并令滚动列表条目柔和穿透搜索框下方）
+            VisualEffectBlurView(
+                material: .sidebar,
+                blendingMode: .withinWindow,
+                state: .active
+            )
+            .frame(height: 80)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .black.opacity(0.92), location: 0.0),
+                        .init(color: .black.opacity(0.76), location: 0.36),
+                        .init(color: .black.opacity(0.24), location: 0.68),
+                        .init(color: .clear, location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .allowsHitTesting(false)
+
+            // 顶部上移胶囊搜索框 + 等高 30pt 快导圆形按钮
+            HStack(spacing: 8) {
+                HStack(spacing: 7) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.9))
+
+                    TextField("搜索", text: $appState.sidebarSearchText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 13))
+
+                    if !appState.sidebarSearchText.isEmpty {
+                        Button(action: {
+                            appState.sidebarSearchText = ""
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary.opacity(0.75))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 11)
+                .frame(height: 30)
+                .frame(maxWidth: .infinity)
+                .background(
+                    ZStack {
+                        VisualEffectBlurView(
+                            material: .headerView,
+                            blendingMode: .withinWindow,
+                            state: .active
+                        )
+                        Color.primary.opacity(isLight ? 0.045 : 0.085)
+                    }
+                    .clipShape(Capsule(style: .continuous))
+                )
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(
+                            isLight ? Color.white.opacity(0.65) : Color.white.opacity(0.18),
+                            lineWidth: 1
+                        )
+                )
+
+                Button(action: {
+                    CloneStudioApp.presentOpenDNAFilesPanel()
+                }) {
+                    Image(systemName: "folder.badge.plus")
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundColor(appState.accentTheme.color)
+                        .frame(width: 30, height: 30)
+                        .background(
+                            ZStack {
+                                VisualEffectBlurView(
+                                    material: .headerView,
+                                    blendingMode: .withinWindow,
+                                    state: .active
+                                )
+                                appState.accentTheme.color.opacity(isLight ? 0.12 : 0.22)
+                            }
+                            .clipShape(Circle())
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    appState.accentTheme.color.opacity(isLight ? 0.30 : 0.38),
+                                    lineWidth: 1
+                                )
+                        )
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help("导入实验文件 (.dna / .ab1 / .tif / .pdb / .nwk / .csv / .fasta)")
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 38)
         }
+        .ignoresSafeArea(.container, edges: .top)
     }
     
     @ViewBuilder

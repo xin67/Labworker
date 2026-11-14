@@ -174,12 +174,15 @@ public struct SangerVerificationView: View {
                             .font(.system(size: 11.5, design: .monospaced))
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Button("取消批处理") {
+                        StudioCompactPillButton(
+                            title: "取消",
+                            icon: "xmark",
+                            tint: .red,
+                            help: "取消批处理"
+                        ) {
                             batchTask?.cancel()
                             isBatchRunning = false
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     }
                 }
 
@@ -194,14 +197,15 @@ public struct SangerVerificationView: View {
 
                         Spacer()
 
-                        Button {
+                        StudioActionPillButton(
+                            title: "导出 CSV",
+                            icon: "tablecells.badge.ellipsis",
+                            tint: .blue,
+                            isProminent: true,
+                            help: "导出 batch_summary.csv"
+                        ) {
                             exportBatchSummaryCSV(res)
-                        } label: {
-                            Label("导出 batch_summary.csv", systemImage: "tablecells.badge.ellipsis")
-                                .font(.system(size: 11.5, weight: .semibold))
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
 
                         StudioSectionClearButton(title: "关闭批量看板") {
                             batchTask?.cancel()
@@ -269,41 +273,26 @@ public struct SangerVerificationView: View {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                 ForEach(clone.reads) { item in
                     let isSelectedRead = (chromatogram?.sampleName == item.report.chromatogram.sampleName)
-                    Button {
+                    StudioCompactPillButton(
+                        title: "\(item.primerSuffix ?? item.fileName) · \(String(format: "%.1f%%", item.report.identityPercent))",
+                        icon: item.report.isReverseComplement ? "arrow.left.circle.fill" : "arrow.right.circle.fill",
+                        tint: appState.accentTheme.color,
+                        isSelected: isSelectedRead,
+                        monospaced: true
+                    ) {
                         selectBatchReadItem(item)
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: item.report.isReverseComplement ? "arrow.left.circle.fill" : "arrow.right.circle.fill")
-                                .font(.system(size: 10))
-                            Text(item.primerSuffix ?? item.fileName)
-                                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                                .lineLimit(1)
-                            Text(String(format: "%.1f%%", item.report.identityPercent))
-                                .font(.system(size: 10, design: .monospaced))
-                        }
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(
-                            Capsule()
-                                .fill(isSelectedRead ? Color.accentColor.opacity(0.22) : Color.primary.opacity(0.06))
-                                .overlay(
-                                    Capsule()
-                                        .stroke(isSelectedRead ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: 0.8)
-                                )
-                        )
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(isCurrentCloneSelected ? vColor.opacity(0.09) : Color.primary.opacity(0.035))
+            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                .fill(isCurrentCloneSelected ? vColor.opacity(appState.isLightAppearance ? 0.09 : 0.16) : StudioPalette.controlSubtleBg(isLight: appState.isLightAppearance))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .stroke(isCurrentCloneSelected ? vColor.opacity(0.55) : vColor.opacity(0.22), lineWidth: isCurrentCloneSelected ? 1.3 : 0.8)
+                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                        .stroke(isCurrentCloneSelected ? vColor.opacity(0.55) : StudioPalette.cardBorder(isLight: appState.isLightAppearance), lineWidth: isCurrentCloneSelected ? 1.3 : 1)
                 )
         )
         .contentShape(Rectangle())
@@ -440,11 +429,11 @@ public struct SangerVerificationView: View {
                             .frame(height: 255)
                         }
                         .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(Color(nsColor: .textBackgroundColor).opacity(0.65))
+                            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                .fill(StudioPalette.controlBg(isLight: appState.isLightAppearance))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                        .stroke(StudioPalette.cardBorder(isLight: appState.isLightAppearance), lineWidth: 1)
                                 )
                         )
                         .onChange(of: scrollTargetReadPos1) { _, targetPos in
@@ -457,49 +446,44 @@ public struct SangerVerificationView: View {
 
                     // 快速跳转按钮条（5' 有效起点 / 各变异位点 / 3' 有效终点）
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                        Button {
+                        StudioCompactPillButton(
+                            title: "5' 起点 #\(chrom.trimStart0 + 1)",
+                            icon: "arrow.left.to.line",
+                            monospaced: true,
+                            help: "跳至 5' 高质起点"
+                        ) {
                             let start1 = chrom.trimStart0 + 1
                             selectedReadPos1Based = start1
                             scrollTargetReadPos1 = start1
-                        } label: {
-                            Label("跳至 5' 高质起点 (#\(chrom.trimStart0 + 1))", systemImage: "arrow.left.to.line")
-                                .font(.system(size: 11))
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.mini)
 
                         if let rep = report {
                             ForEach(rep.variants.prefix(8)) { v in
                                 if let rPos = v.readPos1Based {
-                                    Button {
+                                    StudioCompactPillButton(
+                                        title: v.hgvsNotation,
+                                        dotColor: colorForEvent(v.kind),
+                                        tint: colorForEvent(v.kind),
+                                        monospaced: true,
+                                        help: v.codonImpactNote
+                                    ) {
                                         selectedReadPos1Based = rPos
                                         scrollTargetReadPos1 = rPos
-                                    } label: {
-                                        HStack(spacing: 4) {
-                                            Circle()
-                                                .fill(colorForEvent(v.kind))
-                                                .frame(width: 6, height: 6)
-                                            Text(v.hgvsNotation)
-                                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                                        }
                                     }
-                                    .buttonStyle(.bordered)
-                                    .tint(colorForEvent(v.kind))
-                                    .controlSize(.mini)
                                 }
                             }
                         }
 
-                        Button {
+                        StudioCompactPillButton(
+                            title: "3' 终点 #\(chrom.trimEnd0)",
+                            icon: "arrow.right.to.line",
+                            monospaced: true,
+                            help: "跳至 3' 高质终点"
+                        ) {
                             let end1 = max(1, chrom.trimEnd0)
                             selectedReadPos1Based = end1
                             scrollTargetReadPos1 = end1
-                        } label: {
-                            Label("跳至 3' 高质终点 (#\(chrom.trimEnd0))", systemImage: "arrow.right.to.line")
-                                .font(.system(size: 11))
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.mini)
                     }
                 } else {
                     Text("请拖入 .ab1 / .seq 测序文件或点击右上角「示范峰图」")
@@ -519,7 +503,11 @@ public struct SangerVerificationView: View {
             StudioCard(title: "参考质粒载体 (Reference Plasmid)") {
                 VStack(alignment: .leading, spacing: 10) {
                     StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
-                        Menu {
+                        StudioMenuPillButton(
+                            title: referenceName,
+                            icon: "tray.2.fill",
+                            help: "从质粒池或内置选择参考载体"
+                        ) {
                             Button("内置 EGFP-CDS 标准参考载体 (360 bp)") {
                                 selectedPoolPlasmidID = ""
                                 referenceName = "EGFP-CDS 标准参考载体"
@@ -544,22 +532,18 @@ public struct SangerVerificationView: View {
                                     }
                                 }
                             }
-                        } label: {
-                            Label("从质粒池选择: \(referenceName)", systemImage: "tray.2.fill")
-                                .font(.system(size: 11.5, weight: .semibold))
                         }
-                        .controlSize(.small)
 
-                        Button {
+                        StudioActionPillButton(
+                            title: "载入 .dna",
+                            icon: "folder.badge.plus",
+                            tint: .indigo,
+                            help: "从 Finder 载入参考 .dna 质粒"
+                        ) {
                             FinderFileDropHelper.selectDNAFile(message: "选择用于测序比对的参考 .dna 质粒文件") { url in
                                 loadReferenceDNAFile(url)
                             }
-                        } label: {
-                            Label("载入 .dna", systemImage: "folder.badge.plus")
-                                .font(.system(size: 11.5))
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     }
 
                     HStack(spacing: 10) {
@@ -584,17 +568,27 @@ public struct SangerVerificationView: View {
                             TextEditor(text: $referenceSequence)
                                 .font(.system(size: 11, design: .monospaced))
                                 .frame(height: 82)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                                .scrollContentBackground(.hidden)
+                                .padding(6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                        .fill(StudioPalette.controlBg(isLight: appState.isLightAppearance))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                                                .stroke(StudioPalette.controlBorder(isLight: appState.isLightAppearance), lineWidth: 1)
+                                        )
                                 )
                             HStack {
                                 Spacer()
-                                Button("重新比对参考序列") {
+                                StudioCompactPillButton(
+                                    title: "重新比对",
+                                    icon: "arrow.triangle.2.circlepath",
+                                    tint: .blue,
+                                    isProminent: true,
+                                    help: "重新比对参考序列"
+                                ) {
                                     recomputeVerification()
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.mini)
                             }
                         }
                         .padding(.top, 6)
@@ -680,16 +674,7 @@ public struct SangerVerificationView: View {
                                                     .font(.system(size: 12))
                                                     .foregroundStyle(colorForEvent(v.kind))
                                             }
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 7)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                    .fill(colorForEvent(v.kind).opacity(0.09))
-                                                    .overlay(
-                                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                            .stroke(colorForEvent(v.kind).opacity(0.28), lineWidth: 0.8)
-                                                    )
-                                            )
+                                            .studioInnerBox(tint: colorForEvent(v.kind), paddingH: 10, paddingV: 7)
                                         }
                                         .buttonStyle(.plain)
                                     }
@@ -717,10 +702,7 @@ public struct SangerVerificationView: View {
                             .padding(8)
                     }
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.primary.opacity(0.04))
-                )
+                .studioInnerBox(paddingH: 8, paddingV: 8)
                 .padding(.top, 6)
             } label: {
                 HStack {
@@ -739,29 +721,15 @@ public struct SangerVerificationView: View {
 
     @ViewBuilder
     private func channelTogglePill(label: String, color: Color, isOn: Binding<Bool>) -> some View {
-        Button {
+        StudioCompactPillButton(
+            title: label,
+            dotColor: isOn.wrappedValue ? color : Color.secondary.opacity(0.35),
+            tint: color,
+            isSelected: isOn.wrappedValue,
+            monospaced: true
+        ) {
             isOn.wrappedValue.toggle()
-        } label: {
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(isOn.wrappedValue ? color : Color.secondary.opacity(0.3))
-                    .frame(width: 7, height: 7)
-                Text(label)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(isOn.wrappedValue ? .primary : .secondary)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(
-                Capsule()
-                    .fill(isOn.wrappedValue ? color.opacity(0.14) : Color.primary.opacity(0.04))
-                    .overlay(
-                        Capsule()
-                            .stroke(isOn.wrappedValue ? color.opacity(0.45) : Color.primary.opacity(0.10), lineWidth: 0.8)
-                    )
-            )
         }
-        .buttonStyle(.plain)
     }
 
     private func loadBuiltinDemo(_ preset: DemoPreset) {

@@ -128,20 +128,12 @@ public struct SingleFragmentCloneView: View {
                         // 2. 重组同源臂长度选择
                         StudioCard(title: "重组同源臂长度") {
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                                ForEach([15, 18, 20, 25], id: \.self) { len in
-                                    Button(action: {
-                                        vm.homologyLength = len
-                                    }) {
-                                        Text("\(len) bp")
-                                            .font(.system(size: 11.5, weight: vm.homologyLength == len ? .bold : .medium))
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 3)
-                                            .background(vm.homologyLength == len ? Color.accentColor : Color.primary.opacity(0.06))
-                                            .foregroundColor(vm.homologyLength == len ? .white : .primary)
-                                            .cornerRadius(5)
+                                StudioSegmentedPicker(
+                                    selection: $vm.homologyLength,
+                                    options: [15, 18, 20, 25].map {
+                                        StudioSegmentedOption(value: $0, title: "\($0) bp")
                                     }
-                                    .buttonStyle(.plain)
-                                }
+                                )
                                 StudioSectionClearButton(label: "一键重置") {
                                     vm.homologyLength = 20
                                 }
@@ -444,14 +436,11 @@ public struct SingleFragmentCloneView: View {
                     .foregroundColor(.red)
             }
         }
-        .padding(8)
-        .background(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill((effLen > 0 && rem != 0) ? Color.orange.opacity(0.08) : Color.primary.opacity(0.035))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .stroke((effLen > 0 && rem != 0) ? Color.orange.opacity(0.32) : Color.primary.opacity(0.08), lineWidth: 0.9)
-                )
+        .studioInnerBox(
+            tint: (effLen > 0 && rem != 0) ? .orange : nil,
+            isHighlighted: effLen > 0 && rem != 0,
+            paddingH: 8,
+            paddingV: 8
         )
     }
     
@@ -553,12 +542,12 @@ public struct SingleFragmentCloneView: View {
                         }
                     } else {
                         HStack(spacing: 8) {
-                            Button("按酶切位点") { vm.vectorTargetSource = .byCutSites }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                            Button("按自定义坐标") { vm.vectorTargetSource = .byCoordinates }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
+                            StudioActionPillButton(title: "按酶切位点", icon: "scissors") {
+                                vm.vectorTargetSource = .byCutSites
+                            }
+                            StudioActionPillButton(title: "按自定义坐标", icon: "number") {
+                                vm.vectorTargetSource = .byCoordinates
+                            }
                         }
                     }
                 }
@@ -583,11 +572,9 @@ public struct SingleFragmentCloneView: View {
                                 vectorFwdPrimerPicker(bps: bps)
                                     .frame(maxWidth: 240)
                                 
-                                Button("定位区域") {
+                                StudioCompactPillButton(title: "定位区域", icon: "scope", tint: .blue, isProminent: true) {
                                     vm.applyVectorPrimerPair()
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.small)
                             }
                             
                             VStack(alignment: .leading, spacing: 6) {
@@ -606,23 +593,21 @@ public struct SingleFragmentCloneView: View {
                                         .fixedSize()
                                     vectorFwdPrimerPicker(bps: bps)
                                         .frame(maxWidth: .infinity)
-                                    Button("定位区域") {
+                                    StudioCompactPillButton(title: "定位区域", icon: "scope", tint: .blue, isProminent: true) {
                                         vm.applyVectorPrimerPair()
                                     }
-                                    .buttonStyle(.borderedProminent)
-                                    .controlSize(.small)
                                 }
                             }
                         }
                     }
                 } else {
                     HStack(spacing: 8) {
-                        Button("按特征定位") { vm.vectorTargetSource = .byFeature }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                        Button("按酶切位点") { vm.vectorTargetSource = .byCutSites }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                        StudioActionPillButton(title: "按特征定位", icon: "tag") {
+                            vm.vectorTargetSource = .byFeature
+                        }
+                        StudioActionPillButton(title: "按酶切位点", icon: "scissors") {
+                            vm.vectorTargetSource = .byCutSites
+                        }
                     }
                 }
                 
@@ -703,13 +688,11 @@ public struct SingleFragmentCloneView: View {
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 11.5, design: .monospaced))
                             .frame(width: 78)
-                        Button("应用坐标") {
+                        StudioCompactPillButton(title: "应用坐标", icon: "checkmark", tint: .blue, isProminent: true) {
                             let s = Int(vm.cutStartText.trimmingCharacters(in: .whitespaces)) ?? 1
                             let e = Int(vm.cutEndText.trimmingCharacters(in: .whitespaces)) ?? s
                             vm.applyVectorTargetRange(start: s, end: e)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
                         Text("(终点 = 起点 - 1 为纯插入)")
                             .font(.system(size: 10.5))
                             .foregroundColor(.secondary)
@@ -730,13 +713,11 @@ public struct SingleFragmentCloneView: View {
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(size: 11.5, design: .monospaced))
                                 .frame(width: 68)
-                            Button("应用坐标") {
+                            StudioCompactPillButton(title: "应用坐标", icon: "checkmark", tint: .blue, isProminent: true) {
                                 let s = Int(vm.cutStartText.trimmingCharacters(in: .whitespaces)) ?? 1
                                 let e = Int(vm.cutEndText.trimmingCharacters(in: .whitespaces)) ?? s
                                 vm.applyVectorTargetRange(start: s, end: e)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
                         }
                         Text("(提示：若终点 = 起点 - 1 则为纯插入不删碱基)")
                             .font(.system(size: 10.5))
@@ -745,9 +726,7 @@ public struct SingleFragmentCloneView: View {
                 }
             }
         }
-        .padding(10)
-        .background(Color.blue.opacity(0.07))
-        .cornerRadius(8)
+        .studioInnerBox(tint: .blue, paddingH: 10, paddingV: 10)
     }
     
     // MARK: - 供体质粒解析与三维片段提取卡片
@@ -872,12 +851,9 @@ public struct SingleFragmentCloneView: View {
                                 donorRevPrimerPicker(bps: bps)
                                     .frame(maxWidth: 240)
                                 
-                                Button("提取区间") {
+                                StudioCompactPillButton(title: "提取区间", icon: "scissors", tint: .green, isProminent: true) {
                                     vm.applyDonorPrimerPair()
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .tint(.green)
-                                .controlSize(.small)
                             }
                             
                             VStack(alignment: .leading, spacing: 6) {
@@ -896,24 +872,21 @@ public struct SingleFragmentCloneView: View {
                                         .fixedSize()
                                     donorRevPrimerPicker(bps: bps)
                                         .frame(maxWidth: .infinity)
-                                    Button("提取区间") {
+                                    StudioCompactPillButton(title: "提取区间", icon: "scissors", tint: .green, isProminent: true) {
                                         vm.applyDonorPrimerPair()
                                     }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(.green)
-                                    .controlSize(.small)
                                 }
                             }
                         }
                     }
                 } else {
                     HStack(spacing: 8) {
-                        Button("按特征提取") { vm.donorExtractSource = .byFeature }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                        Button("按坐标提取") { vm.donorExtractSource = .byCoordinates }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                        StudioActionPillButton(title: "按特征提取", icon: "tag") {
+                            vm.donorExtractSource = .byFeature
+                        }
+                        StudioActionPillButton(title: "按坐标提取", icon: "number") {
+                            vm.donorExtractSource = .byCoordinates
+                        }
                     }
                 }
                 
@@ -938,11 +911,9 @@ public struct SingleFragmentCloneView: View {
                         .font(.system(size: 11.5, design: .monospaced))
                         .frame(width: 68)
                     
-                    Button("按坐标截取") {
+                    StudioCompactPillButton(title: "按坐标截取", icon: "scissors") {
                         vm.extractInsertFromDonorCoordinates()
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
                     
                     stopCodonSmartButton
                     
@@ -950,10 +921,10 @@ public struct SingleFragmentCloneView: View {
                         Text(vm.terminalCodonStatusText)
                             .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                             .foregroundColor(vm.detectedTerminalStopCodon != nil ? (vm.removeTerminalStopCodon ? .orange : .blue) : .secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
                             .background(
-                                RoundedRectangle(cornerRadius: 4)
+                                Capsule(style: .continuous)
                                     .fill((vm.detectedTerminalStopCodon != nil ? Color.blue : Color.secondary).opacity(0.10))
                             )
                     }
@@ -986,11 +957,9 @@ public struct SingleFragmentCloneView: View {
                             .font(.system(size: 11.5, design: .monospaced))
                             .frame(width: 65)
                         
-                        Button("按坐标截取") {
+                        StudioCompactPillButton(title: "按坐标截取", icon: "scissors") {
                             vm.extractInsertFromDonorCoordinates()
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     }
                     
                     HStack(spacing: 8) {
@@ -1015,34 +984,27 @@ public struct SingleFragmentCloneView: View {
                 }
             }
         }
-        .padding(10)
-        .background(Color.green.opacity(0.07))
-        .cornerRadius(8)
+        .studioInnerBox(tint: .green, paddingH: 10, paddingV: 10)
     }
     
     @ViewBuilder
     private var stopCodonSmartButton: some View {
         if let stop = vm.detectedTerminalStopCodon {
-            Button(action: {
+            StudioCompactPillButton(
+                title: vm.removeTerminalStopCodon ? "恢复终止子 (\(stop))" : "去除终止子 (\(stop))",
+                icon: vm.removeTerminalStopCodon ? "arrow.uturn.backward.circle.fill" : "scissors",
+                tint: vm.removeTerminalStopCodon ? .orange : .blue,
+                isProminent: true,
+                help: vm.removeTerminalStopCodon ? "点击恢复已去除的 3' 末端终止密码子 \(stop) (+3 bp)" : "检测到 3' 末端含终止密码子 \(stop)，点击一键去除 (-3 bp)"
+            ) {
                 vm.toggleTerminalStopCodon()
-            }) {
-                HStack(spacing: 3) {
-                    Image(systemName: vm.removeTerminalStopCodon ? "arrow.uturn.backward.circle.fill" : "scissors")
-                    Text(vm.removeTerminalStopCodon ? "恢复终止子 (\(stop))" : "去除终止子 (\(stop))")
-                }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(vm.removeTerminalStopCodon ? .orange : .blue)
-            .controlSize(.small)
-            .help(vm.removeTerminalStopCodon ? "点击恢复已去除的 3' 末端终止密码子 \(stop) (+3 bp)" : "检测到 3' 末端含终止密码子 \(stop)，点击一键去除 (-3 bp)")
         } else {
-            Button(action: {}) {
-                Text("末端无终止子")
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .disabled(true)
-            .help("当前提取片段 3' 末端非终止密码子 (TAA/TAG/TGA)，无需去除，避免误删编码序列")
+            StudioCompactPillButton(
+                title: "末端无终止子",
+                isDisabled: true,
+                help: "当前提取片段 3' 末端非终止密码子 (TAA/TAG/TGA)，无需去除，避免误删编码序列"
+            ) {}
         }
     }
     
@@ -1051,33 +1013,28 @@ public struct SingleFragmentCloneView: View {
         Text(delLen > 0 ? "目标替换区间: \(vm.cutStart)..\(vm.cutEnd) (切除 \(delLen) bp)" : "目标插入位点: @\(vm.cutStart) bp (无缝纯插入)")
             .font(.system(size: 11, weight: .semibold, design: .monospaced))
             .foregroundColor(.blue)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 2)
-            .background(Color.blue.opacity(0.14))
-            .cornerRadius(4)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 3)
+            .background(Capsule(style: .continuous).fill(Color.blue.opacity(0.14)))
     }
     
     private var closeVectorButton: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 6) {
             if let vec = vm.vectorDNAInfo {
                 FinderRevealButton(filePath: vec.filePath, label: "")
-                Button(action: {
+                StudioActionPillButton(
+                    title: "预览",
+                    icon: "eye.fill",
+                    tint: .blue,
+                    isProminent: true,
+                    help: "弹出一个独立新窗口预览当前原始载体质粒"
+                ) {
                     PlasmidWindowPresenter.shared.openPreviewWindow(
                         for: vec,
                         roleLabel: "原始载体质粒预览",
                         highlightRange: nil
                     )
-                }) {
-                    HStack(spacing: 2.5) {
-                        Image(systemName: "eye.fill")
-                        Text("预览")
-                    }
-                    .font(.system(size: 10.5, weight: .semibold))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
-                .controlSize(.mini)
-                .help("弹出一个独立新窗口预览当前原始载体质粒")
             }
             
             StudioSectionClearButton(label: "一键清除载体", action: vm.clearVectorSection)
@@ -1088,33 +1045,28 @@ public struct SingleFragmentCloneView: View {
         Text("\(vm.insertGeneName) [\(vm.insertStartText)..\(vm.insertEndText), \(cleanInsertLen)bp\(vm.insertUseReverseComplement ? " 反补" : "")]")
             .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
             .foregroundColor(.green)
-            .padding(.horizontal, 6.5)
-            .padding(.vertical, 2)
-            .background(Color.green.opacity(0.14))
-            .cornerRadius(4)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Capsule(style: .continuous).fill(Color.green.opacity(0.14)))
     }
     
     private var closeDonorButton: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 6) {
             if let ins = vm.insertSourceDNAInfo {
                 FinderRevealButton(filePath: ins.filePath, label: "")
-                Button(action: {
+                StudioActionPillButton(
+                    title: "预览",
+                    icon: "eye.fill",
+                    tint: .green,
+                    isProminent: true,
+                    help: "弹出一个独立新窗口预览当前原始供体质粒"
+                ) {
                     PlasmidWindowPresenter.shared.openPreviewWindow(
                         for: ins,
                         roleLabel: "原始供体质粒预览",
                         highlightRange: nil
                     )
-                }) {
-                    HStack(spacing: 2.5) {
-                        Image(systemName: "eye.fill")
-                        Text("预览")
-                    }
-                    .font(.system(size: 10.5, weight: .semibold))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .controlSize(.mini)
-                .help("弹出一个独立新窗口预览当前原始供体质粒")
             }
             
             StudioSectionClearButton(label: "一键清除供体", action: vm.clearInsertSection)
@@ -1289,59 +1241,47 @@ public struct SingleFragmentCloneView: View {
     private var snapGeneRecombinantButtons: some View {
         if let vec = vm.vectorDNAInfo {
             HStack(spacing: 6) {
-                Button(action: {
+                StudioActionPillButton(
+                    title: "导出重组 .dna",
+                    icon: vm.isSnapGeneBusy ? "hourglass" : "bolt.fill",
+                    tint: .purple,
+                    isProminent: true,
+                    isDisabled: vm.isSnapGeneBusy,
+                    help: "生成重组质粒 .dna 文件并在 SnapGene 中打开"
+                ) {
                     Task { await vm.generateRecombinantDNAAndOpen() }
-                }) {
-                    HStack(spacing: 3) {
-                        if vm.isSnapGeneBusy {
-                            ProgressView().controlSize(.mini)
-                        } else {
-                            Image(systemName: "bolt.fill")
-                        }
-                        Text("导出重组 .dna")
-                    }
-                    .font(.system(size: 11, weight: .semibold))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.purple)
-                .controlSize(.small)
-                .disabled(vm.isSnapGeneBusy)
-                .help("生成重组质粒 .dna 文件并在 SnapGene 中打开")
-                
-                Menu {
+
+                StudioMenuPillButton(
+                    title: "更多",
+                    icon: "ellipsis",
+                    tint: .purple,
+                    help: "更多 SnapGene 操作"
+                ) {
                     Button("仅向原载体写入引物 (自动留备份)") {
                         Task { await vm.injectPrimersToVectorDNA() }
                     }
                     Button("在 Finder 中定位载体 .dna") {
                         FinderFileDropHelper.revealInFinder(path: vec.filePath)
                     }
-                } label: {
-                    Text("更多")
-                        .font(.system(size: 11))
                 }
-                .controlSize(.small)
-                .frame(width: 58)
             }
         } else {
-            Button(action: {
+            StudioActionPillButton(
+                title: "写入 .dna",
+                icon: "bolt.fill",
+                tint: .purple,
+                isProminent: true,
+                isDisabled: vm.isSnapGeneBusy,
+                help: "从 Finder 选择 .dna 质粒并将生成的引物写入（自动创建备份）"
+            ) {
                 selectDNAFile { url in
                     Task {
                         await vm.loadVectorDNA(url: url)
                         await vm.injectPrimersToVectorDNA()
                     }
                 }
-            }) {
-                HStack(spacing: 3) {
-                    Image(systemName: "bolt.fill")
-                    Text("写入 .dna")
-                }
-                .font(.system(size: 11, weight: .semibold))
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.purple)
-            .controlSize(.small)
-            .disabled(vm.isSnapGeneBusy)
-            .help("从 Finder 选择 .dna 质粒并将生成的引物写入（自动创建备份）")
         }
     }
     

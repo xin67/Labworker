@@ -447,7 +447,7 @@ public struct WesternBlotView: View {
                 let originY = (canvasSize.height - viewRect.height * scale) * 0.5 - viewRect.minY * scale + panOffset.height
                 
                 ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                         .fill(Color.black.opacity(0.84))
                     
                     // 1. 底层化学发光显影图像
@@ -577,7 +577,7 @@ public struct WesternBlotView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 4)
@@ -893,15 +893,17 @@ public struct WesternBlotView: View {
                 Text("期望泳道数")
                     .font(.system(size: 12, weight: .medium))
                 Spacer()
-                Picker("", selection: $params.expectedLanes) {
-                    Text("自动波谷").tag(0)
-                    Text("4 泳道").tag(4)
-                    Text("6 泳道").tag(6)
-                    Text("8 泳道").tag(8)
-                    Text("10 泳道").tag(10)
-                }
-                .labelsHidden()
-                .frame(width: 120)
+                StudioMenuPicker(
+                    selection: $params.expectedLanes,
+                    options: [
+                        StudioMenuPickerOption(value: 0, title: "自动波谷"),
+                        StudioMenuPickerOption(value: 4, title: "4 泳道"),
+                        StudioMenuPickerOption(value: 6, title: "6 泳道"),
+                        StudioMenuPickerOption(value: 8, title: "8 泳道"),
+                        StudioMenuPickerOption(value: 10, title: "10 泳道")
+                    ],
+                    compact: true
+                )
                 .onChange(of: params.expectedLanes) { _, _ in
                     runAutoAnalysis()
                 }
@@ -1043,13 +1045,13 @@ public struct WesternBlotView: View {
                     Text("对照泳道 (1.00×)")
                         .font(.system(size: 12, weight: .medium))
                     Spacer()
-                    Picker("", selection: $params.controlLaneIndex) {
-                        ForEach(res.lanes) { lane in
-                            Text("L\(lane.index + 1)").tag(lane.index)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(width: 90)
+                    StudioMenuPicker(
+                        selection: $params.controlLaneIndex,
+                        options: res.lanes.map {
+                            StudioMenuPickerOption(value: $0.index, title: "L\($0.index + 1)")
+                        },
+                        compact: true
+                    )
                     .onChange(of: params.controlLaneIndex) { _, newIdx in
                         setControlLane(newIdx)
                     }
@@ -1068,12 +1070,13 @@ public struct WesternBlotView: View {
                     Text("过曝饱和条带统计策略 (>\(String(format: "%.0f%%", params.saturationRatioThreshold * 100)) 核心像素饱和)")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
-                    Picker("", selection: $params.saturationPolicy) {
-                        ForEach(WBSaturationPolicy.allCases) { pol in
-                            Text(pol.title).tag(pol)
-                        }
-                    }
-                    .labelsHidden()
+                    StudioMenuPicker(
+                        selection: $params.saturationPolicy,
+                        options: WBSaturationPolicy.allCases.map {
+                            StudioMenuPickerOption(value: $0, title: $0.title)
+                        },
+                        compact: true
+                    )
                 }
                 
                 Divider().opacity(0.4)
@@ -1192,7 +1195,12 @@ public struct WesternBlotView: View {
                 }
             
             if !poolManager.items.isEmpty {
-                Menu {
+                StudioMenuPillButton(
+                    title: linkedPlasmidIDs.isEmpty ? "关联质粒池" : "已关联 \(linkedPlasmidIDs.count) 个质粒",
+                    icon: "link",
+                    tint: linkedPlasmidIDs.isEmpty ? nil : .accentColor,
+                    help: "可选关联本地质粒池条目"
+                ) {
                     ForEach(poolManager.items) { pItem in
                         Button {
                             if linkedPlasmidIDs.contains(pItem.id) {
@@ -1204,11 +1212,7 @@ public struct WesternBlotView: View {
                             Label(pItem.name, systemImage: linkedPlasmidIDs.contains(pItem.id) ? "checkmark.circle.fill" : "circle")
                         }
                     }
-                } label: {
-                    Label(linkedPlasmidIDs.isEmpty ? "关联质粒池条目 (可选)" : "已关联 \(linkedPlasmidIDs.count) 个质粒", systemImage: "link")
-                        .font(.system(size: 11.5, weight: .medium))
                 }
-                .controlSize(.small)
             }
             
             StudioActionPillButton(

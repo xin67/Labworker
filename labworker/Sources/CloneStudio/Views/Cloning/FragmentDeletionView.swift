@@ -73,22 +73,19 @@ public struct FragmentDeletionView: View {
                                 }
                                 if let info = vm.plasmidDNAInfo {
                                     FinderRevealButton(filePath: info.filePath, label: "")
-                                    Button(action: {
+                                    StudioActionPillButton(
+                                        title: "预览",
+                                        icon: "eye.fill",
+                                        tint: .purple,
+                                        isProminent: true,
+                                        help: "打开质粒图谱预览"
+                                    ) {
                                         PlasmidWindowPresenter.shared.openPreviewWindow(
                                             for: info,
                                             roleLabel: "原始质粒预览",
                                             highlightRange: nil
                                         )
-                                    }) {
-                                        HStack(spacing: 2.5) {
-                                            Image(systemName: "eye.fill")
-                                            Text("预览")
-                                        }
-                                        .font(.system(size: 10.5, weight: .semibold))
                                     }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(.purple)
-                                    .controlSize(.mini)
                                 }
                                 StudioMetricBadge(label: "全长", value: "\(plasmidBp) bp", color: plasmidBp >= 100 ? .green : .orange)
                                 StudioSectionClearButton(label: "一键清除质粒", action: vm.clearPlasmidSection)
@@ -166,29 +163,26 @@ public struct FragmentDeletionView: View {
                                             }
                                         }
                                     } else {
-                                        HStack(spacing: 8) {
-                                            Button(action: {
+                                        StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+                                            StudioActionPillButton(
+                                                title: "载入 .dna",
+                                                icon: "folder.badge.plus",
+                                                tint: .purple,
+                                                isProminent: true,
+                                                help: "从 Finder 载入质粒 .dna 文件"
+                                            ) {
                                                 FinderFileDropHelper.selectDNAFile(prompt: "载入质粒") { url in
                                                     Task { await vm.loadDNAFile(url: url) }
                                                 }
-                                            }) {
-                                                Label("载入质粒 .dna", systemImage: "folder.badge.plus")
                                             }
-                                            .buttonStyle(.borderedProminent)
-                                            .tint(.purple)
-                                            .controlSize(.small)
-                                            
-                                            Button("按坐标定位") {
+
+                                            StudioActionPillButton(title: "按坐标定位", icon: "number") {
                                                 vm.selectionMode = .byCoordinates
                                             }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                            
-                                            Button("按序列定位") {
+
+                                            StudioActionPillButton(title: "按序列定位", icon: "textformat") {
                                                 vm.selectionMode = .bySequence
                                             }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
                                         }
                                     }
                                     
@@ -275,12 +269,12 @@ public struct FragmentDeletionView: View {
                                         }
                                     } else {
                                         HStack(spacing: 8) {
-                                            Button("按特征定位") { vm.selectionMode = .byFeature }
-                                                .buttonStyle(.bordered)
-                                                .controlSize(.small)
-                                            Button("按坐标定位") { vm.selectionMode = .byCoordinates }
-                                                .buttonStyle(.bordered)
-                                                .controlSize(.small)
+                                            StudioActionPillButton(title: "按特征定位", icon: "tag") {
+                                                vm.selectionMode = .byFeature
+                                            }
+                                            StudioActionPillButton(title: "按坐标定位", icon: "number") {
+                                                vm.selectionMode = .byCoordinates
+                                            }
                                         }
                                     }
                                     
@@ -406,20 +400,12 @@ public struct FragmentDeletionView: View {
                         // 3. 重组同源臂长度配置
                         StudioCard(title: "3. 同源臂长度") {
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                                ForEach([15, 18, 20, 25], id: \.self) { len in
-                                    Button(action: {
-                                        vm.homologyLength = len
-                                    }) {
-                                        Text("\(len) bp")
-                                            .font(.system(size: 11.5, weight: vm.homologyLength == len ? .bold : .medium))
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 3)
-                                            .background(vm.homologyLength == len ? Color.purple : Color.primary.opacity(0.06))
-                                            .foregroundColor(vm.homologyLength == len ? .white : .primary)
-                                            .cornerRadius(5)
+                                StudioSegmentedPicker(
+                                    selection: $vm.homologyLength,
+                                    options: [15, 18, 20, 25].map {
+                                        StudioSegmentedOption(value: $0, title: "\($0) bp", tint: .purple)
                                     }
-                                    .buttonStyle(.plain)
-                                }
+                                )
                                 StudioSectionClearButton(label: "一键重置") {
                                     vm.homologyLength = 20
                                 }
@@ -518,38 +504,32 @@ public struct FragmentDeletionView: View {
                             } content: {
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack(spacing: 10) {
-                                        Button(action: {
+                                        StudioPrimaryActionButton(
+                                            title: "导出并在 SnapGene 打开",
+                                            icon: "arrow.up.forward.app",
+                                            tint: .blue,
+                                            isLoading: vm.isExporting,
+                                            isDisabled: vm.selectedDNAFileURL == nil
+                                        ) {
                                             Task { await vm.exportToSnapGene(openAfterExport: true) }
-                                        }) {
-                                            HStack(spacing: 5) {
-                                                if vm.isExporting {
-                                                    ProgressView().controlSize(.small)
+                                        }
+
+                                        if vm.selectedDNAFileURL == nil {
+                                            StudioActionPillButton(
+                                                title: "载入 .dna",
+                                                icon: "folder.badge.plus",
+                                                help: "载入原始质粒 .dna 以导出产物"
+                                            ) {
+                                                FinderFileDropHelper.selectDNAFile(prompt: "载入质粒") { url in
+                                                    Task { await vm.loadDNAFile(url: url) }
                                                 }
-                                                Image(systemName: "arrow.up.forward.app")
-                                                Text("导出并在 SnapGene 中打开")
-                                                    .font(.system(size: 12, weight: .semibold))
                                             }
                                         }
-                                        .buttonStyle(.borderedProminent)
-                                        .tint(.blue)
-                                        .controlSize(.small)
-                                        .disabled(vm.selectedDNAFileURL == nil || vm.isExporting)
-                                        
+
                                         Spacer()
                                     }
-                                    
-                                    if vm.selectedDNAFileURL == nil {
-                                        Button(action: {
-                                            FinderFileDropHelper.selectDNAFile(prompt: "载入质粒") { url in
-                                                Task { await vm.loadDNAFile(url: url) }
-                                            }
-                                        }) {
-                                            Label("载入原始质粒 .dna 以导出产物", systemImage: "folder.badge.plus")
-                                                .font(.system(size: 11))
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                    } else if let url = vm.lastExportedURL {
+
+                                    if let url = vm.lastExportedURL {
                                         HStack(spacing: 6) {
                                             Text("✅ 已导出: \(url.lastPathComponent)")
                                                 .font(.system(size: 11, weight: .medium))

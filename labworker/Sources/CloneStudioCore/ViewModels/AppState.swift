@@ -73,7 +73,7 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .multiFragment:    return "多片段克隆"
         case .mutagenesis:      return "定点突变"
         case .fragmentDeletion: return "片段删除"
-        case .sangerVerify:     return "测序验证"
+        case .sangerVerify:     return "Sanger 测序"
         case .sgRNADesign:      return "sgRNA 设计"
         case .shRNADesign:      return "shRNA 设计"
         case .chopchopCompare:  return "靶点对比"

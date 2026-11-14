@@ -200,11 +200,7 @@ public struct GelFigureEditorView: View {
                                     }
                                 }
                             }
-                            .padding(8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(Color.primary.opacity(0.035))
-                            )
+                            .studioInnerBox(paddingH: 8, paddingV: 8)
                         }
                     }
                 }
@@ -241,7 +237,7 @@ public struct GelFigureEditorView: View {
                                 .resizable()
                                 .interpolation(.high)
                                 .frame(width: drawW, height: drawH)
-                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
                         }
                         
                         Canvas { context, _ in

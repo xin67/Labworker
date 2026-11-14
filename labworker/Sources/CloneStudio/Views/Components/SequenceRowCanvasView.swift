@@ -274,14 +274,14 @@ public struct SequenceRowCanvasView: View {
             sequenceBottomStatusBar
         }
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                 .fill(canvasBgColor)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                         .stroke(borderStrokeColor, lineWidth: 1)
                 )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
     }
     
     private var sequenceMinimapBar: some View {
@@ -454,9 +454,7 @@ public struct SequenceRowCanvasView: View {
                             .font(.system(size: 10.5, design: .monospaced))
                             .textSelection(.enabled)
                         }
-                        .padding(6)
-                        .background(Color.primary.opacity(0.05))
-                        .cornerRadius(5)
+                        .studioInnerBox(paddingH: 8, paddingV: 6)
                     }
                 }
                 .padding(8)
@@ -520,13 +518,13 @@ public struct SequenceRowCanvasView: View {
                     .font(.system(size: 9.5, weight: .semibold))
             }
             .foregroundColor(snapToCodonMode ? .white : (isDark ? .cyan : .blue))
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
+            .padding(.horizontal, 8)
+            .frame(height: 22)
             .background(
-                RoundedRectangle(cornerRadius: 4)
+                Capsule(style: .continuous)
                     .fill(snapToCodonMode ? Color.pink.opacity(0.85) : Color.primary.opacity(0.08))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 4)
+                        Capsule(style: .continuous)
                             .stroke(snapToCodonMode ? Color.pink : Color.cyan.opacity(0.45), lineWidth: 0.8)
                     )
             )
@@ -549,13 +547,13 @@ public struct SequenceRowCanvasView: View {
                     .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
             }
             .foregroundColor(showEnzymeInspector ? .white : accentCol)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
+            .padding(.horizontal, 8)
+            .frame(height: 22)
             .background(
-                RoundedRectangle(cornerRadius: 4)
+                Capsule(style: .continuous)
                     .fill(showEnzymeInspector ? accentCol : accentCol.opacity(0.12))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 4)
+                        Capsule(style: .continuous)
                             .stroke(accentCol.opacity(0.45), lineWidth: 0.8)
                     )
             )
@@ -578,10 +576,10 @@ public struct SequenceRowCanvasView: View {
                         Text("全长序列")
                             .font(.system(size: 9.5, weight: isFull ? .bold : .medium))
                             .foregroundColor(isFull ? .white : primaryTextColor.opacity(0.78))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2.5)
+                            .padding(.horizontal, 8)
+                            .frame(height: 22)
                             .background(
-                                RoundedRectangle(cornerRadius: 4)
+                                Capsule(style: .continuous)
                                     .fill(isFull ? Color.blue : Color.primary.opacity(0.08))
                             )
                     }
@@ -598,10 +596,10 @@ public struct SequenceRowCanvasView: View {
                         Text(win.title)
                             .font(.system(size: 9.5, weight: isSel ? .bold : .medium))
                             .foregroundColor(isSel ? .white : primaryTextColor.opacity(0.78))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2.5)
+                            .padding(.horizontal, 8)
+                            .frame(height: 22)
                             .background(
-                                RoundedRectangle(cornerRadius: 4)
+                                Capsule(style: .continuous)
                                     .fill(isSel ? Color.purple : Color.primary.opacity(0.08))
                             )
                     }
@@ -709,7 +707,7 @@ public struct SequenceRowCanvasView: View {
                 .foregroundColor(isActive ? activeColor : secondaryTextColor)
                 .frame(width: 22, height: 22)
                 .background(
-                    RoundedRectangle(cornerRadius: 4.5)
+                    Circle()
                         .fill(isActive ? activeColor.opacity(0.18) : Color.clear)
                 )
         }
@@ -831,14 +829,11 @@ public struct SequenceRowCanvasView: View {
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 10, design: .monospaced))
                         .frame(width: 105)
-                    Button("应用自定义突变") {
+                    StudioCompactPillButton(title: "应用自定义突变", tint: .pink, isProminent: true) {
                         let cleanCustom = BioSequence.clean(customMutCodonText)
                         let label = cleanCustom.isEmpty ? "Δ" : cleanCustom
                         triggerCodonMutation(win: win, codonItem: codonItem, residueNumber: residueNumber, targetCodon: cleanCustom, targetAA: label)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.pink)
-                    .controlSize(.mini)
                 }
             }
             
@@ -867,10 +862,10 @@ public struct SequenceRowCanvasView: View {
                                     .opacity(0.85)
                             }
                             .foregroundColor(.white)
-                            .padding(.horizontal, 6)
+                            .padding(.horizontal, 7)
                             .padding(.vertical, 3)
                             .background(
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                                     .fill(isWT ? Color.gray.opacity(0.45) : Color.pink.opacity(0.82))
                             )
                         }
@@ -895,9 +890,9 @@ public struct SequenceRowCanvasView: View {
                                 .font(.system(size: 8.0))
                         }
                         .foregroundColor(.white)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 7)
                         .padding(.vertical, 3)
-                        .background(RoundedRectangle(cornerRadius: 4).fill(Color.orange.opacity(0.85)))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous).fill(Color.orange.opacity(0.85)))
                     }
                     .buttonStyle(.plain)
                 }

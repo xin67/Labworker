@@ -260,19 +260,23 @@ public struct QPCRAnalysisView: View {
                         Text("多组校正:")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
-                        Picker("", selection: $settings.multipleComparison) {
-                            ForEach(QPCRMultipleComparisonMethod.allCases) { m in
-                                Text(m.title).tag(m)
-                            }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .controlSize(.small)
-                        .frame(width: 145)
+                        StudioMenuPicker(
+                            selection: $settings.multipleComparison,
+                            options: QPCRMultipleComparisonMethod.allCases.map {
+                                StudioMenuPickerOption(value: $0, title: $0.title)
+                            },
+                            compact: true
+                        )
                     }
                     
                     if !poolManager.items.isEmpty {
-                        Menu {
+                        StudioMenuPillButton(
+                            title: linkedPlasmidIDs.isEmpty ? "关联质粒池" : "已关联 \(linkedPlasmidIDs.count)",
+                            icon: "link",
+                            tint: linkedPlasmidIDs.isEmpty ? nil : .accentColor,
+                            compact: true,
+                            help: "可选关联本地质粒池载体"
+                        ) {
                             ForEach(poolManager.items) { pItem in
                                 Button {
                                     if linkedPlasmidIDs.contains(pItem.id) {
@@ -284,11 +288,7 @@ public struct QPCRAnalysisView: View {
                                     Label(pItem.name, systemImage: linkedPlasmidIDs.contains(pItem.id) ? "checkmark.circle.fill" : "circle")
                                 }
                             }
-                        } label: {
-                            Label(linkedPlasmidIDs.isEmpty ? "关联质粒池 (可选)" : "已关联 \(linkedPlasmidIDs.count) 个质粒", systemImage: "link")
-                                .font(.system(size: 11.5, weight: .medium))
                         }
-                        .controlSize(.small)
                     }
                 }
             }
@@ -367,11 +367,7 @@ public struct QPCRAnalysisView: View {
                             }
                         }
                     }
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color.primary.opacity(0.04))
-                    )
+                    .studioInnerBox(paddingH: 10, paddingV: 10)
                 }
                 
                 // 表头
@@ -479,12 +475,8 @@ public struct QPCRAnalysisView: View {
                                 }
                                 .frame(width: 82, alignment: .trailing)
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(Color.primary.opacity(well.include ? 0.035 : 0.015))
-                            )
+                            .studioInnerBox(paddingH: 8, paddingV: 5)
+                            .opacity(well.include ? 1.0 : 0.58)
                         }
                     }
                 }
@@ -528,15 +520,14 @@ public struct QPCRAnalysisView: View {
             title: "相对表达量柱状图 (2^-ΔΔCt Fold Change ± \(errorBarMode.title))",
             headerTrailing: {
                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
-                    Picker("误差线", selection: $errorBarMode) {
-                        ForEach(QPCRErrorBarMode.allCases) { m in
-                            Text("误差线: \(m.title)").tag(m)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .controlSize(.small)
-                    .frame(width: 118)
+                    StudioMenuPicker(
+                        selection: $errorBarMode,
+                        options: QPCRErrorBarMode.allCases.map {
+                            StudioMenuPickerOption(value: $0, title: $0.title)
+                        },
+                        prefix: "误差线",
+                        compact: true
+                    )
                     
                     StudioMetricBadge(label: "内参", value: out.references.joined(separator: "/"), color: .teal)
                     StudioMetricBadge(label: "对照组", value: out.controlLabel, color: .blue)
@@ -555,8 +546,7 @@ public struct QPCRAnalysisView: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                     }
-                    .padding(8)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.red.opacity(0.09)))
+                    .studioInnerBox(tint: .red, paddingH: 10, paddingV: 8)
                 }
                 
                 if out.groupResults.isEmpty {
@@ -717,12 +707,7 @@ public struct QPCRAnalysisView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(Color.primary.opacity(0.035))
-                        )
+                        .studioInnerBox(paddingH: 10, paddingV: 6)
                     }
                 }
             }
@@ -809,13 +794,8 @@ public struct QPCRAnalysisView: View {
                             StudioMetricBadge(label: "log10(Qty)", value: String(format: "%.3f", s.log10Quantity), color: .indigo)
                             StudioMetricBadge(label: "绝对浓度/拷贝", value: String(format: "%.2e", s.quantity), color: .blue)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(Color.primary.opacity(0.035))
-                        )
+                        .studioInnerBox(paddingH: 10, paddingV: 6)
                     }
                 }
             }

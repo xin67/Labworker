@@ -280,6 +280,347 @@ public struct StudioActionPillButton: View {
     }
 }
 
+/// 紧凑内联胶囊按钮（统一 24pt Capsule 高度，专用于密集列表行、峰位跳转与卡片副操作）
+public struct StudioCompactPillButton: View {
+    @ObservedObject private var appState = AppState.shared
+    public let title: String
+    public var icon: String? = nil
+    public var dotColor: Color? = nil
+    public var tint: Color? = nil
+    public var isProminent: Bool = false
+    public var isSelected: Bool = false
+    public var monospaced: Bool = false
+    public var isDisabled: Bool = false
+    public var help: String? = nil
+    public let action: () -> Void
+
+    public init(
+        title: String,
+        icon: String? = nil,
+        dotColor: Color? = nil,
+        tint: Color? = nil,
+        isProminent: Bool = false,
+        isSelected: Bool = false,
+        monospaced: Bool = false,
+        isDisabled: Bool = false,
+        help: String? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.icon = icon
+        self.dotColor = dotColor
+        self.tint = tint
+        self.isProminent = isProminent
+        self.isSelected = isSelected
+        self.monospaced = monospaced
+        self.isDisabled = isDisabled
+        self.help = help
+        self.action = action
+    }
+
+    public var body: some View {
+        let isLight = appState.isLightAppearance
+        let resolvedTint = tint ?? appState.accentTheme.color
+        let isIconOnly = title.isEmpty && (icon?.isEmpty == false)
+        let fillColor: Color = {
+            if isDisabled {
+                return StudioPalette.controlSubtleBg(isLight: isLight)
+            } else if isProminent {
+                return resolvedTint.opacity(0.92)
+            } else if isSelected {
+                return resolvedTint.opacity(isLight ? 0.14 : 0.24)
+            } else if let customTint = tint {
+                return customTint.opacity(isLight ? 0.09 : 0.16)
+            } else {
+                return StudioPalette.controlBg(isLight: isLight)
+            }
+        }()
+        let borderColor: Color = {
+            if isDisabled {
+                return StudioPalette.controlBorder(isLight: isLight).opacity(0.55)
+            } else if isProminent {
+                return Color.white.opacity(0.20)
+            } else if isSelected, tint != nil || tint == nil {
+                return resolvedTint.opacity(0.45)
+            } else if let customTint = tint {
+                return customTint.opacity(0.30)
+            } else {
+                return StudioPalette.controlBorder(isLight: isLight)
+            }
+        }()
+        let fgColor: Color = {
+            if isDisabled {
+                return .secondary.opacity(0.45)
+            } else if isProminent {
+                return .white
+            } else if isSelected {
+                return tint ?? resolvedTint
+            } else {
+                return tint ?? .primary
+            }
+        }()
+        let btn = Button(action: action) {
+            HStack(spacing: isIconOnly ? 0 : 4) {
+                if let dot = dotColor {
+                    Circle()
+                        .fill(dot)
+                        .frame(width: 6, height: 6)
+                }
+                if let icon = icon, !icon.isEmpty {
+                    Image(systemName: icon)
+                        .font(.system(size: 10.5, weight: .semibold))
+                }
+                if !title.isEmpty {
+                    Text(title)
+                        .font(.system(size: 11, weight: .semibold, design: monospaced ? .monospaced : .default))
+                        .lineLimit(1)
+                }
+            }
+            .foregroundColor(fgColor)
+            .padding(.horizontal, isIconOnly ? 0 : 9)
+            .frame(minWidth: isIconOnly ? 24 : nil)
+            .frame(height: 24)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(fillColor)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
+            )
+            .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+
+        if let helpText = help, !helpText.isEmpty {
+            btn.help(helpText)
+        } else {
+            btn
+        }
+    }
+}
+
+/// 统一胶囊下拉菜单按钮（支持 30pt 标准 / 24pt 紧凑，消除原生 Picker/Menu 高度不齐与灰框）
+public struct StudioMenuPillButton<MenuContent: View>: View {
+    @ObservedObject private var appState = AppState.shared
+    public let title: String
+    public var icon: String? = nil
+    public var tint: Color? = nil
+    public var compact: Bool = false
+    public var isDisabled: Bool = false
+    public var help: String? = nil
+    public let menuContent: MenuContent
+
+    public init(
+        title: String,
+        icon: String? = nil,
+        tint: Color? = nil,
+        compact: Bool = false,
+        isDisabled: Bool = false,
+        help: String? = nil,
+        @ViewBuilder content: () -> MenuContent
+    ) {
+        self.title = title
+        self.icon = icon
+        self.tint = tint
+        self.compact = compact
+        self.isDisabled = isDisabled
+        self.help = help
+        self.menuContent = content()
+    }
+
+    public var body: some View {
+        let isLight = appState.isLightAppearance
+        let pillHeight: CGFloat = compact ? 24 : 30
+        let fillColor: Color = {
+            if isDisabled {
+                return StudioPalette.controlSubtleBg(isLight: isLight)
+            } else if let customTint = tint {
+                return customTint.opacity(isLight ? 0.11 : 0.18)
+            } else {
+                return StudioPalette.controlBg(isLight: isLight)
+            }
+        }()
+        let borderColor: Color = {
+            if isDisabled {
+                return StudioPalette.controlBorder(isLight: isLight).opacity(0.55)
+            } else if let customTint = tint {
+                return customTint.opacity(0.32)
+            } else {
+                return StudioPalette.controlBorder(isLight: isLight)
+            }
+        }()
+        let menu = Menu {
+            menuContent
+        } label: {
+            HStack(spacing: compact ? 4 : 5) {
+                if let icon = icon, !icon.isEmpty {
+                    Image(systemName: icon)
+                        .font(.system(size: compact ? 10.5 : 11.5, weight: .semibold))
+                }
+                if !title.isEmpty {
+                    Text(title)
+                        .font(.system(size: compact ? 11 : 12, weight: .semibold))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Image(systemName: "chevron.down")
+                    .font(.system(size: compact ? 8 : 8.5, weight: .bold))
+                    .opacity(0.7)
+            }
+            .foregroundColor(isDisabled ? .secondary.opacity(0.45) : (tint ?? .primary))
+            .padding(.horizontal, compact ? 9 : 11)
+            .frame(height: pillHeight)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(fillColor)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
+            )
+            .contentShape(Capsule(style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(isDisabled)
+
+        if let helpText = help, !helpText.isEmpty {
+            menu.help(helpText)
+        } else {
+            menu
+        }
+    }
+}
+
+public struct StudioMenuPickerOption<Value: Hashable>: Identifiable {
+    public let id: Value
+    public let value: Value
+    public let title: String
+
+    public init(value: Value, title: String) {
+        self.id = value
+        self.value = value
+        self.title = title
+    }
+}
+
+/// 统一胶囊下拉选择器（替代样式错落的 `.pickerStyle(.menu)` + `.controlSize`）
+public struct StudioMenuPicker<Value: Hashable>: View {
+    @Binding public var selection: Value
+    public let options: [StudioMenuPickerOption<Value>]
+    public var prefix: String? = nil
+    public var icon: String? = nil
+    public var tint: Color? = nil
+    public var compact: Bool = false
+    public var help: String? = nil
+
+    public init(
+        selection: Binding<Value>,
+        options: [StudioMenuPickerOption<Value>],
+        prefix: String? = nil,
+        icon: String? = nil,
+        tint: Color? = nil,
+        compact: Bool = false,
+        help: String? = nil
+    ) {
+        self._selection = selection
+        self.options = options
+        self.prefix = prefix
+        self.icon = icon
+        self.tint = tint
+        self.compact = compact
+        self.help = help
+    }
+
+    public var body: some View {
+        let activeTitle = options.first(where: { $0.value == selection })?.title ?? ""
+        let label = (prefix != nil && !prefix!.isEmpty) ? "\(prefix!): \(activeTitle)" : activeTitle
+        StudioMenuPillButton(
+            title: label,
+            icon: icon,
+            tint: tint,
+            compact: compact,
+            help: help
+        ) {
+            ForEach(options) { opt in
+                Button {
+                    selection = opt.value
+                } label: {
+                    if selection == opt.value {
+                        Label(opt.title, systemImage: "checkmark")
+                    } else {
+                        Text(opt.title)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// 统一卡片内部子容器 / 数据行样式（严格 Level 3 连续圆角 StudioRadius.inner = 10 + 静态高对比边框）
+private struct StudioInnerBoxModifier: ViewModifier {
+    @ObservedObject private var appState = AppState.shared
+    let tint: Color?
+    let isHighlighted: Bool
+    let paddingH: CGFloat
+    let paddingV: CGFloat
+
+    func body(content: Content) -> some View {
+        let isLight = appState.isLightAppearance
+        let resolvedTint = tint ?? appState.accentTheme.color
+        let bg: Color = {
+            if isHighlighted {
+                return resolvedTint.opacity(isLight ? 0.10 : 0.18)
+            } else if let t = tint {
+                return t.opacity(isLight ? 0.06 : 0.12)
+            } else {
+                return StudioPalette.controlSubtleBg(isLight: isLight)
+            }
+        }()
+        let border: Color = {
+            if isHighlighted {
+                return resolvedTint.opacity(0.42)
+            } else if let t = tint {
+                return t.opacity(0.24)
+            } else {
+                return StudioPalette.cardBorder(isLight: isLight)
+            }
+        }()
+        content
+            .padding(.horizontal, paddingH)
+            .padding(.vertical, paddingV)
+            .background(
+                RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                    .fill(bg)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                    .stroke(border, lineWidth: 1)
+            )
+    }
+}
+
+public extension View {
+    func studioInnerBox(
+        tint: Color? = nil,
+        isHighlighted: Bool = false,
+        paddingH: CGFloat = 10,
+        paddingV: CGFloat = 7
+    ) -> some View {
+        modifier(
+            StudioInnerBoxModifier(
+                tint: tint,
+                isHighlighted: isHighlighted,
+                paddingH: paddingH,
+                paddingV: paddingV
+            )
+        )
+    }
+}
+
 // MARK: - 1. 顶部 Finder 自适应溢出工具栏与系统设置风格模糊吸顶容器
 
 public struct StudioToolbarMenuItem: Identifiable {

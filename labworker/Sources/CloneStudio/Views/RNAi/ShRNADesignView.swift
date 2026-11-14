@@ -200,16 +200,14 @@ public struct ShRNADesignView: View {
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { vm.search() }
                 
-                Button(action: vm.search) {
-                    if vm.isSearching {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Text("检索")
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.indigo)
-                .controlSize(.regular)
+                StudioActionPillButton(
+                    title: vm.isSearching ? "检索中" : "检索",
+                    icon: "magnifyingglass",
+                    tint: .indigo,
+                    isProminent: true,
+                    isDisabled: vm.isSearching,
+                    action: vm.search
+                )
             }
             
             if !vm.searchResults.isEmpty {
@@ -221,28 +219,24 @@ public struct ShRNADesignView: View {
                             
                             Spacer()
                             
-                            // 智能排序选择器
-                            Picker("", selection: $vm.sortOption) {
-                                ForEach(TargetSortOption.allCases) { opt in
-                                    Text(opt.rawValue).tag(opt)
-                                }
-                            }
-                            .labelsHidden()
-                            .pickerStyle(.menu)
-                            .controlSize(.mini)
-                            .frame(width: 140)
+                            StudioMenuPicker(
+                                selection: $vm.sortOption,
+                                options: TargetSortOption.allCases.map {
+                                    StudioMenuPickerOption(value: $0, title: $0.rawValue)
+                                },
+                                compact: true
+                            )
                             
-                            Button("选推荐", action: vm.selectRecommendedOnly)
-                                .font(.system(size: 10.5))
-                                .foregroundColor(.indigo)
-                                .help("快速勾选 ★★★ 卓越与 ★★ 良好靶点")
+                            StudioCompactPillButton(
+                                title: "选推荐",
+                                tint: .indigo,
+                                help: "快速勾选 ★★★ 卓越与 ★★ 良好靶点",
+                                action: vm.selectRecommendedOnly
+                            )
                             
-                            Button("全选", action: vm.selectAll)
-                                .font(.system(size: 10.5))
+                            StudioCompactPillButton(title: "全选", action: vm.selectAll)
                             
-                            Button("清空", action: vm.deselectAll)
-                                .font(.system(size: 10.5))
-                                .foregroundColor(.red)
+                            StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
@@ -250,25 +244,23 @@ public struct ShRNADesignView: View {
                                 Text("结果 (\(vm.searchResults.count)条, 已选\(vm.selectedTargetIDs.count)条)")
                                     .font(.system(size: 11, weight: .semibold))
                                 Spacer()
-                                Picker("", selection: $vm.sortOption) {
-                                    ForEach(TargetSortOption.allCases) { opt in
-                                        Text(opt.rawValue).tag(opt)
-                                    }
-                                }
-                                .labelsHidden()
-                                .pickerStyle(.menu)
-                                .controlSize(.mini)
-                                .frame(width: 130)
+                                StudioMenuPicker(
+                                    selection: $vm.sortOption,
+                                    options: TargetSortOption.allCases.map {
+                                        StudioMenuPickerOption(value: $0, title: $0.rawValue)
+                                    },
+                                    compact: true
+                                )
                             }
-                            HStack(spacing: 8) {
-                                Button("选推荐", action: vm.selectRecommendedOnly)
-                                    .font(.system(size: 10.5))
-                                    .foregroundColor(.indigo)
-                                Button("全选", action: vm.selectAll)
-                                    .font(.system(size: 10.5))
-                                Button("清空", action: vm.deselectAll)
-                                    .font(.system(size: 10.5))
-                                    .foregroundColor(.red)
+                            HStack(spacing: 6) {
+                                StudioCompactPillButton(
+                                    title: "选推荐",
+                                    tint: .indigo,
+                                    help: "快速勾选 ★★★ 卓越与 ★★ 良好靶点",
+                                    action: vm.selectRecommendedOnly
+                                )
+                                StudioCompactPillButton(title: "全选", action: vm.selectAll)
+                                StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
                                 Spacer()
                             }
                         }
@@ -305,10 +297,9 @@ public struct ShRNADesignView: View {
                                         Text("⚠️TTTT")
                                             .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                                             .foregroundColor(.red)
-                                            .padding(.horizontal, 4)
-                                            .padding(.vertical, 1)
-                                            .background(Color.red.opacity(0.12))
-                                            .cornerRadius(3)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Capsule().fill(Color.red.opacity(0.12)))
                                             .help("Sense链含连续4个T，在pLKO.1中导致提前转录终止")
                                     }
                                     
@@ -316,10 +307,7 @@ public struct ShRNADesignView: View {
                                         .font(.system(size: 10, design: .monospaced))
                                         .foregroundColor(.secondary)
                                 }
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 4)
-                                .background(isChecked ? Color.indigo.opacity(0.1) : Color(NSColor.textBackgroundColor).opacity(0.5))
-                                .cornerRadius(5)
+                                .studioInnerBox(tint: isChecked ? .indigo : nil, isHighlighted: isChecked, paddingH: 8, paddingV: 5)
                             }
                         }
                     }
@@ -352,10 +340,7 @@ public struct ShRNADesignView: View {
                         .font(.system(size: 10.5))
                         .foregroundColor(.red)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.red.opacity(0.08))
-                .cornerRadius(4)
+                .studioInnerBox(tint: .red, paddingH: 8, paddingV: 4)
             }
         }
     }

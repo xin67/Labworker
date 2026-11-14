@@ -114,18 +114,13 @@ public struct HistoryTreeView: View {
     }
     
     private var clearHistoryButton: some View {
-        Button(role: .destructive) {
+        StudioCompactPillButton(title: "清空谱系", icon: "trash", tint: .red) {
             withAnimation {
                 historyManager.clearHistory()
                 expandedShiftNodeIDs.removeAll()
                 expandedOverhangNodeIDs.removeAll()
             }
-        } label: {
-            Label("清空谱系", systemImage: "trash")
-                .font(.system(size: 10))
         }
-        .buttonStyle(.bordered)
-        .controlSize(.mini)
     }
 
     private var emptyStateView: some View {
@@ -143,7 +138,7 @@ public struct HistoryTreeView: View {
                 .frame(maxWidth: 360)
         }
         .frame(maxWidth: .infinity, minHeight: 200)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+        .studioInnerBox(paddingH: 12, paddingV: 12)
     }
 }
 
@@ -175,15 +170,13 @@ private struct HistoryNodeCard: View {
                 featureShiftSection
             }
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(isSelected ? 0.92 : 0.6))
+        .studioInnerBox(
+            tint: isSelected ? .teal : nil,
+            isHighlighted: isSelected,
+            paddingH: 10,
+            paddingV: 10
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(isSelected ? Color.teal.opacity(0.75) : Color.secondary.opacity(0.2), lineWidth: isSelected ? 1.5 : 1)
-        )
+        .contentShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
         .onTapGesture {
             onSelect()
         }
@@ -258,7 +251,13 @@ private struct HistoryNodeCard: View {
     }
     
     private var chainMenu: some View {
-        Menu {
+        StudioMenuPillButton(
+            title: "继续改造",
+            icon: "arrow.triangle.branch",
+            tint: .teal,
+            compact: true,
+            help: "以此产物继续下游改造"
+        ) {
             Button {
                 onChainToItem(.mutagenesis)
             } label: {
@@ -274,12 +273,7 @@ private struct HistoryNodeCard: View {
             } label: {
                 Label("作为载体送入「单片段克隆」", systemImage: "scissors")
             }
-        } label: {
-            Label("以此产物继续改造", systemImage: "arrow.triangle.branch")
-                .font(.system(size: 10, weight: .semibold))
         }
-        .menuStyle(.borderedButton)
-        .controlSize(.mini)
     }
 
     private var genealogyFlowRow: some View {
@@ -296,9 +290,7 @@ private struct HistoryNodeCard: View {
                     Text("\(node.parentVectorName) (\(node.parentLengthBp) bp)")
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
                 }
-                .padding(.horizontal, 7)
-                .padding(.vertical, 4)
-                .background(Color.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 5))
+                .studioInnerBox(tint: .blue, paddingH: 8, paddingV: 5)
 
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 10))
@@ -312,9 +304,7 @@ private struct HistoryNodeCard: View {
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
                         .lineLimit(1)
                 }
-                .padding(.horizontal, 7)
-                .padding(.vertical, 4)
-                .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 5))
+                .studioInnerBox(tint: .orange, paddingH: 8, paddingV: 5)
 
                 Image(systemName: "arrow.right.circle.fill")
                     .font(.system(size: 11))
@@ -333,9 +323,7 @@ private struct HistoryNodeCard: View {
                             .foregroundStyle(deltaColor)
                     }
                 }
-                .padding(.horizontal, 7)
-                .padding(.vertical, 4)
-                .background(Color.teal.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
+                .studioInnerBox(tint: .teal, paddingH: 8, paddingV: 5)
             }
         }
     }
@@ -396,9 +384,7 @@ private struct HistoryNodeCard: View {
                             .padding(.vertical, 1)
                             .background(Color.teal.opacity(0.15), in: Capsule())
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
+                    .studioInnerBox(paddingH: 8, paddingV: 4)
                 }
             }
         }
@@ -432,8 +418,7 @@ private struct HistoryNodeCard: View {
             }
             .frame(minWidth: 500)
         }
-        .padding(6)
-        .background(Color.black.opacity(0.14), in: RoundedRectangle(cornerRadius: 6))
+        .studioInnerBox(paddingH: 6, paddingV: 6)
     }
 }
 

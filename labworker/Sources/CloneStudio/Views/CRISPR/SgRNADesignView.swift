@@ -200,18 +200,17 @@ public struct SgRNADesignView: View {
                 TextField("输入待检索基因 (如 TP53, PRKAA1, Trp53)", text: $vm.searchQuery)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { vm.search() }
-                
-                Button(action: vm.search) {
-                    if vm.isSearching {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Text("检索")
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.regular)
+
+                StudioActionPillButton(
+                    title: vm.isSearching ? "检索中" : "检索",
+                    icon: "magnifyingglass",
+                    tint: .cyan,
+                    isProminent: true,
+                    isDisabled: vm.isSearching,
+                    action: vm.search
+                )
             }
-            
+
             if !vm.searchResults.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     // 固定非浮层脱靶核验说明条
@@ -224,96 +223,81 @@ public struct SgRNADesignView: View {
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 4)
-                        Button {
+                        StudioCompactPillButton(
+                            title: "靶点对比",
+                            icon: "globe.badge.chevron.backward",
+                            tint: .orange,
+                            help: "在 CHOPCHOP 靶点对比模块中核验脱靶特异性"
+                        ) {
                             let clean = vm.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
                             let g = !clean.isEmpty ? clean : (vm.searchResults.first?.gene ?? "TP53")
                             vm.compareInCHOPCHOP(gene: g)
-                        } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "globe.badge.chevron.backward")
-                                Text("前往靶点对比")
-                            }
-                            .font(.system(size: 10.5, weight: .semibold))
                         }
-                        .buttonStyle(.bordered)
-                        .tint(.orange)
-                        .controlSize(.mini)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(Color.orange.opacity(0.08))
-                    .cornerRadius(6)
-                    
+                    .studioInnerBox(tint: .orange, paddingH: 10, paddingV: 6)
+
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .center, spacing: 6) {
                             Text("结果 (\(vm.searchResults.count)条, 已选\(vm.selectedTargetIDs.count)条)")
                                 .font(.system(size: 11, weight: .semibold))
-                            
+
                             Text("文库参考基因组: \(vm.species.chopchopGenome)")
                                 .font(.system(size: 10, weight: .medium, design: .monospaced))
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1.5)
-                                .background(vm.species.themeColor.opacity(0.12))
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(vm.species.themeColor.opacity(0.12)))
                                 .foregroundColor(vm.species.themeColor)
-                                .cornerRadius(4)
-                            
+
                             Spacer()
-                            
-                            // 智能排序选择器
-                            Picker("", selection: $vm.sortOption) {
-                                ForEach(TargetSortOption.allCases) { opt in
-                                    Text(opt.rawValue).tag(opt)
-                                }
-                            }
-                            .labelsHidden()
-                            .pickerStyle(.menu)
-                            .controlSize(.mini)
-                            .frame(width: 140)
-                            
-                            Button("选序列高分", action: vm.selectRecommendedOnly)
-                                .font(.system(size: 10.5))
-                                .foregroundColor(.green)
-                                .help("快速勾选序列启发式评分高 (★★★ / ★★) 的靶点")
-                            
-                            Button("全选", action: vm.selectAll)
-                                .font(.system(size: 10.5))
-                            
-                            Button("清空", action: vm.deselectAll)
-                                .font(.system(size: 10.5))
-                                .foregroundColor(.red)
+
+                            StudioMenuPicker(
+                                selection: $vm.sortOption,
+                                options: TargetSortOption.allCases.map {
+                                    StudioMenuPickerOption(value: $0, title: $0.rawValue)
+                                },
+                                compact: true
+                            )
+
+                            StudioCompactPillButton(
+                                title: "选高分",
+                                tint: .green,
+                                help: "快速勾选序列启发式评分高 (★★★ / ★★) 的靶点",
+                                action: vm.selectRecommendedOnly
+                            )
+
+                            StudioCompactPillButton(title: "全选", action: vm.selectAll)
+
+                            StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
                         }
-                        
+
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(spacing: 6) {
                                 Text("结果 (\(vm.searchResults.count)条, 已选\(vm.selectedTargetIDs.count)条)")
                                     .font(.system(size: 11, weight: .semibold))
                                 Text("参考基因组: \(vm.species.chopchopGenome)")
                                     .font(.system(size: 10, weight: .medium, design: .monospaced))
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1.5)
-                                    .background(vm.species.themeColor.opacity(0.12))
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(vm.species.themeColor.opacity(0.12)))
                                     .foregroundColor(vm.species.themeColor)
-                                    .cornerRadius(4)
                                 Spacer()
-                                Picker("", selection: $vm.sortOption) {
-                                    ForEach(TargetSortOption.allCases) { opt in
-                                        Text(opt.rawValue).tag(opt)
-                                    }
-                                }
-                                .labelsHidden()
-                                .pickerStyle(.menu)
-                                .controlSize(.mini)
-                                .frame(width: 130)
+                                StudioMenuPicker(
+                                    selection: $vm.sortOption,
+                                    options: TargetSortOption.allCases.map {
+                                        StudioMenuPickerOption(value: $0, title: $0.rawValue)
+                                    },
+                                    compact: true
+                                )
                             }
-                            HStack(spacing: 8) {
-                                Button("选序列高分", action: vm.selectRecommendedOnly)
-                                    .font(.system(size: 10.5))
-                                    .foregroundColor(.green)
-                                Button("全选", action: vm.selectAll)
-                                    .font(.system(size: 10.5))
-                                Button("清空", action: vm.deselectAll)
-                                    .font(.system(size: 10.5))
-                                    .foregroundColor(.red)
+                            HStack(spacing: 6) {
+                                StudioCompactPillButton(
+                                    title: "选高分",
+                                    tint: .green,
+                                    help: "快速勾选序列启发式评分高 (★★★ / ★★) 的靶点",
+                                    action: vm.selectRecommendedOnly
+                                )
+                                StudioCompactPillButton(title: "全选", action: vm.selectAll)
+                                StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
                                 Spacer()
                             }
                         }
@@ -350,21 +334,17 @@ public struct SgRNADesignView: View {
                                         Text("⚠️TTTT")
                                             .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                                             .foregroundColor(.red)
-                                            .padding(.horizontal, 4)
-                                            .padding(.vertical, 1)
-                                            .background(Color.red.opacity(0.12))
-                                            .cornerRadius(3)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Capsule().fill(Color.red.opacity(0.12)))
                                             .help("该靶点含连续4个T，在U6启动子下转录提前终止")
                                     }
-                                    
+
                                     Text("GC \(String(format: "%.0f", target.gcPercent))%")
                                         .font(.system(size: 10, design: .monospaced))
                                         .foregroundColor(.secondary)
                                 }
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 4)
-                                .background(isChecked ? Color.blue.opacity(0.1) : Color(NSColor.textBackgroundColor).opacity(0.5))
-                                .cornerRadius(5)
+                                .studioInnerBox(tint: isChecked ? .cyan : nil, isHighlighted: isChecked, paddingH: 8, paddingV: 5)
                             }
                         }
                     }
@@ -373,23 +353,23 @@ public struct SgRNADesignView: View {
             }
         }
     }
-    
+
     private var customInputSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 TextField("基因名", text: $vm.customGeneName)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 90)
-                
+
                 TextField("20 bp 靶点 Spacer (不含 PAM)", text: $vm.customSequence)
                     .font(.system(size: 11.5, design: .monospaced))
                     .textFieldStyle(.roundedBorder)
-                
+
                 if let sc = vm.customTargetScore {
                     TargetScoreBadge(score: sc, compact: false)
                 }
             }
-            
+
             if let sc = vm.customTargetScore, sc.hasFatalIssue, let warning = sc.fatalWarning {
                 HStack(spacing: 4) {
                     Text("⚠️")
@@ -397,10 +377,7 @@ public struct SgRNADesignView: View {
                         .font(.system(size: 10.5))
                         .foregroundColor(.red)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.red.opacity(0.08))
-                .cornerRadius(4)
+                .studioInnerBox(tint: .red, paddingH: 8, paddingV: 4)
             }
         }
     }

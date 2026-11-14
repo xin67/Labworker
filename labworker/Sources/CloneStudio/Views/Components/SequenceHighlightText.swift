@@ -297,27 +297,14 @@ public struct PrimerCardView: View {
                     .font(.system(size: 14.5, weight: .bold, design: .monospaced))
                 
                 if onPairedRename != nil || onSingleRename != nil {
-                    Button(action: {
+                    StudioCompactPillButton(title: "改名", icon: "pencil", tint: .accentColor) {
                         draftNameText = onPairedRename != nil
                             ? PrimerItem.extractPairPrefix(from: primer.name)
                             : primer.name
                         withAnimation(.easeInOut(duration: 0.15)) {
                             isEditingName.toggle()
                         }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 11, weight: .semibold))
-                            Text("改名")
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.accentColor.opacity(0.12))
-                        .foregroundColor(.accentColor)
-                        .cornerRadius(5)
                     }
-                    .buttonStyle(.plain)
                 }
                 
                 StudioMetricBadge(label: "", value: "\(primer.length) bp", color: .secondary)
@@ -496,15 +483,7 @@ public struct PrimerCardView: View {
                 }
             }
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color.primary.opacity(0.035))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.8)
-                )
-        )
+        .studioInnerBox(paddingH: 10, paddingV: 10)
     }
     
     @ViewBuilder
@@ -552,7 +531,7 @@ public struct PrimerCardView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                         .fill(Color(NSColor.textBackgroundColor))
                 )
             } else {
@@ -562,12 +541,8 @@ public struct PrimerCardView: View {
                     .padding(.vertical, 4)
             }
         }
-        .padding(8)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color(NSColor.controlBackgroundColor))
-        )
+        .studioInnerBox(paddingH: 8, paddingV: 8)
     }
     
     private func commitPairedOrSingleRename() {
@@ -680,20 +655,11 @@ public struct PrimerPairDimerSummaryBar: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                         .fill(Color(NSColor.textBackgroundColor))
                 )
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(riskTint(rep.overallRisk).opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .stroke(riskTint(rep.overallRisk).opacity(0.22), lineWidth: 0.8)
-                )
-        )
+        .studioInnerBox(tint: riskTint(rep.overallRisk), paddingH: 10, paddingV: 7)
     }
 }

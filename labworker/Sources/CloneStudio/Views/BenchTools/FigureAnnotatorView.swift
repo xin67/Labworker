@@ -288,17 +288,17 @@ public struct FigureAnnotatorView: View {
                         Image(nsImage: nsImg)
                             .resizable()
                             .aspectRatio(CGFloat(composite.width) / CGFloat(max(1, composite.height)), contentMode: .fit)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
                     }
                     
                     // 左上角出版级面板编号 A / B / C / D
                     Text(labelStyle.label(for: index))
                         .font(.system(size: 15, weight: .heavy, design: .rounded))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 7)
+                        .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            Capsule(style: .continuous)
                                 .fill(Color.black.opacity(0.65))
                         )
                         .padding(8)
