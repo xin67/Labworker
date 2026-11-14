@@ -48,10 +48,10 @@ public struct SequenceMinimapView: View {
     }
     
     public var body: some View {
-        let primaryText = isDark ? Color.white.opacity(0.68) : Color(red: 0.22, green: 0.28, blue: 0.38)
+        let primaryText: Color = .secondary
         let accentCyan = isDark ? Color.cyan : Color(red: 0.02, green: 0.48, blue: 0.72)
-        let trackFill = isDark ? Color(red: 0.06, green: 0.09, blue: 0.16) : Color(red: 0.92, green: 0.95, blue: 0.98)
-        let trackStroke = isDark ? Color.white.opacity(0.12) : Color.black.opacity(0.12)
+        let trackFill = StudioPalette.trackBg(isLight: !isDark)
+        let trackStroke = StudioPalette.cardBorder(isLight: !isDark)
         let centerLineColor = isDark ? Color.white.opacity(0.20) : Color.black.opacity(0.20)
         
         VStack(alignment: .leading, spacing: 3) {

@@ -1387,18 +1387,25 @@ public struct PlasmidPreviewPanel: View {
     }
     
     public var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // 顶栏第一行：标题与指标徽章 + [⤢ 全宽同屏] 展开按钮 + [✕ 收起] 开关 (使用 ViewThatFits 杜绝截断)
+        VStack(alignment: .leading, spacing: 10) {
+            // 顶栏第一行：沉浸式标题（独立窗口自动让出左侧红黄绿交通灯区域） + 指标徽章 + 展开/弹出控件（零重复关闭按钮）
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: 8) {
+                    if isStandaloneWindow {
+                        Spacer()
+                            .frame(width: 68, height: 1)
+                    }
                     HStack(spacing: 5) {
                         Image(systemName: "circle.circle.fill")
-                            .foregroundColor(.cyan)
+                            .foregroundStyle(.cyan)
                             .font(.system(size: 13))
                         Text(data.insertLengthBp == 0 ? "原始质粒全景图谱：\(data.constructTitle)" : "重组质粒全景图谱")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 13.5, weight: .bold))
                             .lineLimit(1)
                     }
+                    .help(onMutateCodon != nil
+                          ? "在序列或氨基酸带中按住拖拽选区，可在底部直接点选目标氨基酸进行定点突变"
+                          : "在序列或密码子带上直接按住拖拽选区，实时测算坐标、氨基酸序列与 Tm 值")
                     
                     Spacer(minLength: 4)
                     
@@ -1416,19 +1423,19 @@ public struct PlasmidPreviewPanel: View {
                         popoutWindowButton
                         expandToggleButton
                     }
-                    
-                    if let onClose = onClose {
-                        closePreviewButton(action: onClose)
-                    }
                 }
                 
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .center, spacing: 5) {
+                        if isStandaloneWindow {
+                            Spacer()
+                                .frame(width: 68, height: 1)
+                        }
                         Image(systemName: "circle.circle.fill")
-                            .foregroundColor(.cyan)
+                            .foregroundStyle(.cyan)
                             .font(.system(size: 13))
                         Text(data.insertLengthBp == 0 ? "原始质粒：\(data.constructTitle)" : data.constructTitle)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 13.5, weight: .bold))
                             .lineLimit(1)
                         
                         Spacer()
@@ -1436,10 +1443,6 @@ public struct PlasmidPreviewPanel: View {
                         if !isStandaloneWindow {
                             popoutWindowButton
                             expandToggleButton
-                        }
-                        
-                        if let onClose = onClose {
-                            closePreviewButton(action: onClose)
                         }
                     }
                     HStack(spacing: 5) {
@@ -1453,29 +1456,17 @@ public struct PlasmidPreviewPanel: View {
                     }
                 }
             }
+            .frame(minHeight: isStandaloneWindow ? 28 : nil)
             
-            // 顶栏第二行：全宽 5 标签平铺选择器 (精细同屏 / 环形图谱 / 微观序列 / 线性拼接 / 构建谱系)
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 4) {
-                    ForEach(PreviewTab.allCases, id: \.self) { tab in
-                        previewTabButton(tab, compact: false)
-                    }
-                }
-                HStack(spacing: 2) {
-                    ForEach(PreviewTab.allCases, id: \.self) { tab in
-                        previewTabButton(tab, compact: true)
-                    }
+            // 顶栏第二行：macOS 原生 segmented 分段选择器
+            Picker("预览视图", selection: $selectedTab) {
+                ForEach(PreviewTab.allCases, id: \.self) { tab in
+                    Text(tab.rawValue).tag(tab)
                 }
             }
-            .padding(3)
-            .background(
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .fill(StudioPalette.trackBg(isLight: !isDark))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .stroke(StudioPalette.controlBorder(isLight: !isDark), lineWidth: 1)
-            )
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .controlSize(.large)
             
             // 主视图区 (精细同屏 / 环形 / 微观序列 / 线性 / 谱系)
             Group {
@@ -1549,18 +1540,20 @@ public struct PlasmidPreviewPanel: View {
                     )
             }
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isDark ? Color(red: 0.08, green: 0.10, blue: 0.15) : Color.white)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(isDark ? Color.white.opacity(0.10) : Color.black.opacity(0.10), lineWidth: 1)
-                )
-        )
+        .padding(isStandaloneWindow ? 14 : 12)
+        .background {
+            if !isStandaloneWindow {
+                RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
+                    .fill(StudioPalette.cardBg(isLight: !isDark))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
+                            .stroke(StudioPalette.cardBorder(isLight: !isDark), lineWidth: 1)
+                    )
+            }
+        }
     }
     
-    // MARK: - 顶栏控制按钮 (全宽同屏展开 / 关闭收起)
+    // MARK: - 顶栏控制按钮 (全宽同屏展开)
     private var expandToggleButton: some View {
         StudioCompactPillButton(
             title: appState.isPreviewExpanded ? "恢复双栏" : "精细同屏",
@@ -1574,19 +1567,6 @@ public struct PlasmidPreviewPanel: View {
                 if appState.isPreviewExpanded {
                     selectedTab = .split
                 }
-            }
-        }
-    }
-    
-    private func closePreviewButton(action: @escaping () -> Void) -> some View {
-        StudioCompactPillButton(
-            title: "收起",
-            icon: "xmark",
-            help: "收起质粒预览窗口（可通过顶栏开关随时重新打开）"
-        ) {
-            withAnimation(.easeInOut(duration: 0.22)) {
-                appState.isPreviewExpanded = false
-                action()
             }
         }
     }
@@ -1673,49 +1653,10 @@ public struct PlasmidPreviewPanel: View {
         )
     }
     
-    private func previewTabButton(_ tab: PreviewTab, compact: Bool) -> some View {
-        let isSel = (selectedTab == tab)
-        let tabTitle: String = {
-            if compact {
-                switch tab {
-                case .split: return "同屏"
-                case .circular: return "环形"
-                case .microscopic: return "微观"
-                case .linear: return "线性"
-                case .lineage: return "谱系"
-                }
-            } else {
-                return tab.rawValue
-            }
-        }()
-        
-        return Button(action: {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                selectedTab = tab
-            }
-        }) {
-            HStack(spacing: compact ? 2 : 4) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: compact ? 9 : 10))
-                Text(tabTitle)
-                    .font(.system(size: compact ? 10 : 11, weight: isSel ? .bold : .medium))
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 24)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(isSel ? Color.accentColor : Color.clear)
-            )
-            .foregroundColor(isSel ? .white : .primary)
-            .contentShape(Capsule(style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-    
-    // MARK: - 环形质粒图谱 (完整跟随系统浅色=白底，深色=黑底)
+    // MARK: - 环形质粒图谱 (对齐系统设置浅色白底/深色黑灰底)
     private var circularPlasmidView: some View {
-        let mapBg = isDark ? Color(red: 0.035, green: 0.05, blue: 0.09) : Color.white
-        let borderCol = isDark ? Color.white.opacity(0.10) : Color.black.opacity(0.12)
+        let mapBg = StudioPalette.cardBg(isLight: !isDark)
+        let borderCol = StudioPalette.cardBorder(isLight: !isDark)
         return VStack(spacing: 0) {
             circularTopToolbar
             
@@ -1758,70 +1699,55 @@ public struct PlasmidPreviewPanel: View {
     }
     
     private var circularTopToolbar: some View {
-        let headerBg = isDark ? Color(red: 0.06, green: 0.09, blue: 0.15) : Color(red: 0.93, green: 0.95, blue: 0.98)
-        let titleCol = isDark ? Color.white : Color(red: 0.10, green: 0.14, blue: 0.22)
+        let headerBg = StudioPalette.trackBg(isLight: !isDark)
+        let titleCol: Color = .primary
         return HStack(spacing: 6) {
             Text("Circular Plasmid Map")
                 .font(.system(size: 11.5, weight: .bold))
-                .foregroundColor(titleCol)
+                .foregroundStyle(titleCol)
                 .lineLimit(1)
             
             Spacer(minLength: 4)
             
-            GlassEffectContainer(spacing: 4) {
-                HStack(spacing: 4) {
-                    circularToolbarBtn(icon: "cursorarrow", isActive: toolMode == .select, tooltip: "Select Mode") {
-                        toolMode = .select
-                    }
-                    circularToolbarBtn(icon: "hand.draw", isActive: toolMode == .pan, tooltip: "Pan Canvas") {
-                        toolMode = .pan
-                    }
-                    circularToolbarBtn(icon: "arrow.triangle.2.circlepath", isActive: toolMode == .rotate, tooltip: "Rotate +30°") {
-                        toolMode = .rotate
-                        withAnimation(.easeInOut(duration: 0.18)) {
-                            rotationDegrees = (rotationDegrees + 30).truncatingRemainder(dividingBy: 360)
-                        }
-                    }
-                    circularToolbarBtn(icon: "plus.magnifyingglass", isActive: false, tooltip: "Zoom In") {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            zoomScale = min(2.0, zoomScale + 0.18)
-                        }
-                    }
-                    circularToolbarBtn(icon: "minus.magnifyingglass", isActive: false, tooltip: "Zoom Out") {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            zoomScale = max(0.70, zoomScale - 0.18)
-                        }
-                    }
-                    circularToolbarBtn(icon: "arrow.counterclockwise", isActive: false, tooltip: "Reset View") {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            zoomScale = 1.0
-                            panOffset = .zero
-                            rotationDegrees = 0
-                        }
-                    }
-                    Button(action: {
-                        appState.showToast("已将「\(data.constructTitle)」环形图谱快照复制至剪贴板")
-                    }) {
-                        HStack(spacing: 2) {
-                            Image(systemName: "camera")
-                                .font(.system(size: 9))
-                            Text("PNG")
-                                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
-                        }
-                        .foregroundColor(titleCol.opacity(0.90))
-                        .padding(.horizontal, 8)
-                        .frame(height: 24)
-                        .glassEffect(
-                            StudioGlassSupport.buttonGlass(appState: appState, interactive: true),
-                            in: Capsule(style: .continuous)
-                        )
-                        .contentShape(Capsule(style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .help("导出高分辨率 PNG 图谱")
+            HStack(spacing: 5) {
+                circularToolbarBtn(icon: "cursorarrow", isActive: toolMode == .select, tooltip: "Select Mode") {
+                    toolMode = .select
                 }
+                circularToolbarBtn(icon: "hand.draw", isActive: toolMode == .pan, tooltip: "Pan Canvas") {
+                    toolMode = .pan
+                }
+                circularToolbarBtn(icon: "arrow.triangle.2.circlepath", isActive: toolMode == .rotate, tooltip: "Rotate +30°") {
+                    toolMode = .rotate
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        rotationDegrees = (rotationDegrees + 30).truncatingRemainder(dividingBy: 360)
+                    }
+                }
+                circularToolbarBtn(icon: "plus.magnifyingglass", isActive: false, tooltip: "Zoom In") {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        zoomScale = min(2.0, zoomScale + 0.18)
+                    }
+                }
+                circularToolbarBtn(icon: "minus.magnifyingglass", isActive: false, tooltip: "Zoom Out") {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        zoomScale = max(0.70, zoomScale - 0.18)
+                    }
+                }
+                circularToolbarBtn(icon: "arrow.counterclockwise", isActive: false, tooltip: "Reset View") {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        zoomScale = 1.0
+                        panOffset = .zero
+                        rotationDegrees = 0
+                    }
+                }
+                Button(action: {
+                    appState.showToast("已将「\(data.constructTitle)」环形图谱快照复制至剪贴板")
+                }) {
+                    Label("PNG", systemImage: "camera")
+                        .font(.system(size: 10.5, weight: .semibold))
+                }
+                .studioGlassButton(controlSize: .regular)
+                .help("导出高分辨率 PNG 图谱")
             }
-            .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -1851,8 +1777,8 @@ public struct PlasmidPreviewPanel: View {
     }
     
     private var circularBottomStatusBar: some View {
-        let headerBg = isDark ? Color(red: 0.06, green: 0.08, blue: 0.14) : Color(red: 0.93, green: 0.95, blue: 0.98)
-        let subCol = isDark ? Color.white.opacity(0.55) : Color(red: 0.38, green: 0.44, blue: 0.54)
+        let headerBg = StudioPalette.trackBg(isLight: !isDark)
+        let subCol: Color = .secondary
         let accentCol = isDark ? Color.cyan.opacity(0.88) : Color(red: 0.02, green: 0.45, blue: 0.78)
         return HStack {
             Text("Vector: \(data.vectorName) · Zoom: \(Int(zoomScale * 100))%")
@@ -2148,10 +2074,10 @@ public struct PlasmidPreviewPanel: View {
     
     // MARK: - 左上角 Plasmid Features ♦ 悬浮卡片
     private var plasmidFeaturesFloatingCard: some View {
-        let cardBg = isDark ? Color(red: 0.06, green: 0.09, blue: 0.16).opacity(0.92) : Color.white.opacity(0.95)
-        let cardStroke = isDark ? Color.white.opacity(0.12) : Color.black.opacity(0.12)
-        let titleCol = isDark ? Color.white.opacity(0.92) : Color(red: 0.10, green: 0.14, blue: 0.22)
-        let itemCol = isDark ? Color.white.opacity(0.85) : Color(red: 0.18, green: 0.24, blue: 0.34)
+        let cardBg = StudioPalette.cardBg(isLight: !isDark).opacity(0.94)
+        let cardStroke = StudioPalette.cardBorder(isLight: !isDark)
+        let titleCol: Color = .primary
+        let itemCol: Color = .secondary
         
         return VStack(alignment: .leading, spacing: 4) {
             Button(action: {
@@ -2220,25 +2146,18 @@ public struct PlasmidPreviewPanel: View {
         tooltip: String,
         action: @escaping () -> Void
     ) -> some View {
-        let inactiveCol = isDark ? Color.white.opacity(0.82) : Color(red: 0.22, green: 0.28, blue: 0.38)
-        let activeCol = isDark ? Color.cyan : Color(red: 0.02, green: 0.48, blue: 0.85)
+        let activeCol: Color = isDark ? .cyan : appState.accentTheme.color
         return Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: isActive ? .bold : .medium))
-                .foregroundColor(isActive ? activeCol : inactiveCol)
-                .frame(width: 24, height: 24)
-                .glassEffect(
-                    StudioGlassSupport.buttonGlass(
-                        appState: appState,
-                        tint: isActive ? activeCol : nil,
-                        selected: isActive,
-                        interactive: true
-                    ),
-                    in: Circle()
-                )
-                .contentShape(Circle())
+                .font(.system(size: 10.5, weight: isActive ? .bold : .medium))
+                .foregroundStyle(isActive ? activeCol : .primary)
         }
-        .buttonStyle(.plain)
+        .studioGlassButton(
+            tint: isActive ? activeCol : nil,
+            isSelected: isActive,
+            isCircle: true,
+            controlSize: .regular
+        )
         .help(tooltip)
     }
     
@@ -2355,21 +2274,23 @@ public final class PlasmidWindowPresenter: NSObject, NSWindowDelegate {
         let contentRect = NSRect(x: 0, y: 0, width: 1120, height: 760)
         let window = NSWindow(
             contentRect: contentRect,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = title
+        window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
+        window.backgroundColor = .windowBackgroundColor
         window.minSize = NSSize(width: 780, height: 540)
         window.isReleasedWhenClosed = false
         window.delegate = self
         
         let rootView = StandalonePlasmidPreviewWindowView(
             data: data,
-            onMutateCodon: onMutateCodon,
-            onCloseWindow: { [weak window] in
-                window?.close()
-            }
+            onMutateCodon: onMutateCodon
         )
         window.appearance = NSApplication.shared.appearance
         window.contentView = NSHostingView(rootView: rootView)
@@ -2390,45 +2311,20 @@ private struct StandalonePlasmidPreviewWindowView: View {
     @ObservedObject private var appState = AppState.shared
     let data: PlasmidConstructPreviewData
     let onMutateCodon: ((InteractiveCodonMutationPayload) -> Void)?
-    let onCloseWindow: () -> Void
     
     private var isDark: Bool {
         appState.resolvedCanvasIsDark()
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles.rectangle.stack.fill")
-                    .foregroundColor(.cyan)
-                Text("独立质粒全景预览窗口：\(data.constructTitle)")
-                    .font(.system(size: 13.5, weight: .bold))
-                    .foregroundColor(isDark ? .white : .primary)
-                if onMutateCodon != nil {
-                    Text("💡 在右侧序列或氨基酸带中按住拉取密码子，可在底部直接点选目标氨基酸进行定点突变")
-                        .font(.system(size: 11))
-                        .foregroundColor(.pink)
-                } else {
-                    Text("💡 在右侧序列或密码子带上直接按住拉取选区，实时测算坐标、氨基酸序列与 Tm 值")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
-                StudioActionPillButton(title: "关闭窗口", icon: "xmark", action: onCloseWindow)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 10)
-            
-            PlasmidPreviewPanel(
-                data: data,
-                onClose: onCloseWindow,
-                onMutateCodon: onMutateCodon,
-                isStandaloneWindow: true
-            )
-            .padding(.horizontal, 10)
-            .padding(.bottom, 10)
-        }
+        PlasmidPreviewPanel(
+            data: data,
+            onMutateCodon: onMutateCodon,
+            isStandaloneWindow: true
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .frame(minWidth: 780, minHeight: 540)
-        .background(isDark ? Color(red: 0.05, green: 0.07, blue: 0.11) : Color(red: 0.96, green: 0.97, blue: 0.99))
+        .background(StudioPalette.workspaceBg(isLight: !isDark))
+        .ignoresSafeArea(.container, edges: .top)
     }
 }

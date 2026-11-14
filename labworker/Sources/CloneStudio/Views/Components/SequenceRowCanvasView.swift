@@ -226,24 +226,24 @@ public struct SequenceRowCanvasView: View {
         return sliceMemo
     }
     
-    // MARK: - 颜色主题（跟随系统浅色=白底，深色=黑底）
+    // MARK: - 颜色主题（对齐系统设置浅色白底/深色黑灰底）
     private var canvasBgColor: Color {
-        isDark ? Color(red: 0.04, green: 0.06, blue: 0.10) : Color.white
+        StudioPalette.cardBg(isLight: !isDark)
     }
     private var headerBgColor: Color {
-        isDark ? Color(red: 0.06, green: 0.09, blue: 0.15) : Color(red: 0.93, green: 0.95, blue: 0.98)
+        StudioPalette.trackBg(isLight: !isDark)
     }
     private var subBarBgColor: Color {
-        isDark ? Color(red: 0.05, green: 0.07, blue: 0.12) : Color(red: 0.95, green: 0.97, blue: 0.99)
+        StudioPalette.controlSubtleBg(isLight: !isDark)
     }
     private var primaryTextColor: Color {
-        isDark ? Color.white : Color(red: 0.10, green: 0.14, blue: 0.22)
+        isDark ? .white : .primary
     }
     private var secondaryTextColor: Color {
-        isDark ? Color.white.opacity(0.55) : Color(red: 0.38, green: 0.44, blue: 0.54)
+        .secondary
     }
     private var borderStrokeColor: Color {
-        isDark ? Color.white.opacity(0.10) : Color.black.opacity(0.12)
+        StudioPalette.cardBorder(isLight: !isDark)
     }
     
     private var minimapViewportRangeBp: ClosedRange<Int> {
@@ -508,58 +508,33 @@ public struct SequenceRowCanvasView: View {
     }
     
     private var codonSnapModeToggleBtn: some View {
-        Button(action: {
+        StudioCompactPillButton(
+            title: snapToCodonMode ? "密码子滑选(3bp)" : "单碱基滑选(1bp)",
+            icon: snapToCodonMode ? "character.textbox" : "textformat.abc.dottedunderline",
+            tint: snapToCodonMode ? .pink : (isDark ? .cyan : .blue),
+            isProminent: snapToCodonMode,
+            isSelected: snapToCodonMode,
+            help: "切换「按 3bp 密码子连续拉取选择」与「按 1bp 单碱基拉取选择」（在氨基酸密码子带上直接拉取始终按 3bp 对齐）"
+        ) {
             snapToCodonMode.toggle()
-        }) {
-            HStack(spacing: 3) {
-                Image(systemName: snapToCodonMode ? "character.textbox" : "textformat.abc.dottedunderline")
-                    .font(.system(size: 9.5, weight: .bold))
-                Text(snapToCodonMode ? "密码子滑选(3bp)" : "单碱基滑选(1bp)")
-                    .font(.system(size: 9.5, weight: .semibold))
-            }
-            .foregroundColor(snapToCodonMode ? .white : (isDark ? .cyan : .blue))
-            .padding(.horizontal, 8)
-            .frame(height: 22)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(snapToCodonMode ? Color.pink.opacity(0.85) : Color.primary.opacity(0.08))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(snapToCodonMode ? Color.pink : Color.cyan.opacity(0.45), lineWidth: 0.8)
-                    )
-            )
         }
-        .buttonStyle(.plain)
-        .help("切换「按 3bp 密码子连续拉取选择」与「按 1bp 单碱基拉取选择」（在氨基酸密码子带上直接拉取始终按 3bp 对齐）")
     }
     
     private var enzymeInspectorToggleBtn: some View {
-        let accentCol = isDark ? Color.cyan : Color(red: 0.02, green: 0.48, blue: 0.78)
-        return Button(action: {
+        let accentCol = isDark ? Color.cyan : appState.accentTheme.color
+        return StudioCompactPillButton(
+            title: "Enzymes (\(detectedCutsites.count))",
+            icon: "scissors",
+            tint: accentCol,
+            isProminent: showEnzymeInspector,
+            isSelected: showEnzymeInspector,
+            monospaced: true,
+            help: "打开/关闭限制性内切酶选择器与 NEB Buffer 活性矩阵"
+        ) {
             withAnimation(.easeInOut(duration: 0.18)) {
                 showEnzymeInspector.toggle()
             }
-        }) {
-            HStack(spacing: 4) {
-                Image(systemName: "scissors")
-                    .font(.system(size: 9.5, weight: .bold))
-                Text("Enzymes (\(detectedCutsites.count))")
-                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
-            }
-            .foregroundColor(showEnzymeInspector ? .white : accentCol)
-            .padding(.horizontal, 8)
-            .frame(height: 22)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(showEnzymeInspector ? accentCol : accentCol.opacity(0.12))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(accentCol.opacity(0.45), lineWidth: 0.8)
-                    )
-            )
         }
-        .buttonStyle(.plain)
-        .help("打开/关闭限制性内切酶选择器与 NEB Buffer 活性矩阵")
     }
     
     @ViewBuilder
@@ -703,15 +678,15 @@ public struct SequenceRowCanvasView: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: isActive ? .bold : .regular))
-                .foregroundColor(isActive ? activeColor : secondaryTextColor)
-                .frame(width: 22, height: 22)
-                .background(
-                    Circle()
-                        .fill(isActive ? activeColor.opacity(0.18) : Color.clear)
-                )
+                .font(.system(size: 10.5, weight: isActive ? .bold : .medium))
+                .foregroundStyle(isActive ? activeColor : secondaryTextColor)
         }
-        .buttonStyle(.plain)
+        .studioGlassButton(
+            tint: isActive ? activeColor : nil,
+            isSelected: isActive,
+            isCircle: true,
+            controlSize: .small
+        )
         .help(tooltip)
     }
     

@@ -438,17 +438,9 @@ public struct SettingsView: View {
                             }
 
                             if !isVis && item.canBeHiddenInSidebar {
-                                Button {
+                                StudioCompactPillButton(title: "恢复显示", tint: .orange) {
                                     appState.setNavItemVisible(item, visible: true)
-                                } label: {
-                                    Text("恢复显示")
-                                        .font(.system(size: 11, weight: .medium))
-                                        .padding(.horizontal, 7)
-                                        .padding(.vertical, 3.5)
-                                        .background(Capsule().fill(Color.orange.opacity(0.14)))
-                                        .foregroundColor(.orange)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
 

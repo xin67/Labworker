@@ -233,17 +233,15 @@ public struct WesternBlotView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: group.rawChemi != nil ? "sparkles.rectangle.stack.fill" : "photo")
                                     .font(.system(size: 11.5, weight: .semibold))
-                                    .foregroundColor(isSel ? .white : .accentColor)
                                 Text(group.title)
                                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                    .foregroundColor(isSel ? .white : .primary)
                                 if group.rawChemi != nil {
                                     Text("16-bit")
                                         .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                                         .padding(.horizontal, 5)
                                         .padding(.vertical, 1.5)
                                         .background(Capsule().fill(isSel ? Color.white.opacity(0.24) : Color.teal.opacity(0.15)))
-                                        .foregroundColor(isSel ? .white : .teal)
+                                        .foregroundStyle(isSel ? .white : .teal)
                                 }
                                 if group.brightfield != nil {
                                     Text("明场")
@@ -251,18 +249,15 @@ public struct WesternBlotView: View {
                                         .padding(.horizontal, 5)
                                         .padding(.vertical, 1.5)
                                         .background(Capsule().fill(isSel ? Color.white.opacity(0.24) : Color.orange.opacity(0.15)))
-                                        .foregroundColor(isSel ? .white : .orange)
+                                        .foregroundStyle(isSel ? .white : .orange)
                                 }
                             }
-                            .padding(.horizontal, 12)
-                            .frame(height: 28)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(isSel ? Color.accentColor : Color.primary.opacity(0.06))
-                            )
-                            .contentShape(Capsule(style: .continuous))
                         }
-                        .buttonStyle(.plain)
+                        .studioGlassButton(
+                            isProminent: isSel,
+                            isSelected: isSel,
+                            controlSize: .regular
+                        )
                     }
                     
                     // 内置双排（TP53 + GAPDH 内参）示范膜按钮
@@ -270,23 +265,14 @@ public struct WesternBlotView: View {
                     Button {
                         selectSyntheticDualDemo()
                     } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "square.stack.3d.up.fill")
-                                .font(.system(size: 11.5, weight: .semibold))
-                                .foregroundColor(synthSelected ? .white : .purple)
-                            Text("TP53 / GAPDH 示范")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundColor(synthSelected ? .white : .primary)
-                        }
-                        .padding(.horizontal, 12)
-                        .frame(height: 28)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(synthSelected ? Color.purple : Color.primary.opacity(0.06))
-                        )
-                        .contentShape(Capsule(style: .continuous))
+                        Label("TP53 / GAPDH 示范", systemImage: "square.stack.3d.up.fill")
                     }
-                    .buttonStyle(.plain)
+                    .studioGlassButton(
+                        tint: .purple,
+                        isProminent: synthSelected,
+                        isSelected: synthSelected,
+                        controlSize: .regular
+                    )
                     .help("切换内置 TP53 + GAPDH 双排目的/内参示范膜")
                 }
                 
@@ -314,30 +300,17 @@ public struct WesternBlotView: View {
     }
     
     private func layerRoleSwitcher(for group: WBSampleGroup) -> some View {
-        StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
+        Picker("", selection: $activeLayerRole) {
             ForEach(group.availableLayers, id: \.role) { layer in
-                let isSel = (activeLayerRole == layer.role)
-                Button {
-                    activeLayerRole = layer.role
-                    refreshDisplayImages()
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: layer.icon)
-                            .font(.system(size: 11, weight: .semibold))
-                        Text(layer.label)
-                            .font(.system(size: 11.5, weight: isSel ? .semibold : .medium))
-                    }
-                    .foregroundColor(isSel ? .white : .primary)
-                    .padding(.horizontal, 11)
-                    .frame(height: 28)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(isSel ? Color.teal : Color.primary.opacity(0.07))
-                    )
-                    .contentShape(Capsule(style: .continuous))
-                }
-                .buttonStyle(.plain)
+                Text(layer.label).tag(layer.role)
             }
+        }
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .controlSize(.regular)
+        .fixedSize()
+        .onChange(of: activeLayerRole) { _, _ in
+            refreshDisplayImages()
         }
     }
     
@@ -393,31 +366,28 @@ public struct WesternBlotView: View {
                         refreshDisplayImages()
                     }
                 
-                Button {
+                StudioCompactPillButton(
+                    title: focusOnStripROI ? "聚焦" : "全幅",
+                    icon: focusOnStripROI ? "viewfinder.circle.fill" : "aspectratio",
+                    tint: focusOnStripROI ? .teal : .secondary,
+                    isSelected: focusOnStripROI,
+                    help: focusOnStripROI ? "当前聚焦有效膜区，点击切换全画幅视野" : "当前全画幅视野，点击聚焦有效膜区"
+                ) {
                     withAnimation(.easeInOut(duration: 0.16)) {
                         focusOnStripROI.toggle()
                         panOffset = .zero
                         lastPanOffset = .zero
                     }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: focusOnStripROI ? "viewfinder.circle.fill" : "aspectratio")
-                        Text(focusOnStripROI ? "聚焦" : "全幅")
-                    }
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(focusOnStripROI ? .teal : .secondary)
                 }
-                .buttonStyle(.plain)
-                .help(focusOnStripROI ? "当前聚焦有效膜区，点击切换全画幅视野" : "当前全画幅视野，点击聚焦有效膜区")
                 
                 HStack(spacing: 4) {
                     Button {
                         canvasZoom = max(0.6, canvasZoom - 0.15)
                     } label: {
                         Image(systemName: "minus.magnifyingglass")
-                            .font(.system(size: 11))
+                            .font(.system(size: 10.5))
                     }
-                    .buttonStyle(.plain)
+                    .studioGlassButton(isCircle: true, controlSize: .small)
                     Text(String(format: "%.0f%%", canvasZoom * 100))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
                         .frame(width: 38)
@@ -425,9 +395,9 @@ public struct WesternBlotView: View {
                         canvasZoom = min(2.5, canvasZoom + 0.15)
                     } label: {
                         Image(systemName: "plus.magnifyingglass")
-                            .font(.system(size: 11))
+                            .font(.system(size: 10.5))
                     }
-                    .buttonStyle(.plain)
+                    .studioGlassButton(isCircle: true, controlSize: .small)
                 }
             }
         } content: {
@@ -555,24 +525,13 @@ public struct WesternBlotView: View {
                     
                     // 右下角复位缩放按钮
                     if panOffset != .zero || abs(canvasZoom - 1.0) > 0.05 {
-                        Button {
+                        StudioCompactPillButton(title: "复位视野", icon: "arrow.counterclockwise") {
                             withAnimation(.easeInOut(duration: 0.16)) {
                                 canvasZoom = 1.0
                                 panOffset = .zero
                                 lastPanOffset = .zero
                             }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.counterclockwise")
-                                Text("复位视野")
-                            }
-                            .font(.system(size: 10.5, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.black.opacity(0.65)))
                         }
-                        .buttonStyle(.plain)
                         .padding(10)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                     }
@@ -1109,17 +1068,9 @@ public struct WesternBlotView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                     Spacer()
-                    Button {
+                    StudioCompactPillButton(title: "线性度核验", icon: "chart.xyaxis.line", tint: .blue) {
                         runExposureSeriesAnalysis()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chart.xyaxis.line")
-                            Text("线性度核验")
-                        }
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.blue)
                     }
-                    .buttonStyle(.plain)
                 }
                 
                 if let rec = exposureRecommendation {

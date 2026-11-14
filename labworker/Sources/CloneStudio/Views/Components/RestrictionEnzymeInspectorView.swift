@@ -61,12 +61,12 @@ public struct RestrictionEnzymeInspectorView: View {
         .frame(width: 268)
         .background(
             RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
-                .fill(Color(red: 0.06, green: 0.09, blue: 0.16).opacity(0.97))
+                .fill(StudioPalette.cardBg(isLight: false).opacity(0.97))
                 .overlay(
                     RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
-                        .stroke(Color.cyan.opacity(0.35), lineWidth: 1)
+                        .stroke(StudioPalette.cardBorder(isLight: false), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.55), radius: 14, x: 0, y: 6)
+                .shadow(color: Color.black.opacity(0.45), radius: 14, x: 0, y: 6)
         )
         .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
     }
@@ -86,90 +86,51 @@ public struct RestrictionEnzymeInspectorView: View {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white.opacity(0.8))
-                        .frame(width: 24, height: 24)
-                        .contentShape(Circle())
-                        .glassEffect(
-                            StudioGlassSupport.buttonGlass(
-                                appState: appState,
-                                tint: nil,
-                                selected: false,
-                                interactive: true
-                            ),
-                            in: Circle()
-                        )
                 }
-                .buttonStyle(.plain)
+                .studioGlassButton(isCircle: true, controlSize: .regular)
             }
         }
     }
     
     private var presetSelectorRow: some View {
-        GlassEffectContainer(spacing: 6) {
-            HStack(spacing: 6) {
-                Menu {
-                    ForEach(RestrictionEnzymeDatabase.presetGroups) { group in
-                        Button(action: {
-                            appState.applyEnzymePreset(group)
-                        }) {
-                            Text("SET: \(group.name.uppercased())")
-                        }
+        HStack(spacing: 6) {
+            Menu {
+                ForEach(RestrictionEnzymeDatabase.presetGroups) { group in
+                    Button(action: {
+                        appState.applyEnzymePreset(group)
+                    }) {
+                        Text("SET: \(group.name.uppercased())")
                     }
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "flask.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(.pink)
-                        Text("SET: \(appState.selectedEnzymePreset.uppercased())")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white)
-                            .lineLimit(1)
-                        Spacer(minLength: 2)
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "flask.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.pink)
+                    Text("SET: \(appState.selectedEnzymePreset.uppercased())")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    if !appState.followSystemLiquidGlass {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundStyle(.white.opacity(0.7))
                     }
-                    .padding(.horizontal, 9)
-                    .frame(height: 24)
-                    .contentShape(Capsule(style: .continuous))
-                    .glassEffect(
-                        StudioGlassSupport.buttonGlass(
-                            appState: appState,
-                            tint: .cyan,
-                            selected: false,
-                            interactive: true
-                        ),
-                        in: Capsule(style: .continuous)
-                    )
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(Color.cyan.opacity(0.35), lineWidth: 0.8)
-                            .allowsHitTesting(false)
-                    )
                 }
-                .menuStyle(.borderlessButton)
-
-                Button(action: {
-                    appState.clearSelectedEnzymes()
-                }) {
-                    Text("Clear")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
-                        .padding(.horizontal, 10)
-                        .frame(height: 24)
-                        .contentShape(Capsule(style: .continuous))
-                        .glassEffect(
-                            StudioGlassSupport.buttonGlass(
-                                appState: appState,
-                                tint: nil,
-                                selected: false,
-                                interactive: true
-                            ),
-                            in: Capsule(style: .continuous)
-                        )
-                }
-                .buttonStyle(.plain)
             }
+            .studioGlassMenu(
+                tint: .cyan,
+                controlSize: .regular,
+                hideIndicator: !appState.followSystemLiquidGlass
+            )
+
+            Button(action: {
+                appState.clearSelectedEnzymes()
+            }) {
+                Text("Clear")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .studioGlassButton(controlSize: .regular)
         }
     }
     

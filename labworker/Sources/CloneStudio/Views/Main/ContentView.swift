@@ -34,7 +34,7 @@ private struct ImmersiveWindowConfigurator: NSViewRepresentable {
                 window.titleVisibility = .hidden
                 window.toolbar = nil
                 window.isOpaque = false
-                window.backgroundColor = .windowBackgroundColor
+                window.backgroundColor = .clear
                 window.isMovableByWindowBackground = false
                 // 确保新开/恢复窗口时默认不存在被自动强抢的 TextField 光标闪烁
                 window.autorecalculatesKeyViewLoop = false
@@ -136,9 +136,7 @@ public struct ContentView: View {
     }
     
     private var subtleHairlineColor: Color {
-        appState.isLightAppearance
-            ? Color.black.opacity(0.08)
-            : Color.white.opacity(0.10)
+        Color(nsColor: .separatorColor)
     }
 
     private func setResizeCursorActive(_ active: Bool) {
@@ -162,18 +160,15 @@ public struct ContentView: View {
                 sidebarContent
                     .frame(width: resolvedSidebarWidth)
                     .background(
-                        ZStack {
-                            VisualEffectBlurView(
-                                material: .sidebar,
-                                blendingMode: .behindWindow,
-                                state: .active
-                            )
-                            Color.primary.opacity(appState.isLightAppearance ? 0.015 : 0.03)
-                        }
+                        VisualEffectBlurView(
+                            material: .sidebar,
+                            blendingMode: .behindWindow,
+                            state: .active
+                        )
                         .ignoresSafeArea(.container, edges: .top)
                     )
 
-                // 右侧主工作区：自适应剩余宽度（侧边栏拖拽拉伸绝不挤压/裁剪内容）+ 系统级顶部渐隐模糊栏
+                // 右侧主工作区：自适应剩余宽度（侧边栏拖拽拉伸绝不挤压/裁剪内容）+ 单一像素级对齐分割线
                 VStack(spacing: 0) {
                     detailContent
                         .animation(nil, value: appState.selectedNav)
@@ -182,56 +177,55 @@ public struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(mainWorkspaceBackground)
                 .overlay(alignment: .leading) {
-                    ZStack(alignment: .leading) {
-                        Rectangle()
-                            .fill(
-                                (isHoveringSplitter || dragStartSidebarWidth != nil)
-                                ? appState.accentTheme.color.opacity(0.65)
-                                : subtleHairlineColor
-                            )
-                            .frame(width: (isHoveringSplitter || dragStartSidebarWidth != nil) ? 2.5 : 1)
-                            .animation(.easeOut(duration: 0.12), value: isHoveringSplitter)
-
-                        Color.clear
-                            .frame(width: 9)
-                            .contentShape(Rectangle())
-                            .onHover { hovering in
-                                isHoveringSplitter = hovering
-                                if dragStartSidebarWidth == nil {
-                                    setResizeCursorActive(hovering)
+                    Rectangle()
+                        .fill(
+                            (isHoveringSplitter || dragStartSidebarWidth != nil)
+                            ? appState.accentTheme.color.opacity(0.65)
+                            : subtleHairlineColor
+                        )
+                        .frame(width: (isHoveringSplitter || dragStartSidebarWidth != nil) ? 2.0 : 1.0)
+                        .animation(.easeOut(duration: 0.12), value: isHoveringSplitter)
+                        .allowsHitTesting(false)
+                        .ignoresSafeArea(.container, edges: .top)
+                        .overlay(alignment: .leading) {
+                            Color.clear
+                                .frame(width: 9)
+                                .contentShape(Rectangle())
+                                .offset(x: -4)
+                                .onHover { hovering in
+                                    isHoveringSplitter = hovering
+                                    if dragStartSidebarWidth == nil {
+                                        setResizeCursorActive(hovering)
+                                    }
                                 }
-                            }
-                            .gesture(
-                                DragGesture(minimumDistance: 1, coordinateSpace: .global)
-                                    .onChanged { value in
-                                        let base = dragStartSidebarWidth ?? resolvedSidebarWidth
-                                        if dragStartSidebarWidth == nil {
-                                            dragStartSidebarWidth = resolvedSidebarWidth
+                                .gesture(
+                                    DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                                        .onChanged { value in
+                                            let base = dragStartSidebarWidth ?? resolvedSidebarWidth
+                                            if dragStartSidebarWidth == nil {
+                                                dragStartSidebarWidth = resolvedSidebarWidth
+                                            }
+                                            setResizeCursorActive(true)
+                                            let next = min(maxSidebarW, max(minSidebarW, base + value.translation.width))
+                                            liveSidebarWidth = next
                                         }
-                                        setResizeCursorActive(true)
-                                        let next = min(maxSidebarW, max(minSidebarW, base + value.translation.width))
-                                        liveSidebarWidth = next
+                                        .onEnded { value in
+                                            let base = dragStartSidebarWidth ?? resolvedSidebarWidth
+                                            let finalW = min(maxSidebarW, max(minSidebarW, base + value.translation.width))
+                                            liveSidebarWidth = finalW
+                                            appState.sidebarWidth = finalW
+                                            dragStartSidebarWidth = nil
+                                            setResizeCursorActive(isHoveringSplitter)
+                                        }
+                                )
+                                .onTapGesture(count: 2) {
+                                    withAnimation(.snappy(duration: 0.2)) {
+                                        liveSidebarWidth = 232
+                                        appState.sidebarWidth = 232
                                     }
-                                    .onEnded { value in
-                                        let base = dragStartSidebarWidth ?? resolvedSidebarWidth
-                                        let finalW = min(maxSidebarW, max(minSidebarW, base + value.translation.width))
-                                        liveSidebarWidth = finalW
-                                        appState.sidebarWidth = finalW
-                                        dragStartSidebarWidth = nil
-                                        setResizeCursorActive(isHoveringSplitter)
-                                    }
-                            )
-                            .onTapGesture(count: 2) {
-                                withAnimation(.snappy(duration: 0.2)) {
-                                    liveSidebarWidth = 232
-                                    appState.sidebarWidth = 232
                                 }
-                            }
-                            .help("左右拖拽调整侧边栏宽度 · 双击恢复默认宽度")
-                    }
-                    .frame(width: 9)
-                    .offset(x: -4)
-                    .ignoresSafeArea(.container, edges: .top)
+                                .help("左右拖拽调整侧边栏宽度 · 双击恢复默认宽度")
+                        }
                 }
                 .overlay(alignment: .top) {
                     if isWindowDropTargeted {
@@ -379,7 +373,7 @@ public struct ContentView: View {
                         }
                     }
                     .padding(.horizontal, 11)
-                    .frame(height: 30)
+                    .frame(height: 28)
                     .frame(maxWidth: .infinity)
                     .contentShape(Capsule(style: .continuous))
                     .onTapGesture {
@@ -413,39 +407,13 @@ public struct ContentView: View {
                     }) {
                         Image(systemName: "folder.badge.plus")
                             .font(.system(size: 12.5, weight: .semibold))
-                            .foregroundColor(
-                                StudioGlassSupport.hdrColor(
-                                    appState.accentTheme.color,
-                                    exposure: appState.enableAmbientGlassGlow ? 0.55 : 0.0,
-                                    appState: appState
-                                )
-                            )
-                            .frame(width: 30, height: 30)
-                            .contentShape(Circle())
-                            .glassEffect(
-                                StudioGlassSupport.buttonGlass(
-                                    appState: appState,
-                                    tint: appState.accentTheme.color,
-                                    selected: false,
-                                    interactive: true
-                                ),
-                                in: Circle()
-                            )
-                            .overlay(
-                                Circle()
-                                    .stroke(
-                                        StudioGlassSupport.specularRimColor(
-                                            isLight: isLight,
-                                            tint: appState.accentTheme.color,
-                                            selected: false,
-                                            appState: appState
-                                        ),
-                                        lineWidth: 0.9
-                                    )
-                                    .allowsHitTesting(false)
-                            )
+                            .foregroundStyle(.primary)
                     }
-                    .buttonStyle(.plain)
+                    .studioGlassButton(
+                        tint: nil,
+                        isCircle: true,
+                        controlSize: .large
+                    )
                     .help("导入实验文件 (.dna / .ab1 / .tif / .pdb / .nwk / .csv / .fasta)")
                 }
             }
