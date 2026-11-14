@@ -185,7 +185,8 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
             : "正在建立高速通道并查询 CHOPCHOP 全基因组靶点..."
         errorMessage = nil
         
-        Task {
+        Task { [weak self] in
+            guard let self else { return }
             do {
                 let results = try await CHOPCHOPService.shared.queryTargets(
                     gene: clean,

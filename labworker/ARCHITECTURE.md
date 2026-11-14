@@ -11,6 +11,7 @@
 
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
+| `../.github/workflows/ci.yml` | GitHub Actions `macos-14` 自动化 CI 门禁：在每次 `push`/`pull_request` 执行 Python 跨语言测试向量、防篡改校验及 `check_doc_counts.sh` 全量回归 |
 | `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、22 模块算法速查、UI 响应式规范与 MCP v3.0 协议指南 |
 | `labworker/Package.swift` | SwiftPM 工程定义，包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |
@@ -55,7 +56,7 @@
 | `Views/BenchTools/WesternBlotView.swift` | Western Blot 16-bit 自动圈定、明场 Marker 混叠、Rolling-ball 背景扣除、可拖拽条带框、1D 峰剖面与内参归一化统计视图 |
 | `Views/BenchTools/GelFigureEditorView.swift` | 凝胶电泳分子量回归拟合、Marker 标准品标尺与质粒双酶切虚拟电泳对照叠加视图 |
 | `Views/BenchTools/FigureAnnotatorView.swift` | 科研多图拼版、RGB 多通道荧光伪彩合成、微米比例尺与共定位像素强度剖面图视图 |
-| `Views/BenchTools/ProteinWorkbenchView.swift` | 极简声明式窗口响应式蛋白质工作台：三维 Cα 骨架与 Vina 对接盒视窗、SPICE 五维指标、对齐 `DockFlowLab` 的 LIGSITE 共识融合盒与突变 ΔΔG 扫描视图 |
+| `Views/BenchTools/ProteinWorkbenchView.swift` | 极简声明式窗口响应式蛋白质工作台：三维 Cα 骨架与 Vina 对接盒视窗、SPICE 五维指标、对齐 `DockFlowLab` 的 LIGSITE 共识融合盒与经验启发式 (`empirical_heuristic`) 突变 ΔΔG 扫描视图 |
 | `Views/Order/OrderExportView.swift` | 商业引物合成与测序订单（擎科/生工等）一键导出中心及引物批量写入 `.dna` 工具 |
 | `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观 ② 侧边栏定制 ③ MCP 智能体服务 (17 工具) ④ 22 模块全局功能说明书 |
 
@@ -87,11 +88,11 @@
 - `Engine/QPCRAnalysisEngine.swift`：qPCR $\Delta\Delta C_t$ 相对定量、多内参几何平均、标准曲线最小二乘回归、反应孔 QC 质控与 Welch's t-test 显著性检验引擎。
 - `Engine/PhylogeneticTreeEngine.swift`：系统发育树 Newick 递归解析与序列化、中点定根/阶梯化排序、直角/等距/环形三种几何布局解算及双树 Robinson-Foulds 拓扑距离对比引擎。
 - `Engine/BioImageProcessor.swift`：生物图像底层处理引擎（RGBA/灰度平面提取、高斯滤波、Otsu 大津法分割、积分图自适应局部均值二值化、形态学开闭运算、8 邻域连通域与 HSV 色相统计、一维灰度投影峰值检测及高仿真实验示范图生成器）。
-- `Engine/ColonyCounterEngine.swift`：菌落自动分割、X-gal 蓝白斑 HSV 色相判别、Garwood 精确泊松 95% 置信区间与 CFU/mL 滴度计算引擎。
+- `Engine/ColonyCounterEngine.swift`：菌落自动分割、X-gal 蓝白斑 HSV 色相判别、Garwood 精确泊松 95% 置信区间、CFU/mL 滴度计算及 `AnalysisRun` v2 (`.run.json`) 溯源导出引擎。
 - `Engine/WesternBlotEngine.swift`：融合 `WBStudio` 的 16-bit 无损读取、显影增强、同批次曝光配对、有效膜条定位（Active Strip ROI）、Rolling-ball 背景扣除、高斯加权剖面四边收紧框、内参归一化与分组 Welch's t 检验双引擎。
-- `Engine/GelAnalysisEngine.swift`：凝胶电泳泳道/条带寻峰、Marker 对数分子量回归拟合（$\log_{10}(\text{size}) = a\cdot y + b$）与质粒酶切虚拟电泳对照生成引擎。
+- `Engine/GelAnalysisEngine.swift`：凝胶电泳泳道/条带寻峰、Marker 对数分子量回归拟合（$\log_{10}(\text{size}) = a\cdot y + b$）、质粒酶切虚拟电泳对照生成及 `AnalysisRun` v2 (`.run.json` + 质粒关联索引) 溯源导出引擎。
 - `Engine/FigureAnnotatorEngine.swift`：科研多图拼版 RGB 荧光通道伪彩增益合成、线段像素强度剖面采样（Line Intensity Profile）与共聚焦四通道示范生成引擎。
-- `Engine/ProteinBiophysicsEngine.swift`：蛋白质理化性质（分子量、等电点 pI、消光系数、GRAVY 疏水剖面）、PDB 三维结构解析、Ramachandran 二面角、Cα 接触图、结合口袋探测与点突变 ΔΔG 评估引擎。
+- `Engine/ProteinBiophysicsEngine.swift`：蛋白质理化性质（分子量、等电点 pI、消光系数、GRAVY 疏水剖面）、PDB 三维结构解析、Ramachandran 二面角、Cα 接触图、结合口袋探测与明确标注 `empirical_heuristic` 的点突变 ΔΔG 经验初筛引擎。
 
 ### 3.4 领域模型 (`Models/`)
 - `Models/BioSequence.swift`：DNA 序列清洗、互补链、反向互补与 GC% 基础工具。

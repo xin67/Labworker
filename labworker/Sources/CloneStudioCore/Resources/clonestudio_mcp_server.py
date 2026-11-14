@@ -1992,7 +1992,8 @@ def tool_analyze_protein_and_docking_box(args: dict) -> dict:
             mut_evals.append({
                 "mutation": "+".join(valid_parts),
                 "ddg_kcal_mol": ddg,
-                "verdict": "稳定化突变 (Stabilizing)" if ddg < -0.4 else ("中性/微扰 (Neutral)" if ddg <= 0.5 else "去稳定化风险 (Destabilizing)")
+                "model_type": "empirical_heuristic",
+                "verdict": "经验稳定化倾向 (Empirical Stabilizing)" if ddg <= -0.4 else ("经验中性耐受 (Empirical Neutral)" if ddg <= 0.5 else "经验去稳定化风险 (Empirical Destabilizing)")
             })
 
     notify_gui_and_sync_primers(
@@ -2007,6 +2008,7 @@ def tool_analyze_protein_and_docking_box(args: dict) -> dict:
         "isoelectric_point": pi_val,
         "net_charge_at_ph": round(net_charge_at(ph), 2),
         "gravy": round(gravy, 3),
+        "ddg_model_type": "empirical_heuristic",
         "docking_box": {
             "source": box_source,
             "center": [cx, cy, cz],

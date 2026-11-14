@@ -17,6 +17,7 @@ public struct GelFigureEditorView: View {
     @State private var selectedEnzyme2: String = "EcoRI"
     @State private var showBandSizeOverlay: Bool = true
     @State private var showLadderRuler: Bool = true
+    @State private var sourceImageURL: URL? = nil
     
     public init() {}
     
@@ -67,6 +68,7 @@ public struct GelFigureEditorView: View {
                let img = NSImage(contentsOf: url),
                let loadedPlane = BioImagePlane.fromNSImage(img, maxDimension: 520) {
                 appState.pendingFinderOpenedFileURL = nil
+                sourceImageURL = url
                 plane = loadedPlane
                 runAutoDetection()
             }
@@ -344,6 +346,7 @@ public struct GelFigureEditorView: View {
         FinderFileDropHelper.presentOpenPanel { url in
             if let img = NSImage(contentsOf: url),
                let loadedPlane = BioImagePlane.fromNSImage(img, maxDimension: 520) {
+                sourceImageURL = url
                 plane = loadedPlane
                 runAutoDetection()
                 appState.showToast("已导入电泳胶图并完成自动寻道与分子量拟合")
@@ -352,12 +355,30 @@ public struct GelFigureEditorView: View {
     }
     
     private func exportGelCSV() {
-        let csv = GelAnalysisEngine.exportGelBandsCSV(lanes: lanes, unit: activeLadder.kind.unit)
+        let curLanes = lanes
+        let curLadder = activeLadder
+        let curFit = calibrationFit
+        let curSourceURL = sourceImageURL
+        let hasVirtual = curLanes.contains(where: \.isVirtualDigestLane)
+        let enzymes = hasVirtual ? [selectedEnzyme1, selectedEnzyme2] : []
+        let linkedIDs = hasVirtual ? [plasmidPool.selectedItem?.id ?? plasmidPool.items.first?.id].compactMap { $0 } : []
+        let csv = GelAnalysisEngine.exportGelBandsCSV(lanes: curLanes, unit: curLadder.kind.unit)
         FinderFileDropHelper.saveTextToFile(
             content: csv,
             defaultFileName: "Gel_Electrophoresis_MolecularWeight_Fit.csv",
             contentType: .commaSeparatedText,
-            toastPrefix: "已导出电泳条带分子量 CSV"
+            toastPrefix: "已导出电泳条带分子量 CSV",
+            onSavedURL: { savedURL in
+                _ = try? GelAnalysisEngine.exportGelBandsCSVWithProvenance(
+                    lanes: curLanes,
+                    ladder: curLadder,
+                    fit: curFit,
+                    sourceImageURL: curSourceURL,
+                    virtualDigestEnzymes: enzymes,
+                    linkedPlasmidIDs: linkedIDs,
+                    to: savedURL
+                )
+            }
         )
     }
 }

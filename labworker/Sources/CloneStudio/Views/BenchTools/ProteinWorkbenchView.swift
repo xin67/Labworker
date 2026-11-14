@@ -922,7 +922,7 @@ public struct ProteinWorkbenchView: View {
 
     private var mutantScreeningView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("输入单点或组合突变（每行一条，如 V13A 或 I15L + L19M），实时评估 ΔΔG 自由能变化：")
+            Text("输入单点或组合突变（每行一条，如 V13A 或 I15L + L19M），按疏水性/位阻/脯氨酸经验启发式模型 (empirical_heuristic) 进行快速初筛（不等同于 FoldX/Rosetta 全原子自由能计算）：")
                 .font(.system(size: 11.5))
                 .foregroundColor(.secondary)
 
@@ -1038,7 +1038,11 @@ public struct ProteinWorkbenchView: View {
             title: "蛋白质三维结构、LIGSITE 结合口袋与 Vina 对接盒子报告",
             subtitle: "序列长度 \(report.length) aa · 环境 pH \(String(format: "%.1f", env.ph)) · 温度 \(String(format: "%.0f K", env.temperatureK))",
             credibilityBadge: report.healthCard.credibilitySummary,
-            warnings: report.healthCard.warnings + [box.sourceNote, box.runtimeEstimateNote],
+            warnings: report.healthCard.warnings + [
+                box.sourceNote,
+                box.runtimeEstimateNote,
+                "点突变 ΔΔG 评估采用经验启发式模型 (empirical_heuristic：基于 Kyte-Doolittle 疏水性差异、残基质量位阻与脯氨酸罚分)，仅用于快速初筛，不等同于 FoldX / Rosetta 全原子能量函数。"
+            ],
             metrics: [
                 ("氨基酸长度", "\(report.length) aa"),
                 ("分子量 (MW)", String(format: "%.2f kDa", report.molecularWeightDa / 1000.0)),

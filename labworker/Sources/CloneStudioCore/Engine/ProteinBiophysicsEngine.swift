@@ -217,12 +217,36 @@ public struct ProteinMutantEvaluation: Identifiable, Codable, Equatable, Sendabl
     public let id: String
     public let mutationSpec: String
     public let mutatedSequence: String
-    /// 预测自由能变化 ΔΔG (kcal/mol，负值表示稳定化，正值表示去稳定化)
+    /// 预测自由能变化 ΔΔG (kcal/mol，负值表示稳定化倾向，正值表示去稳定化风险)
     public let ddgKcalMol: Double
     public let deltaGravy: Double
     public let deltaCharge: Double
     public let compositeScore: Double
     public let stabilityVerdict: String
+    /// 模型语义标识（当前为基于疏水性、位阻与脯氨酸罚分的经验启发式初筛：empirical_heuristic）
+    public let modelType: String
+
+    public init(
+        id: String,
+        mutationSpec: String,
+        mutatedSequence: String,
+        ddgKcalMol: Double,
+        deltaGravy: Double,
+        deltaCharge: Double,
+        compositeScore: Double,
+        stabilityVerdict: String,
+        modelType: String = "empirical_heuristic"
+    ) {
+        self.id = id
+        self.mutationSpec = mutationSpec
+        self.mutatedSequence = mutatedSequence
+        self.ddgKcalMol = ddgKcalMol
+        self.deltaGravy = deltaGravy
+        self.deltaCharge = deltaCharge
+        self.compositeScore = compositeScore
+        self.stabilityVerdict = stabilityVerdict
+        self.modelType = modelType
+    }
 }
 
 public struct ProteinPresetExample: Identifiable, Sendable {
@@ -561,9 +585,9 @@ public enum ProteinBiophysicsEngine {
             let mutCharge = netCharge(sequence: mutSeq, atPH: env.ph)
             let score = min(99.0, max(20.0, 82.0 - ddgSum * 9.5))
             let verdict: String = {
-                if ddgSum <= -0.4 { return "显著稳定化 (Stabilizing)" }
-                if ddgSum <= 0.5  { return "中性耐受 (Neutral)" }
-                return "去稳定化风险 (Destabilizing)"
+                if ddgSum <= -0.4 { return "经验稳定化倾向 (Empirical Stabilizing)" }
+                if ddgSum <= 0.5  { return "经验中性耐受 (Empirical Neutral)" }
+                return "经验去稳定化风险 (Empirical Destabilizing)"
             }()
             let label = validTokens.isEmpty ? trimmed : validTokens.joined(separator: " + ")
             results.append(
@@ -575,7 +599,8 @@ public enum ProteinBiophysicsEngine {
                     deltaGravy: mutGravy - wtGravy,
                     deltaCharge: mutCharge - wtCharge,
                     compositeScore: score,
-                    stabilityVerdict: verdict
+                    stabilityVerdict: verdict,
+                    modelType: "empirical_heuristic"
                 )
             )
         }

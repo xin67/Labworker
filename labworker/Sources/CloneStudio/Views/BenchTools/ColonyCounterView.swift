@@ -36,6 +36,8 @@ public struct ColonyCounterView: View {
     @State private var manualThresholdSlider: Double = 155.0
     @State private var clickMode: ColonyClickMode = .toggleInclude
     @State private var showNumberLabels: Bool = true
+    @State private var sourceImageURL: URL? = nil
+    @State private var manualEdits: [AnalysisRun.ManualEdit] = []
     
     public init() {}
     
@@ -78,6 +80,7 @@ public struct ColonyCounterView: View {
                             importPlateImage()
                         },
                         StudioPillGroupItem(title: "蓝白斑示范图", icon: "sparkles") {
+                            sourceImageURL = nil
                             plane = BioImageProcessor.generateDemoColonyPlatePlane()
                             runSegmentation()
                             appState.showToast("已载入蓝白斑转化平板示范图并完成自动计数")
@@ -349,6 +352,7 @@ public struct ColonyCounterView: View {
         markers = res.markers
         otsuValue = res.otsu
         appliedThreshold = res.appliedThreshold
+        manualEdits = []
     }
     
     private func handleCanvasTap(at pt: CGPoint, scaleX: CGFloat, scaleY: CGFloat) {
@@ -373,7 +377,14 @@ public struct ColonyCounterView: View {
             }
         case .deleteMarker:
             if let idx = nearestIdx {
-                markers.remove(at: idx)
+                let removed = markers.remove(at: idx)
+                manualEdits.append(
+                    AnalysisRun.ManualEdit(
+                        what: "manual_delete_marker:#\(removed.id)",
+                        before: "x=\(String(format: "%.1f", removed.x)),y=\(String(format: "%.1f", removed.y))",
+                        after: "deleted"
+                    )
+                )
             }
         case .addWhite, .addBlue:
             let nextId = (markers.map(\.id).max() ?? 0) + 1
@@ -396,6 +407,7 @@ public struct ColonyCounterView: View {
         FinderFileDropHelper.presentOpenPanel { url in
             if let img = NSImage(contentsOf: url),
                let loadedPlane = BioImagePlane.fromNSImage(img, maxDimension: 480) {
+                sourceImageURL = url
                 plane = loadedPlane
                 runSegmentation()
                 appState.showToast("已载入培养皿图像并识别出 \(markers.count) 个菌落")
@@ -404,12 +416,33 @@ public struct ColonyCounterView: View {
     }
     
     private func exportColonyCSV() {
-        let csv = ColonyCounterEngine.exportMarkersCSV(markers: markers)
+        let curMarkers = markers
+        let curOtsu = otsuValue
+        let curApplied = appliedThreshold
+        let curParams = params
+        let curSourceURL = sourceImageURL
+        let curW = plane.width
+        let curH = plane.height
+        let curEdits = manualEdits
+        let csv = ColonyCounterEngine.exportMarkersCSV(markers: curMarkers)
         FinderFileDropHelper.saveTextToFile(
             content: csv,
             defaultFileName: "Colony_Count_BlueWhite_Report.csv",
             contentType: .commaSeparatedText,
-            toastPrefix: "已导出菌落计数 CSV"
+            toastPrefix: "已导出菌落计数 CSV",
+            onSavedURL: { savedURL in
+                _ = try? ColonyCounterEngine.exportMarkersCSVWithProvenance(
+                    markers: curMarkers,
+                    otsu: curOtsu,
+                    appliedThreshold: curApplied,
+                    params: curParams,
+                    sourceImageURL: curSourceURL,
+                    planeWidth: curW,
+                    planeHeight: curH,
+                    manualEdits: curEdits,
+                    to: savedURL
+                )
+            }
         )
     }
 }

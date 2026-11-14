@@ -1,0 +1,37 @@
+name: Labworker CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    name: Swift + Python Cross-Engine Verification
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Swift and Python toolchains
+        run: |
+          swift --version
+          /usr/bin/python3 --version
+
+      - name: Run Python shared test vectors and tamper check
+        working-directory: labworker
+        run: |
+          /usr/bin/python3 Tests/vectors/run_python_vectors.py
+          set +e
+          /usr/bin/python3 Tests/vectors/run_python_vectors.py --tamper-check
+          rc=$?
+          set -e
+          if [ "$rc" -ne 2 ]; then
+            echo "Expected --tamper-check to exit with code 2, got $rc"
+            exit 1
+          fi
+
+      - name: Run Single Source of Truth and 50-test verification suite
+        working-directory: labworker
+        run: bash Scripts/check_doc_counts.sh

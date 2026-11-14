@@ -108,6 +108,9 @@ def run_case(func_name: str, case: dict):
         assert_close(out["isoelectric_point"], exp["isoelectric_point"], tol, f"{func_name}.{cid}.isoelectric_point")
         assert_close(out["net_charge_at_ph"], exp["net_charge_at_ph"], tol, f"{func_name}.{cid}.net_charge_at_ph")
         assert_close(out["gravy"], exp["gravy"], tol, f"{func_name}.{cid}.gravy")
+        assert_close(out.get("ddg_model_type"), "empirical_heuristic", 0, f"{func_name}.{cid}.ddg_model_type")
+        for idx, m in enumerate(out["mutant_evaluations"]):
+            assert_close(m.get("model_type"), "empirical_heuristic", 0, f"{func_name}.{cid}.mutant[{idx}].model_type")
         actual_ddgs = [m["ddg_kcal_mol"] for m in out["mutant_evaluations"]]
         assert_close(actual_ddgs, exp["mutant_ddg"], tol, f"{func_name}.{cid}.mutant_ddg")
 

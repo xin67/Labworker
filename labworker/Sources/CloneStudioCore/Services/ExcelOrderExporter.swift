@@ -243,15 +243,29 @@ public final class ExcelOrderExporter {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
         process.arguments = [scriptPath, template.rawValue, templatePath, outputPath, tempJsonPath]
         
+        let outPipe = Pipe()
         let errPipe = Pipe()
+        process.standardOutput = outPipe
         process.standardError = errPipe
         
         try process.run()
+        
+        // 必须在 waitUntilExit() 之前并发排空 stdout/stderr 管道，防止子进程输出超过 64KB 时双向死锁
+        var errData = Data()
+        let errGroup = DispatchGroup()
+        errGroup.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+            errGroup.leave()
+        }
+        let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
+        errGroup.wait()
         process.waitUntilExit()
         
         guard process.terminationStatus == 0 else {
-            let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-            let errMsg = String(data: errData, encoding: .utf8) ?? "未知导出错误"
+            let errStr = String(data: errData, encoding: .utf8) ?? ""
+            let outStr = String(data: outData, encoding: .utf8) ?? ""
+            let errMsg = errStr.isEmpty ? (outStr.isEmpty ? "未知导出错误" : outStr) : errStr
             throw NSError(domain: "ExcelExport", code: -3, userInfo: [NSLocalizedDescriptionKey: "导出处理失败：\(errMsg)"])
         }
         

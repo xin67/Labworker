@@ -1720,7 +1720,15 @@ public enum WesternBlotEngine {
         proc.standardError = errPipe
         do {
             try proc.run()
+            // 必须在 waitUntilExit() 之前并发排空 stdout/stderr 管道，避免子进程日志超过 64KB 造成死锁
+            let errGroup = DispatchGroup()
+            errGroup.enter()
+            DispatchQueue.global(qos: .userInitiated).async {
+                _ = errPipe.fileHandleForReading.readDataToEndOfFile()
+                errGroup.leave()
+            }
             let data = outPipe.fileHandleForReading.readDataToEndOfFile()
+            errGroup.wait()
             proc.waitUntilExit()
             guard proc.terminationStatus == 0, !data.isEmpty else { return nil }
             return data

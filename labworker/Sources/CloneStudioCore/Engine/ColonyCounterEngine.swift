@@ -348,4 +348,130 @@ public enum ColonyCounterEngine {
         }
         return lines.joined(separator: "\n")
     }
+
+    /// 构造菌落计数与蓝白斑筛选的 AnalysisRun v2 溯源记录
+    public static func buildColonyAnalysisRun(
+        markers: [ColonyMarkerItem],
+        otsu: Double,
+        appliedThreshold: Double,
+        params: ColonySegmentationParams,
+        sourceImageURL: URL? = nil,
+        planeWidth: Int? = nil,
+        planeHeight: Int? = nil,
+        manualEdits: [AnalysisRun.ManualEdit] = [],
+        outputs: [String] = [],
+        exportDirectoryURL: URL? = nil,
+        linkedPlasmidIDs: [String] = []
+    ) -> AnalysisRun {
+        let summary = summarize(
+            markers: markers,
+            otsu: otsu,
+            appliedThreshold: appliedThreshold,
+            params: params
+        )
+
+        var inputs: [AnalysisRun.InputFile] = []
+        if let srcURL = sourceImageURL,
+           let inputItem = AnalysisRun.makeInputFile(at: srcURL, relativeTo: exportDirectoryURL) {
+            inputs.append(inputItem)
+        }
+
+        var paramsDict: [String: AnyCodableValue] = [
+            "polarity": .string(params.polarity.rawValue),
+            "blurRadius": .double(params.blurRadius),
+            "minArea": .int(params.minArea),
+            "maxArea": .int(params.maxArea),
+            "minCircularity": .double(params.minCircularity),
+            "classifyBlueWhite": .bool(params.classifyBlueWhite),
+            "dilutionFactor": .double(params.dilutionFactor),
+            "platedVolumeMl": .double(params.platedVolumeMl),
+            "otsuThreshold": .double(otsu),
+            "appliedThreshold": .double(appliedThreshold),
+            "totalDetected": .int(summary.totalDetected),
+            "includedCount": .int(summary.includedCount),
+            "blueCount": .int(summary.blueCount),
+            "whiteCount": .int(summary.whiteCount),
+            "whitePositiveRatePct": .double(summary.whitePositiveRatePct)
+        ]
+        if let w = planeWidth, let h = planeHeight {
+            paramsDict["imageWidth"] = .int(w)
+            paramsDict["imageHeight"] = .int(h)
+        }
+        if let cfu = summary.cfuPerMl {
+            paramsDict["cfuPerMl"] = .double(cfu)
+        }
+
+        var allEdits = manualEdits
+        let recordedManualKeys = Set(manualEdits.map(\.what))
+        for m in markers where m.isManual {
+            let key = "manual_add_marker:#\(m.id)"
+            if !recordedManualKeys.contains(key) {
+                allEdits.append(
+                    AnalysisRun.ManualEdit(
+                        what: key,
+                        before: "absent",
+                        after: "x=\(String(format: "%.1f", m.x)),y=\(String(format: "%.1f", m.y)),class=\(m.colonyClass.rawValue)"
+                    )
+                )
+            }
+        }
+
+        let exclusions = markers.filter { !$0.included }.map { m in
+            AnalysisRun.Exclusion(itemID: "marker:#\(m.id)", reason: "手动排除菌落点")
+        }
+
+        return AnalysisRun(
+            schemaVersion: 2,
+            module: NavItem.colonyCounter.rawValue,
+            engine: "swift-native",
+            inputs: inputs,
+            parameters: paramsDict,
+            manualEdits: allEdits,
+            exclusions: exclusions,
+            outputs: outputs,
+            linkedPlasmidIDs: linkedPlasmidIDs
+        )
+    }
+
+    /// 导出菌落计数 CSV 并同步写出 `<basename>.run.json` 溯源伴随文件
+    @discardableResult
+    public static func exportMarkersCSVWithProvenance(
+        markers: [ColonyMarkerItem],
+        otsu: Double,
+        appliedThreshold: Double,
+        params: ColonySegmentationParams,
+        sourceImageURL: URL? = nil,
+        planeWidth: Int? = nil,
+        planeHeight: Int? = nil,
+        manualEdits: [AnalysisRun.ManualEdit] = [],
+        linkedPlasmidIDs: [String] = [],
+        to outputCSVURL: URL,
+        indexURL: URL? = nil
+    ) throws -> (csvURL: URL, sidecarURL: URL, run: AnalysisRun) {
+        let csvText = exportMarkersCSV(markers: markers)
+        try csvText.write(to: outputCSVURL, atomically: true, encoding: .utf8)
+
+        let run = buildColonyAnalysisRun(
+            markers: markers,
+            otsu: otsu,
+            appliedThreshold: appliedThreshold,
+            params: params,
+            sourceImageURL: sourceImageURL,
+            planeWidth: planeWidth,
+            planeHeight: planeHeight,
+            manualEdits: manualEdits,
+            outputs: [outputCSVURL.lastPathComponent],
+            exportDirectoryURL: outputCSVURL.deletingLastPathComponent(),
+            linkedPlasmidIDs: linkedPlasmidIDs
+        )
+        let includedCount = run.parameters["includedCount"]?.intValue ?? 0
+        let blueCount = run.parameters["blueCount"]?.intValue ?? 0
+        let whiteCount = run.parameters["whiteCount"]?.intValue ?? 0
+        let sidecarURL = try run.writeSidecarJSON(
+            alongsideOutputURL: outputCSVURL,
+            indexURL: indexURL,
+            summary: "菌落计数 \(includedCount) 个 (蓝=\(blueCount), 白=\(whiteCount))"
+        )
+        return (outputCSVURL, sidecarURL, run)
+    }
 }

@@ -359,4 +359,88 @@ public enum GelAnalysisEngine {
         }
         return lines.joined(separator: "\n")
     }
+
+    /// 构造凝胶电泳分子量回归与质粒虚拟酶切对比的 AnalysisRun v2 溯源记录
+    public static func buildGelAnalysisRun(
+        lanes: [GelLaneItem],
+        ladder: GelMarkerLadderPreset,
+        fit: GelLadderCalibrationFit?,
+        sourceImageURL: URL? = nil,
+        virtualDigestEnzymes: [String] = [],
+        manualEdits: [AnalysisRun.ManualEdit] = [],
+        outputs: [String] = [],
+        exportDirectoryURL: URL? = nil,
+        linkedPlasmidIDs: [String] = []
+    ) -> AnalysisRun {
+        var inputs: [AnalysisRun.InputFile] = []
+        if let srcURL = sourceImageURL,
+           let inputItem = AnalysisRun.makeInputFile(at: srcURL, relativeTo: exportDirectoryURL) {
+            inputs.append(inputItem)
+        }
+
+        var paramsDict: [String: AnyCodableValue] = [
+            "ladderID": .string(ladder.id),
+            "ladderName": .string(ladder.name),
+            "unit": .string(ladder.kind.unit),
+            "laneCount": .int(lanes.count),
+            "totalBands": .int(lanes.reduce(0) { $0 + $1.bands.count }),
+            "hasVirtualDigestLane": .bool(lanes.contains(where: \.isVirtualDigestLane))
+        ]
+        if let f = fit {
+            paramsDict["fitSlope"] = .double(f.slope)
+            paramsDict["fitIntercept"] = .double(f.intercept)
+            paramsDict["fitR2"] = .double(f.r2)
+            paramsDict["calibrationPointCount"] = .int(f.n)
+        }
+        if !virtualDigestEnzymes.isEmpty {
+            paramsDict["virtualDigestEnzymes"] = .array(virtualDigestEnzymes.map { .string($0) })
+        }
+
+        return AnalysisRun(
+            schemaVersion: 2,
+            module: NavItem.gelFigure.rawValue,
+            engine: "swift-native",
+            inputs: inputs,
+            parameters: paramsDict,
+            manualEdits: manualEdits,
+            exclusions: [],
+            outputs: outputs,
+            linkedPlasmidIDs: linkedPlasmidIDs
+        )
+    }
+
+    /// 导出电泳条带分子量 CSV 并同步写出 `<basename>.run.json` 溯源伴随文件
+    @discardableResult
+    public static func exportGelBandsCSVWithProvenance(
+        lanes: [GelLaneItem],
+        ladder: GelMarkerLadderPreset,
+        fit: GelLadderCalibrationFit?,
+        sourceImageURL: URL? = nil,
+        virtualDigestEnzymes: [String] = [],
+        manualEdits: [AnalysisRun.ManualEdit] = [],
+        linkedPlasmidIDs: [String] = [],
+        to outputCSVURL: URL,
+        indexURL: URL? = nil
+    ) throws -> (csvURL: URL, sidecarURL: URL, run: AnalysisRun) {
+        let csvText = exportGelBandsCSV(lanes: lanes, unit: ladder.kind.unit)
+        try csvText.write(to: outputCSVURL, atomically: true, encoding: .utf8)
+
+        let run = buildGelAnalysisRun(
+            lanes: lanes,
+            ladder: ladder,
+            fit: fit,
+            sourceImageURL: sourceImageURL,
+            virtualDigestEnzymes: virtualDigestEnzymes,
+            manualEdits: manualEdits,
+            outputs: [outputCSVURL.lastPathComponent],
+            exportDirectoryURL: outputCSVURL.deletingLastPathComponent(),
+            linkedPlasmidIDs: linkedPlasmidIDs
+        )
+        let sidecarURL = try run.writeSidecarJSON(
+            alongsideOutputURL: outputCSVURL,
+            indexURL: indexURL,
+            summary: "凝胶条带分子量分析 · \(ladder.name) (\(lanes.count) 泳道)"
+        )
+        return (outputCSVURL, sidecarURL, run)
+    }
 }
