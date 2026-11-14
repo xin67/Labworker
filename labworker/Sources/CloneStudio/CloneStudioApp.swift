@@ -13,6 +13,7 @@ final class CloneStudioAppDelegate: NSObject, NSApplicationDelegate {
         Self.shared = self
         _ = PlasmidPoolManager.shared
         AppState.shared.systemIsLightAppearance = CloneStudioIconProvider.resolveIsLightAppearance(mode: .system)
+        AppState.shared.refreshSystemAppearancePreferences()
         // 首屏窗口完成挂载后再异步恢复会话与同步图标，确保主窗口秒开零卡顿
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
             WorkspaceSessionManager.shared.restoreSessionOnLaunchIfNeeded()
@@ -20,11 +21,30 @@ final class CloneStudioAppDelegate: NSObject, NSApplicationDelegate {
             self.syncStatusBarVisibility(isVisible: AppState.shared.showStatusBarIcon)
         }
         
-        // 监听 macOS WindowServer 广播的全局主题切换通知
-        DistributedNotificationCenter.default().addObserver(
+        // 监听 macOS WindowServer 广播的全局深浅色与强调色变化通知
+        let distCenter = DistributedNotificationCenter.default()
+        distCenter.addObserver(
             self,
             selector: #selector(handleSystemThemeChanged(_:)),
             name: Notification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil
+        )
+        distCenter.addObserver(
+            self,
+            selector: #selector(handleSystemPreferencesChanged(_:)),
+            name: Notification.Name("AppleColorPreferencesChangedNotification"),
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleSystemPreferencesChanged(_:)),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(handleSystemPreferencesChanged(_:)),
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
             object: nil
         )
     }
@@ -32,7 +52,14 @@ final class CloneStudioAppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleSystemThemeChanged(_ notification: Notification) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
             AppState.shared.systemIsLightAppearance = CloneStudioIconProvider.resolveIsLightAppearance(mode: .system)
+            AppState.shared.refreshSystemAppearancePreferences()
             CloneStudioIconProvider.syncApplicationIcon(mode: AppState.shared.appearanceMode, force: false)
+        }
+    }
+
+    @objc private func handleSystemPreferencesChanged(_ notification: Notification) {
+        DispatchQueue.main.async {
+            AppState.shared.refreshSystemAppearancePreferences()
         }
     }
     

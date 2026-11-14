@@ -18,23 +18,23 @@
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |
 | `labworker/Labworker.app` | 每次原子步骤完成后由 `labworker/Scripts/build_app.sh` 自动构建并签名的最新可执行 macOS 应用包 |
 | `labworker/Scripts/build_app.sh` | Release 编译、组装 `labworker/Labworker.app` 应用包、写入 `Info.plist` 并执行 Apple Ad-hoc 签名校验 |
-| `labworker/Scripts/check_doc_counts.sh` | 自动提取 `CloneStudioVerify` 测试数、`MCP_TOOLS` 工具数与 `NavItem` 模块数真值，校验 `README.md` 与 `ARCHITECTURE.md` 数字一致性 |
+| `labworker/Scripts/check_doc_counts.sh` | 自动提取 `CloneStudioVerify` 测试数、`MCP_TOOLS` 工具数与 `NavItem` 模块数真值，校验证书/文档数字一致性，并自动核验 `Sources/`、`Scripts/`、`python/`、`Tests/` 下全量文件均已在 `ARCHITECTURE.md` 登记 |
 | `labworker/Scripts/generate_icon.py` | 遵循 Apple HIG 生成浅色/深色应用图标（`.icns`/`.png`）与 macOS 状态栏模板图标 |
 | `labworker/Scripts/build_libraries_db.py` | 将原始全基因组靶点数据离线编译为 `Libraries.sqlite` 数据库的构建脚本 |
 | `labworker/Samples/WB/gapdh_*.tif` | 迁移自 `WBStudio` 的真实 16-bit 原始化学发光图、常规发光图、明场 Marker 图与合成叠加图样本 |
-| `labworker/python/wbquant/` | 迁移自 `WBStudio` 的 Python 科学计算与 `PySide6 + pyqtgraph` 协同分析包（`io.py`、`preprocess.py`、`detect.py`、`quantify.py`、`pipeline.py`、`qt_viewer.py`、`cli.py`） |
+| `labworker/python/wbquant/` | 迁移自 `WBStudio` 的 Python 科学计算与 `PySide6 + pyqtgraph` 协同分析包（`__init__.py`、`models.py`、`io.py`、`preprocess.py`、`detect.py`、`quantify.py`、`pipeline.py`、`qt_viewer.py`、`cli.py`） |
 
 ## 二、 视图表现层 (`labworker/Sources/CloneStudio/`)
 
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
-| `CloneStudioApp.swift` | 应用入口、菜单栏命令快捷键、系统外观主题广播监听、右上角状态栏 `NSStatusItem` 快捷工作台及退出进度保存提示 |
-| `Views/Main/ContentView.swift` | 主窗口容器（稳定不透明底色防闪烁、支持顶部胶囊搜索与小箭头折叠展开的分类侧边栏、全局拖拽导入遮罩与底部 Toast 通知） |
-| `Views/Components/DesignSystem.swift` | 全局 UI 设计系统与复用组件库：`StudioPageLayout`、`StudioPageHeader`、`StudioCard`、`StudioSegmentedPicker`、`StudioSegmentedPillGroup`、`StudioActionPillButton`、`SpeciesSwitchBar`、`StudioMetricBadge`、`SequenceEditorBox`、`StudioFlowLayout`、`StudioResponsiveSplitLayout`、`AdaptiveTwoColumnWorkspace`、`PlasmidPreviewToggle`、`PlasmidFileToolbarGroup`、`StandardLinkerPreset`、`FinderFileDropHelper` |
-| `Views/Components/PlasmidPreviewCanvas.swift` | 质粒全景图谱引擎：OVE 同心多轨环形质粒图、线性拼接流程条、`PlasmidPreviewPanel` 同屏双视工作台、`PlasmidMapBuilder` 图谱构建器与独立预览窗口控制器 `PlasmidWindowPresenter` |
+| `CloneStudioApp.swift` | 应用入口、菜单栏命令快捷键、macOS 系统深浅色 / 强调色 / 辅助透明 / Liquid Glass 强度广播与激活刷新监听、状态栏 `NSStatusItem` 快捷工作台及退出进度保存提示 |
+| `Views/Main/ContentView.swift` | 主窗口容器：可拖拽调宽并持久化（双击重置）的原生 `NSVisualEffectView` 磨砂侧边栏、防跨栏挤压自适应分栏线、顶部原生 macOS 26/27 Liquid Glass 折射搜索框（无默认自动聚焦闪烁）+ 渐隐顶栏、全局拖拽导入遮罩与 Liquid Glass HDR Toast 通知 |
+| `Views/Components/DesignSystem.swift` | 全局 macOS 26/27 Liquid Glass + HDR 设计系统与复用组件库：`StudioGlassSupport`、`StudioNoAutoFocusSearchField`、`StudioPageLayout`（`.scrollEdgeEffectStyle(.soft)` + `.safeAreaBar` 渐隐顶栏）、`StudioOverflowToolbar`、`StudioCard`、`StudioSegmentedPicker`、`StudioSegmentedPillGroup`、`StudioActionPillButton`、`StudioCompactPillButton`、`StudioMenuPillButton`、`StudioPrimaryActionButton`、`StudioSectionClearButton`、`FinderRevealButton`、`SpeciesSwitchBar`、`StudioMetricBadge`、`SequenceEditorBox`、`StudioFlowLayout`、`StudioResponsiveSplitLayout`、`AdaptiveTwoColumnWorkspace`、`PlasmidPreviewToggle`、`PlasmidFileToolbarGroup`、`StudioRadius`（三层连续圆角规范）、`StandardLinkerPreset`、`FinderFileDropHelper` |
+| `Views/Components/PlasmidPreviewCanvas.swift` | 质粒全景图谱引擎：OVE 同心多轨环形质粒图（Liquid Glass + HDR 工具栏）、线性拼接流程条、`PlasmidPreviewPanel` 同屏双视工作台、`PlasmidMapBuilder` 图谱构建器与独立预览窗口控制器 `PlasmidWindowPresenter` |
 | `Views/Components/SequenceRowCanvasView.swift` | 微观单碱基双链序列画布：`LazyVStack` 视口虚拟化、静态序列层与选区浮层分离、互补链、氨基酸密码子带、内切酶裂解切口与 120Hz 拖拽选区 |
 | `Views/Components/SequenceMinimapView.swift` | 全长序列缩略图导航条与视口快速定位滑块 |
-| `Views/Components/RestrictionEnzymeInspectorView.swift` | 限制性内切酶切点汇总与点击跳转浮层面板 |
+| `Views/Components/RestrictionEnzymeInspectorView.swift` | 限制性内切酶切点汇总与点击跳转浮层面板（Liquid Glass 预设与搜索操作栏） |
 | `Views/Components/SequenceHighlightText.swift` | 引物 5' 同源臂 / 3' 特异结合区分色高亮文本、`PrimerCardView` 引物卡片（含二级结构风险等级徽章、$\text{Mg}^{2+}$/dNTP 即时调节滑块与可展开碱基配对示意图）、`PrimerPairDimerSummaryBar` 对间异二聚体摘要条与 `PrimerPairQuickRenameBar` 成对重命名栏 |
 | `Views/Components/HistoryTreeView.swift` | 质粒构建谱系树与上下游特征坐标偏移对比视图 |
 | `Views/Components/TargetScoreBadge.swift` | CRISPR sgRNA / RNAi shRNA 靶点评分胶囊徽章 |
@@ -59,12 +59,12 @@
 | `Views/BenchTools/FigureAnnotatorView.swift` | 科研多图拼版、RGB 多通道荧光伪彩合成、微米比例尺与共定位像素强度剖面图视图 |
 | `Views/BenchTools/ProteinWorkbenchView.swift` | 极简声明式窗口响应式蛋白质工作台：三维 Cα 骨架与 Vina 对接盒视窗、SPICE 五维指标、对齐 `DockFlowLab` 的 LIGSITE 共识融合盒与经验启发式 (`empirical_heuristic`) 突变 ΔΔG 扫描视图 |
 | `Views/Order/OrderExportView.swift` | 商业引物合成与测序订单（擎科/生工等）一键导出中心及引物批量写入 `.dna` 工具 |
-| `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观 ② 侧边栏定制 ③ MCP 智能体服务 (17 工具) ④ 22 模块全局功能说明书 |
+| `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观（仿 macOS 26/27 系统设置 Liquid Glass 实时预览与强度滑块、多色/系统主题色阵与跟随系统设置按钮、HDR 动态高光及双引擎协同调度模式）② 侧边栏定制 ③ MCP 智能体服务 (17 工具) ④ 22 模块全局功能说明书 |
 
 ## 三、 核心算法与业务服务层 (`labworker/Sources/CloneStudioCore/`)
 
 ### 3.1 状态与视图模型 (`ViewModels/`)
-- `ViewModels/AppState.swift`：全局响应式状态、侧边栏分组折叠/搜索路由与 `UserDefaults` 偏好设置持久化中心。
+- `ViewModels/AppState.swift`：全局响应式状态、侧边栏分组折叠/宽度持久化/搜索路由、macOS 全局 `NSGlassTintAmount` / `controlAccentColor` 跟随系统同步与 `UserDefaults` 偏好设置持久化中心。
 - `ViewModels/CloningViewModels.swift`：入门克隆 (`EntryCloneViewModel`)、质粒特征分类器 (`PlasmidFeatureFilter`) 与单片段同源重组 (`SingleFragmentViewModel`) 核心状态机。
 - `ViewModels/MultiFragmentViewModel.swift`：多片段无缝组装 (`MultiFragmentViewModel`，2–10 片段动态增减、供体特征截取与总阅读框核验) 状态机。
 - `ViewModels/MutagenesisViewModel.swift`：定点突变 (`MutagenesisViewModel` 与 `MutagenesisResidueItem`，密码子/氨基酸交互点选与突变质粒导出) 状态机。

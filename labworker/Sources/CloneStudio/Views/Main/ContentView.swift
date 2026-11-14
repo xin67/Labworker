@@ -122,6 +122,10 @@ public struct ContentView: View {
     @ObservedObject private var plasmidPool = PlasmidPoolManager.shared
     @State private var isWindowDropTargeted: Bool = false
     @State private var searchFocusTrigger: Int = 0
+    @State private var liveSidebarWidth: CGFloat = AppState.shared.sidebarWidth
+    @State private var dragStartSidebarWidth: CGFloat? = nil
+    @State private var isHoveringSplitter: Bool = false
+    @State private var isResizeCursorActive: Bool = false
     
     public init() {}
     
@@ -136,83 +140,156 @@ public struct ContentView: View {
             ? Color.black.opacity(0.08)
             : Color.white.opacity(0.10)
     }
+
+    private func setResizeCursorActive(_ active: Bool) {
+        if active && !isResizeCursorActive {
+            NSCursor.resizeLeftRight.push()
+            isResizeCursorActive = true
+        } else if !active && isResizeCursorActive {
+            NSCursor.pop()
+            isResizeCursorActive = false
+        }
+    }
     
     public var body: some View {
-        HStack(spacing: 0) {
-            sidebarContent
-                .frame(width: 232)
-                .background(
-                    ZStack {
-                        VisualEffectBlurView(
-                            material: .sidebar,
-                            blendingMode: .behindWindow,
-                            state: .active
-                        )
-                        Color.primary.opacity(appState.isLightAppearance ? 0.015 : 0.03)
-                    }
-                    .ignoresSafeArea(.container, edges: .top)
-                )
-            
-            // 右侧主工作区：纯净静态白/黑渲染 + 系统级顶部模糊栏
-            VStack(spacing: 0) {
-                detailContent
-                    .animation(nil, value: appState.selectedNav)
-                    .frame(minWidth: 540, maxWidth: .infinity, minHeight: 420, maxHeight: .infinity)
-            }
-            .background(mainWorkspaceBackground)
-            .overlay(alignment: .leading) {
-                Rectangle()
-                    .fill(subtleHairlineColor)
-                    .frame(width: 1)
-                    .ignoresSafeArea(.container, edges: .top)
-            }
-            .overlay(alignment: .top) {
-                if isWindowDropTargeted {
-                    HStack(spacing: 8) {
-                        Image(systemName: "folder.fill.badge.plus")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(.white)
-                        Text("松开智能导入 (.dna / .ab1 / .tif / .pdb / .nwk / .csv / .fasta) 直达对应工作台")
-                            .font(.system(size: 13.5, weight: .semibold))
-                            .foregroundColor(.white)
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
+        GeometryReader { proxy in
+            let minSidebarW: CGFloat = 188
+            let minDetailW: CGFloat = 460
+            let maxSidebarW: CGFloat = max(minSidebarW, min(380, proxy.size.width - minDetailW))
+            let resolvedSidebarWidth = min(maxSidebarW, max(minSidebarW, liveSidebarWidth))
+
+            HStack(spacing: 0) {
+                sidebarContent
+                    .frame(width: resolvedSidebarWidth)
                     .background(
-                        Capsule(style: .continuous)
-                            .fill(appState.accentTheme.color.opacity(0.95))
+                        ZStack {
+                            VisualEffectBlurView(
+                                material: .sidebar,
+                                blendingMode: .behindWindow,
+                                state: .active
+                            )
+                            Color.primary.opacity(appState.isLightAppearance ? 0.015 : 0.03)
+                        }
+                        .ignoresSafeArea(.container, edges: .top)
                     )
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(Color.white.opacity(0.28), lineWidth: 1)
-                    )
-                    .shadow(color: appState.accentTheme.color.opacity(0.26), radius: 10, x: 0, y: 4)
-                    .padding(.top, 18)
+
+                // 右侧主工作区：自适应剩余宽度（侧边栏拖拽拉伸绝不挤压/裁剪内容）+ 系统级顶部渐隐模糊栏
+                VStack(spacing: 0) {
+                    detailContent
+                        .animation(nil, value: appState.selectedNav)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-            }
-            .overlay(alignment: .bottom) {
-                if appState.isShowingToast, let msg = appState.toastMessage {
-                    toastBanner(message: msg)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(mainWorkspaceBackground)
+                .overlay(alignment: .leading) {
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(
+                                (isHoveringSplitter || dragStartSidebarWidth != nil)
+                                ? appState.accentTheme.color.opacity(0.65)
+                                : subtleHairlineColor
+                            )
+                            .frame(width: (isHoveringSplitter || dragStartSidebarWidth != nil) ? 2.5 : 1)
+                            .animation(.easeOut(duration: 0.12), value: isHoveringSplitter)
+
+                        Color.clear
+                            .frame(width: 9)
+                            .contentShape(Rectangle())
+                            .onHover { hovering in
+                                isHoveringSplitter = hovering
+                                if dragStartSidebarWidth == nil {
+                                    setResizeCursorActive(hovering)
+                                }
+                            }
+                            .gesture(
+                                DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                                    .onChanged { value in
+                                        let base = dragStartSidebarWidth ?? resolvedSidebarWidth
+                                        if dragStartSidebarWidth == nil {
+                                            dragStartSidebarWidth = resolvedSidebarWidth
+                                        }
+                                        setResizeCursorActive(true)
+                                        let next = min(maxSidebarW, max(minSidebarW, base + value.translation.width))
+                                        liveSidebarWidth = next
+                                    }
+                                    .onEnded { value in
+                                        let base = dragStartSidebarWidth ?? resolvedSidebarWidth
+                                        let finalW = min(maxSidebarW, max(minSidebarW, base + value.translation.width))
+                                        liveSidebarWidth = finalW
+                                        appState.sidebarWidth = finalW
+                                        dragStartSidebarWidth = nil
+                                        setResizeCursorActive(isHoveringSplitter)
+                                    }
+                            )
+                            .onTapGesture(count: 2) {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    liveSidebarWidth = 232
+                                    appState.sidebarWidth = 232
+                                }
+                            }
+                            .help("左右拖拽调整侧边栏宽度 · 双击恢复默认宽度")
+                    }
+                    .frame(width: 9)
+                    .offset(x: -4)
+                    .ignoresSafeArea(.container, edges: .top)
                 }
-            }
-            .onDrop(of: [.fileURL], isTargeted: $isWindowDropTargeted) { providers in
-                FinderFileDropHelper.extractAllFileURLs(from: providers) { urls in
-                    WorkspaceSessionManager.shared.handleFinderOpenURLs(urls)
-                    Task {
-                        await PlasmidPoolManager.shared.importFilesOrFolders(urls: urls, silent: true)
+                .overlay(alignment: .top) {
+                    if isWindowDropTargeted {
+                        HStack(spacing: 8) {
+                            Image(systemName: "folder.fill.badge.plus")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("松开智能导入 (.dna / .ab1 / .tif / .pdb / .nwk / .csv / .fasta) 直达对应工作台")
+                                .font(.system(size: 13.5, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(appState.accentTheme.color.opacity(0.95))
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .stroke(Color.white.opacity(0.28), lineWidth: 1)
+                        )
+                        .shadow(color: appState.accentTheme.color.opacity(0.26), radius: 10, x: 0, y: 4)
+                        .padding(.top, 18)
+                    }
+                }
+                .overlay(alignment: .bottom) {
+                    if appState.isShowingToast, let msg = appState.toastMessage {
+                        toastBanner(message: msg)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .onDrop(of: [.fileURL], isTargeted: $isWindowDropTargeted) { providers in
+                    FinderFileDropHelper.extractAllFileURLs(from: providers) { urls in
+                        WorkspaceSessionManager.shared.handleFinderOpenURLs(urls)
+                        Task {
+                            await PlasmidPoolManager.shared.importFilesOrFolders(urls: urls, silent: true)
+                        }
                     }
                 }
             }
         }
+        .frame(minWidth: 740, minHeight: 460)
         .background(ImmersiveWindowConfigurator())
         .tint(appState.accentTheme.color)
         .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
+        .onChange(of: appState.sidebarWidth) { _, newWidth in
+            if dragStartSidebarWidth == nil {
+                liveSidebarWidth = newWidth
+            }
+        }
         .onChange(of: appState.appearanceMode) { _, newMode in
             CloneStudioApp.syncAppKitAppearance(mode: newMode, forceIconRefresh: false)
         }
         .onChange(of: appState.showStatusBarIcon) { _, isVisible in
             CloneStudioAppDelegate.shared?.syncStatusBarVisibility(isVisible: isVisible)
+        }
+        .onDisappear {
+            setResizeCursorActive(false)
         }
     }
     
@@ -408,6 +485,8 @@ public struct ContentView: View {
                         Text(section.title)
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.secondary.opacity(0.88))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                         
                         Spacer()
                     }
@@ -455,6 +534,7 @@ public struct ContentView: View {
                         .font(.system(size: 13.5, weight: isSelected ? .semibold : .regular))
                         .foregroundColor(isSelected ? .white : .primary)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                     
                     Spacer(minLength: 4)
                     
@@ -467,6 +547,8 @@ public struct ContentView: View {
                             .background(
                                 Capsule().fill(isSelected ? Color.white : Color.primary.opacity(0.09))
                             )
+                            .fixedSize()
+                            .layoutPriority(1)
                     }
                 }
                 .padding(.horizontal, 8)

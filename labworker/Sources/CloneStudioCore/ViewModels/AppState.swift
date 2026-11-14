@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import AppKit
 
 /// 侧边栏分组枚举（按实验直觉划分为 5 大清晰分类，支持小箭头折叠与展开）
 public enum SidebarSectionKind: String, CaseIterable, Identifiable, Sendable {
@@ -333,30 +334,48 @@ public enum CanvasThemeOverride: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// 全局主题强调色
+/// 全局主题强调色（对齐 macOS 26/27 系统设置外观颜色，支持跟随系统/多色与手动单色选择）
 public enum AppAccentTheme: String, CaseIterable, Identifiable, Sendable {
+    case system = "system"
     case blue = "blue"
     case teal = "teal"
-    case pink = "pink"
     case purple = "purple"
-    
+    case pink = "pink"
+    case red = "red"
+    case orange = "orange"
+    case yellow = "yellow"
+    case green = "green"
+    case graphite = "graphite"
+
     public var id: String { rawValue }
-    
+
     public var title: String {
         switch self {
-        case .blue:   return "蓝色"
-        case .teal:   return "青色"
-        case .pink:   return "粉色"
-        case .purple: return "紫色"
+        case .system:   return "多色"
+        case .blue:     return "蓝色"
+        case .teal:     return "青色"
+        case .purple:   return "紫色"
+        case .pink:     return "粉色"
+        case .red:      return "红色"
+        case .orange:   return "橙色"
+        case .yellow:   return "黄色"
+        case .green:    return "绿色"
+        case .graphite: return "石墨灰"
         }
     }
-    
+
     public var color: Color {
         switch self {
-        case .blue:   return .blue
-        case .teal:   return .teal
-        case .pink:   return .pink
-        case .purple: return .purple
+        case .system:   return AppState.shared.systemAccentColor
+        case .blue:     return .blue
+        case .teal:     return .teal
+        case .purple:   return .purple
+        case .pink:     return .pink
+        case .red:      return .red
+        case .orange:   return .orange
+        case .yellow:   return Color(red: 0.96, green: 0.76, blue: 0.08)
+        case .green:    return .green
+        case .graphite: return Color(red: 0.55, green: 0.55, blue: 0.57)
         }
     }
 }
@@ -382,6 +401,26 @@ public enum LiquidGlassStyleMode: String, CaseIterable, Identifiable, Sendable {
         case .regular: return "标准 (Regular)"
         case .clear:   return "清透 (Clear)"
         case .tinted:  return "浸染 (Tinted)"
+        }
+    }
+
+    /// 各档位对应的默认 Liquid Glass 强度 (0.0 清透 ~ 1.0 浸染)
+    public var defaultStrength: Double {
+        switch self {
+        case .clear:   return 0.08
+        case .regular: return 0.38
+        case .tinted:  return 0.85
+        }
+    }
+
+    /// 根据连续强度映射至离散玻璃档位
+    public static func fromStrength(_ strength: Double) -> LiquidGlassStyleMode {
+        if strength < 0.22 {
+            return .clear
+        } else if strength < 0.62 {
+            return .regular
+        } else {
+            return .tinted
         }
     }
 
@@ -434,6 +473,7 @@ public final class AppState: ObservableObject {
     public static let shared = AppState()
     private let defaults = UserDefaults.standard
     private var isInitializing = true
+    private var isSyncingGlassStrength = false
     
     @Published public var selectedNav: NavItem = .entryClone {
         didSet {
@@ -525,23 +565,149 @@ public final class AppState: ObservableObject {
         didSet { saveSetting("cs_appearanceMode", appearanceMode.rawValue) }
     }
     @Published public var systemIsLightAppearance: Bool = true
+    @Published public var systemAccentColor: Color = AppState.resolveSystemAccentColor()
+    @Published public var systemAccentTitle: String = AppState.resolveSystemAccentTitle()
+    @Published public var systemLiquidGlassStrength: Double = AppState.resolveSystemLiquidGlassStrength()
     @Published public var showStatusBarIcon: Bool = true {
         didSet { saveSetting("cs_showStatusBarIcon", showStatusBarIcon) }
     }
     @Published public var canvasThemeOverride: CanvasThemeOverride = .followApp {
         didSet { saveSetting("cs_canvasThemeOverride", canvasThemeOverride.rawValue) }
     }
-    @Published public var accentTheme: AppAccentTheme = .blue {
+    @Published public var accentTheme: AppAccentTheme = .system {
         didSet { saveSetting("cs_accentTheme", accentTheme.rawValue) }
     }
+    @Published public var followSystemLiquidGlass: Bool = true {
+        didSet { saveSetting("cs_followSystemLiquidGlass", followSystemLiquidGlass) }
+    }
+    @Published public var liquidGlassStrength: Double = 0.38 {
+        didSet {
+            let clamped = min(1.0, max(0.0, liquidGlassStrength))
+            if abs(clamped - liquidGlassStrength) > 1e-6 {
+                liquidGlassStrength = clamped
+                return
+            }
+            saveSetting("cs_liquidGlassStrength", clamped)
+            guard !isInitializing && !isSyncingGlassStrength else { return }
+            isSyncingGlassStrength = true
+            let mapped = LiquidGlassStyleMode.fromStrength(clamped)
+            if liquidGlassStyle != mapped {
+                liquidGlassStyle = mapped
+            }
+            isSyncingGlassStrength = false
+        }
+    }
     @Published public var liquidGlassStyle: LiquidGlassStyleMode = .regular {
-        didSet { saveSetting("cs_liquidGlassStyle", liquidGlassStyle.rawValue) }
+        didSet {
+            saveSetting("cs_liquidGlassStyle", liquidGlassStyle.rawValue)
+            guard !isInitializing && !isSyncingGlassStrength else { return }
+            isSyncingGlassStrength = true
+            liquidGlassStrength = liquidGlassStyle.defaultStrength
+            isSyncingGlassStrength = false
+        }
+    }
+    /// 当前实际生效的 Liquid Glass 强度 (0.0 清透 ~ 1.0 浸染)
+    public var effectiveLiquidGlassStrength: Double {
+        followSystemLiquidGlass ? systemLiquidGlassStrength : liquidGlassStrength
+    }
+    /// 当前实际生效的 Liquid Glass 离散材质档位
+    public var effectiveLiquidGlassStyle: LiquidGlassStyleMode {
+        followSystemLiquidGlass ? LiquidGlassStyleMode.fromStrength(systemLiquidGlassStrength) : liquidGlassStyle
+    }
+    /// 当前外观、Liquid Glass 与主题强调色是否已全部处于「跟随系统」状态
+    public var isFollowingAllSystemAppearance: Bool {
+        appearanceMode == .system && accentTheme == .system && followSystemLiquidGlass
     }
     @Published public var enableAmbientGlassGlow: Bool = true {
         didSet { saveSetting("cs_enableAmbientGlassGlow", enableAmbientGlassGlow) }
     }
+    @Published public var sidebarWidth: CGFloat = 232 {
+        didSet {
+            let clamped = min(380.0, max(188.0, sidebarWidth))
+            if abs(clamped - sidebarWidth) > 0.5 {
+                sidebarWidth = clamped
+                return
+            }
+            saveSetting("cs_sidebarWidth", Double(clamped))
+        }
+    }
     @Published public var sequenceFontSize: Double = 10.0 {
         didSet { saveSetting("cs_sequenceFontSize", sequenceFontSize) }
+    }
+
+    public static func resolveSystemAccentColor() -> Color {
+        let global = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)
+        if let code = global?["AppleAccentColor"] as? Int {
+            switch code {
+            case -1: return Color(red: 0.55, green: 0.55, blue: 0.57)
+            case 0:  return .red
+            case 1:  return .orange
+            case 2:  return Color(red: 0.96, green: 0.76, blue: 0.08)
+            case 3:  return .green
+            case 4:  return .blue
+            case 5:  return .purple
+            case 6:  return .pink
+            default: break
+            }
+        }
+        if let srgb = NSColor.controlAccentColor.usingColorSpace(.sRGB) {
+            return Color(
+                .sRGB,
+                red: Double(srgb.redComponent),
+                green: Double(srgb.greenComponent),
+                blue: Double(srgb.blueComponent),
+                opacity: Double(srgb.alphaComponent)
+            )
+        }
+        return .blue
+    }
+
+    public static func resolveSystemAccentTitle() -> String {
+        let global = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)
+        if let code = global?["AppleAccentColor"] as? Int {
+            switch code {
+            case -1: return "石墨灰"
+            case 0:  return "红色"
+            case 1:  return "橙色"
+            case 2:  return "黄色"
+            case 3:  return "绿色"
+            case 4:  return "蓝色"
+            case 5:  return "紫色"
+            case 6:  return "粉色"
+            default: break
+            }
+        }
+        return "多色"
+    }
+
+    public static func resolveSystemLiquidGlassStrength() -> Double {
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency {
+            return 0.88
+        }
+        let global = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)
+        if let num = global?["NSGlassTintAmount"] as? NSNumber {
+            return min(1.0, max(0.0, num.doubleValue))
+        }
+        if let rawDouble = global?["NSGlassTintAmount"] as? Double {
+            return min(1.0, max(0.0, rawDouble))
+        }
+        return 0.25
+    }
+
+    /// 刷新来自 macOS 系统设置的实时外观、主题色与 Liquid Glass 强度
+    public func refreshSystemAppearancePreferences() {
+        systemAccentColor = Self.resolveSystemAccentColor()
+        systemAccentTitle = Self.resolveSystemAccentTitle()
+        systemLiquidGlassStrength = Self.resolveSystemLiquidGlassStrength()
+    }
+
+    /// 一键将外观、Liquid Glass 强度与主题色全部恢复跟随 macOS 系统设置
+    public func followAllSystemAppearanceSettings() {
+        refreshSystemAppearancePreferences()
+        appearanceMode = .system
+        accentTheme = .system
+        followSystemLiquidGlass = true
+        showToast("外观、Liquid Glass 与主题色已跟随系统设置")
     }
     
     // MARK: - 2. 克隆与引物设计默认参数 (同源重组与定点突变独立 Tm 及浮动范围)
@@ -841,12 +1007,29 @@ public final class AppState: ObservableObject {
            let acc = AppAccentTheme(rawValue: raw) {
             accentTheme = acc
         }
+        if defaults.object(forKey: "cs_followSystemLiquidGlass") != nil {
+            followSystemLiquidGlass = defaults.bool(forKey: "cs_followSystemLiquidGlass")
+        }
+        isSyncingGlassStrength = true
         if let rawGlass = defaults.string(forKey: "cs_liquidGlassStyle"),
            let glassMode = LiquidGlassStyleMode(rawValue: rawGlass) {
             liquidGlassStyle = glassMode
+            liquidGlassStrength = glassMode.defaultStrength
         }
+        if defaults.object(forKey: "cs_liquidGlassStrength") != nil {
+            let s = max(0.0, min(1.0, defaults.double(forKey: "cs_liquidGlassStrength")))
+            liquidGlassStrength = s
+            if defaults.string(forKey: "cs_liquidGlassStyle") == nil {
+                liquidGlassStyle = LiquidGlassStyleMode.fromStrength(s)
+            }
+        }
+        isSyncingGlassStrength = false
         if defaults.object(forKey: "cs_enableAmbientGlassGlow") != nil {
             enableAmbientGlassGlow = defaults.bool(forKey: "cs_enableAmbientGlassGlow")
+        }
+        if defaults.object(forKey: "cs_sidebarWidth") != nil {
+            let savedW = CGFloat(defaults.double(forKey: "cs_sidebarWidth"))
+            sidebarWidth = min(380.0, max(188.0, savedW))
         }
         if defaults.object(forKey: "cs_sequenceFontSize") != nil {
             sequenceFontSize = max(9.0, min(13.0, defaults.double(forKey: "cs_sequenceFontSize")))
@@ -989,9 +1172,15 @@ public final class AppState: ObservableObject {
         appearanceMode = .system
         showStatusBarIcon = true
         canvasThemeOverride = .followApp
-        accentTheme = .blue
+        accentTheme = .system
+        followSystemLiquidGlass = true
+        isSyncingGlassStrength = true
+        liquidGlassStrength = 0.38
         liquidGlassStyle = .regular
+        isSyncingGlassStrength = false
         enableAmbientGlassGlow = true
+        sidebarWidth = 232
+        refreshSystemAppearancePreferences()
         sequenceFontSize = 10.0
         defaultHomologyLength = 18
         defaultLinearizationModeRaw = "pcr"

@@ -97,10 +97,23 @@ for val in arch_mod_mentions:
     if val != true_modules:
         errors.append(f"ARCHITECTURE.md module count mismatch: found {val}, expected {true_modules}")
 
+# 4. 校验 Sources/、Scripts/、python/、Tests/ 下所有核心文件均已在 ARCHITECTURE.md 登记（有迹可循）
+import os
+missing_files = []
+for walk_root in ["Sources", "Scripts", "python", "Tests"]:
+    for dirpath, dirnames, filenames in os.walk(walk_root):
+        dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+        for fn in sorted(filenames):
+            if fn.endswith((".swift", ".py", ".sh", ".json", ".sqlite")):
+                if fn not in arch:
+                    missing_files.append(os.path.join(dirpath, fn))
+if missing_files:
+    errors.append("Files missing from ARCHITECTURE.md: " + ", ".join(missing_files))
+
 if errors:
     for e in errors:
         print(f"❌ {e}", file=sys.stderr)
     sys.exit(1)
 
-print(f"✅ [check_doc_counts] All document counts match ground truth (tests={true_tests}, tools={true_tools}, modules={true_modules}).")
+print(f"✅ [check_doc_counts] All document counts & file manifest match ground truth (tests={true_tests}, tools={true_tools}, modules={true_modules}).")
 PYEOF

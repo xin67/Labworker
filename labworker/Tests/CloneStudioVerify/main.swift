@@ -835,13 +835,25 @@ AppState.shared.liquidGlassStyle = .clear
 assert(AppState.shared.liquidGlassStyle == .clear && UserDefaults.standard.string(forKey: "cs_liquidGlassStyle") == "clear", "LiquidGlassStyleMode .clear must persist")
 AppState.shared.liquidGlassStyle = .tinted
 AppState.shared.enableAmbientGlassGlow = false
+AppState.shared.followSystemLiquidGlass = false
+AppState.shared.liquidGlassStrength = 0.78
+AppState.shared.sidebarWidth = 310
+AppState.shared.accentTheme = .purple
 assert(AppState.shared.liquidGlassStyle == .tinted && UserDefaults.standard.string(forKey: "cs_liquidGlassStyle") == "tinted", "LiquidGlassStyleMode .tinted must persist")
 assert(AppState.shared.enableAmbientGlassGlow == false && UserDefaults.standard.object(forKey: "cs_enableAmbientGlassGlow") as? Bool == false, "enableAmbientGlassGlow must persist")
+assert(abs(AppState.shared.effectiveLiquidGlassStrength - 0.78) < 1e-6 && AppState.shared.sidebarWidth == 310, "Liquid Glass strength and resizable sidebar width must update & persist")
 assert(AppState.shared.defaultWBRollingBallRadius == 65 && abs(AppState.shared.defaultProteinPH - 7.4) < 1e-6, "Custom workbench defaults must update cleanly")
 AppState.shared.resetSettingsToDefaults()
 assert(AppState.shared.defaultWBRollingBallRadius == 50 && abs(AppState.shared.defaultProteinPH - 7.0) < 1e-6, "resetSettingsToDefaults must restore workbench defaults")
 assert(AppState.shared.liquidGlassStyle == .regular && AppState.shared.enableAmbientGlassGlow == true, "resetSettingsToDefaults must restore Liquid Glass .regular & ambient glow enabled")
+assert(AppState.shared.followSystemLiquidGlass && AppState.shared.accentTheme == .system && AppState.shared.sidebarWidth == 232, "resetSettingsToDefaults must restore follow-system glass/accent & default sidebarWidth 232")
+AppState.shared.sidebarWidth = 120
+assert(AppState.shared.sidebarWidth == 188, "sidebarWidth must clamp to minimum 188pt")
+AppState.shared.sidebarWidth = 600
+assert(AppState.shared.sidebarWidth == 380, "sidebarWidth must clamp to maximum 380pt")
+AppState.shared.sidebarWidth = 232
 assert(LiquidGlassStyleMode.allCases.count == 3, "LiquidGlassStyleMode must expose regular/clear/tinted modes")
+assert(AppAccentTheme.allCases.contains(.system), "AppAccentTheme must include system/multicolor option")
 if let wbSample = wbGroups.first {
     let tifURL = URL(fileURLWithPath: wbSample.primaryQuantPath)
     WorkspaceSessionManager.shared.handleFinderOpenURLs([tifURL])

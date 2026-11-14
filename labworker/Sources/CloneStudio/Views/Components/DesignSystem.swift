@@ -91,7 +91,7 @@ public enum StudioGlassSupport {
         return hdrColor(.white, exposure: 0.35, appState: appState).opacity(isLight ? 0.72 : 0.26)
     }
 
-    /// 构建遵循设置项 (`LiquidGlassStyleMode`) 与 HDR 浸染规则的原生 SwiftUI `Glass`
+    /// 构建遵循连续 Liquid Glass 强度 (`effectiveLiquidGlassStrength` 0.0~1.0)、系统设置同步及 HDR 浸染规则的原生 SwiftUI `Glass`
     public static func buttonGlass(
         appState: AppState,
         tint: Color? = nil,
@@ -100,38 +100,83 @@ public enum StudioGlassSupport {
         disabled: Bool = false,
         interactive: Bool = true
     ) -> Glass {
+        glassWithStrength(
+            appState.effectiveLiquidGlassStrength,
+            appState: appState,
+            tint: tint,
+            prominent: prominent,
+            selected: selected,
+            disabled: disabled,
+            interactive: interactive
+        )
+    }
+
+    public static func glassWithStrength(
+        _ rawStrength: Double,
+        appState: AppState,
+        tint: Color? = nil,
+        prominent: Bool = false,
+        selected: Bool = false,
+        disabled: Bool = false,
+        interactive: Bool = true
+    ) -> Glass {
+        let s = min(1.0, max(0.0, rawStrength))
         let resolvedTint = tint ?? appState.accentTheme.color
         let isLight = appState.isLightAppearance
+        let surfaceTintBase: Color = isLight
+            ? Color.white
+            : Color(red: 0.18, green: 0.19, blue: 0.22)
+
         let baseGlass: Glass
-        switch appState.liquidGlassStyle {
-        case .regular:
-            baseGlass = .regular
-        case .clear:
-            baseGlass = .clear
-        case .tinted:
-            baseGlass = .regular.tint(
-                hdrColor(appState.accentTheme.color, exposure: 0.20, appState: appState)
-                    .opacity(isLight ? 0.14 : 0.22)
-            )
+        if s < 0.22 {
+            // 清透区间 (Clear)：高透光学折射，随强度微幅叠加柔和玻璃釉色
+            if s > 0.04 {
+                let ratio = (s - 0.04) / 0.18
+                baseGlass = .clear.tint(surfaceTintBase.opacity(ratio * (isLight ? 0.14 : 0.18)))
+            } else {
+                baseGlass = .clear
+            }
+        } else if s < 0.62 {
+            // 标准区间 (Regular)：平衡折射与磨砂对比
+            let ratio = (s - 0.22) / 0.40
+            if ratio > 0.15 {
+                let tintCol = tint == nil
+                    ? surfaceTintBase.opacity(ratio * (isLight ? 0.18 : 0.22))
+                    : hdrColor(resolvedTint, exposure: 0.18, appState: appState).opacity(ratio * (isLight ? 0.14 : 0.20))
+                baseGlass = .regular.tint(tintCol)
+            } else {
+                baseGlass = .regular
+            }
+        } else {
+            // 浸染区间 (Tinted)：随强度提升增强雾度浸染，近似系统设置右端效果
+            let ratio = (s - 0.62) / 0.38
+            let tintOpacity = (isLight ? 0.22 : 0.26) + ratio * (isLight ? 0.34 : 0.36)
+            let targetTint: Color = (tint != nil || appState.effectiveLiquidGlassStyle == .tinted)
+                ? surfaceTintBase.opacity(tintOpacity)
+                : hdrColor(resolvedTint, exposure: 0.18, appState: appState).opacity(tintOpacity * 0.65)
+            baseGlass = .regular.tint(targetTint)
         }
 
         let configured: Glass
         if disabled {
             configured = .regular
         } else if prominent {
+            let promBoost = 0.78 + s * 0.14
             configured = .regular.tint(
                 hdrColor(resolvedTint, exposure: 0.38, appState: appState)
-                    .opacity(isLight ? 0.86 : 0.82)
+                    .opacity(isLight ? min(0.92, promBoost + 0.04) : min(0.88, promBoost))
             )
         } else if selected {
-            configured = .regular.tint(
+            let selBoost = (isLight ? 0.22 : 0.36) + s * 0.20
+            configured = (s < 0.16 ? Glass.clear : Glass.regular).tint(
                 hdrColor(resolvedTint, exposure: 0.32, appState: appState)
-                    .opacity(isLight ? 0.28 : 0.44)
+                    .opacity(selBoost)
             )
         } else if let customTint = tint {
+            let ctOpacity = (isLight ? 0.10 : 0.20) + s * 0.18
             configured = baseGlass.tint(
                 hdrColor(customTint, exposure: 0.24, appState: appState)
-                    .opacity(isLight ? 0.14 : 0.26)
+                    .opacity(ctOpacity)
             )
         } else {
             configured = baseGlass
@@ -193,6 +238,11 @@ public struct StudioNoAutoFocusSearchField: NSViewRepresentable {
         context.coordinator.textField = field
         context.coordinator.lastFocusTrigger = focusTrigger
         return field
+    }
+
+    public func sizeThatFits(_ proposal: ProposedViewSize, nsView: PassiveFocusSearchNSTextField, context: Context) -> CGSize? {
+        let fitting = nsView.fittingSize
+        return CGSize(width: proposal.width ?? fitting.width, height: fitting.height)
     }
 
     public func updateNSView(_ nsView: PassiveFocusSearchNSTextField, context: Context) {

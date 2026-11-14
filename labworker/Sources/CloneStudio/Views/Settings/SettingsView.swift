@@ -68,6 +68,9 @@ public struct SettingsView: View {
                 featureManualWorkspaceView
             }
         }
+        .onAppear {
+            appState.refreshSystemAppearancePreferences()
+        }
     }
 
     // MARK: - 子页面 ①：默认参数与外观（保持极简双栏响应式布局）
@@ -509,9 +512,17 @@ public struct SettingsView: View {
 
     private var appearanceCard: some View {
         StudioCard(title: "1. 外观与主题") {
-            EmptyView()
+            StudioCompactPillButton(
+                title: appState.isFollowingAllSystemAppearance ? "已跟随系统" : "跟随系统设置",
+                icon: "desktopcomputer",
+                tint: appState.accentTheme.color,
+                isProminent: appState.isFollowingAllSystemAppearance
+            ) {
+                appState.followAllSystemAppearanceSettings()
+            }
+            .help("将应用外观、Liquid Glass 强度与主题颜色一键恢复为跟随 macOS 系统设置")
         } content: {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
                         Text("应用外观:")
@@ -562,62 +573,75 @@ public struct SettingsView: View {
                     }
                 }
 
+                Divider().opacity(0.45)
+
+                // macOS 26/27 系统设置风格：Liquid Glass 实时折射预览窗格 + 强度滑块 + 跟随系统设置按钮
                 ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        Text("主题强调色:")
-                            .font(.system(size: 11.5, weight: .medium))
-                            .fixedSize(horizontal: true, vertical: false)
-                        Spacer()
-                        StudioSegmentedPicker(
-                            selection: $appState.accentTheme,
-                            options: AppAccentTheme.allCases.map {
-                                StudioSegmentedOption(value: $0, title: $0.title, tint: $0.color)
-                            }
-                        )
+                    HStack(alignment: .top, spacing: 16) {
+                        liquidGlassControlSidebar
+                            .frame(width: 146, alignment: .leading)
+                        liquidGlassPreviewAndSlider
+                            .frame(maxWidth: .infinity)
                     }
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("主题强调色:")
-                            .font(.system(size: 11.5, weight: .medium))
-                        StudioSegmentedPicker(
-                            selection: $appState.accentTheme,
-                            options: AppAccentTheme.allCases.map {
-                                StudioSegmentedOption(value: $0, title: $0.title, tint: $0.color)
-                            }
-                        )
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(alignment: .center, spacing: 8) {
+                            Text("Liquid Glass")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text(liquidGlassStatusText)
+                                .font(.system(size: 10.5))
+                                .foregroundColor(.secondary)
+                            Spacer(minLength: 4)
+                            followSystemGlassButton
+                        }
+                        liquidGlassPreviewAndSlider
                     }
                 }
 
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        Text("Liquid Glass 材质:")
+                Divider().opacity(0.45)
+
+                // macOS 26/27 系统设置风格：主题颜色圆形色卡阵列（多色/跟随系统 + 单色点选 + 跟随系统按钮）
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text("主题颜色:")
                             .font(.system(size: 11.5, weight: .medium))
-                            .fixedSize(horizontal: true, vertical: false)
-                        Spacer()
-                        StudioSegmentedPicker(
-                            selection: $appState.liquidGlassStyle,
-                            options: LiquidGlassStyleMode.allCases.map {
-                                StudioSegmentedOption(value: $0, title: $0.shortTitle, tint: appState.accentTheme.color)
-                            }
+                        Text(
+                            appState.accentTheme == .system
+                            ? "跟随系统（当前：\(appState.systemAccentTitle)）"
+                            : "手动：\(appState.accentTheme.title)"
                         )
+                        .font(.system(size: 10.5))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+
+                        Spacer(minLength: 4)
+
+                        StudioCompactPillButton(
+                            title: appState.accentTheme == .system ? "已跟随系统" : "跟随系统设置",
+                            icon: "paintpalette",
+                            tint: appState.accentTheme.color,
+                            isProminent: appState.accentTheme == .system
+                        ) {
+                            appState.refreshSystemAppearancePreferences()
+                            appState.accentTheme = .system
+                        }
                     }
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Liquid Glass 材质:")
-                            .font(.system(size: 11.5, weight: .medium))
-                        StudioSegmentedPicker(
-                            selection: $appState.liquidGlassStyle,
-                            options: LiquidGlassStyleMode.allCases.map {
-                                StudioSegmentedOption(value: $0, title: $0.shortTitle, tint: appState.accentTheme.color)
-                            }
-                        )
+
+                    StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 8) {
+                        ForEach(AppAccentTheme.allCases) { theme in
+                            themeSwatchButton(for: theme)
+                        }
                     }
+                    .padding(.vertical, 2)
                 }
+
+                Divider().opacity(0.45)
 
                 Toggle("启用 HDR 液态玻璃动态高光 (macOS 26/27 XDR 广色域辉光)", isOn: $appState.enableAmbientGlassGlow)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .font(.system(size: 11.5, weight: .medium))
 
-                Divider().opacity(0.5)
+                Divider().opacity(0.45)
 
                 Toggle("在 macOS 顶部菜单栏显示 Labworker 快捷图标", isOn: $appState.showStatusBarIcon)
                     .toggleStyle(.switch)
@@ -625,6 +649,333 @@ public struct SettingsView: View {
                     .font(.system(size: 11.5, weight: .medium))
             }
         }
+    }
+
+    private var liquidGlassStatusText: String {
+        let pct = Int(round(appState.effectiveLiquidGlassStrength * 100))
+        if appState.followSystemLiquidGlass {
+            return "跟随系统 · \(pct)%"
+        }
+        return "\(appState.effectiveLiquidGlassStyle.shortTitle) · \(pct)%"
+    }
+
+    private var followSystemGlassButton: some View {
+        StudioCompactPillButton(
+            title: appState.followSystemLiquidGlass ? "已跟随系统" : "跟随系统设置",
+            icon: "arrow.trianglehead.2.clockwise",
+            tint: appState.accentTheme.color,
+            isProminent: appState.followSystemLiquidGlass
+        ) {
+            appState.refreshSystemAppearancePreferences()
+            appState.followSystemLiquidGlass = true
+        }
+    }
+
+    private var liquidGlassControlSidebar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Liquid Glass")
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundColor(.primary)
+            Text(liquidGlassStatusText)
+                .font(.system(size: 10.5))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+            followSystemGlassButton
+                .padding(.top, 2)
+        }
+    }
+
+    private var liquidGlassPreviewAndSlider: some View {
+        let strength = appState.effectiveLiquidGlassStrength
+        let isLight = appState.isLightAppearance
+        let strengthBinding = Binding<Double>(
+            get: { appState.effectiveLiquidGlassStrength },
+            set: { newVal in
+                appState.followSystemLiquidGlass = false
+                appState.liquidGlassStrength = min(1.0, max(0.0, newVal))
+            }
+        )
+
+        return VStack(alignment: .leading, spacing: 8) {
+            // 实时折射预览框（仿 macOS 26/27 系统设置 Apple Park 玻璃预览卡片）
+            ZStack(alignment: .top) {
+                liquidGlassScenicBackdrop
+
+                // 顶部悬浮 Liquid Glass 预览控件组（实时响应强度滑块与系统同步值）
+                GlassEffectContainer(spacing: 8) {
+                    HStack(spacing: 8) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 12.5, weight: .medium))
+                            Image(systemName: "ellipsis")
+                                .font(.system(size: 12.5, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .frame(height: 28)
+                        .glassEffect(
+                            StudioGlassSupport.glassWithStrength(
+                                strength,
+                                appState: appState,
+                                interactive: false
+                            ),
+                            in: Capsule(style: .continuous)
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .stroke(Color.white.opacity(0.32), lineWidth: 0.75)
+                        )
+
+                        Image(systemName: "rectangle.on.rectangle")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(width: 28, height: 28)
+                            .glassEffect(
+                                StudioGlassSupport.glassWithStrength(
+                                    strength,
+                                    appState: appState,
+                                    interactive: false
+                                ),
+                                in: Circle()
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.32), lineWidth: 0.75)
+                            )
+
+                        HStack(spacing: 5) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 11, weight: .medium))
+                            Text("搜索")
+                                .font(.system(size: 11.5, weight: .medium))
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundColor(.white.opacity(0.95))
+                        .padding(.horizontal, 10)
+                        .frame(height: 28)
+                        .frame(maxWidth: .infinity)
+                        .glassEffect(
+                            StudioGlassSupport.glassWithStrength(
+                                strength,
+                                appState: appState,
+                                interactive: false
+                            ),
+                            in: Capsule(style: .continuous)
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .stroke(Color.white.opacity(0.32), lineWidth: 0.75)
+                        )
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.top, 9)
+                .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
+            }
+            .frame(height: 122)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(
+                        isLight ? Color.black.opacity(0.10) : Color.white.opacity(0.14),
+                        lineWidth: 0.9
+                    )
+            )
+
+            // 清透 <-> 浸染 连续强度滑块 + 刻度点（参考系统设置布局）
+            HStack(spacing: 10) {
+                Button {
+                    appState.followSystemLiquidGlass = false
+                    appState.liquidGlassStrength = 0.0
+                } label: {
+                    Image(systemName: "rectangle.on.rectangle")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(strength < 0.25 ? appState.accentTheme.color : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help("调至清透 (Clear · 0%)")
+
+                VStack(spacing: 2) {
+                    Slider(value: strengthBinding, in: 0.0...1.0)
+                        .tint(appState.accentTheme.color)
+                    HStack {
+                        ForEach(0..<4, id: \.self) { idx in
+                            if idx > 0 { Spacer() }
+                            Circle()
+                                .fill(Color.secondary.opacity(0.45))
+                                .frame(width: 2.5, height: 2.5)
+                        }
+                    }
+                    .padding(.horizontal, 7)
+                }
+
+                Button {
+                    appState.followSystemLiquidGlass = false
+                    appState.liquidGlassStrength = 0.88
+                } label: {
+                    Image(systemName: "rectangle.fill.on.rectangle.fill")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(strength >= 0.62 ? appState.accentTheme.color : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help("调至高雾度浸染 (Tinted · 88%)")
+            }
+        }
+    }
+
+    private var liquidGlassScenicBackdrop: some View {
+        ZStack(alignment: .bottomLeading) {
+            // 晴空蓝渐变底图
+            LinearGradient(
+                colors: [
+                    Color(red: 0.28, green: 0.62, blue: 0.95),
+                    Color(red: 0.56, green: 0.80, blue: 0.98),
+                    Color(red: 0.78, green: 0.89, blue: 0.96)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            // 右侧玻璃建筑曲面弧线（强化顶部搜索胶囊的真实折射条纹感）
+            GeometryReader { geo in
+                let w = geo.size.width
+                let h = geo.size.height
+                ZStack {
+                    // 远山绿植剪影
+                    Path { p in
+                        p.move(to: CGPoint(x: 0, y: h * 0.56))
+                        p.addCurve(
+                            to: CGPoint(x: w * 0.58, y: h * 0.68),
+                            control1: CGPoint(x: w * 0.22, y: h * 0.36),
+                            control2: CGPoint(x: w * 0.42, y: h * 0.54)
+                        )
+                        p.addLine(to: CGPoint(x: w * 0.58, y: h))
+                        p.addLine(to: CGPoint(x: 0, y: h))
+                        p.closeSubpath()
+                    }
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.16, green: 0.50, blue: 0.22),
+                                Color(red: 0.08, green: 0.31, blue: 0.14)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                    // 右侧玻璃幕墙弧光带
+                    Path { p in
+                        p.move(to: CGPoint(x: w * 0.48, y: h * 0.82))
+                        p.addQuadCurve(
+                            to: CGPoint(x: w, y: -6),
+                            control: CGPoint(x: w * 0.64, y: h * 0.24)
+                        )
+                        p.addLine(to: CGPoint(x: w, y: h * 0.85))
+                        p.closeSubpath()
+                    }
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.94, green: 0.92, blue: 0.86),
+                                Color(red: 0.20, green: 0.46, blue: 0.74),
+                                Color(red: 0.14, green: 0.24, blue: 0.34)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                    // 幕墙水平金属挑檐高光条纹，经过顶部玻璃控件可看到明显透镜折射
+                    ForEach(0..<3, id: \.self) { idx in
+                        Path { p in
+                            let yOffset = CGFloat(idx) * 20
+                            p.move(to: CGPoint(x: w * 0.56, y: 24 + yOffset))
+                            p.addQuadCurve(
+                                to: CGPoint(x: w, y: 4 + yOffset * 0.65),
+                                control: CGPoint(x: w * 0.76, y: 12 + yOffset)
+                            )
+                        }
+                        .stroke(Color.white.opacity(0.85 - Double(idx) * 0.18), lineWidth: 3.5)
+                    }
+                }
+            }
+
+            // 底部深色字幕条
+            HStack {
+                Text("欢迎来到 Labworker")
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundColor(.white)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.black.opacity(0.76))
+        }
+    }
+
+    private func themeSwatchButton(for theme: AppAccentTheme) -> some View {
+        let isSelected = (appState.accentTheme == theme)
+        let isLight = appState.isLightAppearance
+        return Button {
+            if theme == .system {
+                appState.refreshSystemAppearancePreferences()
+            }
+            appState.accentTheme = theme
+        } label: {
+            VStack(spacing: 3) {
+                ZStack {
+                    if isSelected {
+                        Circle()
+                            .stroke(
+                                theme == .system ? appState.systemAccentColor : theme.color,
+                                lineWidth: 2
+                            )
+                            .frame(width: 28, height: 28)
+                    }
+
+                    if theme == .system {
+                        Circle()
+                            .fill(
+                                AngularGradient(
+                                    gradient: Gradient(colors: [
+                                        .red, .orange, .yellow, .green, .cyan, .blue, .purple, .pink, .red
+                                    ]),
+                                    center: .center
+                                )
+                            )
+                            .frame(width: 21, height: 21)
+                            .overlay(
+                                Circle()
+                                    .stroke(isLight ? Color.black.opacity(0.16) : Color.white.opacity(0.32), lineWidth: 0.75)
+                            )
+                            .overlay(
+                                Circle()
+                                    .fill(appState.systemAccentColor)
+                                    .frame(width: 7, height: 7)
+                                    .overlay(Circle().stroke(Color.white.opacity(0.85), lineWidth: 0.8))
+                            )
+                    } else {
+                        Circle()
+                            .fill(theme.color)
+                            .frame(width: 21, height: 21)
+                            .overlay(
+                                Circle()
+                                    .stroke(isLight ? Color.black.opacity(0.14) : Color.white.opacity(0.28), lineWidth: 0.75)
+                            )
+                    }
+                }
+                .frame(width: 29, height: 29)
+
+                if theme == .system {
+                    Text("多色")
+                        .font(.system(size: 9.5, weight: isSelected ? .semibold : .regular))
+                        .foregroundColor(isSelected ? .primary : .secondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .help(theme == .system ? "多色（跟随 macOS 系统主题色）" : theme.title)
     }
 
     private var cloningDefaultsCard: some View {
