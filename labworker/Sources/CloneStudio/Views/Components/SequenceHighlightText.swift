@@ -27,16 +27,17 @@ public struct SequenceHighlightText: View {
                 Spacer()
                 
                 StudioActionPillButton(
-                    title: "复制序列",
+                    title: "",
                     icon: "doc.on.doc",
+                    help: "复制引物完整序列 (5'→3')",
                     action: copySequence
                 )
             }
             .padding(10)
             .background(Color(NSColor.textBackgroundColor))
-            .cornerRadius(8)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .stroke(Color.primary.opacity(0.12), lineWidth: 1)
             )
             
@@ -200,10 +201,10 @@ public struct PrimerPairQuickRenameBar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.accentColor.opacity(0.07))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(Color.accentColor.opacity(0.18), lineWidth: 0.8)
                 )
         )
@@ -410,20 +411,22 @@ public struct PrimerCardView: View {
                 }
                 Spacer()
                 StudioActionPillButton(
-                    title: isShowingStructureDiagram ? "收起配对图" : "配对示意图",
+                    title: "配对图",
                     icon: isShowingStructureDiagram ? "chevron.up.circle" : "waveform.path.ecg",
                     tint: riskTint(risk),
-                    isProminent: false
+                    isProminent: false,
+                    help: isShowingStructureDiagram ? "收起二级结构配对示意图" : "展开查看引物二级结构配对示意图"
                 ) {
                     withAnimation(.easeInOut(duration: 0.16)) {
                         isShowingStructureDiagram.toggle()
                     }
                 }
                 StudioActionPillButton(
-                    title: isAdded ? "已加入引物池" : "加入引物池",
+                    title: isAdded ? "已入池" : "入池",
                     icon: isAdded ? "checkmark.circle.fill" : "cart.badge.plus",
                     tint: isAdded ? .green : .accentColor,
-                    isProminent: true
+                    isProminent: true,
+                    help: isAdded ? "已加入引物合成购物车" : "将该引物加入合成引物池"
                 ) {
                     AppState.shared.addPrimerToCart(primer)
                     isAdded = true
@@ -432,9 +435,9 @@ public struct PrimerCardView: View {
         }
         .padding(12)
         .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(8)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(Color.primary.opacity(0.12), lineWidth: 1)
         )
     }

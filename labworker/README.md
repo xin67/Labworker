@@ -36,7 +36,7 @@
    # 1. 编译并运行全部 50 项自动化验证测试
    swift build --disable-sandbox && swift run --disable-sandbox CloneStudioVerify
 
-   # 2. 更新构建并签名 labworker/Labworker.app (同时同步 CloneStudio.app)
+   # 2. 更新构建并签名 labworker/Labworker.app
    bash Scripts/build_app.sh
 
    # 3. 使用清晰中文提交 Git 记录

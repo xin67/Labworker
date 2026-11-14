@@ -3,6 +3,14 @@ import AppKit
 import UniformTypeIdentifiers
 import CloneStudioCore
 
+// MARK: - 00. 全局统一三层连续圆角规范 (macOS 26/27 Liquid Glass Hierarchy)
+public enum StudioRadius {
+    /// Level 1：主浮层面板、模块卡片 (`StudioCard`)
+    public static let card: CGFloat = 16
+    /// Level 3：卡片内部嵌套数据行、代码/序列编辑器 (`SequenceEditorBox`)
+    public static let inner: CGFloat = 10
+}
+
 // MARK: - 0. 原生 macOS 毛玻璃高斯模糊视图 (NSVisualEffectView 封装)
 public struct VisualEffectBlurView: NSViewRepresentable {
     public var material: NSVisualEffectView.Material
@@ -44,6 +52,7 @@ public struct StudioPillGroupItem: Identifiable {
     public let icon: String?
     public let tint: Color?
     public let isDisabled: Bool
+    public let help: String?
     public let action: () -> Void
     
     public init(
@@ -52,6 +61,7 @@ public struct StudioPillGroupItem: Identifiable {
         icon: String? = nil,
         tint: Color? = nil,
         isDisabled: Bool = false,
+        help: String? = nil,
         action: @escaping () -> Void
     ) {
         self.id = id ?? title
@@ -59,11 +69,12 @@ public struct StudioPillGroupItem: Identifiable {
         self.icon = icon
         self.tint = tint
         self.isDisabled = isDisabled
+        self.help = help
         self.action = action
     }
 }
 
-/// 参考图2的连体分段胶囊按钮组（圆角胶囊底板 + 内部竖向 1px 分割线，macOS 26/27 原生 Liquid Glass）
+/// 连体分段胶囊按钮组（统一 Capsule 形状 + 内部竖向 1px 分割线，macOS 26/27 原生 Liquid Glass）
 public struct StudioSegmentedPillGroup: View {
     @ObservedObject private var appState = AppState.shared
     public let items: [StudioPillGroupItem]
@@ -80,41 +91,44 @@ public struct StudioSegmentedPillGroup: View {
                 if index > 0 {
                     Rectangle()
                         .fill(Color.primary.opacity(0.14))
-                        .frame(width: 1, height: 16)
+                        .frame(width: 1, height: 15)
                 }
                 
                 Button(action: item.action) {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         if let icon = item.icon, !icon.isEmpty {
                             Image(systemName: icon)
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.system(size: 11.5, weight: .semibold))
                         }
-                        Text(item.title)
-                            .font(.system(size: 12.5, weight: .medium))
-                            .lineLimit(1)
+                        if !item.title.isEmpty {
+                            Text(item.title)
+                                .font(.system(size: 12, weight: .medium))
+                                .lineLimit(1)
+                        }
                     }
                     .foregroundColor(
                         item.isDisabled
                             ? .secondary.opacity(0.45)
                             : (item.tint ?? .primary)
                     )
-                    .padding(.horizontal, 12)
-                    .frame(height: 30)
+                    .padding(.horizontal, item.title.isEmpty ? 10 : 11)
+                    .frame(height: 28)
                     .frame(maxWidth: expandEqually ? .infinity : nil)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(item.isDisabled)
+                .help(item.help ?? item.title)
             }
         }
         .glassEffect(
             appState.liquidGlassStyle.resolvedGlass(accentColor: appState.accentTheme.color, interactive: true),
-            in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+            in: Capsule(style: .continuous)
         )
     }
 }
 
-/// 参考图2的独立饱满胶囊按钮（支持单列通栏、双列对称或工具栏内联，macOS 26/27 原生 Liquid Glass）
+/// 独立饱满胶囊按钮（统一 Capsule 形状，支持图标纯享、工具栏内联或通栏操作，macOS 26/27 原生 Liquid Glass）
 public struct StudioActionPillButton: View {
     @ObservedObject private var appState = AppState.shared
     public let title: String
@@ -123,6 +137,7 @@ public struct StudioActionPillButton: View {
     public var isProminent: Bool = false
     public var fillWidth: Bool = false
     public var isDisabled: Bool = false
+    public var help: String? = nil
     public let action: () -> Void
     
     public init(
@@ -132,6 +147,7 @@ public struct StudioActionPillButton: View {
         isProminent: Bool = false,
         fillWidth: Bool = false,
         isDisabled: Bool = false,
+        help: String? = nil,
         action: @escaping () -> Void
     ) {
         self.title = title
@@ -140,11 +156,13 @@ public struct StudioActionPillButton: View {
         self.isProminent = isProminent
         self.fillWidth = fillWidth
         self.isDisabled = isDisabled
+        self.help = help
         self.action = action
     }
     
     public var body: some View {
         let resolvedTint = tint ?? appState.accentTheme.color
+        let isIconOnly = title.isEmpty && (icon?.isEmpty == false)
         let buttonGlass: Glass = {
             if isDisabled {
                 return appState.liquidGlassStyle.resolvedGlass(accentColor: resolvedTint, interactive: false)
@@ -156,32 +174,40 @@ public struct StudioActionPillButton: View {
                 return appState.liquidGlassStyle.resolvedGlass(accentColor: resolvedTint, interactive: true)
             }
         }()
-        Button(action: action) {
-            HStack(spacing: 5) {
+        let btn = Button(action: action) {
+            HStack(spacing: isIconOnly ? 0 : 5) {
                 if let icon = icon, !icon.isEmpty {
                     Image(systemName: icon)
                         .font(.system(size: 12, weight: .semibold))
                 }
-                Text(title)
-                    .font(.system(size: 12.5, weight: .semibold))
-                    .lineLimit(1)
+                if !title.isEmpty {
+                    Text(title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                }
             }
             .foregroundColor(
                 isDisabled
                     ? .secondary.opacity(0.45)
                     : (isProminent ? .white : (tint ?? .primary))
             )
-            .padding(.horizontal, 13)
-            .frame(height: 30)
-            .frame(maxWidth: fillWidth ? .infinity : nil)
+            .padding(.horizontal, isIconOnly ? 0 : 12)
+            .frame(minWidth: isIconOnly ? 28 : nil, maxWidth: fillWidth ? .infinity : nil)
+            .frame(height: 28)
             .glassEffect(
                 buttonGlass,
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                in: Capsule(style: .continuous)
             )
-            .contentShape(Rectangle())
+            .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
+        
+        if let helpText = help, !helpText.isEmpty {
+            btn.help(helpText)
+        } else {
+            btn
+        }
     }
 }
 
@@ -201,7 +227,6 @@ public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
     public let trailingContent: TrailingContent
     public let bodyContent: BodyContent
     
-    @State private var headerBottomGlobalY: CGFloat = 52
     @State private var isScrolled: Bool = false
     
     public init(
@@ -227,37 +252,12 @@ public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
     }
     
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                GeometryReader { geo in
-                    Color.clear.preference(
-                        key: StudioScrollContentTopKey.self,
-                        value: geo.frame(in: .global).minY
-                    )
-                }
-                .frame(height: 0)
-                
-                bodyContent
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
-            .padding(.bottom, 18)
-        }
-        .scrollEdgeEffectStyle(.soft, for: .top)
-        .onPreferenceChange(StudioScrollContentTopKey.self) { contentTopY in
-            let scrolledNow = contentTopY < (headerBottomGlobalY - 2.0)
-            if scrolledNow != isScrolled {
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    isScrolled = scrolledNow
-                }
-            }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
+        VStack(spacing: 0) {
             VStack(spacing: 0) {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .center, spacing: 12) {
                         Text(title)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                             .lineLimit(1)
                             .fixedSize(horizontal: true, vertical: false)
@@ -273,7 +273,7 @@ public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
                     
                     VStack(alignment: .leading, spacing: 8) {
                         Text(title)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                             .lineLimit(1)
                         
@@ -285,7 +285,7 @@ public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 12)
+                .padding(.top, 10)
                 .padding(.bottom, 10)
                 
                 Rectangle()
@@ -301,17 +301,33 @@ public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
                         in: Rectangle()
                     )
             }
-            .background(
-                GeometryReader { headerGeo in
-                    Color.clear
-                        .onAppear {
-                            headerBottomGlobalY = headerGeo.frame(in: .global).maxY
-                        }
-                        .onChange(of: headerGeo.frame(in: .global).maxY) { _, newMaxY in
-                            headerBottomGlobalY = newMaxY
-                        }
+            
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: StudioScrollContentTopKey.self,
+                            value: geo.frame(in: .named("StudioPageScroll")).minY
+                        )
+                    }
+                    .frame(height: 0)
+                    
+                    bodyContent
                 }
-            )
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 18)
+            }
+            .coordinateSpace(name: "StudioPageScroll")
+            .scrollEdgeEffectStyle(.soft, for: .top)
+            .onPreferenceChange(StudioScrollContentTopKey.self) { contentTopY in
+                let scrolledNow = contentTopY < -4.0
+                if scrolledNow != isScrolled {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        isScrolled = scrolledNow
+                    }
+                }
+            }
         }
     }
 }
@@ -393,7 +409,7 @@ public struct StudioCard<HeaderTrailing: View, Content: View>: View {
     }
 
     public var body: some View {
-        let cardShape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        let cardShape = RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
         VStack(alignment: .leading, spacing: 11) {
             if !title.isEmpty {
                 ViewThatFits(in: .horizontal) {
@@ -513,10 +529,10 @@ public struct StudioSegmentedPicker<T: Hashable>: View {
                         }
                     }) {
                         Text(opt.title)
-                            .font(.system(size: 12.5, weight: isSelected ? .semibold : .medium))
+                            .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
                             .lineLimit(1)
-                            .padding(.horizontal, 12)
-                            .frame(height: 26)
+                            .padding(.horizontal, 11)
+                            .frame(height: 24)
                             .foregroundColor(isSelected ? .white : .primary.opacity(0.88))
                             .modifier(
                                 SegmentedPillGlassModifier(
@@ -525,16 +541,16 @@ public struct StudioSegmentedPicker<T: Hashable>: View {
                                     namespace: pickerGlassNS
                                 )
                             )
-                            .contentShape(Rectangle())
+                            .contentShape(Capsule(style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
-        .padding(2.5)
+        .padding(2)
         .glassEffect(
             appState.liquidGlassStyle.resolvedGlass(accentColor: appState.accentTheme.color),
-            in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
     }
 }
@@ -550,7 +566,7 @@ private struct SegmentedPillGlassModifier: ViewModifier {
             content
                 .glassEffect(
                     .regular.tint(tint.opacity(0.85)).interactive(),
-                    in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    in: Capsule(style: .continuous)
                 )
                 .glassEffectID("seg_active", in: namespace)
         } else {
@@ -586,9 +602,9 @@ public struct SpeciesSwitchBar: View {
                         }
                     }) {
                         Text(spec == .human ? "人源 (hg38)" : "鼠源 (mm39)")
-                            .font(.system(size: 12.5, weight: isSelected ? .semibold : .medium))
+                            .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
                             .padding(.horizontal, 11)
-                            .frame(height: 26)
+                            .frame(height: 24)
                             .foregroundColor(isSelected ? .white : .primary.opacity(0.85))
                             .modifier(
                                 SegmentedPillGlassModifier(
@@ -597,16 +613,16 @@ public struct SpeciesSwitchBar: View {
                                     namespace: speciesGlassNS
                                 )
                             )
-                            .contentShape(Rectangle())
+                            .contentShape(Capsule(style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
-        .padding(2.5)
+        .padding(2)
         .glassEffect(
             appState.liquidGlassStyle.resolvedGlass(accentColor: appState.accentTheme.color),
-            in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+            in: Capsule(style: .continuous)
         )
         .fixedSize(horizontal: true, vertical: false)
     }
@@ -671,9 +687,9 @@ public struct SequenceEditorBox: View {
                 .padding(8)
                 .frame(minHeight: minHeight)
                 .background(Color(NSColor.textBackgroundColor).opacity(0.94))
-                .cornerRadius(8)
+                .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                         .stroke(
                             isDropTargeted ? Color.accentColor : Color.primary.opacity(0.14),
                             style: StrokeStyle(lineWidth: isDropTargeted ? 2 : 1, dash: isDropTargeted ? [5, 3] : [])
@@ -730,7 +746,7 @@ public struct SequenceEditorBox: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
                 .background(Color(NSColor.windowBackgroundColor).opacity(0.95))
-                .cornerRadius(7)
+                .clipShape(Capsule(style: .continuous))
                 .padding(8)
                 .allowsHitTesting(false)
             }
@@ -947,7 +963,7 @@ public struct AdaptiveTwoColumnWorkspace<Left: View, Right: View>: View {
     }
 }
 
-// MARK: - 8. 质粒预览开关 (统一 30pt 高度与 12.5pt 字号)
+// MARK: - 8. 质粒预览开关 (统一 28pt 胶囊)
 public struct PlasmidPreviewToggle: View {
     @ObservedObject private var appState = AppState.shared
     @Binding public var isOn: Bool
@@ -964,32 +980,33 @@ public struct PlasmidPreviewToggle: View {
                 isOn.toggle()
             }
         }) {
-            HStack(spacing: 5) {
+            HStack(spacing: 4) {
                 Image(systemName: (isOn && isAvailable) ? "circle.circle.fill" : "circle.circle")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 11.5, weight: .bold))
                     .foregroundColor((isOn && isAvailable) ? .cyan : (isAvailable ? .primary : .secondary))
                 
-                Text("质粒图谱")
-                    .font(.system(size: 12.5, weight: .semibold))
+                Text("图谱")
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor((isOn && isAvailable) ? .primary : .secondary)
                     .fixedSize(horizontal: true, vertical: false)
             }
             .padding(.horizontal, 11)
-            .frame(height: 30)
+            .frame(height: 28)
             .glassEffect(
                 (isOn && isAvailable)
                     ? .regular.tint(Color.cyan.opacity(0.26)).interactive()
                     : appState.liquidGlassStyle.resolvedGlass(accentColor: appState.accentTheme.color, interactive: true),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                in: Capsule(style: .continuous)
             )
-            .contentShape(Rectangle())
+            .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .opacity(isAvailable ? 1.0 : 0.78)
+        .help("切换质粒图谱预览抽屉")
     }
 }
 
-// MARK: - 9. 模块分区清除按钮 (统一胶囊高度与清晰字号)
+// MARK: - 9. 模块分区清除按钮 (28×28 圆形图标胶囊 + 悬停 Tooltip)
 public struct StudioSectionClearButton: View {
     @ObservedObject private var appState = AppState.shared
     public let title: String
@@ -1016,31 +1033,23 @@ public struct StudioSectionClearButton: View {
         self.action = action
     }
     
-    private var compactLabel: String {
-        if title.contains("重置") { return "重置" }
-        if title.contains("全部片段") { return "清空片段" }
-        if title.contains("全部") || title.contains("清空") { return "清空" }
-        return "清除"
+    private var isResetIcon: Bool {
+        title.contains("重置")
     }
     
     public var body: some View {
         Button(action: action) {
-            HStack(spacing: 4) {
-                Image(systemName: compactLabel == "重置" ? "arrow.counterclockwise" : "trash")
-                    .font(.system(size: 11, weight: .semibold))
-                Text(compactLabel)
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .foregroundColor(isDisabled ? .secondary.opacity(0.40) : .red.opacity(0.90))
-            .padding(.horizontal, 10)
-            .frame(height: 28)
-            .glassEffect(
-                isDisabled
-                    ? appState.liquidGlassStyle.resolvedGlass(accentColor: .red, interactive: false)
-                    : .regular.tint(Color.red.opacity(0.18)).interactive(),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
-            .contentShape(Rectangle())
+            Image(systemName: isResetIcon ? "arrow.counterclockwise" : "trash")
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundColor(isDisabled ? .secondary.opacity(0.40) : .red.opacity(0.90))
+                .frame(width: 28, height: 28)
+                .glassEffect(
+                    isDisabled
+                        ? appState.liquidGlassStyle.resolvedGlass(accentColor: .red, interactive: false)
+                        : .regular.tint(Color.red.opacity(0.18)).interactive(),
+                    in: Capsule(style: .continuous)
+                )
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
@@ -1048,7 +1057,7 @@ public struct StudioSectionClearButton: View {
     }
 }
 
-// MARK: - 10. Finder 快捷交互组件
+// MARK: - 10. Finder 快捷交互组件 (28×28 圆形图标胶囊 + Tooltip)
 public struct FinderRevealButton: View {
     @ObservedObject private var appState = AppState.shared
     public let filePath: String
@@ -1060,32 +1069,34 @@ public struct FinderRevealButton: View {
     }
     
     public var body: some View {
+        let iconOnly = label.isEmpty || label == "Finder"
         Button(action: {
             FinderFileDropHelper.revealInFinder(path: filePath)
         }) {
-            HStack(spacing: 4) {
+            HStack(spacing: iconOnly ? 0 : 4) {
                 Image(systemName: "folder")
                     .font(.system(size: 11.5, weight: .semibold))
-                if !label.isEmpty {
+                if !iconOnly {
                     Text(label)
                         .font(.system(size: 12, weight: .medium))
                 }
             }
             .foregroundColor(.secondary)
-            .padding(.horizontal, 9)
+            .padding(.horizontal, iconOnly ? 0 : 10)
+            .frame(minWidth: iconOnly ? 28 : nil)
             .frame(height: 28)
             .glassEffect(
                 appState.liquidGlassStyle.resolvedGlass(accentColor: appState.accentTheme.color, interactive: true),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                in: Capsule(style: .continuous)
             )
-            .contentShape(Rectangle())
+            .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .help("在 Finder 中定位: \(filePath)")
     }
 }
 
-// MARK: - 10B. 高辨识度主操作按钮 (14pt 醒目字号，支持通栏或并排，macOS 26/27 原生 Liquid Glass)
+// MARK: - 10B. 高辨识度主操作按钮 (34pt 全胶囊主按钮，macOS 26/27 原生 Liquid Glass)
 public struct StudioPrimaryActionButton: View {
     public let title: String
     public var icon: String = "sparkles"
@@ -1118,28 +1129,28 @@ public struct StudioPrimaryActionButton: View {
     public var body: some View {
         let inactive = isDisabled || isLoading
         Button(action: action) {
-            HStack(spacing: 7) {
+            HStack(spacing: 6) {
                 if isLoading {
                     ProgressView()
                         .controlSize(.small)
                         .tint(.white)
                 } else if !icon.isEmpty {
                     Image(systemName: icon)
-                        .font(.system(size: 13.5, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                 }
                 Text(title)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
             }
             .foregroundColor(.white)
             .padding(.horizontal, 18)
-            .frame(height: 36)
+            .frame(height: 34)
             .frame(maxWidth: fillWidth ? .infinity : nil)
             .glassEffect(
                 .regular.tint(tint.opacity(isDisabled ? 0.25 : (isHovered ? 0.90 : 0.82))).interactive(!inactive),
-                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                in: Capsule(style: .continuous)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                Capsule(style: .continuous)
                     .stroke(
                         LinearGradient(
                             colors: [
@@ -1158,7 +1169,7 @@ public struct StudioPrimaryActionButton: View {
                 x: 0,
                 y: 2
             )
-            .contentShape(Rectangle())
+            .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(inactive)
@@ -1170,7 +1181,7 @@ public struct StudioPrimaryActionButton: View {
     }
 }
 
-/// 顶栏合并式质粒文件胶囊（参考图2分段胶囊：紧凑无多余留白、统一 30pt 高度与 12.5pt 字体）
+/// 顶栏合并式质粒文件胶囊（统一 28pt Capsule 高度 + 精简图标操作）
 public struct PlasmidFileToolbarGroup: View {
     @ObservedObject private var appState = AppState.shared
     @ObservedObject private var poolManager = PlasmidPoolManager.shared
@@ -1207,25 +1218,26 @@ public struct PlasmidFileToolbarGroup: View {
                     }
                 }
             }) {
-                HStack(spacing: 5) {
+                HStack(spacing: 4) {
                     Image(systemName: info != nil ? "checkmark.circle.fill" : "folder.badge.plus")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 11.5, weight: .semibold))
                         .foregroundColor(info != nil ? tint : .primary)
-                    Text(info != nil ? info!.fileName.replacingOccurrences(of: ".dna", with: "") : "载入\(roleTitle)")
-                        .font(.system(size: 12.5, weight: .medium))
+                    Text(info != nil ? info!.fileName.replacingOccurrences(of: ".dna", with: "") : roleTitle)
+                        .font(.system(size: 12, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
                 .padding(.horizontal, 11)
-                .frame(height: 30)
+                .frame(height: 28)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .help(info != nil ? "更换\(roleTitle)文件 (当前: \(info!.fileName))" : "从 Finder 选择或拖入\(roleTitle) .dna 文件")
             
             if !poolManager.items.isEmpty {
                 Rectangle()
                     .fill(Color.primary.opacity(0.14))
-                    .frame(width: 1, height: 15)
+                    .frame(width: 1, height: 14)
                 
                 Menu {
                     Text("从质粒池选择\(roleTitle)")
@@ -1246,34 +1258,32 @@ public struct PlasmidFileToolbarGroup: View {
                         .font(.system(size: 11))
                         .foregroundColor(tint)
                         .padding(.horizontal, 7)
-                        .frame(height: 30)
+                        .frame(height: 28)
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
+                .help("从质粒池选择\(roleTitle)")
             }
             
             if let loaded = info {
                 Rectangle()
                     .fill(Color.primary.opacity(0.14))
-                    .frame(width: 1, height: 15)
+                    .frame(width: 1, height: 14)
                 
                 Button(action: onPreview) {
-                    HStack(spacing: 3) {
-                        Image(systemName: "eye.fill")
-                            .font(.system(size: 11))
-                        Text("预览")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .foregroundColor(tint)
-                    .padding(.horizontal, 8)
-                    .frame(height: 30)
-                    .contentShape(Rectangle())
+                    Image(systemName: "eye.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(tint)
+                        .padding(.horizontal, 8)
+                        .frame(height: 28)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .help("预览\(roleTitle)质粒图谱")
                 
                 Rectangle()
                     .fill(Color.primary.opacity(0.14))
-                    .frame(width: 1, height: 15)
+                    .frame(width: 1, height: 14)
                 
                 Button(action: {
                     FinderFileDropHelper.revealInFinder(path: loaded.filePath)
@@ -1282,10 +1292,11 @@ public struct PlasmidFileToolbarGroup: View {
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 8)
-                        .frame(height: 30)
+                        .frame(height: 28)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .help("在 Finder 中定位: \(loaded.filePath)")
             }
         }
         .glassEffect(
@@ -1294,10 +1305,10 @@ public struct PlasmidFileToolbarGroup: View {
                 : (info != nil
                     ? .regular.tint(tint.opacity(0.20)).interactive()
                     : appState.liquidGlassStyle.resolvedGlass(accentColor: appState.accentTheme.color, interactive: true)),
-            in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+            in: Capsule(style: .continuous)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
+            Capsule(style: .continuous)
                 .stroke(isDropTargeted ? tint : Color.clear, lineWidth: isDropTargeted ? 1.5 : 0)
         )
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in

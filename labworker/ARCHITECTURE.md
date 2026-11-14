@@ -4,7 +4,7 @@
 > 1. **一次只做一件事**：每次修改只聚焦单个原子功能，严禁自由发挥或生成调试垃圾。
 > 2. **文件准入清单化（本文件为唯一权威清单）**：全量重构工程统一收口于 `labworker/` 目录下；任何新增源码、脚本或资源文件必须先登记在本清单中；若某个文件不在清单内且无法说明存在理由，一律视为可疑冗余文件并删除。
 > 3. **单一职责与反重复**：跨模块复用的 UI 控件、Finder 交互与预设常量统一收口至 `DesignSystem.swift`，几何解算与确定性 ID 收口至 `Geometry/`，严禁在各业务 View 内复制粘贴同类辅助函数。
-> 4. **立刻 Git Commit + 更新打包（说人话）**：每完成一个原子步骤并通过编译校验后，立即在 `labworker/` 下更新打包 `labworker/Labworker.app`（并同步 `labworker/CloneStudio.app`）并使用清晰人话执行 `git commit`。
+> 4. **立刻 Git Commit + 更新打包（说人话）**：每完成一个原子步骤并通过编译校验后，立即在 `labworker/` 下更新打包 `labworker/Labworker.app` 并使用清晰人话执行 `git commit`。
 > 5. **定期执行删除测试**：每完成一个阶段，对照本清单清理冗余代码与无用文件，运行 `swift build --disable-sandbox` 与 `swift run --disable-sandbox CloneStudioVerify` 确认回归通过。
 
 ## 一、 顶层配置、构建脚本与真实测试样本 (`labworker/`)
@@ -16,7 +16,7 @@
 | `labworker/HANDOVER.md` | AI 项目架构交接与维护规范手册：包含目录拓扑、Single Source of Truth 门禁契约、双端 (Swift + Python MCP) 同步机制、跨语言测试向量与编码红线 |
 | `labworker/Package.swift` | SwiftPM 工程定义，包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |
-| `labworker/Labworker.app` | 每次原子步骤完成后由 `labworker/Scripts/build_app.sh` 自动构建并签名的最新可执行 macOS 应用包（同时同步更新 `labworker/CloneStudio.app` 兼容旧快捷方式） |
+| `labworker/Labworker.app` | 每次原子步骤完成后由 `labworker/Scripts/build_app.sh` 自动构建并签名的最新可执行 macOS 应用包 |
 | `labworker/Scripts/build_app.sh` | Release 编译、组装 `labworker/Labworker.app` 应用包、写入 `Info.plist` 并执行 Apple Ad-hoc 签名校验 |
 | `labworker/Scripts/check_doc_counts.sh` | 自动提取 `CloneStudioVerify` 测试数、`MCP_TOOLS` 工具数与 `NavItem` 模块数真值，校验 `README.md` 与 `ARCHITECTURE.md` 数字一致性 |
 | `labworker/Scripts/generate_icon.py` | 遵循 Apple HIG 生成浅色/深色应用图标（`.icns`/`.png`）与 macOS 状态栏模板图标 |

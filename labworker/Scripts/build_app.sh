@@ -184,7 +184,7 @@ EOF
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_DIR" 2>/dev/null || true
 }
 
+rm -rf "$DIR/CloneStudio.app"
 package_app_bundle "Labworker.app"
-package_app_bundle "CloneStudio.app"
 
-echo "✅ Labworker.app and CloneStudio.app built and signed in: $DIR"
+echo "✅ Labworker.app built and signed in: $DIR"

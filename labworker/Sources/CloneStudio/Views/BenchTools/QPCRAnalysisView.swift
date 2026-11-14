@@ -43,13 +43,13 @@ public struct QPCRAnalysisView: View {
     
     public var body: some View {
         StudioPageLayout(
-            title: "qPCR 荧光定量与统计分析",
+            title: "qPCR 定量",
             trailing: {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                     StudioSegmentedPicker(selection: $mode, options: modeOptions)
                     
                     StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "同步微孔板", icon: "square.grid.3x3.fill", tint: .blue) {
+                        StudioPillGroupItem(title: "同步板", icon: "square.grid.3x3.fill", tint: .blue, help: "关联微孔板设计器中的样品与分组映射") {
                             wells = QPCRAnalysisEngine.mergeWithPlateAssignments(
                                 existingWells: wells,
                                 assignments: plateStore.assignments
@@ -57,12 +57,12 @@ public struct QPCRAnalysisView: View {
                             syncDefaultRefAndControlIfNeeded()
                             appState.showToast("已关联微孔板设计器中的样品与分组映射")
                         },
-                        StudioPillGroupItem(title: "示范数据", icon: "sparkles") {
+                        StudioPillGroupItem(title: "示范", icon: "sparkles", help: "载入 TP53 / MYC 标准 qPCR 示范数据集") {
                             rawCSVText = QPCRAnalysisEngine.defaultExampleCSV
                             reloadFromRawCSV()
                             appState.showToast("已载入 TP53 / MYC 标准 qPCR 示范数据集")
                         },
-                        StudioPillGroupItem(title: "导出 CSV", icon: "square.and.arrow.up", tint: .teal) {
+                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出 qPCR ΔΔCt 与显著性统计 CSV") {
                             exportResultsCSV()
                         }
                     ])

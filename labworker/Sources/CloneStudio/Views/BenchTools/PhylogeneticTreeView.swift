@@ -65,17 +65,17 @@ public struct PhylogeneticTreeView: View {
     
     public var body: some View {
         StudioPageLayout(
-            title: "系统发育树与拓扑对比",
+            title: "进化树",
             trailing: {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                     StudioSegmentedPicker(selection: $layoutMode, options: modeOptions)
                     
                     StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "阶梯化", icon: "list.number", tint: .blue) {
+                        StudioPillGroupItem(title: "阶梯", icon: "list.number", tint: .blue, help: "完成进化树阶梯化排序 (Ladderize)") {
                             rootNode = PhylogeneticTreeEngine.ladderize(rootNode, descending: false)
                             appState.showToast("已完成进化树阶梯化排序 (Ladderize)")
                         },
-                        StudioPillGroupItem(title: "中点定根", icon: "arrow.triangle.branch", tint: .teal) {
+                        StudioPillGroupItem(title: "定根", icon: "arrow.triangle.branch", tint: .teal, help: "按最长路径中点重新定根 (Midpoint Rooting)") {
                             if let rerooted = PhylogeneticTreeEngine.midpointRoot(rootNode) {
                                 rootNode = rerooted
                                 appState.showToast("已按最长路径中点重新定根 (Midpoint Rooting)")
@@ -83,7 +83,7 @@ public struct PhylogeneticTreeView: View {
                                 appState.showToast("当前进化树无有效正枝长，无法执行中点定根")
                             }
                         },
-                        StudioPillGroupItem(title: "导出 Newick", icon: "square.and.arrow.up", tint: .green) {
+                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", tint: .green, help: "导出编辑后的 Newick 树文件") {
                             exportEditedNewick()
                         }
                     ])

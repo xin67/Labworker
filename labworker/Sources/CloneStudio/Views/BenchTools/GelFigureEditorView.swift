@@ -32,21 +32,21 @@ public struct GelFigureEditorView: View {
     
     public var body: some View {
         StudioPageLayout(
-            title: "凝胶电泳分子量回归与质粒虚拟电泳比对",
+            title: "凝胶定量",
             trailing: {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                     StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "导入电泳胶图", icon: "photo.badge.plus", tint: .cyan) {
+                        StudioPillGroupItem(title: "导入", icon: "photo.badge.plus", tint: .cyan, help: "导入电泳胶图") {
                             importGelImage()
                         },
-                        StudioPillGroupItem(title: "自动寻道与拟合", icon: "wand.and.stars", tint: .blue) {
+                        StudioPillGroupItem(title: "拟合", icon: "wand.and.stars", tint: .blue, help: "自动寻道并拟合 Ladder 标准曲线") {
                             runAutoDetection()
                             appState.showToast("已完成泳道寻峰与 \(activeLadder.name) 标准曲线拟合")
                         },
-                        StudioPillGroupItem(title: "插入虚拟酶切道", icon: "scissors", tint: .teal) {
+                        StudioPillGroupItem(title: "酶切道", icon: "scissors", tint: .teal, help: "从质粒池插入虚拟酶切对照道") {
                             injectVirtualDigestLaneFromPool()
                         },
-                        StudioPillGroupItem(title: "导出 CSV", icon: "square.and.arrow.up") {
+                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", help: "导出条带分子量回归 CSV") {
                             exportGelCSV()
                         }
                     ])

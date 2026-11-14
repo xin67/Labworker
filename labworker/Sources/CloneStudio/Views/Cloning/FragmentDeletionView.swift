@@ -50,8 +50,8 @@ public struct FragmentDeletionView: View {
                 )
                 
                 StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "示例", icon: "sparkles", action: vm.loadSampleData),
-                    StudioPillGroupItem(title: "清空", icon: "trash", tint: .red, action: vm.clear)
+                    StudioPillGroupItem(title: "示例", icon: "sparkles", help: "载入质粒片段删除示例", action: vm.loadSampleData),
+                    StudioPillGroupItem(title: "", icon: "trash", tint: .red, help: "清空当前删除配置", action: vm.clear)
                 ])
             }
         } content: {

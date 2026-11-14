@@ -215,7 +215,6 @@ public struct ContentView: View {
                 }
             }
         }
-        .ignoresSafeArea(.container, edges: .top)
         .background(ImmersiveWindowConfigurator())
         .tint(appState.accentTheme.color)
         .onChange(of: appState.appearanceMode) { _, newMode in
@@ -233,23 +232,21 @@ public struct ContentView: View {
                 AdaptiveCloneStudioAppIconView(size: 26)
                 Text("Labworker")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                Spacer()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 6)
                 Button(action: {
                     CloneStudioApp.presentOpenDNAFilesPanel()
                 }) {
-                    HStack(spacing: 3) {
-                        Image(systemName: "folder.badge.plus")
-                            .font(.system(size: 11.5, weight: .semibold))
-                        Text("快导")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .glassEffect(
-                        .regular.tint(appState.accentTheme.color.opacity(0.75)).interactive(),
-                        in: .capsule
-                    )
+                    Image(systemName: "folder.badge.plus")
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Circle())
+                        .glassEffect(
+                            .regular.tint(appState.accentTheme.color.opacity(0.78)).interactive(),
+                            in: .capsule
+                        )
                 }
                 .buttonStyle(.plain)
                 .help("从 Finder 导入实验文件 (.dna / .tif / .pdb / .nwk / .csv / .fasta)，自动识别并直达对应功能模块")
@@ -337,30 +334,8 @@ public struct ContentView: View {
                 }
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.vertical, 8)
             }
-            
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(engineStatusColor)
-                    .frame(width: 7, height: 7)
-                Text(appState.engineMode.displayName)
-                    .font(.system(size: 11.5, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                Spacer()
-                Text("\(appState.defaultHomologyLength) bp")
-                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7.5)
-            .glassEffect(
-                appState.liquidGlassStyle.resolvedGlass(accentColor: appState.accentTheme.color),
-                in: RoundedRectangle(cornerRadius: 9, style: .continuous)
-            )
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
         }
     }
     
@@ -425,7 +400,7 @@ public struct ContentView: View {
             }) {
                 HStack(spacing: 10) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
                             .fill(isSelected ? Color.white.opacity(0.24) : tint.opacity(0.92))
                             .frame(width: 23, height: 23)
                         Image(systemName: item.systemImage)
@@ -461,17 +436,9 @@ public struct ContentView: View {
                         namespace: sidebarGlassNS
                     )
                 )
-                .contentShape(Rectangle())
+                .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .buttonStyle(.plain)
-        }
-    }
-    
-    private var engineStatusColor: Color {
-        switch appState.engineMode {
-        case .smartDual: return .green
-        case .onlineOnly: return .blue
-        case .offlineOnly: return .orange
         }
     }
     
@@ -554,7 +521,7 @@ private struct SidebarRowGlassModifier: ViewModifier {
             content
                 .glassEffect(
                     .regular.tint(accentColor.opacity(0.85)).interactive(),
-                    in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                 )
                 .glassEffectID("sidebar_active_item", in: namespace)
         } else {

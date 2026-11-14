@@ -29,21 +29,21 @@ public struct FigureAnnotatorView: View {
     
     public var body: some View {
         StudioPageLayout(
-            title: "科研多图拼版与荧光共定位剖面分析",
+            title: "多图拼版",
             trailing: {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                     StudioSegmentedPicker(selection: $labelStyle, options: labelStyleOptions)
                     
                     StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "添加面板图像", icon: "photo.badge.plus", tint: .pink) {
+                        StudioPillGroupItem(title: "添图", icon: "photo.badge.plus", tint: .pink, help: "添加图像面板") {
                             importPanelImage()
                         },
-                        StudioPillGroupItem(title: "共聚焦四通道示范", icon: "sparkles") {
+                        StudioPillGroupItem(title: "示范", icon: "sparkles", help: "载入 DAPI / TP53-EGFP / MitoTracker 四通道示范图") {
                             panels = FigureAnnotatorEngine.generateDemoFluorescencePanels()
                             selectedPanelID = panels.last?.id ?? ""
                             appState.showToast("已载入 DAPI / TP53-EGFP / MitoTracker 四通道共定位示范图")
                         },
-                        StudioPillGroupItem(title: "导出剖面 CSV", icon: "square.and.arrow.up", tint: .teal) {
+                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出荧光共定位强度剖面 CSV") {
                             exportProfileCSV()
                         }
                     ])

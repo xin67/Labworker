@@ -72,20 +72,20 @@ public struct ColonyCounterView: View {
     
     public var body: some View {
         StudioPageLayout(
-            title: "菌落计数器与蓝白斑筛选",
+            title: "菌落计数",
             trailing: {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                     StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "导入平板照片", icon: "photo.badge.plus", tint: .blue) {
+                        StudioPillGroupItem(title: "导入", icon: "photo.badge.plus", tint: .blue, help: "导入平板照片 (.jpg / .png / .tif)") {
                             importPlateImage()
                         },
-                        StudioPillGroupItem(title: "蓝白斑示范图", icon: "sparkles") {
+                        StudioPillGroupItem(title: "示范", icon: "sparkles", help: "载入蓝白斑转化平板示范图") {
                             sourceImageURL = nil
                             plane = BioImageProcessor.generateDemoColonyPlatePlane()
                             runSegmentation()
                             appState.showToast("已载入蓝白斑转化平板示范图并完成自动计数")
                         },
-                        StudioPillGroupItem(title: "导出 CSV", icon: "square.and.arrow.up", tint: .teal) {
+                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出菌落计数 CSV 明细") {
                             exportColonyCSV()
                         }
                     ])

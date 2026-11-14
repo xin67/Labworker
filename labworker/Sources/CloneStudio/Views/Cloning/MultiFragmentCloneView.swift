@@ -57,11 +57,11 @@ public struct MultiFragmentCloneView: View {
                 )
                 
                 StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "送入用量计算", icon: "function", tint: .purple) {
+                    StudioPillGroupItem(title: "算用量", icon: "function", tint: .purple, help: "将多片段与载体长度送入用量计算") {
                         vm.sendLengthsToCalculator(navigate: true)
                     },
-                    StudioPillGroupItem(title: "示例", icon: "sparkles", action: loadSampleMultiFragments),
-                    StudioPillGroupItem(title: "清空", icon: "trash", tint: .red, action: vm.clear)
+                    StudioPillGroupItem(title: "示例", icon: "sparkles", help: "载入多片段组装示例", action: loadSampleMultiFragments),
+                    StudioPillGroupItem(title: "", icon: "trash", tint: .red, help: "清空当前多片段配置", action: vm.clear)
                 ])
             }
         } content: {
@@ -721,10 +721,11 @@ public struct MultiFragmentCloneView: View {
             )
             
             StudioActionPillButton(
-                title: "送入用量计算",
+                title: "算用量",
                 icon: "function",
                 tint: .purple,
-                isProminent: true
+                isProminent: true,
+                help: "将多片段与载体长度送入重组用量计算"
             ) {
                 vm.sendLengthsToCalculator(navigate: true)
             }

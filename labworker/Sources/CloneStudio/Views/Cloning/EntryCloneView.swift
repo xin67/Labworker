@@ -25,7 +25,7 @@ public struct EntryCloneView: View {
                 PlasmidPreviewToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil)
                 
                 StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "导入序列", icon: "folder.badge.plus") {
+                    StudioPillGroupItem(title: "导入", icon: "folder.badge.plus", help: "导入 FASTA / .dna / 文本序列") {
                         FinderFileDropHelper.presentOpenPanel { url in
                             Task { @MainActor in
                                 await FinderFileDropHelper.loadSequence(from: url) { seq, name in
@@ -35,17 +35,18 @@ public struct EntryCloneView: View {
                             }
                         }
                     },
-                    StudioPillGroupItem(title: "送入用量计算", icon: "function", tint: .purple) {
+                    StudioPillGroupItem(title: "算用量", icon: "function", tint: .purple, help: "将载体与片段长度送入体系用量计算") {
                         vm.sendLengthsToCalculator(navigate: true)
                     },
-                    StudioPillGroupItem(title: "示例", icon: "sparkles") {
+                    StudioPillGroupItem(title: "示例", icon: "sparkles", help: "载入 EGFP 标准示例序列") {
                         loadSampleEGFP()
                     },
                     StudioPillGroupItem(
-                        title: "清空",
+                        title: "",
                         icon: "trash",
                         tint: .red,
                         isDisabled: vm.sequence.isEmpty && !vm.hasEnzymes && vm.primerF == nil && vm.primerR == nil,
+                        help: "清空当前入门克隆配置",
                         action: vm.clear
                     )
                 ])
@@ -56,9 +57,10 @@ public struct EntryCloneView: View {
                     StudioCard(title: "插入片段与载体长度") {
                         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                             StudioActionPillButton(
-                                title: "送入用量计算",
+                                title: "算用量",
                                 icon: "function",
-                                tint: .purple
+                                tint: .purple,
+                                help: "将载体与片段长度送入体系用量计算"
                             ) {
                                 vm.sendLengthsToCalculator(navigate: true)
                             }

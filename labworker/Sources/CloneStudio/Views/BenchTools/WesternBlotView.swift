@@ -138,37 +138,37 @@ public struct WesternBlotView: View {
     }
     
     public var body: some View {
-        StudioPageLayout(title: "Western Blot 条带自动圈定与 16-bit 光密度定量") {
+        StudioPageLayout(title: "WB 灰度定量") {
             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                 if let res = currentResult {
                     StudioMetricBadge(
-                        label: "位深",
+                        label: "",
                         value: "\(res.bitDepth)-bit",
                         color: res.bitDepth == 16 ? .teal : .blue
                     )
                     StudioMetricBadge(
-                        label: "泳道/条带",
-                        value: "\(res.lanes.count)L / \(res.bands.count)B",
+                        label: "",
+                        value: "\(res.lanes.count)L · \(res.bands.count)B",
                         color: .indigo
                     )
                     if res.bands.contains(where: \.isSaturated) {
-                        StudioMetricBadge(label: "过曝告警", value: "Saturated", color: .red)
+                        StudioMetricBadge(label: "", value: "过曝", color: .red)
                     }
                 }
                 StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "导入目录/TIFF", icon: "folder.badge.plus") {
+                    StudioPillGroupItem(title: "导入", icon: "folder.badge.plus", help: "导入 WB 曝光目录或 TIFF 图像") {
                         openImportPanel()
                     },
-                    StudioPillGroupItem(title: "自动圈定", icon: "sparkles", tint: .blue) {
+                    StudioPillGroupItem(title: "圈定", icon: "sparkles", tint: .blue, help: "重新自动识别泳道并圈定条带") {
                         runAutoAnalysis()
                     },
-                    StudioPillGroupItem(title: "pyqtgraph 视窗", icon: "waveform.path.ecg.rectangle", tint: .teal) {
+                    StudioPillGroupItem(title: "视窗", icon: "waveform.path.ecg.rectangle", tint: .teal, help: "启动 PySide6 + pyqtgraph 科学密度视窗") {
                         launchPyQtViewer()
                     },
-                    StudioPillGroupItem(title: "复制 Prism TSV", icon: "doc.on.doc") {
+                    StudioPillGroupItem(title: "Prism", icon: "doc.on.doc", help: "复制 GraphPad Prism / Excel TSV") {
                         copyPrismTSV()
                     },
-                    StudioPillGroupItem(title: "导出 CSV", icon: "square.and.arrow.up", tint: .green) {
+                    StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", tint: .green, help: "导出条带定量 CSV 报表") {
                         exportAnalysisCSV()
                     }
                 ])
@@ -229,16 +229,7 @@ public struct WesternBlotView: View {
     // MARK: - 1. 顶部曝光批次与明场 Marker 混叠控制栏
     
     private var sampleAndLayerBar: some View {
-        StudioCard(title: "曝光批次样本池与明场 Marker 图层混叠") {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(WesternBlotEngine.isPythonEngineReady ? Color.green : Color.teal)
-                    .frame(width: 7, height: 7)
-                Text(WesternBlotEngine.isPythonEngineReady ? "双引擎协同已就绪 (Swift 16-bit + Python wbquant)" : "Swift 16-bit 原生圈定引擎")
-                    .font(.system(size: 11.5, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-        } content: {
+        StudioCard(title: "样本与图层") {
             VStack(alignment: .leading, spacing: 10) {
                 // 样本批次胶囊列表（包含真实 gapdh_*.tif 批次 + 内置双排目的/内参示范膜）
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
@@ -271,12 +262,13 @@ public struct WesternBlotView: View {
                                         .foregroundColor(isSel ? .white : .orange)
                                 }
                             }
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, 12)
+                            .frame(height: 28)
                             .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                Capsule(style: .continuous)
                                     .fill(isSel ? Color.accentColor : Color.primary.opacity(0.06))
                             )
+                            .contentShape(Capsule(style: .continuous))
                         }
                         .buttonStyle(.plain)
                     }
@@ -290,18 +282,20 @@ public struct WesternBlotView: View {
                             Image(systemName: "square.stack.3d.up.fill")
                                 .font(.system(size: 11.5, weight: .semibold))
                                 .foregroundColor(synthSelected ? .white : .purple)
-                            Text("TP53 + GAPDH 双排内参示范膜")
+                            Text("TP53 / GAPDH 示范")
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundColor(synthSelected ? .white : .primary)
                         }
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, 12)
+                        .frame(height: 28)
                         .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            Capsule(style: .continuous)
                                 .fill(synthSelected ? Color.purple : Color.primary.opacity(0.06))
                         )
+                        .contentShape(Capsule(style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .help("切换内置 TP53 + GAPDH 双排目的/内参示范膜")
                 }
                 
                 // 若当前选中的真实样本组包含多个图层（16-bit 原图 / 发光 / 明场 / 叠加），展示图层切换与明场混叠滑块
@@ -342,12 +336,13 @@ public struct WesternBlotView: View {
                             .font(.system(size: 11.5, weight: isSel ? .semibold : .medium))
                     }
                     .foregroundColor(isSel ? .white : .primary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 11)
+                    .frame(height: 28)
                     .background(
-                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        Capsule(style: .continuous)
                             .fill(isSel ? Color.teal : Color.primary.opacity(0.07))
                     )
+                    .contentShape(Capsule(style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -359,7 +354,7 @@ public struct WesternBlotView: View {
             Image(systemName: "square.2.layers.3d")
                 .font(.system(size: 11.5, weight: .semibold))
                 .foregroundColor(.pink)
-            Text("明场 Marker 混叠")
+            Text("Marker")
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundColor(.secondary)
             Slider(value: $brightfieldOverlayOpacity, in: 0.0...0.85)
@@ -370,6 +365,7 @@ public struct WesternBlotView: View {
                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .frame(width: 34, alignment: .trailing)
         }
+        .help("明场 Marker 图层混叠透明度")
     }
     
     // MARK: - 2. 交互式 WB 自动圈定画布 (支持聚焦有效膜条、缩放平移与条带框直接拖拽/拉伸微调)
@@ -395,11 +391,12 @@ public struct WesternBlotView: View {
     }
     
     private var interactiveCanvasCard: some View {
-        StudioCard(title: "膜条自动圈定交互画布（点击泳道查看峰剖面，拖拽条带框或右下角黄点实时重算 IOD）") {
+        StudioCard(title: "膜条交互画布") {
             StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
-                Toggle("显示饱和像素", isOn: $showSaturatedPixelMask)
+                Toggle("过曝掩码", isOn: $showSaturatedPixelMask)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 11, weight: .medium))
+                    .help("高亮显示接近或达到 16-bit 上限的饱和像素")
                     .onChange(of: showSaturatedPixelMask) { _, _ in
                         refreshDisplayImages()
                     }
@@ -413,12 +410,13 @@ public struct WesternBlotView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: focusOnStripROI ? "viewfinder.circle.fill" : "aspectratio")
-                        Text(focusOnStripROI ? "聚焦有效膜区" : "全画幅视野")
+                        Text(focusOnStripROI ? "聚焦" : "全幅")
                     }
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(focusOnStripROI ? .teal : .secondary)
                 }
                 .buttonStyle(.plain)
+                .help(focusOnStripROI ? "当前聚焦有效膜区，点击切换全画幅视野" : "当前全画幅视野，点击聚焦有效膜区")
                 
                 HStack(spacing: 4) {
                     Button {
@@ -711,7 +709,7 @@ public struct WesternBlotView: View {
     
     private func profileAndStatisticsDrawer(result: WBAnalysisResult) -> some View {
         StudioResponsiveSplitLayout(breakpoint: 620, spacing: 12, leftRatio: 0.48) {
-            StudioCard(title: "L\(selectedLaneIndex + 1) 泳道 1D 光密度峰面积积分剖面") {
+            StudioCard(title: "L\(selectedLaneIndex + 1) 光密度剖面") {
                 if let band = result.bands.first(where: { $0.laneIndex == selectedLaneIndex }) {
                     Text(String(format: "Net IOD %.0f", band.netIOD))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
@@ -770,7 +768,7 @@ public struct WesternBlotView: View {
                 .frame(height: 145)
             }
             
-            StudioCard(title: "相对定量与显著性统计") {
+            StudioCard(title: "定量与统计") {
                 StudioSegmentedPicker(
                     selection: $chartMode,
                     options: BottomChartMode.allCases.map {
@@ -859,7 +857,7 @@ public struct WesternBlotView: View {
     // MARK: - 4. 右侧四合一胶囊检查器 (圈定 / 显影 / 定量 / 导出)
     
     private var inspectorCard: some View {
-        StudioCard(title: "参数与定量检查器") {
+        StudioCard(title: "检查器") {
             StudioSegmentedPicker(
                 selection: $inspectorTab,
                 options: WBInspectorTab.allCases.map {
@@ -968,17 +966,18 @@ public struct WesternBlotView: View {
             
             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                 StudioActionPillButton(
-                    title: params.primaryBandOnly ? "模式：仅主条带" : "模式：多行条带 (含内参)",
+                    title: params.primaryBandOnly ? "单主带" : "多行带",
                     icon: "line.3.horizontal.decrease",
-                    tint: params.primaryBandOnly ? .blue : .orange
+                    tint: params.primaryBandOnly ? .blue : .orange,
+                    help: params.primaryBandOnly ? "当前模式：仅检测主条带，点击切换多行内参模式" : "当前模式：多行条带 (含内参)，点击切换仅主条带"
                 ) {
                     params.primaryBandOnly.toggle()
                     runAutoAnalysis()
                 }
-                StudioActionPillButton(title: "补框", icon: "plus.rectangle") {
+                StudioActionPillButton(title: "补框", icon: "plus.rectangle", help: "在当前选中泳道新增一条带选框") {
                     addBandInSelectedLane()
                 }
-                StudioActionPillButton(title: "删框", icon: "trash", tint: .red) {
+                StudioActionPillButton(title: "删框", icon: "trash", tint: .red, help: "删除当前选中的条带选框") {
                     deleteSelectedBand()
                 }
             }
@@ -1036,7 +1035,7 @@ public struct WesternBlotView: View {
                 }
             }
             
-            StudioActionPillButton(title: "复位显影参数", icon: "arrow.counterclockwise") {
+            StudioActionPillButton(title: "复位", icon: "arrow.counterclockwise", help: "复位显影对比度、Gamma 与混叠参数") {
                 contrastBoost = 1.15
                 gammaDisplay = 1.0
                 brightfieldOverlayOpacity = 0.0
@@ -1141,7 +1140,7 @@ public struct WesternBlotView: View {
                         }
                         .padding(7)
                         .background(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
                                 .fill((rec.allBandsLinear ? Color.teal : Color.orange).opacity(0.12))
                         )
                         
@@ -1180,7 +1179,7 @@ public struct WesternBlotView: View {
                                 }
                                 .padding(6)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                                         .fill(Color.primary.opacity(0.04))
                                 )
                             }
@@ -1221,38 +1220,42 @@ public struct WesternBlotView: View {
             }
             
             StudioActionPillButton(
-                title: "导出条带定量 CSV 报表",
+                title: "导出 CSV",
                 icon: "square.and.arrow.up.fill",
                 tint: .blue,
                 isProminent: true,
-                fillWidth: true
+                fillWidth: true,
+                help: "导出条带定量 CSV 报表"
             ) {
                 exportAnalysisCSV()
             }
             
             StudioActionPillButton(
-                title: "导出离线 HTML 统计与过曝质控报告",
+                title: "导出 HTML 报告",
                 icon: "doc.richtext",
                 tint: .orange,
-                fillWidth: true
+                fillWidth: true,
+                help: "导出离线 HTML 统计与过曝质控报告"
             ) {
                 exportAnalysisHTMLReport()
             }
             
             StudioActionPillButton(
-                title: "复制 GraphPad Prism / Excel TSV",
+                title: "复制 Prism TSV",
                 icon: "doc.on.doc",
                 tint: .teal,
-                fillWidth: true
+                fillWidth: true,
+                help: "复制 GraphPad Prism / Excel 兼容 TSV 数据"
             ) {
                 copyPrismTSV()
             }
             
             StudioActionPillButton(
-                title: "启动 PySide6 + pyqtgraph 科学密度视窗",
+                title: "pyqtgraph 视窗",
                 icon: "waveform.path.ecg.rectangle",
                 tint: .indigo,
-                fillWidth: true
+                fillWidth: true,
+                help: "启动 PySide6 + pyqtgraph 科学密度视窗"
             ) {
                 launchPyQtViewer()
             }
@@ -1262,7 +1265,7 @@ public struct WesternBlotView: View {
     // MARK: - 5. 条带积分光密度 (IOD) 与分组统计汇总表
     
     private var bandQuantTableCard: some View {
-        StudioCard(title: "条带光密度积分 (IOD) 与内参归一化明细表") {
+        StudioCard(title: "条带 IOD 定量明细") {
             if let res = currentResult {
                 Text("共 \(res.bands.count) 个圈定框")
                     .font(.system(size: 11, design: .monospaced))
@@ -1304,7 +1307,7 @@ public struct WesternBlotView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5)
                             .background(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     .fill(isSel ? Color.primary.opacity(0.11) : Color.primary.opacity(0.035))
                             )
                         }

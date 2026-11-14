@@ -46,7 +46,7 @@
     ├── README.md / ARCHITECTURE.md / HANDOVER.md
     ├── Scripts/
     │   ├── check_doc_counts.sh                 # 【核心门禁】校验 50 测试 + 17 MCP 工具 + 22 UI 模块 + 文档一致性
-    │   ├── build_app.sh                        # Release 编译并签名 labworker/Labworker.app 与 CloneStudio.app
+    │   ├── build_app.sh                        # Release 编译并签名 labworker/Labworker.app
     │   ├── generate_icon.py                    # 亮/暗色 AppIcon 与状态栏模板图标生成
     │   └── build_libraries_db.py               # 离线全基因组 sgRNA/shRNA 靶点 SQLite 编译脚本
     ├── Samples/WB/gapdh_*.tif                  # 真实 16-bit 化学发光图、明场 Marker 与叠加图回归样本
@@ -172,7 +172,7 @@
 # 2. Swift 编译 + 50 项回归测试 + 文档数字单一真值门禁
 bash Scripts/check_doc_counts.sh
 
-# 3. Release 编译 (0 warnings) 并重新打包签名 Labworker.app 与 CloneStudio.app
+# 3. Release 编译 (0 warnings) 并重新打包签名 Labworker.app
 bash Scripts/build_app.sh
 ```
 

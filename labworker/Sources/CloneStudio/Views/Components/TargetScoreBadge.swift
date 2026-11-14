@@ -50,7 +50,7 @@ public struct TargetScoreBadge: View {
                     .padding(.vertical, 2)
                     .background(score.tier.color.opacity(0.15))
                     .foregroundColor(score.tier.color)
-                    .cornerRadius(4)
+                    .clipShape(Capsule(style: .continuous))
                 
                 Spacer()
                 
@@ -76,7 +76,7 @@ public struct TargetScoreBadge: View {
                 }
                 .padding(6)
                 .background(Color.red.opacity(0.08))
-                .cornerRadius(5)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             
             // 规则诊断标签明细
@@ -93,7 +93,7 @@ public struct TargetScoreBadge: View {
                             .padding(.vertical, 1)
                             .background(tag.tagColor.opacity(0.15))
                             .foregroundColor(tag.tagColor)
-                            .cornerRadius(3)
+                            .clipShape(Capsule(style: .continuous))
                             .frame(width: 38, alignment: .center)
                         
                         Text(tag.name)

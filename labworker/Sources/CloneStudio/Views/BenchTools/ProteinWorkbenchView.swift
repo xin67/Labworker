@@ -90,29 +90,29 @@ public struct ProteinWorkbenchView: View {
 
     public var body: some View {
         let currentReport = report
-        StudioPageLayout(title: "蛋白质结构、结合口袋与生物物理工作台") {
+        StudioPageLayout(title: "蛋白工作台") {
             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                 StudioMetricBadge(
-                    label: "长度 / MW",
+                    label: "",
                     value: "\(currentReport.length) aa · \(String(format: "%.1f kDa", currentReport.molecularWeightDa / 1000.0))",
                     color: .blue
                 )
                 StudioMetricBadge(
-                    label: "pI / Q 分",
+                    label: "pI / Q",
                     value: "\(String(format: "%.2f", currentReport.isoelectricPoint)) / \(String(format: "%.1f", currentReport.compositeQScore))",
                     color: .teal
                 )
                 StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "导入 PDB/FASTA", icon: "folder.badge.plus") {
+                    StudioPillGroupItem(title: "导入", icon: "folder.badge.plus", help: "导入 PDB / CIF / FASTA 文件") {
                         importStructureOrSequenceFile()
                     },
-                    StudioPillGroupItem(title: "复制 Vina 盒子", icon: "cube.box.fill", tint: .orange) {
+                    StudioPillGroupItem(title: "Vina", icon: "cube.box.fill", tint: .orange, help: "复制 AutoDock Vina 结合口袋对接盒参数") {
                         copyVinaConfig(report: currentReport)
                     },
-                    StudioPillGroupItem(title: "导出 HTML 报告", icon: "doc.richtext", tint: .teal) {
+                    StudioPillGroupItem(title: "HTML", icon: "doc.richtext", tint: .teal, help: "导出离线 HTML 生物物理分析报告") {
                         exportHTMLReport(report: currentReport)
                     },
-                    StudioPillGroupItem(title: "导出 PDB", icon: "square.and.arrow.up", tint: .green) {
+                    StudioPillGroupItem(title: "PDB", icon: "square.and.arrow.up", tint: .green, help: "导出带 B-factor 质控信息的 PDB 结构文件") {
                         exportPDBFile(report: currentReport)
                     }
                 ])

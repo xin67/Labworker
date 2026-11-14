@@ -460,10 +460,11 @@ public struct PlasmidPoolView: View {
                         }
                         
                         StudioActionPillButton(
-                            title: "送入用量计算",
+                            title: "算用量",
                             icon: "function",
                             tint: .orange,
-                            fillWidth: true
+                            fillWidth: true,
+                            help: "将载体长度送入重组用量计算器"
                         ) {
                             let calcVM = WorkspaceSessionManager.shared.calculatorVM
                             calcVM.vectorName = item.name

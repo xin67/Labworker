@@ -64,7 +64,7 @@ public struct PlateDesignerView: View {
     
     public var body: some View {
         StudioPageLayout(
-            title: "微孔板布局设计器",
+            title: "微孔板",
             trailing: {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                     StudioSegmentedPicker(selection: $store.format, options: formatOptions)
@@ -73,14 +73,14 @@ public struct PlateDesignerView: View {
                         }
                     
                     StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "随机重排", icon: "dice.fill", tint: .blue) {
+                        StudioPillGroupItem(title: "重排", icon: "dice.fill", tint: .blue, help: "按新随机种子生成孔位排布") {
                             store.randomizeWithNewSeed()
                             appState.showToast("已按新随机种子 #\(store.rules.seed) 生成孔板排布")
                         },
-                        StudioPillGroupItem(title: "导出 CSV", icon: "square.and.arrow.up") {
+                        StudioPillGroupItem(title: "导出", icon: "square.and.arrow.up", help: "导出微孔板映射 CSV") {
                             exportPlateCSVToFile()
                         },
-                        StudioPillGroupItem(title: "送入 qPCR", icon: "chart.bar.xaxis", tint: .teal) {
+                        StudioPillGroupItem(title: "qPCR", icon: "chart.bar.xaxis", tint: .teal, help: "将当前孔位映射同步至 qPCR 定量模块") {
                             appState.selectedNav = .qpcrAnalysis
                             appState.showToast("已将当前 \(store.format.title) 孔位映射同步至 qPCR 定量模块")
                         }

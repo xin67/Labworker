@@ -78,11 +78,11 @@ public struct SingleFragmentCloneView: View {
                 )
                 
                 StudioSegmentedPillGroup(items: [
-                    StudioPillGroupItem(title: "送入用量计算", icon: "function", tint: .purple) {
+                    StudioPillGroupItem(title: "算用量", icon: "function", tint: .purple, help: "将载体与插入长度送入用量计算") {
                         vm.sendLengthsToCalculator(navigate: true)
                     },
-                    StudioPillGroupItem(title: "示例", icon: "sparkles", action: loadSampleData),
-                    StudioPillGroupItem(title: "清空", icon: "trash", tint: .red, action: vm.clear)
+                    StudioPillGroupItem(title: "示例", icon: "sparkles", help: "载入标准单片段重组示例", action: loadSampleData),
+                    StudioPillGroupItem(title: "", icon: "trash", tint: .red, help: "清空当前克隆配置", action: vm.clear)
                 ])
             }
         } content: {
@@ -1537,10 +1537,11 @@ public struct SingleFragmentCloneView: View {
             )
             
             StudioActionPillButton(
-                title: "送入用量计算",
+                title: "算用量",
                 icon: "function",
                 tint: .purple,
-                isProminent: true
+                isProminent: true,
+                help: "将载体与插入片段长度送入重组用量计算"
             ) {
                 vm.sendLengthsToCalculator(navigate: true)
             }
