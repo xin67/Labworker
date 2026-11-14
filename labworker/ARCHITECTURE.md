@@ -13,6 +13,7 @@
 | :--- | :--- |
 | `../.github/workflows/ci.yml` | GitHub Actions `macos-14` 自动化 CI 门禁：在每次 `push`/`pull_request` 执行 Python 跨语言测试向量、防篡改校验及 `check_doc_counts.sh` 全量回归 |
 | `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、22 模块算法速查、UI 响应式规范与 MCP v3.0 协议指南 |
+| `labworker/HANDOVER.md` | AI 项目架构交接与维护规范手册：包含目录拓扑、Single Source of Truth 门禁契约、双端 (Swift + Python MCP) 同步机制、跨语言测试向量与编码红线 |
 | `labworker/Package.swift` | SwiftPM 工程定义，包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |
 | `labworker/Labworker.app` | 每次原子步骤完成后由 `labworker/Scripts/build_app.sh` 自动构建并签名的最新可执行 macOS 应用包（同时同步更新 `labworker/CloneStudio.app` 兼容旧快捷方式） |
@@ -64,7 +65,11 @@
 
 ### 3.1 状态与视图模型 (`ViewModels/`)
 - `ViewModels/AppState.swift`：全局响应式状态、侧边栏分组折叠/搜索路由与 `UserDefaults` 偏好设置持久化中心。
-- `ViewModels/CloningViewModels.swift`：入门克隆、单片段克隆、多片段克隆、定点突变与片段删除五大模块的 ViewModel 状态机。
+- `ViewModels/CloningViewModels.swift`：入门克隆 (`EntryCloneViewModel`)、质粒特征分类器 (`PlasmidFeatureFilter`) 与单片段同源重组 (`SingleFragmentViewModel`) 核心状态机。
+- `ViewModels/MultiFragmentViewModel.swift`：多片段无缝组装 (`MultiFragmentViewModel`，2–10 片段动态增减、供体特征截取与总阅读框核验) 状态机。
+- `ViewModels/MutagenesisViewModel.swift`：定点突变 (`MutagenesisViewModel` 与 `MutagenesisResidueItem`，密码子/氨基酸交互点选与突变质粒导出) 状态机。
+- `ViewModels/FragmentDeletionViewModel.swift`：质粒大片段删除/敲除 (`FragmentDeletionViewModel`，四模式删除边界定位与谱系记录) 状态机。
+- `ViewModels/BenchCalculatorViewModels.swift`：重组体系 DNA 摩尔用量计算 (`CalculatorViewModel`) 与序列/SantaLucia $T_m$ 工具 (`SequenceToolViewModel`) 状态机。
 - `ViewModels/SgRNADesignViewModel.swift` & `ShRNADesignViewModel.swift`：CRISPR sgRNA 与 RNAi shRNA 检索及引物生成 ViewModel。
 - `ViewModels/CHOPCHOPCompareViewModel.swift`：CHOPCHOP 在线查询与本地靶点匹配比对 ViewModel。
 - `ViewModels/OrderExportViewModel.swift`：商业合成与测序订购单导出 ViewModel。
@@ -102,7 +107,7 @@
 - `Models/CloneStudioIconProvider.swift`：动态深浅色应用图标渲染器与右上角状态栏弹窗视图 `CloneStudioStatusBarPopoverView`。
 - `Models/GenomicTarget.swift`、`TargetScore.swift`、`CHOPCHOPResult.swift`、`OrderFormProfile.swift`：靶点、评分与订购人档案数据模型。
 - `Models/PlateLayoutModels.swift`：6～384 孔板几何规格、孔位分配模型、排布规则与科研分组调色板定义。
-- `Models/AnalysisRun.swift`：科学分析可复现溯源记录模型（`schemaVersion = 1`、`AnyCodableValue`、CryptoKit `SHA256` 文件指纹、`ManualEdit` 手动编辑记录、`Exclusion` 剔除记录与 `.run.json` 伴随文件写入器）。
+- `Models/AnalysisRun.swift`：科学分析可复现溯源记录模型（`schemaVersion = 2`、`AnyCodableValue`、CryptoKit `SHA256` 文件指纹、`ManualEdit` 手动编辑记录、`Exclusion` 剔除记录、`linkedPlasmidIDs` 关联质粒 ID 列表与 `.run.json` 伴随文件写入器 + `AnalysisRunIndexStore` 跨模块索引）。
 
 ### 3.5 基础服务 (`Services/`)
 - `Services/WorkspaceSessionManager.swift`：全模块工作区进度自动保存、异常退出看门狗保护恢复与 Finder 打开文件路由。

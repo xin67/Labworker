@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import CoreGraphics
+import Accelerate
 
 // MARK: - 1. 通用生物图像平面数据结构 (RGBA + 0..255 Grayscale Plane)
 
@@ -216,9 +217,9 @@ public struct BioConnectedComponent: Sendable {
 
 public enum BioImageProcessor {
     
-    /// 分离式一维高斯卷积平滑
+    /// 分离式一维高斯卷积平滑 (Accelerate vDSP 向量化加速，保持边缘 clamp 语义不变)
     public static func gaussianBlur(gray: [Float], width: Int, height: Int, radius: Double) -> [Float] {
-        guard radius > 0.05, width > 1, height > 1 else { return gray }
+        guard radius > 0.05, width > 1, height > 1, gray.count >= width * height else { return gray }
         let sigma = max(0.5, radius / 2.0)
         let half = max(1, Int(ceil(sigma * 2.5)))
         var kernel = [Float](repeating: 0, count: half * 2 + 1)
@@ -228,30 +229,72 @@ public enum BioImageProcessor {
             kernel[i + half] = v
             kSum += v
         }
-        for i in 0..<kernel.count { kernel[i] /= max(1e-6, kSum) }
+        var invKSum = 1.0 / max(1e-6, kSum)
+        kernel.withUnsafeMutableBufferPointer { kBuf in
+            guard let kPtr = kBuf.baseAddress else { return }
+            vDSP_vsmul(kPtr, 1, &invKSum, kPtr, 1, vDSP_Length(kBuf.count))
+        }
         
         var temp = [Float](repeating: 0, count: width * height)
         var out = [Float](repeating: 0, count: width * height)
         
-        for y in 0..<height {
-            let row = y * width
-            for x in 0..<width {
-                var acc: Float = 0
-                for k in -half...half {
-                    let sx = min(width - 1, max(0, x + k))
-                    acc += gray[row + sx] * kernel[k + half]
+        gray.withUnsafeBufferPointer { gBuf in
+            temp.withUnsafeMutableBufferPointer { tBuf in
+                out.withUnsafeMutableBufferPointer { oBuf in
+                    guard let gPtr = gBuf.baseAddress,
+                          let tPtr = tBuf.baseAddress,
+                          let oPtr = oBuf.baseAddress else { return }
+                    
+                    let interiorCount = width - 2 * half
+                    // 水平方向一维卷积：内区使用 vDSP_vsma 向量化，边界保持 clamp
+                    for y in 0..<height {
+                        let row = y * width
+                        if interiorCount > 0 {
+                            let dstPtr = tPtr + row + half
+                            for k in -half...half {
+                                var weight = kernel[k + half]
+                                let srcPtr = gPtr + row + half + k
+                                vDSP_vsma(srcPtr, 1, &weight, dstPtr, 1, dstPtr, 1, vDSP_Length(interiorCount))
+                            }
+                            for x in 0..<half {
+                                var acc: Float = 0
+                                for k in -half...half {
+                                    let sx = min(width - 1, max(0, x + k))
+                                    acc += gPtr[row + sx] * kernel[k + half]
+                                }
+                                tPtr[row + x] = acc
+                            }
+                            for x in (width - half)..<width {
+                                var acc: Float = 0
+                                for k in -half...half {
+                                    let sx = min(width - 1, max(0, x + k))
+                                    acc += gPtr[row + sx] * kernel[k + half]
+                                }
+                                tPtr[row + x] = acc
+                            }
+                        } else {
+                            for x in 0..<width {
+                                var acc: Float = 0
+                                for k in -half...half {
+                                    let sx = min(width - 1, max(0, x + k))
+                                    acc += gPtr[row + sx] * kernel[k + half]
+                                }
+                                tPtr[row + x] = acc
+                            }
+                        }
+                    }
+                    
+                    // 垂直方向一维卷积：按整行执行 vDSP_vsma，保持垂直边界 clamp
+                    let vLen = vDSP_Length(width)
+                    for y in 0..<height {
+                        let dstRowPtr = oPtr + y * width
+                        for k in -half...half {
+                            let sy = min(height - 1, max(0, y + k))
+                            var weight = kernel[k + half]
+                            vDSP_vsma(tPtr + sy * width, 1, &weight, dstRowPtr, 1, dstRowPtr, 1, vLen)
+                        }
+                    }
                 }
-                temp[row + x] = acc
-            }
-        }
-        for y in 0..<height {
-            for x in 0..<width {
-                var acc: Float = 0
-                for k in -half...half {
-                    let sy = min(height - 1, max(0, y + k))
-                    acc += temp[sy * width + x] * kernel[k + half]
-                }
-                out[y * width + x] = acc
             }
         }
         return out
@@ -580,33 +623,48 @@ public enum BioImageProcessor {
     // MARK: - 5. 一维灰度积分投影与局部峰值检测 (用于 Gel 与 Western Blot 自动泳道/条带定位)
     
     public static func columnProfile(gray: [Float], width: Int, height: Int, y0: Int = 0, y1: Int? = nil, invert: Bool = false) -> [Double] {
+        guard width > 0, height > 0, gray.count >= width * height else {
+            return width > 0 ? [Double](repeating: 0, count: width) : []
+        }
         let top = max(0, min(height - 1, y0))
         let bottom = max(top + 1, min(height, y1 ?? height))
         let count = Double(bottom - top)
+        var rowSum = [Float](repeating: 0, count: width)
+        gray.withUnsafeBufferPointer { gBuf in
+            rowSum.withUnsafeMutableBufferPointer { sBuf in
+                guard let gPtr = gBuf.baseAddress, let sPtr = sBuf.baseAddress else { return }
+                let len = vDSP_Length(width)
+                for y in top..<bottom {
+                    vDSP_vadd(gPtr + y * width, 1, sPtr, 1, sPtr, 1, len)
+                }
+            }
+        }
+        let denom = count * 255.0
         var out = [Double](repeating: 0, count: width)
         for x in 0..<width {
-            var sum = 0.0
-            for y in top..<bottom {
-                let v = Double(gray[y * width + x]) / 255.0
-                sum += invert ? (1.0 - v) : v
-            }
-            out[x] = sum / count
+            let v = Double(rowSum[x]) / denom
+            out[x] = invert ? (1.0 - v) : v
         }
         return out
     }
     
     public static func rowProfile(gray: [Float], width: Int, height: Int, x0: Int = 0, x1: Int? = nil, invert: Bool = false) -> [Double] {
+        guard width > 0, height > 0, gray.count >= width * height else {
+            return height > 0 ? [Double](repeating: 0, count: height) : []
+        }
         let left = max(0, min(width - 1, x0))
         let right = max(left + 1, min(width, x1 ?? width))
-        let count = Double(right - left)
+        let span = vDSP_Length(right - left)
+        let denom = Double(right - left) * 255.0
         var out = [Double](repeating: 0, count: height)
-        for y in 0..<height {
-            var sum = 0.0
-            for x in left..<right {
-                let v = Double(gray[y * width + x]) / 255.0
-                sum += invert ? (1.0 - v) : v
+        gray.withUnsafeBufferPointer { gBuf in
+            guard let gPtr = gBuf.baseAddress else { return }
+            for y in 0..<height {
+                var sum: Float = 0
+                vDSP_sve(gPtr + y * width + left, 1, &sum, span)
+                let v = Double(sum) / denom
+                out[y] = invert ? (1.0 - v) : v
             }
-            out[y] = sum / count
         }
         return out
     }

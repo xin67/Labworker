@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 import ImageIO
 import AppKit
+import Accelerate
 
 // MARK: - 1. WBStudio 16-bit 自动圈定与曝光组模型 (与 Python wbquant JSON 协议 1:1 对齐)
 
@@ -1120,31 +1121,50 @@ public enum WesternBlotEngine {
         radius: Int,
         isErode: Bool
     ) -> [Double] {
+        guard width > 0, height > 0, input.count >= width * height else { return input }
         var temp = [Double](repeating: 0, count: width * height)
         var out = [Double](repeating: 0, count: width * height)
-        for y in 0..<height {
-            let row = y * width
-            for x in 0..<width {
-                let x0 = max(0, x - radius)
-                let x1 = min(width - 1, x + radius)
-                var best = input[row + x]
-                for nx in x0...x1 {
-                    let v = input[row + nx]
-                    if isErode ? (v < best) : (v > best) { best = v }
+        input.withUnsafeBufferPointer { inBuf in
+            temp.withUnsafeMutableBufferPointer { tBuf in
+                guard let inPtr = inBuf.baseAddress, let tPtr = tBuf.baseAddress else { return }
+                for y in 0..<height {
+                    let row = y * width
+                    for x in 0..<width {
+                        let x0 = max(0, x - radius)
+                        let x1 = min(width - 1, x + radius)
+                        var best: Double = 0
+                        let len = vDSP_Length(x1 - x0 + 1)
+                        if isErode {
+                            vDSP_minvD(inPtr + row + x0, 1, &best, len)
+                        } else {
+                            vDSP_maxvD(inPtr + row + x0, 1, &best, len)
+                        }
+                        tPtr[row + x] = best
+                    }
                 }
-                temp[row + x] = best
             }
         }
-        for y in 0..<height {
-            let y0 = max(0, y - radius)
-            let y1 = min(height - 1, y + radius)
-            for x in 0..<width {
-                var best = temp[y * width + x]
-                for ny in y0...y1 {
-                    let v = temp[ny * width + x]
-                    if isErode ? (v < best) : (v > best) { best = v }
+        temp.withUnsafeBufferPointer { tBuf in
+            out.withUnsafeMutableBufferPointer { oBuf in
+                guard let tPtr = tBuf.baseAddress, let oPtr = oBuf.baseAddress else { return }
+                let rowLen = vDSP_Length(width)
+                let byteLen = width * MemoryLayout<Double>.size
+                for y in 0..<height {
+                    let y0 = max(0, y - radius)
+                    let y1 = min(height - 1, y + radius)
+                    let dstRow = oPtr + y * width
+                    memcpy(dstRow, tPtr + y0 * width, byteLen)
+                    if y0 < y1 {
+                        for ny in (y0 + 1)...y1 {
+                            let srcRow = tPtr + ny * width
+                            if isErode {
+                                vDSP_vminD(dstRow, 1, srcRow, 1, dstRow, 1, rowLen)
+                            } else {
+                                vDSP_vmaxD(dstRow, 1, srcRow, 1, dstRow, 1, rowLen)
+                            }
+                        }
+                    }
                 }
-                out[y * width + x] = best
             }
         }
         return out
@@ -1237,13 +1257,17 @@ public enum WesternBlotEngine {
             for i in 0..<lw { weights[i] /= max(1e-9, wSum) }
         }
         var prof = [Double](repeating: 0, count: lh)
-        for ry in 0..<lh {
-            let row = (y0 + ry) * width
-            var acc = 0.0
-            for rx in 0..<lw {
-                acc += signal[row + x0 + rx] * weights[rx]
+        signal.withUnsafeBufferPointer { sBuf in
+            weights.withUnsafeBufferPointer { wBuf in
+                guard let sPtr = sBuf.baseAddress, let wPtr = wBuf.baseAddress else { return }
+                let len = vDSP_Length(lw)
+                for ry in 0..<lh {
+                    let row = (y0 + ry) * width
+                    var acc = 0.0
+                    vDSP_dotprD(sPtr + row + x0, 1, wPtr, 1, &acc, len)
+                    prof[ry] = acc
+                }
             }
-            prof[ry] = acc
         }
         return prof
     }
@@ -1270,12 +1294,16 @@ public enum WesternBlotEngine {
         }
         
         var colMean = [Double](repeating: 0, count: stripW)
-        for x in 0..<stripW {
-            var s = 0.0
-            for y in stripROI.y..<stripROI.y2 {
-                s += signal[y * width + (stripROI.x + x)]
+        signal.withUnsafeBufferPointer { sBuf in
+            colMean.withUnsafeMutableBufferPointer { cBuf in
+                guard let sPtr = sBuf.baseAddress, let cPtr = cBuf.baseAddress else { return }
+                let len = vDSP_Length(stripW)
+                for y in stripROI.y..<stripROI.y2 {
+                    vDSP_vaddD(sPtr + y * width + stripROI.x, 1, cPtr, 1, cPtr, 1, len)
+                }
+                var divisor = Double(stripH)
+                vDSP_vsdivD(cPtr, 1, &divisor, cPtr, 1, len)
             }
-            colMean[x] = s / Double(stripH)
         }
         let colProf = smooth1D(colMean, radius: 3)
         let cmax = colProf.max() ?? 0.0

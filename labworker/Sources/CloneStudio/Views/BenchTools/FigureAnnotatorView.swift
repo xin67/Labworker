@@ -147,7 +147,7 @@ public struct FigureAnnotatorView: View {
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(size: 11, design: .monospaced))
                                 .frame(width: 48)
-                                .onChange(of: panels[idx].scaleBarMicrons) { _ in
+                                .onChange(of: panels[idx].scaleBarMicrons) { _, _ in
                                     panels[idx].scaleBarSource = .manual
                                 }
                             Text("μm")
