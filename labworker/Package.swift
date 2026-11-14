@@ -1,10 +1,10 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
     name: "CloneStudio",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v26)
     ],
     products: [
         .library(
@@ -40,5 +40,6 @@ let package = Package(
             dependencies: ["CloneStudioCore"],
             path: "Tests/CloneStudioVerify"
         )
-    ]
+    ],
+    swiftLanguageModes: [.v5]
 )

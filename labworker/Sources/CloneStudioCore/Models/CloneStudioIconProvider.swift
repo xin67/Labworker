@@ -364,7 +364,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                     }
                     .font(.system(size: 11, weight: .semibold))
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .controlSize(.small)
                 .help("从 Finder 导入 .dna / .tif / .pdb / .nwk / .csv / .fasta 并自动直达对应模块")
             }
@@ -378,20 +378,24 @@ public struct CloneStudioStatusBarPopoverView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                     Spacer()
-                    Button("粘贴") {
-                        if let str = NSPasteboard.general.string(forType: .string) {
-                            quickSequence = BioSequence.clean(str)
+                    GlassEffectContainer(spacing: 6) {
+                        HStack(spacing: 6) {
+                            Button("粘贴") {
+                                if let str = NSPasteboard.general.string(forType: .string) {
+                                    quickSequence = BioSequence.clean(str)
+                                }
+                            }
+                            .buttonStyle(.glass)
+                            .controlSize(.mini)
+                            
+                            if !quickSequence.isEmpty {
+                                Button("清空") {
+                                    quickSequence = ""
+                                }
+                                .buttonStyle(.glass)
+                                .controlSize(.mini)
+                            }
                         }
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.mini)
-                    
-                    if !quickSequence.isEmpty {
-                        Button("清空") {
-                            quickSequence = ""
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.mini)
                     }
                 }
                 
@@ -428,77 +432,78 @@ public struct CloneStudioStatusBarPopoverView: View {
                         }
                         .font(.system(size: 10.5, weight: .semibold))
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .controlSize(.mini)
                     .disabled(cleanedSeq.isEmpty)
                 }
             }
-            .padding(8)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.primary.opacity(0.04))
-            )
+            .padding(9)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             
             // 3. 高频工作台直达（语义化图标，去除旧数字编号）
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                quickModuleButton(.plasmidPool, title: "质粒池", icon: "tray.2.fill", tint: .cyan)
-                quickModuleButton(.singleFragment, title: "单片段", icon: "scissors", tint: .teal)
-                quickModuleButton(.mutagenesis, title: "定点突变", icon: "wand.and.stars", tint: .pink)
-                quickModuleButton(.westernBlot, title: "WB定量", icon: "slider.horizontal.below.rectangle", tint: .indigo)
-                quickModuleButton(.qpcrAnalysis, title: "qPCR", icon: "chart.bar.xaxis", tint: .teal)
-                quickModuleButton(.gelFigure, title: "凝胶电泳", icon: "chart.bar.doc.horizontal.fill", tint: .cyan)
-                quickModuleButton(.proteinWorkbench, title: "蛋白质台", icon: "atom", tint: .blue)
-                quickModuleButton(
-                    .orderCenter,
-                    title: appState.primersCart.isEmpty ? "订购单" : "订购(\(appState.primersCart.count))",
-                    icon: "cart.fill",
-                    tint: .green
-                )
+            GlassEffectContainer(spacing: 6) {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                    quickModuleButton(.plasmidPool, title: "质粒池", icon: "tray.2.fill", tint: .cyan)
+                    quickModuleButton(.singleFragment, title: "单片段", icon: "scissors", tint: .teal)
+                    quickModuleButton(.mutagenesis, title: "定点突变", icon: "wand.and.stars", tint: .pink)
+                    quickModuleButton(.westernBlot, title: "WB定量", icon: "slider.horizontal.below.rectangle", tint: .indigo)
+                    quickModuleButton(.qpcrAnalysis, title: "qPCR", icon: "chart.bar.xaxis", tint: .teal)
+                    quickModuleButton(.gelFigure, title: "凝胶电泳", icon: "chart.bar.doc.horizontal.fill", tint: .cyan)
+                    quickModuleButton(.proteinWorkbench, title: "蛋白质台", icon: "atom", tint: .blue)
+                    quickModuleButton(
+                        .orderCenter,
+                        title: appState.primersCart.isEmpty ? "订购单" : "订购(\(appState.primersCart.count))",
+                        icon: "cart.fill",
+                        tint: .green
+                    )
+                }
             }
             
             Divider().opacity(0.5)
             
             // 4. 极简底栏：主窗口、系统设置、退出
-            HStack(spacing: 8) {
-                Button(action: {
-                    activateMainWindow()
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "macwindow")
-                        Text("主窗口")
+            GlassEffectContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    Button(action: {
+                        activateMainWindow()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "macwindow")
+                            Text("主窗口")
+                        }
+                        .font(.system(size: 11, weight: .medium))
                     }
-                    .font(.system(size: 11, weight: .medium))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                
-                Button(action: {
-                    appState.selectedNav = .settings
-                    activateMainWindow()
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "gearshape")
-                        Text("设置")
+                    .buttonStyle(.glassProminent)
+                    .controlSize(.small)
+                    
+                    Button(action: {
+                        appState.selectedNav = .settings
+                        activateMainWindow()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "gearshape")
+                            Text("设置")
+                        }
+                        .font(.system(size: 11, weight: .medium))
                     }
-                    .font(.system(size: 11, weight: .medium))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                
-                Spacer()
-                
-                Button(action: {
-                    NSApplication.shared.terminate(nil)
-                }) {
-                    HStack(spacing: 3) {
-                        Image(systemName: "power")
-                        Text("退出")
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        NSApplication.shared.terminate(nil)
+                    }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "power")
+                            Text("退出")
+                        }
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundColor(.secondary)
                     }
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .buttonStyle(.plain)
+                    .help("退出 Labworker (⌘Q)")
                 }
-                .buttonStyle(.plain)
-                .help("退出 Labworker (⌘Q)")
             }
         }
         .padding(12)
@@ -514,9 +519,9 @@ public struct CloneStudioStatusBarPopoverView: View {
                 .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                 .foregroundColor(tint)
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 6.5)
         .padding(.vertical, 2.5)
-        .background(RoundedRectangle(cornerRadius: 4).fill(tint.opacity(0.10)))
+        .glassEffect(.clear.tint(tint.opacity(0.24)), in: .capsule)
     }
     
     private func quickModuleButton(_ nav: NavItem, title: String, icon: String, tint: Color) -> some View {
@@ -536,9 +541,11 @@ public struct CloneStudioStatusBarPopoverView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(isSelected ? tint : Color.primary.opacity(0.05))
+            .glassEffect(
+                isSelected
+                    ? .regular.tint(tint.opacity(0.82)).interactive()
+                    : .regular.interactive(),
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
             )
         }
         .buttonStyle(.plain)

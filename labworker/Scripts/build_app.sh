@@ -77,7 +77,7 @@ package_app_bundle() {
     <key>LWGitCommit</key>
     <string>$GIT_COMMIT</string>
     <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
+    <string>26.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSAppTransportSecurity</key>

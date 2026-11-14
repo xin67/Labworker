@@ -831,9 +831,17 @@ assert(NavItem.westernBlot.section == .bioImaging && NavItem.gelFigure.section =
 assert(NavItem.proteinWorkbench.section == .benchTools && NavItem.qpcrAnalysis.section == .benchTools, "Protein and qPCR must be grouped under .benchTools")
 AppState.shared.defaultWBRollingBallRadius = 65
 AppState.shared.defaultProteinPH = 7.4
+AppState.shared.liquidGlassStyle = .clear
+assert(AppState.shared.liquidGlassStyle == .clear && UserDefaults.standard.string(forKey: "cs_liquidGlassStyle") == "clear", "LiquidGlassStyleMode .clear must persist")
+AppState.shared.liquidGlassStyle = .tinted
+AppState.shared.enableAmbientGlassGlow = false
+assert(AppState.shared.liquidGlassStyle == .tinted && UserDefaults.standard.string(forKey: "cs_liquidGlassStyle") == "tinted", "LiquidGlassStyleMode .tinted must persist")
+assert(AppState.shared.enableAmbientGlassGlow == false && UserDefaults.standard.object(forKey: "cs_enableAmbientGlassGlow") as? Bool == false, "enableAmbientGlassGlow must persist")
 assert(AppState.shared.defaultWBRollingBallRadius == 65 && abs(AppState.shared.defaultProteinPH - 7.4) < 1e-6, "Custom workbench defaults must update cleanly")
 AppState.shared.resetSettingsToDefaults()
 assert(AppState.shared.defaultWBRollingBallRadius == 50 && abs(AppState.shared.defaultProteinPH - 7.0) < 1e-6, "resetSettingsToDefaults must restore workbench defaults")
+assert(AppState.shared.liquidGlassStyle == .regular && AppState.shared.enableAmbientGlassGlow == true, "resetSettingsToDefaults must restore Liquid Glass .regular & ambient glow enabled")
+assert(LiquidGlassStyleMode.allCases.count == 3, "LiquidGlassStyleMode must expose regular/clear/tinted modes")
 if let wbSample = wbGroups.first {
     let tifURL = URL(fileURLWithPath: wbSample.primaryQuantPath)
     WorkspaceSessionManager.shared.handleFinderOpenURLs([tifURL])

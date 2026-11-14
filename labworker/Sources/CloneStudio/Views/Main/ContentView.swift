@@ -97,10 +97,11 @@ private struct ImmersiveWindowConfigurator: NSViewRepresentable {
     }
 }
 
-/// 主窗口视图 (Apple 系统设置风格：原生侧边栏窗后毛玻璃 + 顶部胶囊搜索框 + 小箭头折叠分组 + 右侧零顶部空白实色工作区)
+/// 主窗口视图 (macOS 26/27 原生 Liquid Glass 侧边栏 + 顶部胶囊搜索框 + 小箭头折叠分组 + 环境折射光晕主工作区)
 public struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @ObservedObject private var plasmidPool = PlasmidPoolManager.shared
+    @Namespace private var sidebarGlassNS
     @State private var isWindowDropTargeted: Bool = false
     
     public init() {}
@@ -109,6 +110,40 @@ public struct ContentView: View {
         appState.isLightAppearance
             ? Color(red: 0.957, green: 0.960, blue: 0.969)
             : Color(red: 0.118, green: 0.122, blue: 0.135)
+    }
+
+    @ViewBuilder
+    private var mainWorkspaceBackground: some View {
+        ZStack {
+            workspaceBackgroundColor
+
+            if appState.enableAmbientGlassGlow {
+                GeometryReader { geo in
+                    ZStack {
+                        RadialGradient(
+                            colors: [
+                                appState.accentTheme.color.opacity(appState.isLightAppearance ? 0.065 : 0.095),
+                                Color.clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 20,
+                            endRadius: max(geo.size.width, geo.size.height) * 0.72
+                        )
+                        RadialGradient(
+                            colors: [
+                                Color.cyan.opacity(appState.isLightAppearance ? 0.045 : 0.065),
+                                Color.clear
+                            ],
+                            center: .bottomLeading,
+                            startRadius: 20,
+                            endRadius: max(geo.size.width, geo.size.height) * 0.65
+                        )
+                    }
+                    .allowsHitTesting(false)
+                }
+            }
+        }
+        .ignoresSafeArea(.container, edges: .top)
     }
     
     private var subtleHairlineColor: Color {
@@ -138,10 +173,7 @@ public struct ContentView: View {
                 detailContent
                     .frame(minWidth: 540, maxWidth: .infinity, minHeight: 420, maxHeight: .infinity)
             }
-            .background(
-                workspaceBackgroundColor
-                    .ignoresSafeArea(.container, edges: .top)
-            )
+            .background(mainWorkspaceBackground)
             .overlay(alignment: .leading) {
                 Rectangle()
                     .fill(subtleHairlineColor)
@@ -153,19 +185,18 @@ public struct ContentView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "folder.fill.badge.plus")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.white)
                         Text("松开智能导入 (.dna / .ab1 / .tif / .pdb / .nwk / .csv / .fasta) 直达对应工作台")
                             .font(.system(size: 13.5, weight: .semibold))
-                            .foregroundColor(.primary)
+                            .foregroundColor(.white)
                     }
                     .padding(.horizontal, 18)
                     .padding(.vertical, 10)
-                    .background(
-                        Capsule()
-                            .fill(Color(NSColor.controlBackgroundColor))
+                    .glassEffect(
+                        .regular.tint(appState.accentTheme.color.opacity(0.85)).interactive(),
+                        in: .capsule
                     )
-                    .overlay(Capsule().stroke(Color.accentColor, lineWidth: 1.5))
-                    .shadow(color: .black.opacity(0.18), radius: 8, x: 0, y: 3)
+                    .shadow(color: appState.accentTheme.color.opacity(0.28), radius: 10, x: 0, y: 4)
                     .padding(.top, 18)
                 }
             }
@@ -212,10 +243,13 @@ public struct ContentView: View {
                         Text("快导")
                             .font(.system(size: 11, weight: .semibold))
                     }
-                    .foregroundColor(.accentColor)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3.5)
-                    .background(Capsule().fill(Color.accentColor.opacity(0.12)))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .glassEffect(
+                        .regular.tint(appState.accentTheme.color.opacity(0.75)).interactive(),
+                        in: .capsule
+                    )
                 }
                 .buttonStyle(.plain)
                 .help("从 Finder 导入实验文件 (.dna / .tif / .pdb / .nwk / .csv / .fasta)，自动识别并直达对应功能模块")
@@ -247,19 +281,16 @@ public struct ContentView: View {
             }
             .padding(.horizontal, 11)
             .padding(.vertical, 6.5)
-            .background(
-                Capsule()
-                    .fill(Color.primary.opacity(appState.isLightAppearance ? 0.055 : 0.10))
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.primary.opacity(appState.isLightAppearance ? 0.10 : 0.15), lineWidth: 0.8)
-                    )
+            .glassEffect(
+                appState.liquidGlassStyle.resolvedGlass(accentColor: appState.accentTheme.color, interactive: true),
+                in: .capsule
             )
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
             
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 13) {
+                GlassEffectContainer(spacing: 6) {
+                    VStack(alignment: .leading, spacing: 13) {
                     sidebarCollapsibleSection(.cloning) {
                         sidebarRow(
                             item: .plasmidPool,
@@ -304,13 +335,10 @@ public struct ContentView: View {
                         sidebarRow(item: .settings, tint: .gray)
                     }
                 }
+                }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
             }
-            
-            Rectangle()
-                .fill(subtleHairlineColor)
-                .frame(height: 1)
             
             HStack(spacing: 6) {
                 Circle()
@@ -325,8 +353,14 @@ public struct ContentView: View {
                     .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
                     .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7.5)
+            .glassEffect(
+                appState.liquidGlassStyle.resolvedGlass(accentColor: appState.accentTheme.color),
+                in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+            )
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
         }
     }
     
@@ -385,7 +419,9 @@ public struct ContentView: View {
         if shouldShow {
             let isSelected = (appState.selectedNav == item)
             Button(action: {
-                appState.selectedNav = item
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                    appState.selectedNav = item
+                }
             }) {
                 HStack(spacing: 10) {
                     ZStack {
@@ -418,9 +454,12 @@ public struct ContentView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5.5)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isSelected ? appState.accentTheme.color : Color.clear)
+                .modifier(
+                    SidebarRowGlassModifier(
+                        isSelected: isSelected,
+                        accentColor: appState.accentTheme.color,
+                        namespace: sidebarGlassNS
+                    )
                 )
                 .contentShape(Rectangle())
             }
@@ -498,14 +537,28 @@ public struct ContentView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(
-            Capsule()
-                .fill(Color(NSColor.controlBackgroundColor))
-        )
-        .overlay(
-            Capsule().stroke(Color.primary.opacity(0.14), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.16), radius: 9, x: 0, y: 3)
+        .glassEffect(.regular.tint(Color.green.opacity(0.28)).interactive(), in: .capsule)
+        .shadow(color: .black.opacity(0.14), radius: 10, x: 0, y: 4)
         .padding(.bottom, 20)
+    }
+}
+
+private struct SidebarRowGlassModifier: ViewModifier {
+    let isSelected: Bool
+    let accentColor: Color
+    let namespace: Namespace.ID
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isSelected {
+            content
+                .glassEffect(
+                    .regular.tint(accentColor.opacity(0.85)).interactive(),
+                    in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
+                .glassEffectID("sidebar_active_item", in: namespace)
+        } else {
+            content
+        }
     }
 }

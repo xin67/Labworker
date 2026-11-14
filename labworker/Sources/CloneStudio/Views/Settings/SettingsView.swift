@@ -593,7 +593,37 @@ public struct SettingsView: View {
                     }
                 }
 
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        Text("液态玻璃材质 (macOS 26/27):")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer()
+                        StudioSegmentedPicker(
+                            selection: $appState.liquidGlassStyle,
+                            options: LiquidGlassStyleMode.allCases.map {
+                                StudioSegmentedOption(value: $0, title: $0.shortTitle, tint: appState.accentTheme.color)
+                            }
+                        )
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("液态玻璃材质 (macOS 26/27):")
+                            .font(.system(size: 11.5, weight: .medium))
+                        StudioSegmentedPicker(
+                            selection: $appState.liquidGlassStyle,
+                            options: LiquidGlassStyleMode.allCases.map {
+                                StudioSegmentedOption(value: $0, title: $0.shortTitle, tint: appState.accentTheme.color)
+                            }
+                        )
+                    }
+                }
+
                 Divider().opacity(0.5)
+
+                Toggle("启用工作区背景环境折射光晕 (Liquid Glass Ambient Glow)", isOn: $appState.enableAmbientGlassGlow)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .font(.system(size: 11.5, weight: .medium))
 
                 Toggle("在 macOS 顶部菜单栏显示 Labworker 快捷图标", isOn: $appState.showStatusBarIcon)
                     .toggleStyle(.switch)

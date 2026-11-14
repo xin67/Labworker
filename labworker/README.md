@@ -5,7 +5,7 @@
 
 ## 1. 项目定位与技术栈概览
 
-**Labworker** 是一款运行于 macOS 14+（Apple Silicon 原生优化）的干湿实验一体化科研桌面软件，采用 **SwiftUI 声明式响应式界面 + Swift 核心生物计算引擎 + Python 科学计算/SnapGene 桥接 + SQLite 离线基因组库 + MCP 智能体协议** 的混合架构：
+**Labworker** 是一款运行于 macOS 26 / 27+（Apple Silicon 原生优化，全栈采用原生 Liquid Glass 液态玻璃交互设计）的干湿实验一体化科研桌面软件，采用 **SwiftUI 声明式响应式界面 + Swift 核心生物计算引擎 + Python 科学计算/SnapGene 桥接 + SQLite 离线基因组库 + MCP 智能体协议** 的混合架构：
 
 - **UI 与交互层 (`Sources/CloneStudio/`)**：原生 SwiftUI + AppKit 混合架构，具备 120Hz 微观双链序列虚拟化画布、OVE 同心多轨质粒环图、三维 Cα 蛋白质与对接盒视窗、16-bit 科学图像画布及 macOS 菜单栏极简托盘速算器。
 - **核心算法与服务层 (`Sources/CloneStudioCore/`)**：纯 Swift 实现的同源重组引物设计、SantaLucia & Hicks 2004 最近邻热力学 $T_m$ 解算、对齐 `primer3-py` (`calc_hairpin` / `calc_homodimer` / `calc_dimer`) 的 **引物二级结构热力学 $\Delta G$ 与配对拓扑质检引擎 (`PrimerQualityEngine`，支持自定义 $\text{Mg}^{2+}$ 与 dNTP 浓度校正)**、原生 Applied Biosystems ABIF (`.ab1` / `.abi`) **Sanger 四色毛细管电泳峰图解析与环状质粒比对验证引擎 (`SangerAlignmentEngine`)**、CRISPR/RNAi 靶点评分、16-bit Western Blot 滚球背景扣除、qPCR $2^{-\Delta\Delta C_t}$ 相对定量、微孔板防边缘效应排布、Newick 系统发育树与 Robinson-Foulds 拓扑距离、以及对齐 [IBN-Spring/DockFlowLab](https://github.com/IBN-Spring/DockFlowLab) 源码的 **LIGSITE 七方向 P-S-P 口袋探测与共晶配体共识 AutoDock Vina 对接盒推荐引擎**。

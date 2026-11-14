@@ -361,6 +361,45 @@ public enum AppAccentTheme: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// macOS 26 / 27 原生 Liquid Glass 折射材质档位
+public enum LiquidGlassStyleMode: String, CaseIterable, Identifiable, Sendable {
+    case regular = "regular"
+    case clear = "clear"
+    case tinted = "tinted"
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .regular: return "标准液态玻璃 (Regular)"
+        case .clear:   return "高透液态玻璃 (Clear)"
+        case .tinted:  return "主题浸染玻璃 (Tinted)"
+        }
+    }
+
+    public var shortTitle: String {
+        switch self {
+        case .regular: return "标准 (Regular)"
+        case .clear:   return "清透 (Clear)"
+        case .tinted:  return "浸染 (Tinted)"
+        }
+    }
+
+    /// 返回对应的原生 SwiftUI `Glass` 材质配置
+    public func resolvedGlass(accentColor: Color, interactive: Bool = false) -> Glass {
+        let base: Glass
+        switch self {
+        case .regular:
+            base = .regular
+        case .clear:
+            base = .clear
+        case .tinted:
+            base = .regular.tint(accentColor.opacity(0.22))
+        }
+        return interactive ? base.interactive() : base
+    }
+}
+
 /// 构建产物 .dna 默认保存目录
 public enum ExportSaveLocation: String, CaseIterable, Identifiable, Sendable {
     case sameAsSource = "sameAsSource"
@@ -494,6 +533,12 @@ public final class AppState: ObservableObject {
     }
     @Published public var accentTheme: AppAccentTheme = .blue {
         didSet { saveSetting("cs_accentTheme", accentTheme.rawValue) }
+    }
+    @Published public var liquidGlassStyle: LiquidGlassStyleMode = .regular {
+        didSet { saveSetting("cs_liquidGlassStyle", liquidGlassStyle.rawValue) }
+    }
+    @Published public var enableAmbientGlassGlow: Bool = true {
+        didSet { saveSetting("cs_enableAmbientGlassGlow", enableAmbientGlassGlow) }
     }
     @Published public var sequenceFontSize: Double = 10.0 {
         didSet { saveSetting("cs_sequenceFontSize", sequenceFontSize) }
@@ -796,6 +841,13 @@ public final class AppState: ObservableObject {
            let acc = AppAccentTheme(rawValue: raw) {
             accentTheme = acc
         }
+        if let rawGlass = defaults.string(forKey: "cs_liquidGlassStyle"),
+           let glassMode = LiquidGlassStyleMode(rawValue: rawGlass) {
+            liquidGlassStyle = glassMode
+        }
+        if defaults.object(forKey: "cs_enableAmbientGlassGlow") != nil {
+            enableAmbientGlassGlow = defaults.bool(forKey: "cs_enableAmbientGlassGlow")
+        }
         if defaults.object(forKey: "cs_sequenceFontSize") != nil {
             sequenceFontSize = max(9.0, min(13.0, defaults.double(forKey: "cs_sequenceFontSize")))
         }
@@ -938,6 +990,8 @@ public final class AppState: ObservableObject {
         showStatusBarIcon = true
         canvasThemeOverride = .followApp
         accentTheme = .blue
+        liquidGlassStyle = .regular
+        enableAmbientGlassGlow = true
         sequenceFontSize = 10.0
         defaultHomologyLength = 18
         defaultLinearizationModeRaw = "pcr"

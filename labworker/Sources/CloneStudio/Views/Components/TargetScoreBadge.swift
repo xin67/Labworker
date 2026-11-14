@@ -24,16 +24,9 @@ public struct TargetScoreBadge: View {
                 Text(score.tier.stars)
                     .font(.system(size: compact ? 9.5 : 10, weight: .semibold))
             }
-            .padding(.horizontal, compact ? 5 : 7)
-            .padding(.vertical, compact ? 1.5 : 2.5)
-            .background(
-                Capsule()
-                    .fill(score.tier.color.opacity(0.12))
-                    .overlay(
-                        Capsule()
-                            .stroke(score.tier.color.opacity(0.4), lineWidth: 0.8)
-                    )
-            )
+            .padding(.horizontal, compact ? 5.5 : 7.5)
+            .padding(.vertical, compact ? 2 : 3)
+            .glassEffect(.clear.tint(score.tier.color.opacity(0.32)).interactive(), in: .capsule)
             .foregroundColor(score.tier.color)
         }
         .buttonStyle(.plain)
