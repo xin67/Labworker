@@ -13,7 +13,7 @@
 [![MCP](https://img.shields.io/badge/MCP%20Tools-17%20Ready-30D158?style=for-the-badge)](#-ai-智能体协同)
 [![License](https://img.shields.io/badge/License-MIT-8E8E93?style=for-the-badge)](LICENSE)
 
-[⬇️ 下载最新版 DMG (`v20261115`)](https://github.com/xin67/Labworker/releases/tag/v20261115) &nbsp;·&nbsp; [🖥️ 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 22 个功能模块](#-22-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🛠️ 源码构建](#-安装与源码构建)
+[⬇️ 下载最新版 DMG (`v20261115`)](https://github.com/xin67/Labworker/releases/tag/v20261115) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 22 个功能模块](#-22-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 源码构建](#-安装与源码构建)
 
 <br/>
 
@@ -34,7 +34,7 @@
 
 ---
 
-## 🖥️ 实机界面与核心能力展示
+## 📸 实机界面与核心能力展示
 
 以下全部截图均采集自 **`Labworker v20261115`（macOS 实机浅色 Liquid Glass 主题）** 运行内置公开示范数据的真实界面：
 
@@ -101,7 +101,7 @@
 
 ---
 
-## 🏗️ 架构设计与协同工作流
+## 📐 架构设计与协同工作流
 
 ```mermaid
 flowchart LR
@@ -185,7 +185,7 @@ flowchart LR
 
 ---
 
-## 🛠️ 安装与源码构建
+## 🔧 安装与源码构建
 
 ### 方式 A：直接安装发布版 DMG（推荐）
 
