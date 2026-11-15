@@ -271,7 +271,8 @@ public struct SettingsView: View {
                                             .foregroundColor(.primary)
                                             .lineLimit(1)
                                         Text(rec.timestamp.formatted(date: .omitted, time: .standard))
-                                            .font(.system(size: 10.5, design: .monospaced))
+                                            .font(.system(size: 10.5))
+                                            .monospacedDigit()
                                             .foregroundColor(.secondary)
                                     }
                                     .padding(6)
@@ -319,7 +320,7 @@ public struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
                                 Text(t.name)
-                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 12, weight: .bold))
                                     .foregroundColor(.accentColor)
                                     .lineLimit(1)
                                 Spacer()
@@ -457,7 +458,7 @@ public struct SettingsView: View {
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.secondary)
                                 Text(item.supportedFormats)
-                                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                    .font(.system(size: 11, weight: .medium))
                                     .foregroundColor(.teal)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -1006,7 +1007,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.cloningTargetTm, in: 52.0...68.0, step: 0.5)
                         .frame(maxWidth: 130)
                     Text(String(format: "%.1f ℃", appState.cloningTargetTm))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 48, alignment: .trailing)
                 }
 
@@ -1017,7 +1019,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.mutationTargetTm, in: 58.0...72.0, step: 0.5)
                         .frame(maxWidth: 130)
                     Text(String(format: "%.1f ℃", appState.mutationTargetTm))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 48, alignment: .trailing)
                 }
 
@@ -1028,7 +1031,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.tmTolerance, in: 0.5...3.0, step: 0.5)
                         .frame(maxWidth: 130)
                     Text(String(format: "±%.1f ℃", appState.tmTolerance))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 48, alignment: .trailing)
                 }
 
@@ -1059,7 +1063,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.primerMgConc, in: 0.0...6.0, step: 0.1)
                         .frame(maxWidth: 130)
                     Text(String(format: "%.1f mM", appState.primerMgConc))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 56, alignment: .trailing)
                 }
 
@@ -1070,7 +1075,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.primerDntpConc, in: 0.0...4.0, step: 0.1)
                         .frame(maxWidth: 130)
                     Text(String(format: "%.1f mM", appState.primerDntpConc))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 56, alignment: .trailing)
                 }
 
@@ -1081,7 +1087,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.primerHairpinAlertDg, in: -8.0...(-1.0), step: 0.5)
                         .frame(maxWidth: 130)
                     Text(String(format: "%.1f", appState.primerHairpinAlertDg))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 56, alignment: .trailing)
                 }
 
@@ -1092,7 +1099,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.primerDimerAlertDg, in: -12.0...(-3.0), step: 0.5)
                         .frame(maxWidth: 130)
                     Text(String(format: "%.1f", appState.primerDimerAlertDg))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 56, alignment: .trailing)
                 }
             }
@@ -1118,7 +1126,8 @@ public struct SettingsView: View {
                     )
                     .frame(maxWidth: 120)
                     Text("\(appState.defaultWBRollingBallRadius) px")
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 46, alignment: .trailing)
                 }
 
@@ -1168,7 +1177,7 @@ public struct SettingsView: View {
                     Spacer()
                     TextField("如 ACTB / GAPDH", text: $appState.defaultQPCRReferenceGene)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 11.5, design: .monospaced))
+                        .font(.system(size: 11.5))
                         .frame(width: 110)
                 }
 
@@ -1179,7 +1188,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.defaultQPCRSdThreshold, in: 0.10...1.00, step: 0.05)
                         .frame(maxWidth: 120)
                     Text(String(format: "%.2f", appState.defaultQPCRSdThreshold))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 42, alignment: .trailing)
                 }
 
@@ -1190,7 +1200,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.defaultQPCRNtcCtThreshold, in: 28.0...40.0, step: 0.5)
                         .frame(maxWidth: 120)
                     Text(String(format: "%.1f", appState.defaultQPCRNtcCtThreshold))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 42, alignment: .trailing)
                 }
 
@@ -1201,7 +1212,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.defaultQPCRNoRTDeltaCt, in: 2.0...10.0, step: 0.5)
                         .frame(maxWidth: 120)
                     Text(String(format: "%.1f", appState.defaultQPCRNoRTDeltaCt))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 42, alignment: .trailing)
                 }
 
@@ -1212,7 +1224,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.defaultQPCRMeltTolerance, in: 0.3...3.0, step: 0.1)
                         .frame(maxWidth: 120)
                     Text(String(format: "±%.1f℃", appState.defaultQPCRMeltTolerance))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 48, alignment: .trailing)
                 }
 
@@ -1224,7 +1237,7 @@ public struct SettingsView: View {
                     Spacer()
                     TextField(SangerBatchEngine.defaultPrimerSuffixRegex, text: $appState.defaultSangerCloneGroupingPattern)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.system(size: 11))
                         .frame(width: 175)
                 }
             }
@@ -1309,7 +1322,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.sequenceFontSize, in: 9.0...13.0, step: 0.5)
                         .frame(maxWidth: 130)
                     Text(String(format: "%.1f pt", appState.sequenceFontSize))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 46, alignment: .trailing)
                 }
 
@@ -1349,7 +1363,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.defaultProteinPH, in: 4.5...9.5, step: 0.1)
                         .frame(maxWidth: 130)
                     Text(String(format: "%.1f", appState.defaultProteinPH))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 42, alignment: .trailing)
                 }
 
@@ -1360,7 +1375,8 @@ public struct SettingsView: View {
                     Slider(value: $appState.defaultProteinTempK, in: 275.0...350.0, step: 5.0)
                         .frame(maxWidth: 130)
                     Text(String(format: "%.0f K", appState.defaultProteinTempK))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 46, alignment: .trailing)
                 }
             }

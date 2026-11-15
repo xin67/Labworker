@@ -88,7 +88,8 @@ public struct OrderExportView: View {
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                 Text(p.phone)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.system(size: 12))
+                    .monospacedDigit()
                 Text(p.email)
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
@@ -193,7 +194,8 @@ public struct OrderExportView: View {
                     ForEach(Array(appState.primersCart.enumerated()), id: \.element.id) { index, primer in
                         HStack(spacing: 8) {
                             Text("#\(index + 1)")
-                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                .font(.system(size: 10.5, weight: .bold))
+                                .monospacedDigit()
                                 .foregroundColor(.secondary)
                                 .frame(width: 24, alignment: .leading)
                             
@@ -209,7 +211,8 @@ public struct OrderExportView: View {
                             Spacer()
                             
                             Text("\(primer.length)bp")
-                                .font(.system(size: 10.5, design: .monospaced))
+                                .font(.system(size: 10.5))
+                                .monospacedDigit()
                                 .foregroundColor(.secondary)
                             
                             Text(primer.purity)
@@ -217,7 +220,8 @@ public struct OrderExportView: View {
                                 .foregroundColor(.blue)
                             
                             Text("\(String(format: "%.1f", primer.od)) OD")
-                                .font(.system(size: 10, design: .monospaced))
+                                .font(.system(size: 10))
+                                .monospacedDigit()
                                 .foregroundColor(.secondary)
                             
                             StudioCompactPillButton(
@@ -306,7 +310,8 @@ public struct OrderExportView: View {
                         ForEach(Array(appState.sangonSamples.enumerated()), id: \.element.id) { index, sample in
                             HStack(spacing: 8) {
                                 Text("#\(index + 1)")
-                                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 10.5, weight: .bold))
+                                    .monospacedDigit()
                                     .foregroundColor(.secondary)
                                     .frame(width: 24, alignment: .leading)
                                 
@@ -321,11 +326,12 @@ public struct OrderExportView: View {
                                     .background(Capsule().fill(Color.secondary.opacity(0.12)))
                                 
                                 Text(sample.vectorName)
-                                    .font(.system(size: 11, design: .monospaced))
+                                    .font(.system(size: 11))
                                     .foregroundColor(.purple)
                                 
                                 Text("\(sample.fragmentLength)bp")
-                                    .font(.system(size: 10.5, design: .monospaced))
+                                    .font(.system(size: 10.5))
+                                    .monospacedDigit()
                                     .foregroundColor(.secondary)
                                 
                                 StudioMetricBadge(label: "引物", value: sample.primerName, color: .blue)

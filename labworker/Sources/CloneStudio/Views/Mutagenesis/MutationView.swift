@@ -89,7 +89,8 @@ public struct MutationView: View {
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                                 if !vm.mutationSummaryLabel.isEmpty {
                                     Text(vm.mutationSummaryLabel)
-                                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                                        .font(.system(size: 10.5, weight: .semibold))
+                                        .monospacedDigit()
                                         .foregroundColor(.pink)
                                         .lineLimit(1)
                                         .padding(.horizontal, 8)
@@ -112,7 +113,7 @@ public struct MutationView: View {
                         } content: {
                             HStack(spacing: 10) {
                                 TextField("目标碱基 (留空为缺失 Δ)", text: $vm.mutSite)
-                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 13, weight: .bold))
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: 220)
                                 
@@ -154,7 +155,8 @@ public struct MutationView: View {
                                     .foregroundColor(.secondary)
                                 Spacer()
                                 Text("目标 Tm: \(String(format: "%.1f", appState.mutationTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) ℃")
-                                    .font(.system(size: 11, design: .monospaced))
+                                    .font(.system(size: 11))
+                                    .monospacedDigit()
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -465,9 +467,10 @@ public struct MutationView: View {
                                 }) {
                                     VStack(spacing: 1.5) {
                                         Text("\(String(item.aminoAcid))\(item.residueIndex1Based)")
-                                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                            .font(.system(size: 10.5, weight: .bold))
+                                            .monospacedDigit()
                                         Text(item.codon)
-                                            .font(.system(size: 9.0, design: .monospaced))
+                                            .font(.system(size: 9.0))
                                             .opacity(0.88)
                                     }
                                     .foregroundColor(isSelected ? .white : .primary)
@@ -522,10 +525,10 @@ public struct MutationView: View {
                             }) {
                                 VStack(spacing: 1) {
                                     Text("\(String(opt.singleLetter)) (\(opt.threeLetter))")
-                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                        .font(.system(size: 10, weight: .bold))
                                         .lineLimit(1)
                                     Text(opt.preferredCodon)
-                                        .font(.system(size: 8.5, design: .monospaced))
+                                        .font(.system(size: 8.5))
                                         .opacity(0.9)
                                 }
                                 .frame(maxWidth: .infinity)
@@ -661,7 +664,8 @@ public struct MutationView: View {
     private var currentResidueBadge: some View {
         if let cur = vm.currentSelectedResidue {
             Text("当前选中: \(cur.threeLetter)\(cur.residueIndex1Based) (\(cur.codon), @\(cur.plasmidStartBp)..\(cur.plasmidEndBp) bp)")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .font(.system(size: 11, weight: .bold))
+                .monospacedDigit()
                 .foregroundColor(.pink)
                 .lineLimit(1)
                 .padding(.horizontal, 8)
@@ -675,8 +679,7 @@ public struct MutationView: View {
         return StudioCompactPillButton(
             title: synCodon,
             tint: .pink,
-            isProminent: isCurrentCodon,
-            monospaced: true
+            isProminent: isCurrentCodon
         ) {
             vm.selectResidueAndMutate(
                 residueIndex1Based: vm.selectedResidueIndex,

@@ -171,7 +171,8 @@ public struct SangerVerificationView: View {
                         )
                         .frame(maxWidth: 260)
                         Text("正在并发比对测序文件 \(batchProgressDone) / \(batchProgressTotal)...")
-                            .font(.system(size: 11.5, design: .monospaced))
+                            .font(.system(size: 11.5))
+                            .monospacedDigit()
                             .foregroundStyle(.secondary)
                         Spacer()
                         StudioCompactPillButton(
@@ -242,7 +243,7 @@ public struct SangerVerificationView: View {
                     .fill(vColor)
                     .frame(width: 8, height: 8)
                 Text(clone.cloneName)
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .font(.system(size: 13, weight: .bold))
                     .lineLimit(1)
                 Spacer()
                 StudioMetricBadge(label: "", value: clone.verdict.rawValue, color: vColor)
@@ -255,17 +256,20 @@ public struct SangerVerificationView: View {
                     .lineLimit(1)
                 Spacer()
                 Text(String(format: "覆盖 %.1f%% (%d/%d bp)", clone.coveragePercent, clone.coveredBp, clone.referenceLengthBp))
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 11, weight: .semibold))
+                    .monospacedDigit()
                     .foregroundStyle(.teal)
             }
 
             HStack(spacing: 8) {
                 Text(String(format: "均值一致率 %.1f%%", clone.meanIdentityPercent))
-                    .font(.system(size: 10.5, design: .monospaced))
+                    .font(.system(size: 10.5))
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text("\(clone.snpCount) SNP · \(clone.indelCount) Indel · \(clone.doublePeakCount) 双峰")
-                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .font(.system(size: 10.5, weight: .medium))
+                    .monospacedDigit()
                     .foregroundStyle((clone.snpCount + clone.indelCount + clone.doublePeakCount) == 0 ? .green : .orange)
             }
 
@@ -277,8 +281,7 @@ public struct SangerVerificationView: View {
                         title: "\(item.primerSuffix ?? item.fileName) · \(String(format: "%.1f%%", item.report.identityPercent))",
                         icon: item.report.isReverseComplement ? "arrow.left.circle.fill" : "arrow.right.circle.fill",
                         tint: appState.accentTheme.color,
-                        isSelected: isSelectedRead,
-                        monospaced: true
+                        isSelected: isSelectedRead
                     ) {
                         selectBatchReadItem(item)
                     }
@@ -365,7 +368,8 @@ public struct SangerVerificationView: View {
                         Slider(value: $horizontalZoom, in: 0.8...2.4, step: 0.1)
                             .frame(width: 88)
                         Text(String(format: "%.1fx", horizontalZoom))
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 11, weight: .semibold))
+                            .monospacedDigit()
                             .frame(width: 32, alignment: .leading)
                     }
 
@@ -382,7 +386,8 @@ public struct SangerVerificationView: View {
                                 rerunAlignmentWithCurrentQuality()
                             }
                         Text("Q\(Int(trimQualityThreshold))")
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 11, weight: .semibold))
+                            .monospacedDigit()
                             .foregroundStyle(.teal)
                     }
                 }
@@ -404,7 +409,8 @@ public struct SangerVerificationView: View {
                            selPos >= 1, selPos <= chrom.calledPeaks.count {
                             let pk = chrom.calledPeaks[selPos - 1]
                             Text("当前选中: Read #\(selPos) (\(String(pk.base))) · Q\(pk.phredQuality)" + (pk.secondaryBase != nil ? " · 次峰 \(String(pk.secondaryBase!)) (\(Int(pk.secondaryRatio * 100))%)" : ""))
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .font(.system(size: 11, weight: .semibold))
+                                .monospacedDigit()
                                 .foregroundStyle(.orange)
                         } else {
                             Text("提示：点击下方或右侧任意变异胶囊可自动滚动定位至对应荧光峰")
@@ -449,7 +455,6 @@ public struct SangerVerificationView: View {
                         StudioCompactPillButton(
                             title: "5' 起点 #\(chrom.trimStart0 + 1)",
                             icon: "arrow.left.to.line",
-                            monospaced: true,
                             help: "跳至 5' 高质起点"
                         ) {
                             let start1 = chrom.trimStart0 + 1
@@ -464,7 +469,6 @@ public struct SangerVerificationView: View {
                                         title: v.hgvsNotation,
                                         dotColor: colorForEvent(v.kind),
                                         tint: colorForEvent(v.kind),
-                                        monospaced: true,
                                         help: v.codonImpactNote
                                     ) {
                                         selectedReadPos1Based = rPos
@@ -477,7 +481,6 @@ public struct SangerVerificationView: View {
                         StudioCompactPillButton(
                             title: "3' 终点 #\(chrom.trimEnd0)",
                             icon: "arrow.right.to.line",
-                            monospaced: true,
                             help: "跳至 3' 高质终点"
                         ) {
                             let end1 = max(1, chrom.trimEnd0)
@@ -548,7 +551,8 @@ public struct SangerVerificationView: View {
 
                     HStack(spacing: 10) {
                         Text("参考长度: \(BioSequence.clean(referenceSequence).count) bp")
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .font(.system(size: 11, weight: .medium))
+                            .monospacedDigit()
                             .foregroundStyle(.secondary)
                         Spacer()
                         HStack(spacing: 4) {
@@ -557,7 +561,8 @@ public struct SangerVerificationView: View {
                                 .foregroundStyle(.secondary)
                             TextField("1", text: $cdsStart1BasedText)
                                 .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 11, design: .monospaced))
+                                .font(.system(size: 11))
+                                .monospacedDigit()
                                 .frame(width: 58)
                                 .onSubmit { recomputeVerification() }
                         }
@@ -645,7 +650,8 @@ public struct SangerVerificationView: View {
                                         } label: {
                                             HStack(alignment: .center, spacing: 10) {
                                                 Text(v.hgvsNotation)
-                                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                                    .font(.system(size: 12, weight: .bold))
+                                                    .monospacedDigit()
                                                     .foregroundStyle(colorForEvent(v.kind))
                                                     .frame(minWidth: 78, alignment: .leading)
 
@@ -664,10 +670,12 @@ public struct SangerVerificationView: View {
                                                 VStack(alignment: .trailing, spacing: 2) {
                                                     if let rPos = v.readPos1Based {
                                                         Text("Read #\(rPos)")
-                                                            .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                                                            .font(.system(size: 10.5, weight: .semibold))
+                                                            .monospacedDigit()
                                                     }
                                                     Text("Q\(v.phredQuality)")
-                                                        .font(.system(size: 10, design: .monospaced))
+                                                        .font(.system(size: 10))
+                                                        .monospacedDigit()
                                                         .foregroundStyle(.secondary)
                                                 }
                                                 Image(systemName: "scope")
@@ -710,7 +718,8 @@ public struct SangerVerificationView: View {
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Text("\(rep.alignedLength) 列")
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.system(size: 11))
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
             }
@@ -725,8 +734,7 @@ public struct SangerVerificationView: View {
             title: label,
             dotColor: isOn.wrappedValue ? color : Color.secondary.opacity(0.35),
             tint: color,
-            isSelected: isOn.wrappedValue,
-            monospaced: true
+            isSelected: isOn.wrappedValue
         ) {
             isOn.wrappedValue.toggle()
         }

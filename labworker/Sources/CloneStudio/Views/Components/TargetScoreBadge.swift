@@ -19,7 +19,8 @@ public struct TargetScoreBadge: View {
         }) {
             HStack(spacing: 3.5) {
                 Text(score.formattedScore)
-                    .font(.system(size: compact ? 10.5 : 11, weight: .bold, design: .monospaced))
+                    .font(.system(size: compact ? 10.5 : 11, weight: .bold))
+                    .monospacedDigit()
                 
                 Text(score.tier.stars)
                     .font(.system(size: compact ? 9.5 : 10, weight: .semibold))
@@ -48,7 +49,8 @@ public struct TargetScoreBadge: View {
             // 顶栏：评分与评级
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("\(score.formattedScore) 分")
-                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .font(.system(size: 18, weight: .bold))
+                    .monospacedDigit()
                     .foregroundColor(score.tier.color)
                 
                 Text(score.tier.displayName)
@@ -62,7 +64,8 @@ public struct TargetScoreBadge: View {
                 Spacer()
                 
                 Text("GC \(String(format: "%.0f", score.gcPercent))%")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.system(size: 11))
+                    .monospacedDigit()
                     .foregroundColor(.secondary)
             }
             
@@ -95,7 +98,8 @@ public struct TargetScoreBadge: View {
                 ForEach(score.tags) { tag in
                     HStack(spacing: 6) {
                         Text(tag.formattedPoints)
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.system(size: 10, weight: .bold))
+                            .monospacedDigit()
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
                             .background(tag.tagColor.opacity(0.15))

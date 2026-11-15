@@ -163,7 +163,8 @@ public struct ColonyCounterView: View {
                             .foregroundColor(.secondary)
                         TextField("4", value: $params.minArea, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
+                            .monospacedDigit()
                             .frame(width: 54)
                             .onSubmit { runSegmentation() }
                     }
@@ -174,7 +175,8 @@ public struct ColonyCounterView: View {
                             .foregroundColor(.secondary)
                         TextField("6000", value: $params.maxArea, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
+                            .monospacedDigit()
                             .frame(width: 64)
                             .onSubmit { runSegmentation() }
                     }
@@ -185,7 +187,8 @@ public struct ColonyCounterView: View {
                             .foregroundColor(.secondary)
                         TextField("0.35", value: $params.minCircularity, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
+                            .monospacedDigit()
                             .frame(width: 52)
                             .onSubmit { runSegmentation() }
                     }
@@ -205,7 +208,8 @@ public struct ColonyCounterView: View {
                             .foregroundColor(.secondary)
                         TextField("1000", value: $params.dilutionFactor, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
+                            .monospacedDigit()
                             .frame(width: 78)
                     }
                     
@@ -215,7 +219,8 @@ public struct ColonyCounterView: View {
                             .foregroundColor(.secondary)
                         TextField("0.1", value: $params.platedVolumeMl, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
+                            .monospacedDigit()
                             .frame(width: 62)
                     }
                 }
@@ -314,7 +319,8 @@ public struct ColonyCounterView: View {
                                 
                                 if showNumberLabels && marker.included {
                                     let label = Text("\(idx + 1)")
-                                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                        .font(.system(size: 9.5, weight: .bold))
+                                        .monospacedDigit()
                                         .foregroundColor(.white)
                                     context.draw(label, at: CGPoint(x: cx, y: cy - rad - 6))
                                 }

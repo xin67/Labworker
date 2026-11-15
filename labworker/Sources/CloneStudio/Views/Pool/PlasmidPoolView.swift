@@ -234,7 +234,8 @@ public struct PlasmidPoolView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
                 Text("\(item.dnaInfo.length) bp")
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 12, weight: .semibold))
+                    .monospacedDigit()
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: true, vertical: false)
                 
@@ -452,7 +453,7 @@ public struct PlasmidPoolView: View {
                         StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                             ForEach(item.uniqueCutSites.prefix(16), id: \.self) { site in
                                 Text(site)
-                                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                                    .font(.system(size: 11.5, weight: .semibold))
                                     .foregroundColor(.orange)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3.5)
@@ -522,7 +523,8 @@ public struct PlasmidPoolView: View {
                                                 .fixedSize(horizontal: true, vertical: false)
                                         }
                                         Text("\(s)..\(e) · \(len) bp (\(dir))")
-                                            .font(.system(size: 11.5, design: .monospaced))
+                                            .font(.system(size: 11.5))
+                                            .monospacedDigit()
                                             .foregroundColor(.secondary)
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -561,7 +563,8 @@ public struct PlasmidPoolView: View {
                     .foregroundColor(.secondary)
                 Spacer()
                 Text("\(linkedEntries.count) 条")
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 11, weight: .semibold))
+                    .monospacedDigit()
                     .foregroundColor(.teal)
             }
             
@@ -584,10 +587,12 @@ public struct PlasmidPoolView: View {
                                         .padding(.vertical, 2)
                                         .background(Capsule().fill(Color.teal.opacity(0.12)))
                                     Text(entry.createdAt, style: .date)
-                                        .font(.system(size: 10.5, design: .monospaced))
+                                        .font(.system(size: 10.5))
+                                        .monospacedDigit()
                                         .foregroundColor(.secondary)
                                     Text("v\(entry.schemaVersion)")
-                                        .font(.system(size: 9.5, design: .monospaced))
+                                        .font(.system(size: 9.5))
+                                        .monospacedDigit()
                                         .foregroundColor(.secondary)
                                 }
                                 Text(entry.summary)

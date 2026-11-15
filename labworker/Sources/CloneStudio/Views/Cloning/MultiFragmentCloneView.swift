@@ -85,7 +85,8 @@ public struct MultiFragmentCloneView: View {
                                             .lineLimit(1)
                                         Spacer()
                                         Text(delLen > 0 ? "替换区间: \(vm.cutStart)..\(vm.cutEnd) (Δ\(delLen)bp)" : "插入位点: @\(vm.cutStart) bp")
-                                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .monospacedDigit()
                                             .foregroundColor(.blue)
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 2.5)
@@ -121,7 +122,8 @@ public struct MultiFragmentCloneView: View {
                                         }
                                         HStack(spacing: 6) {
                                             Text(delLen > 0 ? "替换区间: \(vm.cutStart)..\(vm.cutEnd) (Δ\(delLen)bp)" : "插入位点: @\(vm.cutStart) bp")
-                                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                                .font(.system(size: 11, weight: .semibold))
+                                                .monospacedDigit()
                                                 .foregroundColor(.blue)
                                             Spacer()
                                             StudioCompactPillButton(
@@ -578,7 +580,7 @@ public struct MultiFragmentCloneView: View {
                     set: { vm.fragmentExtra5Bases[idx] = $0 }
                 ))
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 12.5, design: .monospaced))
+                .font(.system(size: 12.5))
                 .frame(width: 135)
             }
             
@@ -590,7 +592,7 @@ public struct MultiFragmentCloneView: View {
                         .fixedSize()
                     TextField("正向 5'→3'", text: $vm.terminalExtra3Bases)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 12.5, design: .monospaced))
+                        .font(.system(size: 12.5))
                         .frame(width: 125)
                 }
             }
@@ -651,10 +653,10 @@ public struct MultiFragmentCloneView: View {
                 )
                 Spacer()
                 if rem != 0 {
-                    StudioCompactPillButton(title: "+5' 补 \(padSeq)", tint: .orange, isProminent: true, monospaced: true) {
+                    StudioCompactPillButton(title: "+5' 补 \(padSeq)", tint: .orange, isProminent: true) {
                         vm.fragmentExtra5Bases[0] = BioSequence.clean(vm.fragmentExtra5Bases[0] ?? "") + padSeq
                     }
-                    StudioCompactPillButton(title: "+3' 补 \(padSeq)", monospaced: true) {
+                    StudioCompactPillButton(title: "+3' 补 \(padSeq)") {
                         vm.terminalExtra3Bases = BioSequence.clean(vm.terminalExtra3Bases) + padSeq
                     }
                 }

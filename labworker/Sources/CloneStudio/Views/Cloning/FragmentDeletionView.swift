@@ -65,7 +65,8 @@ public struct FragmentDeletionView: View {
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                                 if !vm.selectedDNAFileName.isEmpty {
                                     Text(vm.selectedDNAFileName)
-                                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                                        .font(.system(size: 10.5, weight: .semibold))
+                                        .monospacedDigit()
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
                                         .background(Capsule().fill(Color.purple.opacity(0.12)))
@@ -327,7 +328,8 @@ public struct FragmentDeletionView: View {
                                                     .foregroundColor(.secondary)
                                                 TextField("例如 3382", text: $vm.delStartText)
                                                     .textFieldStyle(.roundedBorder)
-                                                    .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                                                    .font(.system(size: 12.5, weight: .semibold))
+                                                    .monospacedDigit()
                                                     .frame(width: 130)
                                             }
                                             
@@ -337,7 +339,8 @@ public struct FragmentDeletionView: View {
                                                     .foregroundColor(.secondary)
                                                 TextField("例如 4371", text: $vm.delEndText)
                                                     .textFieldStyle(.roundedBorder)
-                                                    .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                                                    .font(.system(size: 12.5, weight: .semibold))
+                                                    .monospacedDigit()
                                                     .frame(width: 130)
                                             }
                                             
@@ -364,7 +367,8 @@ public struct FragmentDeletionView: View {
                                                         .foregroundColor(.secondary)
                                                     TextField("例如 3382", text: $vm.delStartText)
                                                         .textFieldStyle(.roundedBorder)
-                                                        .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                                                        .font(.system(size: 12.5, weight: .semibold))
+                                                        .monospacedDigit()
                                                         .frame(maxWidth: .infinity)
                                                 }
                                                 
@@ -374,7 +378,8 @@ public struct FragmentDeletionView: View {
                                                         .foregroundColor(.secondary)
                                                     TextField("例如 4371", text: $vm.delEndText)
                                                         .textFieldStyle(.roundedBorder)
-                                                        .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                                                        .font(.system(size: 12.5, weight: .semibold))
+                                                        .monospacedDigit()
                                                         .frame(maxWidth: .infinity)
                                                 }
                                             }
@@ -417,7 +422,8 @@ public struct FragmentDeletionView: View {
                                     .foregroundColor(.secondary)
                                 Spacer()
                                 Text("目标 Tm: \(String(format: "%.1f", appState.mutationTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) ℃")
-                                    .font(.system(size: 11, design: .monospaced))
+                                    .font(.system(size: 11))
+                                    .monospacedDigit()
                                     .foregroundColor(.secondary)
                             }
                         }

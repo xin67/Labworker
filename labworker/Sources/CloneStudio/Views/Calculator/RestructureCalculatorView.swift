@@ -116,7 +116,8 @@ public struct RestructureCalculatorView: View {
                                 .font(.system(size: 12.5, weight: .semibold))
                                 .foregroundColor(.secondary)
                             Text("\(res.volFormatted) μL")
-                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .font(.system(size: 14, weight: .bold))
+                                .monospacedDigit()
                                 .foregroundColor(.green)
                         }
                         .padding(.horizontal, 10)
@@ -155,7 +156,8 @@ public struct RestructureCalculatorView: View {
                         HStack {
                             Spacer()
                             Text("移液体积: \(res.volFormatted) μL")
-                                .font(.system(size: 13.5, weight: .bold, design: .monospaced))
+                                .font(.system(size: 13.5, weight: .bold))
+                                .monospacedDigit()
                                 .foregroundColor(.green)
                         }
                     }
@@ -234,7 +236,8 @@ public struct RestructureCalculatorView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.secondary)
                     Text("\(res.volFormatted) μL")
-                        .font(.system(size: 13.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 13.5, weight: .bold))
+                        .monospacedDigit()
                         .foregroundColor(.green)
                 }
                 .padding(.horizontal, 10)
@@ -398,14 +401,15 @@ public struct RestructureCalculatorView: View {
                 .foregroundColor(.secondary)
             TextField(placeholder, text: text)
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                .font(.system(size: 12.5, weight: .semibold))
+                .monospacedDigit()
                 .frame(width: width)
                 .overlay(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .stroke(highlightColor?.opacity(0.45) ?? Color.clear, lineWidth: 1)
                 )
             Text(unit)
-                .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+                .font(.system(size: 11.5, weight: .medium))
                 .foregroundColor(.secondary)
         }
     }
@@ -431,12 +435,14 @@ public struct RestructureCalculatorView: View {
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundColor(.primary)
                 Text(detail)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.system(size: 11))
+                    .monospacedDigit()
                     .foregroundColor(.secondary)
             }
             Spacer()
             Text(vol)
-                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .font(.system(size: 13, weight: .bold))
+                .monospacedDigit()
                 .foregroundColor(tint == .secondary ? .primary : tint)
         }
         .studioInnerBox(paddingH: 10, paddingV: 8)

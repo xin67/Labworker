@@ -234,10 +234,11 @@ public struct WesternBlotView: View {
                                 Image(systemName: group.rawChemi != nil ? "sparkles.rectangle.stack.fill" : "photo")
                                     .font(.system(size: 11.5, weight: .semibold))
                                 Text(group.title)
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 12, weight: .semibold))
                                 if group.rawChemi != nil {
                                     Text("16-bit")
-                                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                        .font(.system(size: 9.5, weight: .bold))
+                                        .monospacedDigit()
                                         .padding(.horizontal, 5)
                                         .padding(.vertical, 1.5)
                                         .background(Capsule().fill(isSel ? Color.white.opacity(0.24) : Color.teal.opacity(0.15)))
@@ -326,7 +327,8 @@ public struct WesternBlotView: View {
                 .tint(.pink)
                 .frame(width: 110)
             Text("\(Int((brightfieldOverlayOpacity * 100).rounded()))%")
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .font(.system(size: 11, weight: .semibold))
+                .monospacedDigit()
                 .frame(width: 34, alignment: .trailing)
         }
         .help("明场 Marker 图层混叠透明度")
@@ -388,7 +390,8 @@ public struct WesternBlotView: View {
                     }
                     .studioGlassButton(isCircle: true, controlSize: .small)
                     Text(String(format: "%.0f%%", canvasZoom * 100))
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11, weight: .semibold))
+                        .monospacedDigit()
                         .frame(width: 38)
                     Button {
                         canvasZoom = min(2.5, canvasZoom + 0.15)
@@ -485,7 +488,8 @@ public struct WesternBlotView: View {
                                 } label: {
                                     HStack(spacing: 2) {
                                         Text("L\(lane.index + 1)")
-                                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                                            .font(.system(size: 10, weight: .bold))
+                                            .monospacedDigit()
                                         if isCtrl {
                                             Image(systemName: "star.fill")
                                                 .font(.system(size: 8))
@@ -581,7 +585,8 @@ public struct WesternBlotView: View {
                 )
             
             Text(String(format: "%.2f×", band.foldChange))
-                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                .font(.system(size: 9.5, weight: .bold))
+                .monospacedDigit()
                 .foregroundColor(.white)
                 .padding(.horizontal, 4)
                 .padding(.vertical, 1)
@@ -662,7 +667,8 @@ public struct WesternBlotView: View {
             StudioCard(title: "L\(selectedLaneIndex + 1) 光密度剖面") {
                 if let band = result.bands.first(where: { $0.laneIndex == selectedLaneIndex }) {
                     Text(String(format: "Net IOD %.0f", band.netIOD))
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11, weight: .semibold))
+                        .monospacedDigit()
                         .foregroundColor(.teal)
                 }
             } content: {
@@ -742,7 +748,8 @@ public struct WesternBlotView: View {
                             .cornerRadius(4)
                             .annotation(position: .top) {
                                 Text(String(format: "%.2f×", band.foldChange))
-                                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 9.5, weight: .bold))
+                                    .monospacedDigit()
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -776,7 +783,8 @@ public struct WesternBlotView: View {
                                 .symbolSize(0)
                                 .annotation(position: .top) {
                                     Text("\(String(format: "%.2f", g.meanFold)) (\(g.significanceText))")
-                                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                        .font(.system(size: 9.5, weight: .bold))
+                                        .monospacedDigit()
                                         .foregroundColor(g.significanceText.contains("*") ? .red : .secondary)
                                 }
                             }
@@ -874,7 +882,8 @@ public struct WesternBlotView: View {
                         .foregroundColor(.secondary)
                     Spacer()
                     Text("\(params.rollingBallRadius) px")
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                 }
                 Slider(
                     value: Binding(
@@ -895,7 +904,8 @@ public struct WesternBlotView: View {
                         .foregroundColor(.secondary)
                     Spacer()
                     Text(String(format: "%.2f", params.bandProminence))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                 }
                 Slider(value: $params.bandProminence, in: 0.04...0.35) { editing in
                     if !editing { runAutoAnalysis() }
@@ -909,7 +919,8 @@ public struct WesternBlotView: View {
                         .foregroundColor(.secondary)
                     Spacer()
                     Text(String(format: "%.2f", params.stripThreshold))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                 }
                 Slider(value: $params.stripThreshold, in: 0.03...0.25) { editing in
                     if !editing { runAutoAnalysis() }
@@ -966,7 +977,8 @@ public struct WesternBlotView: View {
                         .foregroundColor(.secondary)
                     Spacer()
                     Text(String(format: "%.2f×", contrastBoost))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                 }
                 Slider(value: $contrastBoost, in: 0.6...3.0) { _ in
                     refreshDisplayImages()
@@ -980,7 +992,8 @@ public struct WesternBlotView: View {
                         .foregroundColor(.secondary)
                     Spacer()
                     Text(String(format: "%.2f", gammaDisplay))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .monospacedDigit()
                 }
                 Slider(value: $gammaDisplay, in: 0.4...2.2) { _ in
                     refreshDisplayImages()
@@ -1045,7 +1058,8 @@ public struct WesternBlotView: View {
                 ForEach(res.lanes) { lane in
                     HStack(spacing: 8) {
                         Text("L\(lane.index + 1)")
-                            .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 11.5, weight: .bold))
+                            .monospacedDigit()
                             .frame(width: 28, alignment: .leading)
                         TextField(
                             "分组名",
@@ -1094,7 +1108,8 @@ public struct WesternBlotView: View {
                                 VStack(alignment: .leading, spacing: 3) {
                                     HStack {
                                         Text(bl.bandID)
-                                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                            .font(.system(size: 10.5, weight: .bold))
+                                            .monospacedDigit()
                                         Spacer()
                                         Text(bl.isLinear ? "线性" : "非线性")
                                             .font(.system(size: 9.5, weight: .bold))
@@ -1119,7 +1134,8 @@ public struct WesternBlotView: View {
                                     .chartYAxis(.hidden)
                                     .frame(height: 32)
                                     Text(String(format: "R²=%.4f%@", bl.r2, bl.isSaturatedInMaxExposure ? " · 截断" : ""))
-                                        .font(.system(size: 9.5, design: .monospaced))
+                                        .font(.system(size: 9.5))
+                                        .monospacedDigit()
                                         .foregroundColor(.secondary)
                                 }
                                 .padding(6)
@@ -1214,7 +1230,8 @@ public struct WesternBlotView: View {
         StudioCard(title: "条带 IOD 定量明细") {
             if let res = currentResult {
                 Text("共 \(res.bands.count) 个圈定框")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.system(size: 11))
+                    .monospacedDigit()
                     .foregroundColor(.secondary)
             }
         } content: {
@@ -1228,16 +1245,19 @@ public struct WesternBlotView: View {
                         } label: {
                             HStack(spacing: 8) {
                                 Text(band.id)
-                                    .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 11.5, weight: .bold))
+                                    .monospacedDigit()
                                     .foregroundColor(band.rowIndex == 0 ? .green : .orange)
                                     .frame(width: 48, alignment: .leading)
                                 
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(String(format: "Net IOD: %.0f", band.netIOD))
-                                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                        .font(.system(size: 11, weight: .medium))
+                                        .monospacedDigit()
                                         .foregroundColor(.primary)
                                     Text("\(band.width)×\(band.height) px · Bg \(String(format: "%.0f", band.backgroundIOD))")
-                                        .font(.system(size: 9.5, design: .monospaced))
+                                        .font(.system(size: 9.5))
+                                        .monospacedDigit()
                                         .foregroundColor(.secondary)
                                 }
                                 Spacer()

@@ -167,7 +167,7 @@ public enum StudioGlassSupport {
     }
 }
 
-/// 当用户手动脱离“跟随系统设置”调整 Liquid Glass 滑块时使用的轻量级原生 Glass ButtonStyle
+/// 当用户手动脱离“跟随系统设置”调整 Liquid Glass 滑块时，或用于修复 macOS 27 `Menu` 忽略 `.buttonStyle(.glass)` 时的原生 Glass ButtonStyle
 private struct StudioManualGlassButtonStyle: ButtonStyle {
     let appState: AppState
     let tint: Color?
@@ -177,6 +177,8 @@ private struct StudioManualGlassButtonStyle: ButtonStyle {
     let isCircle: Bool
     let controlSize: ControlSize
     let fillWidth: Bool
+    var usePureSystemGlass: Bool = false
+    var showMenuIndicator: Bool = false
 
     private var controlHeight: CGFloat {
         switch controlSize {
@@ -192,7 +194,7 @@ private struct StudioManualGlassButtonStyle: ButtonStyle {
         switch controlSize {
         case .mini: return 7
         case .small: return 8
-        case .large: return 12
+        case .large: return isCircle ? 0 : 11
         case .extraLarge: return 14
         default: return 10
         }
@@ -219,28 +221,42 @@ private struct StudioManualGlassButtonStyle: ButtonStyle {
                 return tint ?? .primary
             }
         }()
-        let shape = AnyShape(isCircle ? AnyShape(Circle()) : AnyShape(Capsule(style: .continuous)))
-        return configuration.label
-            .font(.system(size: controlSize == .small ? 11 : 12, weight: isActiveHighlight ? .semibold : .medium))
-            .foregroundStyle(fgColor)
-            .padding(.horizontal, isCircle ? 0 : horizontalPadding)
-            .frame(minWidth: isCircle ? controlHeight : nil, maxWidth: fillWidth ? .infinity : nil)
-            .frame(height: controlHeight)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .glassEffect(
-                StudioGlassSupport.buttonGlass(
-                    appState: appState,
-                    tint: isActiveHighlight ? resolvedTint : nil,
-                    prominent: isActiveHighlight,
-                    selected: isActiveHighlight,
-                    disabled: isDisabled,
-                    interactive: !isDisabled
-                ),
-                in: shape
+        let shape = isCircle ? AnyShape(Circle()) : AnyShape(Capsule(style: .continuous))
+        let glass: Glass = {
+            if usePureSystemGlass {
+                return isDisabled ? .regular : .regular.interactive()
+            }
+            return StudioGlassSupport.buttonGlass(
+                appState: appState,
+                tint: isActiveHighlight ? resolvedTint : nil,
+                prominent: isActiveHighlight,
+                selected: isActiveHighlight,
+                disabled: isDisabled,
+                interactive: !isDisabled
             )
-            .overlay(shape.stroke(borderColor, lineWidth: 0.75))
-            .contentShape(shape)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+        }()
+        return HStack(spacing: isCircle ? 0 : (controlSize == .large ? 4.5 : 4)) {
+            configuration.label
+            if showMenuIndicator {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: controlSize == .small ? 8 : 8.5, weight: .bold))
+                    .opacity(0.7)
+            }
+        }
+        .font(.system(size: controlSize == .small ? 11 : 12, weight: isActiveHighlight ? .semibold : .medium))
+        .foregroundStyle(fgColor)
+        .padding(.horizontal, isCircle ? 0 : horizontalPadding)
+        .frame(minWidth: isCircle ? controlHeight : nil, maxWidth: fillWidth ? .infinity : nil)
+        .frame(height: controlHeight)
+        .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+        .glassEffect(glass, in: shape)
+        .overlay {
+            if !usePureSystemGlass {
+                shape.stroke(borderColor, lineWidth: 0.75)
+            }
+        }
+        .contentShape(shape)
+        .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -326,57 +342,28 @@ private struct StudioNativeOrManualGlassMenuModifier: ViewModifier {
     let controlSize: ControlSize
     let hideIndicator: Bool
 
-    private var controlHeight: CGFloat {
-        switch controlSize {
-        case .mini: return 18
-        case .small: return 20
-        case .large: return 28
-        default: return 24
-        }
-    }
-
     func body(content: Content) -> some View {
-        if appState.followSystemLiquidGlass {
-            content
-                .buttonStyle(.glass)
-                .buttonBorderShape(isCircle ? .circle : .capsule)
-                .controlSize(controlSize)
-                .tint(nil)
-                .menuIndicator(hideIndicator ? .hidden : .visible)
-                .fixedSize()
-                .disabled(isDisabled)
-                .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
-        } else {
-            let isLight = appState.isLightAppearance
-            let shape = isCircle ? AnyShape(Circle()) : AnyShape(Capsule(style: .continuous))
-            let borderColor = StudioGlassSupport.specularRimColor(
-                isLight: isLight,
-                tint: nil,
-                disabled: isDisabled,
-                appState: appState
-            )
-            content
-                .menuStyle(.borderlessButton)
-                .menuIndicator(hideIndicator ? .hidden : .visible)
-                .foregroundStyle(isDisabled ? .secondary.opacity(0.60) : (tint ?? .primary))
-                .padding(.horizontal, isCircle ? 0 : (controlSize == .large ? 11 : 9))
-                .frame(minWidth: isCircle ? controlHeight : nil)
-                .frame(height: controlHeight)
-                .glassEffect(
-                    StudioGlassSupport.buttonGlass(
-                        appState: appState,
-                        tint: nil,
-                        disabled: isDisabled,
-                        interactive: !isDisabled
-                    ),
-                    in: shape
+        content
+            // macOS 27 `Menu` 会忽略 `.buttonStyle(.glass)` 并回退为不透明灰底，改用 `.menuStyle(.button)` + 原生 `.glassEffect` ButtonStyle 确保材质与命中区域一致
+            .menuStyle(.button)
+            .buttonStyle(
+                StudioManualGlassButtonStyle(
+                    appState: appState,
+                    tint: tint,
+                    isProminent: false,
+                    isSelected: false,
+                    isDisabled: isDisabled,
+                    isCircle: isCircle,
+                    controlSize: controlSize,
+                    fillWidth: false,
+                    usePureSystemGlass: appState.followSystemLiquidGlass,
+                    showMenuIndicator: !hideIndicator
                 )
-                .overlay(shape.stroke(borderColor, lineWidth: 0.75))
-                .contentShape(shape)
-                .fixedSize()
-                .disabled(isDisabled)
-                .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
-        }
+            )
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .disabled(isDisabled)
+            .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
     }
 }
 
@@ -879,7 +866,6 @@ public struct StudioCompactPillButton: View {
     public var tint: Color? = nil
     public var isProminent: Bool = false
     public var isSelected: Bool = false
-    public var monospaced: Bool = false
     public var isDisabled: Bool = false
     public var help: String? = nil
     public let action: () -> Void
@@ -891,7 +877,6 @@ public struct StudioCompactPillButton: View {
         tint: Color? = nil,
         isProminent: Bool = false,
         isSelected: Bool = false,
-        monospaced: Bool = false,
         isDisabled: Bool = false,
         help: String? = nil,
         action: @escaping () -> Void
@@ -902,7 +887,6 @@ public struct StudioCompactPillButton: View {
         self.tint = tint
         self.isProminent = isProminent
         self.isSelected = isSelected
-        self.monospaced = monospaced
         self.isDisabled = isDisabled
         self.help = help
         self.action = action
@@ -927,7 +911,8 @@ public struct StudioCompactPillButton: View {
                 }
                 if !title.isEmpty {
                     Text(title)
-                        .font(.system(size: 11, weight: isActiveHighlight ? .semibold : .medium, design: monospaced ? .monospaced : .default))
+                        .font(.system(size: 11, weight: isActiveHighlight ? .semibold : .medium))
+                        .monospacedDigit()
                         .lineLimit(1)
                 }
             }
@@ -950,7 +935,7 @@ public struct StudioCompactPillButton: View {
     }
 }
 
-/// 统一胶囊下拉菜单按钮（直用 macOS 27 原生 `.buttonStyle(.glass)` Menu + `.menuIndicator`）
+/// 统一胶囊下拉菜单按钮（经 `.studioGlassMenu` 使用 `.menuStyle(.button)` + `.glassEffect` 渲染原生 Liquid Glass）
 public struct StudioMenuPillButton<MenuContent: View>: View {
     @ObservedObject private var appState = AppState.shared
     public let title: String
@@ -994,11 +979,6 @@ public struct StudioMenuPillButton<MenuContent: View>: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                if !appState.followSystemLiquidGlass {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: compact ? 8 : 8.5, weight: .bold))
-                        .opacity(0.7)
-                }
             }
             .foregroundStyle(isDisabled ? .secondary.opacity(0.60) : (tint ?? .primary))
         }
@@ -1007,7 +987,7 @@ public struct StudioMenuPillButton<MenuContent: View>: View {
             isDisabled: isDisabled,
             isCircle: title.isEmpty,
             controlSize: compact ? .regular : .large,
-            hideIndicator: !appState.followSystemLiquidGlass || title.isEmpty
+            hideIndicator: title.isEmpty
         )
 
         if let helpText = help, !helpText.isEmpty {
@@ -1459,14 +1439,14 @@ public struct StudioOverflowToolbar: View {
                 Menu {
                     EmptyView()
                 } label: {
-                    actionLabel(title: title, icon: icon, hasMenu: true, fgColor: tint ?? .primary)
+                    actionLabel(title: title, icon: icon, hasMenu: false, fgColor: tint ?? .primary)
                 }
                 .studioGlassMenu(
                     tint: tint,
                     isDisabled: false,
                     isCircle: isIconOnly,
                     controlSize: .large,
-                    hideIndicator: !appState.followSystemLiquidGlass || isIconOnly
+                    hideIndicator: isIconOnly
                 )
             } else {
                 Button(action: {}) {
@@ -1537,14 +1517,14 @@ public struct StudioOverflowToolbar: View {
                         .disabled(sub.isDisabled)
                     }
                 } label: {
-                    actionLabel(title: title, icon: icon, hasMenu: true, fgColor: fgColor)
+                    actionLabel(title: title, icon: icon, hasMenu: false, fgColor: fgColor)
                 }
                 .studioGlassMenu(
                     tint: tint,
                     isDisabled: isDisabled,
                     isCircle: isIconOnly,
                     controlSize: .large,
-                    hideIndicator: !appState.followSystemLiquidGlass || isIconOnly
+                    hideIndicator: isIconOnly
                 )
                 .help(help ?? title)
             } else {
@@ -1641,7 +1621,7 @@ public struct StudioOverflowToolbar: View {
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
             }
-            if hasMenu && !appState.followSystemLiquidGlass {
+            if hasMenu {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8.5, weight: .bold))
                     .opacity(0.7)
@@ -1827,7 +1807,7 @@ public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
         .safeAreaBar(edge: .top, spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
                 Text(title)
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -1845,6 +1825,15 @@ public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
     }
 }
 
+extension StudioPageLayout where TrailingContent == EmptyView {
+    public init(
+        title: String,
+        @ViewBuilder content: () -> BodyContent
+    ) {
+        self.init(title: title, trailing: { EmptyView() }, content: content)
+    }
+}
+
 extension StudioPageLayout where TrailingContent == StudioOverflowToolbar {
     public init(
         title: String,
@@ -1856,15 +1845,6 @@ extension StudioPageLayout where TrailingContent == StudioOverflowToolbar {
             trailing: { StudioOverflowToolbar(items: toolbar) },
             content: content
         )
-    }
-}
-
-extension StudioPageLayout where TrailingContent == EmptyView {
-    public init(
-        title: String,
-        @ViewBuilder content: () -> BodyContent
-    ) {
-        self.init(title: title, trailing: { EmptyView() }, content: content)
     }
 }
 
@@ -1883,7 +1863,7 @@ public struct StudioPageHeader<TrailingContent: View>: View {
     public var body: some View {
         HStack(alignment: .center, spacing: 12) {
             Text(title)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: 18, weight: .bold))
                 .foregroundColor(.primary)
                 .lineLimit(1)
                 .layoutPriority(1)
@@ -2213,7 +2193,8 @@ public struct StudioMetricBadge: View {
                     .foregroundColor(.secondary)
             }
             Text(value)
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .font(.system(size: 12, weight: .semibold))
+                .monospacedDigit()
                 .foregroundColor(color)
         }
         .padding(.horizontal, 8.5)
@@ -2692,7 +2673,7 @@ public struct StudioPrimaryActionButton: View {
                         .font(.system(size: 12.5, weight: .bold))
                 }
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: 13, weight: .semibold))
             }
             .frame(maxWidth: fillWidth ? .infinity : nil)
         }
@@ -3078,13 +3059,13 @@ public enum FinderFileDropHelper {
             .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 18px; }
             .metric-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; }
             .metric-label { font-size: 11px; color: #64748b; }
-            .metric-val { font-size: 14px; font-weight: 700; color: #0f172a; font-family: ui-monospace, SFMono-Regular, monospace; margin-top: 2px; }
+            .metric-val { font-size: 14px; font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; margin-top: 2px; }
             .warn-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 16px; font-size: 12.5px; color: #92400e; }
             table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
-            th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-family: ui-monospace, SFMono-Regular, monospace; }
+            th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-variant-numeric: tabular-nums; }
             th { background: #f1f5f9; color: #334155; font-weight: 600; }
             .code-box { background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 8px; font-size: 12px; overflow-x: auto; }
-            .prov-line { margin-top: 18px; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, monospace; color: #475569; }
+            .prov-line { margin-top: 18px; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 11.5px; color: #475569; }
             .footer { margin-top: 8px; font-size: 11.5px; color: #94a3b8; text-align: right; }
           </style>
         </head>

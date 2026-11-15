@@ -1505,7 +1505,8 @@ public struct PlasmidPreviewPanel: View {
                                         Text(feat.name)
                                             .font(.system(size: 10, weight: isSel ? .semibold : .medium))
                                         Text("\(feat.lengthBp)bp")
-                                            .font(.system(size: 9, design: .monospaced))
+                                            .font(.system(size: 9))
+                                            .monospacedDigit()
                                             .studioOptionalForeground(isSel ? nil : .secondary)
                                     }
                                     .studioOptionalForeground(isSel ? nil : .primary)
@@ -1770,15 +1771,15 @@ public struct PlasmidPreviewPanel: View {
         let subCol = isDark ? Color.white.opacity(0.45) : Color(red: 0.40, green: 0.46, blue: 0.56)
         return VStack(spacing: 1) {
             Text(data.constructTitle)
-                .font(.system(size: 11.5, weight: .bold, design: .serif))
-                .italic()
+                .font(.system(size: 11.5, weight: .bold))
                 .foregroundColor(titleCol)
                 .lineLimit(1)
             Text("\(data.totalLengthBp) bps")
-                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                .font(.system(size: 10.5, weight: .semibold))
+                .monospacedDigit()
                 .foregroundColor(bpCol)
             Text("circular")
-                .font(.system(size: 8.5, design: .monospaced))
+                .font(.system(size: 8.5))
                 .foregroundColor(subCol)
         }
         .offset(x: panOffset.width, y: panOffset.height)
@@ -1792,11 +1793,13 @@ public struct PlasmidPreviewPanel: View {
         let accentCol = isDark ? Color.cyan.opacity(0.88) : Color(red: 0.02, green: 0.45, blue: 0.78)
         return HStack {
             Text("Vector: \(data.vectorName) · Zoom: \(Int(zoomScale * 100))%")
-                .font(.system(size: 9.5, design: .monospaced))
+                .font(.system(size: 9.5))
+                .monospacedDigit()
                 .foregroundColor(subCol)
             Spacer()
             Text("\(detectedCutsites.count) sites · \(data.features.count) features")
-                .font(.system(size: 9.5, design: .monospaced))
+                .font(.system(size: 9.5))
+                .monospacedDigit()
                 .foregroundColor(accentCol)
         }
         .padding(.horizontal, 10)
@@ -1874,7 +1877,8 @@ public struct PlasmidPreviewPanel: View {
                 let rTxt = rRulerRing - 13.0
                 let numResolved = context.resolve(
                     Text("\(bpVal)")
-                        .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 7.5, weight: .semibold))
+                        .monospacedDigit()
                         .foregroundColor(rulerNumCol)
                 )
                 context.draw(numResolved, at: CGPoint(x: cx + rTxt * cosA, y: cy + rTxt * sinA), anchor: .center)
@@ -1938,7 +1942,7 @@ public struct PlasmidPreviewPanel: View {
             if span >= 0.075 {
                 let fResolved = context.resolve(
                     Text(feat.name)
-                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 8.5, weight: .bold))
                         .foregroundColor(.white)
                 )
                 context.draw(fResolved, at: midPt, anchor: .center)
@@ -2073,7 +2077,7 @@ public struct PlasmidPreviewPanel: View {
             
             let resolvedText = context.resolve(
                 Text(lbl.text)
-                    .font(.system(size: 8.5, weight: lbl.priority >= 16 ? .bold : .medium, design: .monospaced))
+                    .font(.system(size: 8.5, weight: lbl.priority >= 16 ? .bold : .medium))
                     .foregroundColor(col.opacity(0.95))
             )
             let anchor: UnitPoint = lbl.isLeftHalf ? .trailing : .leading
@@ -2119,7 +2123,7 @@ public struct PlasmidPreviewPanel: View {
                                     .fill(feat.color)
                                     .frame(width: 6, height: 6)
                                 Text("[\(feat.featureType)]")
-                                    .font(.system(size: 8.0, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 8.0, weight: .bold))
                                     .foregroundColor(feat.color)
                                 Text(feat.name)
                                     .font(.system(size: 8.5, weight: isSel ? .bold : .medium))
@@ -2202,7 +2206,7 @@ public struct PlasmidPreviewPanel: View {
                 ForEach(data.primers) { p in
                     HStack(spacing: 6) {
                         Text(p.isForward ? "F" : "R")
-                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 9.5, weight: .bold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -2211,7 +2215,7 @@ public struct PlasmidPreviewPanel: View {
                         Text(p.name).font(.system(size: 11, weight: .semibold)).frame(width: 80, alignment: .leading)
                         Text(p.sequence).font(.system(size: 10, design: .monospaced)).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
                         Spacer()
-                        Text(p.tmText).font(.system(size: 10, design: .monospaced)).foregroundColor(.orange)
+                        Text(p.tmText).font(.system(size: 10)).monospacedDigit().foregroundColor(.orange)
                     }
                     .studioInnerBox(paddingH: 8, paddingV: 5)
                 }

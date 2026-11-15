@@ -162,7 +162,7 @@ public struct PrimerPairQuickRenameBar: View {
             
             TextField("引物前缀 (自动生成 -F / -R)", text: $prefixText)
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                .font(.system(size: 13, weight: .medium))
                 .frame(minWidth: 140, maxWidth: 220)
                 .onSubmit {
                     applyRename()
@@ -194,7 +194,8 @@ public struct PrimerPairQuickRenameBar: View {
             Spacer(minLength: 4)
             
             Text("\(currentForwardName) / \(currentReverseName)")
-                .font(.system(size: 12, design: .monospaced))
+                .font(.system(size: 12))
+                .monospacedDigit()
                 .foregroundColor(.secondary)
                 .lineLimit(1)
         }
@@ -294,7 +295,8 @@ public struct PrimerCardView: View {
         return VStack(alignment: .leading, spacing: 10) {
             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                 Text(primer.name)
-                    .font(.system(size: 14.5, weight: .bold, design: .monospaced))
+                    .font(.system(size: 14.5, weight: .bold))
+                    .monospacedDigit()
                 
                 if onPairedRename != nil || onSingleRename != nil {
                     StudioCompactPillButton(title: "改名", icon: "pencil", tint: .accentColor) {
@@ -341,7 +343,7 @@ public struct PrimerCardView: View {
                 HStack(spacing: 8) {
                     TextField(onPairedRename != nil ? "输入成对前缀" : "输入新名称", text: $draftNameText)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 13, design: .monospaced))
+                        .font(.system(size: 13))
                         .frame(maxWidth: 220)
                         .onSubmit {
                             commitPairedOrSingleRename()
@@ -446,7 +448,8 @@ public struct PrimerCardView: View {
                     Slider(value: $appState.primerMgConc, in: 0.0...6.0, step: 0.1)
                         .frame(width: 75)
                     Text(String(format: "%.1f mM", appState.primerMgConc))
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11, weight: .semibold))
+                        .monospacedDigit()
                 }
                 
                 HStack(spacing: 4) {
@@ -455,7 +458,8 @@ public struct PrimerCardView: View {
                     Slider(value: $appState.primerDntpConc, in: 0.0...4.0, step: 0.1)
                         .frame(width: 75)
                     Text(String(format: "%.1f mM", appState.primerDntpConc))
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11, weight: .semibold))
+                        .monospacedDigit()
                 }
                 
                 let eqMm = appState.primerThermoConditions.equivalentMonovalentMolar * 1000.0

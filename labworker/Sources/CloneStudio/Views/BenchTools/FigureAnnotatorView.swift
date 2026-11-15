@@ -85,7 +85,8 @@ public struct FigureAnnotatorView: View {
                                 .font(.system(size: 12.5))
                                 .foregroundColor(.secondary)
                             Text("\(columnsCount)")
-                                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                .font(.system(size: 13, weight: .bold))
+                                .monospacedDigit()
                         }
                     }
                     .fixedSize()
@@ -133,7 +134,8 @@ public struct FigureAnnotatorView: View {
                         
                         if let px = panels[idx].pixelSizeMicrons ?? panels[idx].rawPlane.effectivePixelSizeUM {
                             Text("(\(String(format: "%.3f", px)) µm/px)")
-                                .font(.system(size: 11, design: .monospaced))
+                                .font(.system(size: 11))
+                                .monospacedDigit()
                                 .foregroundColor(.secondary)
                         } else {
                             Text("(未校准)")
@@ -149,7 +151,8 @@ public struct FigureAnnotatorView: View {
                                 .foregroundColor(.secondary)
                             TextField("标尺长度", value: $panels[idx].scaleBarMicrons, format: .number)
                                 .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 11, design: .monospaced))
+                                .font(.system(size: 11))
+                                .monospacedDigit()
                                 .frame(width: 48)
                                 .onChange(of: panels[idx].scaleBarMicrons) { _, _ in
                                     panels[idx].scaleBarSource = .manual
@@ -293,7 +296,7 @@ public struct FigureAnnotatorView: View {
                     
                     // 左上角出版级面板编号 A / B / C / D
                     Text(labelStyle.label(for: index))
-                        .font(.system(size: 15, weight: .heavy, design: .rounded))
+                        .font(.system(size: 15, weight: .heavy))
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)

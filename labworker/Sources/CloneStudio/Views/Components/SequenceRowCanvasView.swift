@@ -474,7 +474,8 @@ public struct SequenceRowCanvasView: View {
                         .foregroundColor(primaryTextColor)
                         .fixedSize()
                     Text("Length: \(totalLengthBp) bp")
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .font(.system(size: 10, weight: .medium))
+                        .monospacedDigit()
                         .foregroundColor(secondaryTextColor)
                         .fixedSize()
                 }
@@ -494,7 +495,8 @@ public struct SequenceRowCanvasView: View {
                         .font(.system(size: 11.5, weight: .bold))
                         .foregroundColor(primaryTextColor)
                     Text("Length: \(totalLengthBp) bp")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.system(size: 10))
+                        .monospacedDigit()
                         .foregroundColor(secondaryTextColor)
                     Spacer()
                     codonSnapModeToggleBtn
@@ -529,7 +531,6 @@ public struct SequenceRowCanvasView: View {
             tint: accentCol,
             isProminent: showEnzymeInspector,
             isSelected: showEnzymeInspector,
-            monospaced: true,
             help: "打开/关闭限制性内切酶选择器与 NEB Buffer 活性矩阵"
         ) {
             withAnimation(.easeInOut(duration: 0.18)) {
@@ -725,18 +726,21 @@ public struct SequenceRowCanvasView: View {
                 let aaStr = selectedAminoAcidString(in: win, range: sel)
                 let aaDisplay = aaStr.isEmpty ? "" : " · \(aaStr.count) aa (\(String(aaStr.prefix(16)))\(aaStr.count > 16 ? "..." : ""))"
                 Text("Selected: \(sel.lowerBound) .. \(sel.upperBound) (\(len) bp\(aaDisplay) · Tm ≈ \(tm)°C)")
-                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9.5, weight: .bold))
+                    .monospacedDigit()
                     .foregroundColor(selColor)
             } else {
                 Text("直接按住密码子/氨基酸或碱基滑动拉取选区 · Length: \(totalLengthBp) bp · GC: \(String(format: "%.1f", gcPercent))%")
-                    .font(.system(size: 9.5, design: .monospaced))
+                    .font(.system(size: 9.5))
+                    .monospacedDigit()
                     .foregroundColor(secondaryTextColor)
             }
             
             Spacer()
             
             Text("\(detectedCutsites.count) cut sites | \(features.count) features")
-                .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                .font(.system(size: 9.5, weight: .medium))
+                .monospacedDigit()
                 .foregroundColor(secondaryTextColor)
         }
         .padding(.horizontal, 10)
@@ -801,13 +805,14 @@ public struct SequenceRowCanvasView: View {
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.pink)
                 Text("定点突变选择: 第 \(residueNumber) 位氨基酸 \(codonItem.threeLetterCode) (\(String(codonItem.aminoAcid))) · 密码子 \(codonItem.codon) (@\(codonStartBp)..\(codonEndBp) bp)")
-                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                    .font(.system(size: 10.5, weight: .bold))
+                    .monospacedDigit()
                     .foregroundColor(primaryTextColor)
                 Spacer()
                 HStack(spacing: 4) {
                     TextField("自定义密码子/碱基", text: $customMutCodonText)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.system(size: 10))
                         .frame(width: 105)
                     StudioCompactPillButton(title: "应用自定义突变", tint: .pink, isProminent: true) {
                         let cleanCustom = BioSequence.clean(customMutCodonText)
@@ -836,9 +841,9 @@ public struct SequenceRowCanvasView: View {
                         }) {
                             VStack(spacing: 1) {
                                 Text("\(String(opt.singleLetter)) (\(opt.threeLetter))")
-                                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 9.5, weight: .bold))
                                 Text(opt.preferredCodon)
-                                    .font(.system(size: 8.0, design: .monospaced))
+                                    .font(.system(size: 8.0))
                                     .opacity(0.85)
                             }
                             .foregroundColor(.white)
@@ -1230,7 +1235,7 @@ private struct StaticSequenceRowCanvas: View, Equatable {
                     
                     let badge = context.resolve(
                         Text(cut.name)
-                            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 8.5, weight: .bold))
                             .foregroundColor(enzCol)
                     )
                     context.draw(badge, at: CGPoint(x: labelX, y: labelY), anchor: .center)
@@ -1261,7 +1266,8 @@ private struct StaticSequenceRowCanvas: View, Equatable {
                 if isMajor {
                     let lbl = context.resolve(
                         Text("\(globalBp)")
-                            .font(.system(size: 8.0, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 8.0, weight: .semibold))
+                            .monospacedDigit()
                             .foregroundColor(rulerColor)
                     )
                     context.draw(lbl, at: CGPoint(x: xCenter, y: rulerY - 8.0), anchor: .center)
@@ -1299,7 +1305,7 @@ private struct StaticSequenceRowCanvas: View, Equatable {
                         let arrowSym = primer.isForward ? "▸" : "◂"
                         let pTxt = context.resolve(
                             Text("\(primer.isForward ? "" : arrowSym)\(primer.name)\(primer.isForward ? arrowSym : "")")
-                                .font(.system(size: 7.5, weight: .bold, design: .monospaced))
+                                .font(.system(size: 7.5, weight: .bold))
                                 .foregroundColor(isDark ? .white : Color(red: 0.10, green: 0.14, blue: 0.24))
                         )
                         context.draw(pTxt, at: CGPoint(x: (x1 + x2) / 2.0, y: primerY), anchor: .center)
@@ -1314,8 +1320,8 @@ private struct StaticSequenceRowCanvas: View, Equatable {
             let botStrandY = showComplement ? (topStrandY + 21.0) : topStrandY
             let boxH: CGFloat = showComplement ? 32.0 : 14.0
             
-            let fivePrimeLbl = context.resolve(Text("5'").font(.system(size: 8.5, weight: .semibold, design: .monospaced)).foregroundColor(subLabelColor))
-            let threePrimeLbl = context.resolve(Text("3'").font(.system(size: 8.5, weight: .semibold, design: .monospaced)).foregroundColor(subLabelColor))
+            let fivePrimeLbl = context.resolve(Text("5'").font(.system(size: 8.5, weight: .semibold)).monospacedDigit().foregroundColor(subLabelColor))
+            let threePrimeLbl = context.resolve(Text("3'").font(.system(size: 8.5, weight: .semibold)).monospacedDigit().foregroundColor(subLabelColor))
             context.draw(fivePrimeLbl, at: CGPoint(x: 11, y: topStrandY), anchor: .center)
             if showComplement {
                 context.draw(threePrimeLbl, at: CGPoint(x: 11, y: botStrandY), anchor: .center)
@@ -1385,7 +1391,8 @@ private struct StaticSequenceRowCanvas: View, Equatable {
             let endX = leftGutter + CGFloat(topChars.count) * cellW + 17.0
             let rightLabel = context.resolve(
                 Text("\(slice.endBp)")
-                    .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 8.5, weight: .semibold))
+                    .monospacedDigit()
                     .foregroundColor(subLabelColor)
             )
             context.draw(rightLabel, at: CGPoint(x: endX, y: (topStrandY + botStrandY) / 2.0), anchor: .center)
@@ -1486,7 +1493,7 @@ private struct StaticSequenceRowCanvas: View, Equatable {
                     let dirTail = item.feature.direction == .clockwise ? " ▸" : ""
                     let fTxt = context.resolve(
                         Text("\(dirArrow)\(item.feature.name)\(dirTail)")
-                            .font(.system(size: 7.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 7.5, weight: .bold))
                             .foregroundColor(.white)
                     )
                     context.draw(fTxt, at: CGPoint(x: pillRect.midX, y: pillRect.midY), anchor: .center)
@@ -1567,7 +1574,8 @@ private struct SelectionOverlayCanvas: View {
                 
                 let txt = context.resolve(
                     Text(badgeText)
-                        .font(.system(size: 8.2, weight: .bold, design: .monospaced))
+                        .font(.system(size: 8.2, weight: .bold))
+                        .monospacedDigit()
                         .foregroundColor(pillStroke)
                 )
                 context.draw(txt, at: CGPoint(x: badgeRect.midX, y: badgeRect.midY), anchor: .center)

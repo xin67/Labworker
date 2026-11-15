@@ -242,7 +242,7 @@ public struct SgRNADesignView: View {
                                 .font(.system(size: 11, weight: .semibold))
 
                             Text("文库参考基因组: \(vm.species.chopchopGenome)")
-                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .font(.system(size: 10, weight: .medium))
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 2)
                                 .background(Capsule().fill(vm.species.themeColor.opacity(0.12)))
@@ -275,7 +275,7 @@ public struct SgRNADesignView: View {
                                 Text("结果 (\(vm.searchResults.count)条, 已选\(vm.selectedTargetIDs.count)条)")
                                     .font(.system(size: 11, weight: .semibold))
                                 Text("参考基因组: \(vm.species.chopchopGenome)")
-                                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                    .font(.system(size: 10, weight: .medium))
                                     .padding(.horizontal, 7)
                                     .padding(.vertical, 2)
                                     .background(Capsule().fill(vm.species.themeColor.opacity(0.12)))
@@ -332,7 +332,7 @@ public struct SgRNADesignView: View {
                                     
                                     if scoreRes.hasFatalIssue {
                                         Text("⚠️TTTT")
-                                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                            .font(.system(size: 9.5, weight: .bold))
                                             .foregroundColor(.red)
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 2)
@@ -341,7 +341,8 @@ public struct SgRNADesignView: View {
                                     }
 
                                     Text("GC \(String(format: "%.0f", target.gcPercent))%")
-                                        .font(.system(size: 10, design: .monospaced))
+                                        .font(.system(size: 10))
+                                        .monospacedDigit()
                                         .foregroundColor(.secondary)
                                 }
                                 .studioInnerBox(tint: isChecked ? .cyan : nil, isHighlighted: isChecked, paddingH: 8, paddingV: 5)
@@ -362,7 +363,7 @@ public struct SgRNADesignView: View {
                     .frame(width: 90)
 
                 TextField("20 bp 靶点 Spacer (不含 PAM)", text: $vm.customSequence)
-                    .font(.system(size: 11.5, design: .monospaced))
+                    .font(.system(size: 11.5))
                     .textFieldStyle(.roundedBorder)
 
                 if let sc = vm.customTargetScore {

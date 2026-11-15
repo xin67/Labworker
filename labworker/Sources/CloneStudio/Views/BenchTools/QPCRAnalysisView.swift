@@ -196,7 +196,8 @@ public struct QPCRAnalysisView: View {
                             .foregroundColor(.secondary)
                         TextField("35", value: $settings.highCtThreshold, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
+                            .monospacedDigit()
                             .frame(width: 50)
                     }
                     
@@ -206,7 +207,8 @@ public struct QPCRAnalysisView: View {
                             .foregroundColor(.secondary)
                         TextField("35", value: $settings.ntcCtThreshold, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
+                            .monospacedDigit()
                             .frame(width: 50)
                     }
                     
@@ -216,7 +218,8 @@ public struct QPCRAnalysisView: View {
                             .foregroundColor(.secondary)
                         TextField("5", value: $settings.noRTDeltaCtThreshold, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
+                            .monospacedDigit()
                             .frame(width: 46)
                     }
                     
@@ -226,7 +229,8 @@ public struct QPCRAnalysisView: View {
                             .foregroundColor(.secondary)
                         TextField("1.0", value: $settings.meltTolerance, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
+                            .monospacedDigit()
                             .frame(width: 48)
                     }
                     
@@ -236,7 +240,8 @@ public struct QPCRAnalysisView: View {
                             .foregroundColor(.secondary)
                         TextField("0.5", value: $settings.sdLimit, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
+                            .monospacedDigit()
                             .frame(width: 50)
                     }
                     
@@ -251,7 +256,8 @@ public struct QPCRAnalysisView: View {
                                 .foregroundColor(.secondary)
                             TextField("100", value: $settings.defaultEfficiencyPct, format: .number)
                                 .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 12, design: .monospaced))
+                                .font(.system(size: 12))
+                                .monospacedDigit()
                                 .frame(width: 56)
                         }
                     }
@@ -401,7 +407,8 @@ public struct QPCRAnalysisView: View {
                                     .frame(width: 28, alignment: .leading)
                                 
                                 Text(well.well)
-                                    .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 11.5, weight: .bold))
+                                    .monospacedDigit()
                                     .foregroundColor(.secondary)
                                     .frame(width: 32, alignment: .leading)
                                 
@@ -436,10 +443,12 @@ public struct QPCRAnalysisView: View {
                                 
                                 VStack(alignment: .trailing, spacing: 1) {
                                     Text(well.ct.map { String(format: "%.2f", $0) } ?? "Undet.")
-                                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                                        .font(.system(size: 11.5, weight: .semibold))
+                                        .monospacedDigit()
                                     if let tm = well.tm {
                                         Text(String(format: "Tm %.1f℃", tm))
-                                            .font(.system(size: 9.5, design: .monospaced))
+                                            .font(.system(size: 9.5))
+                                            .monospacedDigit()
                                             .foregroundColor(.secondary)
                                     }
                                 }
@@ -582,7 +591,8 @@ public struct QPCRAnalysisView: View {
                                     }
                                 }
                                 Text(String(format: "%.2f", item.meanFold))
-                                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                                    .font(.system(size: 9.5, weight: .semibold))
+                                    .monospacedDigit()
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -627,7 +637,8 @@ public struct QPCRAnalysisView: View {
                         .foregroundStyle(by: .value("ΔΔCt", cell.ddCt ?? 0.0))
                         .annotation(position: .overlay) {
                             Text(cell.fold.map { String(format: "%.2f×", $0) } ?? "—")
-                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                .font(.system(size: 10.5, weight: .bold))
+                                .monospacedDigit()
                                 .foregroundColor(.white)
                                 .shadow(color: .black.opacity(0.55), radius: 2, x: 0, y: 1)
                         }

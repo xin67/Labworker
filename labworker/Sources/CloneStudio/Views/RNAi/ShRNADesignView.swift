@@ -97,7 +97,7 @@ public struct ShRNADesignView: View {
                                     HStack(spacing: 6) {
                                         Text("Loop:").font(.system(size: 11.5)).foregroundColor(.secondary)
                                         TextField("CTCGAG", text: $vm.loopSequence)
-                                            .font(.system(size: 12, design: .monospaced))
+                                            .font(.system(size: 12))
                                             .textFieldStyle(.roundedBorder)
                                             .frame(width: 90)
                                     }
@@ -109,7 +109,7 @@ public struct ShRNADesignView: View {
                                     HStack(spacing: 6) {
                                         Text("Loop:").font(.system(size: 11.5)).foregroundColor(.secondary)
                                         TextField("CTCGAG", text: $vm.loopSequence)
-                                            .font(.system(size: 12, design: .monospaced))
+                                            .font(.system(size: 12))
                                             .textFieldStyle(.roundedBorder)
                                             .frame(width: 90)
                                     }
@@ -295,7 +295,7 @@ public struct ShRNADesignView: View {
                                     
                                     if scoreRes.hasFatalIssue {
                                         Text("⚠️TTTT")
-                                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                            .font(.system(size: 9.5, weight: .bold))
                                             .foregroundColor(.red)
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 2)
@@ -304,7 +304,8 @@ public struct ShRNADesignView: View {
                                     }
                                     
                                     Text("GC \(String(format: "%.0f", target.gcPercent))%")
-                                        .font(.system(size: 10, design: .monospaced))
+                                        .font(.system(size: 10))
+                                        .monospacedDigit()
                                         .foregroundColor(.secondary)
                                 }
                                 .studioInnerBox(tint: isChecked ? .indigo : nil, isHighlighted: isChecked, paddingH: 8, paddingV: 5)
@@ -325,7 +326,7 @@ public struct ShRNADesignView: View {
                     .frame(width: 90)
                 
                 TextField("19~21 bp 靶点 Sense 序列", text: $vm.customSequence)
-                    .font(.system(size: 11.5, design: .monospaced))
+                    .font(.system(size: 11.5))
                     .textFieldStyle(.roundedBorder)
                 
                 if let sc = vm.customTargetScore {

@@ -63,7 +63,8 @@ public struct SequenceMinimapView: View {
                             .font(.system(size: 8.5))
                             .foregroundColor(accentCyan)
                         Text("全长缩略导航 (1 .. \(totalLengthBp) bp · 点击或滑动跳转)")
-                            .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 9.5, weight: .semibold))
+                            .monospacedDigit()
                             .foregroundColor(primaryText)
                             .lineLimit(1)
                     }
@@ -72,7 +73,8 @@ public struct SequenceMinimapView: View {
                     
                     if let vpText = resolvedViewportText {
                         Text(vpText)
-                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 9.5, weight: .bold))
+                            .monospacedDigit()
                             .foregroundColor(accentCyan)
                             .lineLimit(1)
                     }
@@ -84,12 +86,14 @@ public struct SequenceMinimapView: View {
                             .font(.system(size: 8.5))
                             .foregroundColor(accentCyan)
                         Text("全长导航 (1 .. \(totalLengthBp) bp)")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 9, weight: .semibold))
+                            .monospacedDigit()
                             .foregroundColor(primaryText)
                     }
                     if let vpText = resolvedViewportText {
                         Text(vpText)
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.system(size: 9, weight: .bold))
+                            .monospacedDigit()
                             .foregroundColor(accentCyan)
                     }
                 }

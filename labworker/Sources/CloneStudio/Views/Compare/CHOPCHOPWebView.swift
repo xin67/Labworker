@@ -47,7 +47,7 @@ public struct CHOPCHOPWebView: View {
                 StudioCard(title: "靶点检索与比对") {
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                         ForEach(["TP53", "BRCA1", "MYC", "EGFR"], id: \.self) { sampleGene in
-                            StudioCompactPillButton(title: sampleGene, monospaced: true) {
+                            StudioCompactPillButton(title: sampleGene) {
                                 vm.gene = sampleGene
                                 vm.fetchTargets(forceRefresh: false)
                             }
@@ -68,7 +68,7 @@ public struct CHOPCHOPWebView: View {
                         HStack(spacing: 10) {
                             TextField("基因名 (如 TP53, Trp53, CDH17)", text: $vm.gene)
                                 .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 13, design: .monospaced))
+                                .font(.system(size: 13))
                                 .onSubmit {
                                     vm.fetchTargets()
                                 }
@@ -126,7 +126,7 @@ public struct CHOPCHOPWebView: View {
             HStack(spacing: 8) {
                 TextField("粘贴本地 sgRNA / shRNA 序列比对", text: $vm.manualCompareInput)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 11.5, design: .monospaced))
+                    .font(.system(size: 11.5))
                     .onSubmit {
                         vm.addManualCompareSequence()
                     }
@@ -288,7 +288,8 @@ public struct CHOPCHOPWebView: View {
             .labelsHidden()
             
             Text(verbatim: "#\(target.rank)")
-                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                .font(.system(size: 10.5, weight: .bold))
+                .monospacedDigit()
                 .foregroundColor(.secondary)
                 .frame(width: 34, alignment: .leading)
             
@@ -327,11 +328,13 @@ public struct CHOPCHOPWebView: View {
             Spacer()
             
             Text(verbatim: "\(target.genomicLocation) (\(target.strand))")
-                .font(.system(size: 10.5, design: .monospaced))
+                .font(.system(size: 10.5))
+                .monospacedDigit()
                 .foregroundColor(.secondary)
             
             Text(verbatim: "GC \(String(format: "%.0f", target.gcContent))%")
-                .font(.system(size: 10, design: .monospaced))
+                .font(.system(size: 10))
+                .monospacedDigit()
                 .foregroundColor(.secondary)
             
             StudioMetricBadge(

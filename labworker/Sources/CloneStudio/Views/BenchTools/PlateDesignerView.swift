@@ -151,7 +151,8 @@ public struct PlateDesignerView: View {
                                 .font(.system(size: 12.5))
                                 .foregroundColor(.secondary)
                             Text("\(store.rules.replicates)")
-                                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                .font(.system(size: 13, weight: .bold))
+                                .monospacedDigit()
                         }
                     }
                     .fixedSize()
@@ -163,7 +164,8 @@ public struct PlateDesignerView: View {
                                 .font(.system(size: 12.5))
                                 .foregroundColor(.secondary)
                             Text("\(store.rules.controls)")
-                                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                .font(.system(size: 13, weight: .bold))
+                                .monospacedDigit()
                         }
                     }
                     .fixedSize()
@@ -175,7 +177,8 @@ public struct PlateDesignerView: View {
                                 .font(.system(size: 12.5))
                                 .foregroundColor(.secondary)
                             Text("\(store.rules.blanks)")
-                                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                .font(.system(size: 13, weight: .bold))
+                                .monospacedDigit()
                         }
                     }
                     .fixedSize()
@@ -225,7 +228,8 @@ public struct PlateDesignerView: View {
                     
                     TextField("Seed", value: $store.rules.seed, format: .number)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 12, design: .monospaced))
+                        .font(.system(size: 12))
+                        .monospacedDigit()
                         .frame(width: 110)
                         .onSubmit { store.regenerateLayout() }
                     
@@ -386,7 +390,8 @@ public struct PlateDesignerView: View {
             Spacer(minLength: 4)
             
             Text("×\(PlateLayoutEngine.requiredReplicates(for: sample, rules: store.rules))")
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .font(.system(size: 12, weight: .semibold))
+                .monospacedDigit()
                 .foregroundColor(.secondary)
             
             StudioCompactPillButton(
@@ -500,7 +505,8 @@ public struct PlateDesignerView: View {
                     .frame(width: 24)
                 ForEach(0..<cols, id: \.self) { c in
                     Text("\(c + 1)")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .font(.system(size: 11, weight: .bold))
+                        .monospacedDigit()
                         .foregroundColor(.secondary)
                         .frame(width: cellW, alignment: .center)
                 }
@@ -510,7 +516,7 @@ public struct PlateDesignerView: View {
             ForEach(0..<rows, id: \.self) { r in
                 HStack(spacing: 4) {
                     Text(PlateFormat.rowLabel(for: r))
-                        .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .bold))
                         .foregroundColor(.secondary)
                         .frame(width: 24, alignment: .center)
                     
@@ -550,14 +556,16 @@ public struct PlateDesignerView: View {
             VStack(spacing: 1) {
                 HStack(spacing: 2) {
                     Text(wellID)
-                        .font(.system(size: store.format == .well384 ? 8.5 : 9.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: store.format == .well384 ? 8.5 : 9.5, weight: .bold))
+                        .monospacedDigit()
                         .foregroundColor(assignment != nil ? .white.opacity(0.92) : .secondary)
                     
                     Spacer(minLength: 0)
                     
                     if let a = assignment, a.replicate > 0, store.format != .well384 {
                         Text("#\(a.replicate)")
-                            .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 8.5, weight: .semibold))
+                            .monospacedDigit()
                             .foregroundColor(.white.opacity(0.85))
                     }
                 }

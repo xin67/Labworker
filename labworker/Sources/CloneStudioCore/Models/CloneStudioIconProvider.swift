@@ -347,7 +347,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                 AdaptiveCloneStudioAppIconView(size: 26)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Labworker")
-                        .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                        .font(.system(size: 13.5, weight: .bold))
                     Text("实验随手算与工作台直达")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
@@ -401,7 +401,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                 
                 TextField("粘贴引物或 DNA 序列即刻计算...", text: $quickSequence)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.system(size: 11))
                 
                 HStack(spacing: 7) {
                     statusMetricPill(label: "长度", value: "\(cleanedSeq.count)bp", tint: .blue)
@@ -516,7 +516,8 @@ public struct CloneStudioStatusBarPopoverView: View {
                 .font(.system(size: 9.5, weight: .medium))
                 .foregroundColor(.secondary)
             Text(value)
-                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                .font(.system(size: 10.5, weight: .bold))
+                .monospacedDigit()
                 .foregroundColor(tint)
         }
         .padding(.horizontal, 6.5)

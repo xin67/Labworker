@@ -508,7 +508,8 @@ public struct ContentView: View {
                     
                     if let badge = badgeText {
                         Text(badge)
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .font(.system(size: 11, weight: .bold))
+                            .monospacedDigit()
                             .foregroundColor(isSelected ? appState.accentTheme.color : .secondary)
                             .padding(.horizontal, 6.5)
                             .padding(.vertical, 1.5)

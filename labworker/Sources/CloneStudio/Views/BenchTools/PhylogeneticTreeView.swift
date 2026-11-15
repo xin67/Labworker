@@ -401,7 +401,8 @@ public struct PhylogeneticTreeView: View {
                 if showBranchLengths, let len = node.length, layout.mode != .circular {
                     let midX = 0.5 * (node.parentX + node.x) * sx
                     let lenText = Text(String(format: "%.3f", len))
-                        .font(.system(size: 9.5, design: .monospaced))
+                        .font(.system(size: 9.5))
+                        .monospacedDigit()
                         .foregroundColor(.secondary)
                     context.draw(lenText, at: CGPoint(x: midX, y: node.y - 8))
                 }
@@ -427,7 +428,8 @@ public struct PhylogeneticTreeView: View {
                 
                 if showSupport, !node.isLeaf, let sup = node.support, sup >= supportThreshold {
                     let supText = Text(String(format: "%.0f", sup))
-                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9.5, weight: .bold))
+                        .monospacedDigit()
                         .foregroundColor(sup >= 90 ? .green : .orange)
                     context.draw(supText, at: CGPoint(x: nx - 10, y: ny - 9))
                 }
@@ -470,7 +472,8 @@ public struct PhylogeneticTreeView: View {
                 context.stroke(barPath, with: .color(.secondary), lineWidth: 1.5)
                 
                 let unitText = Text(String(format: "%g substitutions/site", sb.unit))
-                    .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .monospacedDigit()
                     .foregroundColor(.secondary)
                 context.draw(unitText, at: CGPoint(x: 0.5 * (x0 + x1), y: y - 10))
             }

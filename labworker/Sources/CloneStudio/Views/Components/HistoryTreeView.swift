@@ -66,7 +66,8 @@ public struct HistoryTreeView: View {
                                         .font(.system(size: 11, weight: .bold))
                                         .foregroundStyle(.teal)
                                     Text("连续改造链路 (Step \(idx + 1) → Step \(idx + 2))")
-                                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                        .font(.system(size: 9, weight: .medium))
+                                        .monospacedDigit()
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -88,7 +89,8 @@ public struct HistoryTreeView: View {
                 Spacer()
 
                 Text("共 \(historyManager.nodes.count) 步改造记录")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.system(size: 10, weight: .medium))
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
 
                 if !historyManager.nodes.isEmpty {
@@ -107,7 +109,8 @@ public struct HistoryTreeView: View {
                     }
                 }
                 Text("共 \(historyManager.nodes.count) 步改造记录")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.system(size: 10, weight: .medium))
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
         }
@@ -160,7 +163,8 @@ private struct HistoryNodeCard: View {
             headerBar
             genealogyFlowRow
             Text(node.insertOrActionSummary)
-                .font(.system(size: 10, design: .monospaced))
+                .font(.system(size: 10))
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
             expandToggleButtons
             if isOverhangExpanded {
@@ -198,7 +202,8 @@ private struct HistoryNodeCard: View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) {
                 Text("STEP \(stepNumber)")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold))
+                    .monospacedDigit()
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Color.teal.opacity(0.18), in: Capsule())
@@ -225,7 +230,8 @@ private struct HistoryNodeCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
                     Text("STEP \(stepNumber)")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9, weight: .bold))
+                        .monospacedDigit()
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1.5)
                         .background(Color.teal.opacity(0.18), in: Capsule())
@@ -288,7 +294,8 @@ private struct HistoryNodeCard: View {
                         .font(.system(size: 8))
                         .foregroundStyle(.secondary)
                     Text("\(node.parentVectorName) (\(node.parentLengthBp) bp)")
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .font(.system(size: 10, weight: .medium))
+                        .monospacedDigit()
                 }
                 .studioInnerBox(tint: .blue, paddingH: 8, paddingV: 5)
 
@@ -301,7 +308,8 @@ private struct HistoryNodeCard: View {
                         .font(.system(size: 8))
                         .foregroundStyle(.secondary)
                     Text(node.insertOrActionSummary)
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .font(.system(size: 10, weight: .medium))
+                        .monospacedDigit()
                         .lineLimit(1)
                 }
                 .studioInnerBox(tint: .orange, paddingH: 8, paddingV: 5)
@@ -316,10 +324,12 @@ private struct HistoryNodeCard: View {
                         .foregroundStyle(.secondary)
                     HStack(spacing: 4) {
                         Text("\(node.constructName) (\(node.productLengthBp) bp)")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.system(size: 10, weight: .bold))
+                            .monospacedDigit()
                             .foregroundStyle(.teal)
                         Text("(\(deltaStr))")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.system(size: 9, weight: .bold))
+                            .monospacedDigit()
                             .foregroundStyle(deltaColor)
                     }
                 }
@@ -369,17 +379,20 @@ private struct HistoryNodeCard: View {
                             .font(.system(size: 9.5, weight: .bold))
                             .frame(width: 110, alignment: .leading)
                         Text("5'-\(item.topStrandSnippet)-3'")
-                            .font(.system(size: 9.5, design: .monospaced))
+                            .font(.system(size: 9.5))
+                            .monospacedDigit()
                             .foregroundStyle(.green)
                         Image(systemName: "link")
                             .font(.system(size: 8))
                             .foregroundStyle(.secondary)
                         Text("3'-\(item.bottomStrandSnippet)-5'")
-                            .font(.system(size: 9.5, design: .monospaced))
+                            .font(.system(size: 9.5))
+                            .monospacedDigit()
                             .foregroundStyle(.cyan)
                         Spacer()
                         Text("\(item.homologyLength) bp (\(item.enzymeOrArmName))")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.system(size: 9, weight: .bold))
+                            .monospacedDigit()
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
                             .background(Color.teal.opacity(0.15), in: Capsule())
@@ -435,22 +448,26 @@ private struct FeatureShiftRowView: View {
 
         HStack {
             Text(shift.featureName)
-                .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                .font(.system(size: 9.5, weight: .semibold))
+                .monospacedDigit()
                 .frame(width: 110, alignment: .leading)
                 .lineLimit(1)
 
             Text(shift.oldRangeText)
-                .font(.system(size: 9.5, design: .monospaced))
+                .font(.system(size: 9.5))
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .frame(width: 115, alignment: .leading)
 
             Text(shift.newRangeText)
-                .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                .font(.system(size: 9.5, weight: .medium))
+                .monospacedDigit()
                 .foregroundStyle(shift.status == .deleted ? .red : .primary)
                 .frame(width: 115, alignment: .leading)
 
             Text(deltaStr)
-                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                .font(.system(size: 9.5, weight: .bold))
+                .monospacedDigit()
                 .foregroundStyle(statusColor(shift.status))
                 .frame(width: 80, alignment: .trailing)
 

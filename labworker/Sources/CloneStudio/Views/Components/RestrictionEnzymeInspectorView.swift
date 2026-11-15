@@ -109,20 +109,15 @@ public struct RestrictionEnzymeInspectorView: View {
                         .font(.system(size: 10))
                         .foregroundStyle(.pink)
                     Text("SET: \(appState.selectedEnzymePreset.uppercased())")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                    if !appState.followSystemLiquidGlass {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
                 }
             }
             .studioGlassMenu(
                 tint: nil,
                 controlSize: .regular,
-                hideIndicator: !appState.followSystemLiquidGlass
+                hideIndicator: false
             )
 
             Button(action: {
@@ -190,7 +185,7 @@ public struct RestrictionEnzymeInspectorView: View {
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(.cyan)
                                 Text("(\(enz.site))")
-                                    .font(.system(size: 9.5, design: .monospaced))
+                                    .font(.system(size: 9.5))
                                     .foregroundColor(.white.opacity(0.6))
                                 Spacer()
                                 Text("+ Add")
@@ -247,7 +242,7 @@ public struct RestrictionEnzymeInspectorView: View {
                 .foregroundColor(.white.opacity(0.9))
             if !site.isEmpty {
                 Text("(\(site))")
-                    .font(.system(size: 9, design: .monospaced))
+                    .font(.system(size: 9))
                     .foregroundColor(.white.opacity(0.45))
             }
             Spacer()
@@ -310,12 +305,13 @@ public struct RestrictionEnzymeInspectorView: View {
                     .foregroundColor(.white)
                     .frame(width: 54, alignment: .leading)
                 Text(cut.recognitionSite)
-                    .font(.system(size: 9.5, design: .monospaced))
+                    .font(.system(size: 9.5))
                     .foregroundColor(.cyan.opacity(0.85))
                     .lineLimit(1)
                 Spacer()
                 Text("\(cut.position1Based) bp")
-                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .monospacedDigit()
                     .foregroundColor(.white.opacity(0.75))
             }
             .padding(.horizontal, 6)
@@ -346,7 +342,7 @@ public struct RestrictionEnzymeInspectorView: View {
                 Text("CutSmart")
                     .frame(width: 52, alignment: .trailing)
             }
-            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+            .font(.system(size: 8.5, weight: .bold))
             .foregroundColor(.white.opacity(0.5))
             .padding(.horizontal, 4)
             
@@ -370,7 +366,7 @@ public struct RestrictionEnzymeInspectorView: View {
                         .foregroundColor(firstBuf.heatInactivation ? .green : .orange)
                     Spacer()
                     Text("Best: \(firstBuf.preferredBuffer)")
-                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 8.5, weight: .bold))
                         .foregroundColor(.cyan)
                 }
             }
@@ -406,12 +402,14 @@ public struct RestrictionEnzymeInspectorView: View {
         }()
         if let w = width {
             Text("\(pct)%")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .font(.system(size: 9, weight: .bold))
+                .monospacedDigit()
                 .foregroundColor(color)
                 .frame(width: w, alignment: align)
         } else {
             Text("\(pct)%")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .font(.system(size: 9, weight: .bold))
+                .monospacedDigit()
                 .foregroundColor(color)
                 .frame(maxWidth: .infinity, alignment: align)
         }

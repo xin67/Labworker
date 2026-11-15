@@ -244,7 +244,8 @@ public struct ProteinWorkbenchView: View {
                                 Slider(value: $env.ph, in: 4.0...10.0, step: 0.2)
                                     .frame(width: 95)
                                 Text(String(format: "%.1f", env.ph))
-                                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                    .monospacedDigit()
                                     .frame(width: 32, alignment: .trailing)
                             }
 
@@ -255,7 +256,8 @@ public struct ProteinWorkbenchView: View {
                                 Slider(value: $env.temperatureK, in: 275.0...350.0, step: 5.0)
                                     .frame(width: 95)
                                 Text(String(format: "%.0f K", env.temperatureK))
-                                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                    .monospacedDigit()
                                     .frame(width: 44, alignment: .trailing)
                             }
 
@@ -266,7 +268,8 @@ public struct ProteinWorkbenchView: View {
                                 Slider(value: $env.ionicStrengthM, in: 0.0...1.0, step: 0.05)
                                     .frame(width: 85)
                                 Text(String(format: "%.2f M", env.ionicStrengthM))
-                                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                    .monospacedDigit()
                                     .frame(width: 46, alignment: .trailing)
                             }
                         }
@@ -357,7 +360,8 @@ public struct ProteinWorkbenchView: View {
                     if let selIdx = selectedResidueIndex,
                        let res = report.residues.first(where: { $0.index == selIdx }) {
                         Text("\(res.threeLetter)\(res.index) (\(res.oneLetter)) · \(res.secondary.title) · pLDDT \(String(format: "%.1f", res.plddt))")
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 11, weight: .semibold))
+                            .monospacedDigit()
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -586,7 +590,8 @@ public struct ProteinWorkbenchView: View {
                                 .lineLimit(1)
                             Spacer()
                             Text(String(format: "%.1f%%", item.val))
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .font(.system(size: 11, weight: .bold))
+                                .monospacedDigit()
                                 .foregroundColor(item.color)
                         }
                         GeometryReader { barGeo in
@@ -661,12 +666,14 @@ public struct ProteinWorkbenchView: View {
                 .foregroundColor(.secondary)
                 .lineLimit(1)
             Text(value)
-                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .font(.system(size: 13, weight: .bold))
+                .monospacedDigit()
                 .foregroundColor(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
             Text(sub)
-                .font(.system(size: 10, design: .monospaced))
+                .font(.system(size: 10))
+                .monospacedDigit()
                 .foregroundColor(.secondary)
                 .lineLimit(1)
         }
@@ -740,14 +747,16 @@ public struct ProteinWorkbenchView: View {
                             .font(.system(size: 11.5, weight: .semibold))
                         Spacer()
                         Text(box.recommendedFlexResidues.isEmpty ? "无" : box.recommendedFlexResidues.joined(separator: ", "))
-                            .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 11.5, weight: .bold))
+                            .monospacedDigit()
                             .foregroundColor(.indigo)
                     }
                     VStack(alignment: .leading, spacing: 3) {
                         Text("近端可旋转柔性侧链推荐 (≤ 6.0 Å):")
                             .font(.system(size: 11.5, weight: .semibold))
                         Text(box.recommendedFlexResidues.isEmpty ? "无" : box.recommendedFlexResidues.joined(separator: ", "))
-                            .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 11.5, weight: .bold))
+                            .monospacedDigit()
                             .foregroundColor(.indigo)
                     }
                 }
@@ -892,10 +901,12 @@ public struct ProteinWorkbenchView: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
                         Text(m.mutationSpec)
-                            .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 11.5, weight: .bold))
+                            .monospacedDigit()
                             .frame(minWidth: 80, alignment: .leading)
                         Text(String(format: "ΔΔG = %+.2f kcal/mol", m.ddgKcalMol))
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(.system(size: 11))
+                            .monospacedDigit()
                             .foregroundColor(m.ddgKcalMol <= 0 ? .green : .orange)
                         Spacer()
                         StudioMetricBadge(
@@ -907,10 +918,12 @@ public struct ProteinWorkbenchView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text(m.mutationSpec)
-                                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                .font(.system(size: 11.5, weight: .bold))
+                                .monospacedDigit()
                             Spacer()
                             Text(String(format: "ΔΔG = %+.2f kcal/mol", m.ddgKcalMol))
-                                .font(.system(size: 11, design: .monospaced))
+                                .font(.system(size: 11))
+                                .monospacedDigit()
                                 .foregroundColor(m.ddgKcalMol <= 0 ? .green : .orange)
                         }
                         StudioMetricBadge(

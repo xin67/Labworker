@@ -168,7 +168,8 @@ public struct GelFigureEditorView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 8) {
                                     Text("L\(lane.index)")
-                                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                        .font(.system(size: 12, weight: .bold))
+                                        .monospacedDigit()
                                         .foregroundColor(lane.isLadderLane ? .orange : (lane.isVirtualDigestLane ? .cyan : .blue))
                                     
                                     TextField("泳道名称", text: $lanes[idx].name)
@@ -271,12 +272,14 @@ public struct GelFigureEditorView: View {
                                     
                                     if lane.isLadderLane && showLadderRuler, let sz = band.knownSize {
                                         let rulerTxt = Text(activeLadder.kind == .dna ? "\(Int(sz))" : String(format: "%.0f", sz))
-                                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                            .font(.system(size: 9.5, weight: .bold))
+                                            .monospacedDigit()
                                             .foregroundColor(.orange)
                                         context.draw(rulerTxt, at: CGPoint(x: max(22, lx - bw * 0.65), y: by), anchor: .trailing)
                                     } else if !lane.isLadderLane && showBandSizeOverlay, let est = band.estimatedSize {
                                         let szTxt = Text(activeLadder.kind == .dna ? "\(Int(round(est)))" : String(format: "%.1f", est))
-                                            .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                                            .font(.system(size: 9.5, weight: .semibold))
+                                            .monospacedDigit()
                                             .foregroundColor(band.isVirtualDigestBand ? .cyan : .yellow)
                                         context.draw(szTxt, at: CGPoint(x: lx, y: by - 9))
                                     }

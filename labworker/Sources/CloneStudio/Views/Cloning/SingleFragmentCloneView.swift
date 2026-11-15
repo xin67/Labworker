@@ -145,7 +145,8 @@ public struct SingleFragmentCloneView: View {
                                     .foregroundColor(.secondary)
                                 Spacer()
                                 Text("目标 Tm: \(String(format: "%.1f", appState.cloningTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) ℃")
-                                    .font(.system(size: 11, design: .monospaced))
+                                    .font(.system(size: 11))
+                                    .monospacedDigit()
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -372,11 +373,12 @@ public struct SingleFragmentCloneView: View {
                             .fixedSize()
                         TextField("正向 5'→3'", text: $vm.extra5Bases)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(.system(size: 13))
                             .frame(minWidth: 110)
                         if ex5Len > 0 {
                             Text("+\(ex5Len)bp")
-                                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                .font(.system(size: 11.5, weight: .bold))
+                                .monospacedDigit()
                                 .foregroundColor(.blue)
                         }
                     }
@@ -388,11 +390,12 @@ public struct SingleFragmentCloneView: View {
                             .fixedSize()
                         TextField("正向 5'→3' (R自动反补)", text: $vm.extra3Bases)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(.system(size: 13))
                             .frame(minWidth: 110)
                         if ex3Len > 0 {
                             Text("+\(ex3Len)bp")
-                                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                .font(.system(size: 11.5, weight: .bold))
+                                .monospacedDigit()
                                 .foregroundColor(.purple)
                         }
                     }
@@ -406,10 +409,11 @@ public struct SingleFragmentCloneView: View {
                             .frame(width: 56, alignment: .leading)
                         TextField("正向 5'→3'", text: $vm.extra5Bases)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(.system(size: 13))
                         if ex5Len > 0 {
                             Text("+\(ex5Len)bp")
-                                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                .font(.system(size: 11.5, weight: .bold))
+                                .monospacedDigit()
                                 .foregroundColor(.blue)
                         }
                     }
@@ -420,10 +424,11 @@ public struct SingleFragmentCloneView: View {
                             .frame(width: 56, alignment: .leading)
                         TextField("正向 5'→3' (R自动反补)", text: $vm.extra3Bases)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(.system(size: 13))
                         if ex3Len > 0 {
                             Text("+\(ex3Len)bp")
-                                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                .font(.system(size: 11.5, weight: .bold))
+                                .monospacedDigit()
                                 .foregroundColor(.purple)
                         }
                     }
@@ -681,12 +686,14 @@ public struct SingleFragmentCloneView: View {
                             .fixedSize()
                         TextField("起点", text: $vm.cutStartText)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 11.5, design: .monospaced))
+                            .font(.system(size: 11.5))
+                            .monospacedDigit()
                             .frame(width: 78)
                         Text("~").foregroundColor(.secondary)
                         TextField("终点", text: $vm.cutEndText)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 11.5, design: .monospaced))
+                            .font(.system(size: 11.5))
+                            .monospacedDigit()
                             .frame(width: 78)
                         StudioCompactPillButton(title: "应用坐标", icon: "checkmark", tint: .blue, isProminent: true) {
                             let s = Int(vm.cutStartText.trimmingCharacters(in: .whitespaces)) ?? 1
@@ -706,12 +713,14 @@ public struct SingleFragmentCloneView: View {
                                 .fixedSize()
                             TextField("起点", text: $vm.cutStartText)
                                 .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 11.5, design: .monospaced))
+                                .font(.system(size: 11.5))
+                                .monospacedDigit()
                                 .frame(width: 68)
                             Text("~").foregroundColor(.secondary)
                             TextField("终点", text: $vm.cutEndText)
                                 .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 11.5, design: .monospaced))
+                                .font(.system(size: 11.5))
+                                .monospacedDigit()
                                 .frame(width: 68)
                             StudioCompactPillButton(title: "应用坐标", icon: "checkmark", tint: .blue, isProminent: true) {
                                 let s = Int(vm.cutStartText.trimmingCharacters(in: .whitespaces)) ?? 1
@@ -903,12 +912,14 @@ public struct SingleFragmentCloneView: View {
                         .fixedSize()
                     TextField("起点", text: $vm.insertStartText)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 11.5, design: .monospaced))
+                        .font(.system(size: 11.5))
+                        .monospacedDigit()
                         .frame(width: 68)
                     Text("~").foregroundColor(.secondary)
                     TextField("终点", text: $vm.insertEndText)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 11.5, design: .monospaced))
+                        .font(.system(size: 11.5))
+                        .monospacedDigit()
                         .frame(width: 68)
                     
                     StudioCompactPillButton(title: "按坐标截取", icon: "scissors") {
@@ -919,7 +930,8 @@ public struct SingleFragmentCloneView: View {
                     
                     if !vm.terminalCodonStatusText.isEmpty {
                         Text(vm.terminalCodonStatusText)
-                            .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .monospacedDigit()
                             .foregroundColor(vm.detectedTerminalStopCodon != nil ? (vm.removeTerminalStopCodon ? .orange : .blue) : .secondary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
@@ -949,12 +961,14 @@ public struct SingleFragmentCloneView: View {
                             .fixedSize()
                         TextField("起点", text: $vm.insertStartText)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 11.5, design: .monospaced))
+                            .font(.system(size: 11.5))
+                            .monospacedDigit()
                             .frame(width: 65)
                         Text("~").foregroundColor(.secondary)
                         TextField("终点", text: $vm.insertEndText)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 11.5, design: .monospaced))
+                            .font(.system(size: 11.5))
+                            .monospacedDigit()
                             .frame(width: 65)
                         
                         StudioCompactPillButton(title: "按坐标截取", icon: "scissors") {
@@ -967,7 +981,8 @@ public struct SingleFragmentCloneView: View {
                         
                         if !vm.terminalCodonStatusText.isEmpty {
                             Text(vm.terminalCodonStatusText)
-                                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                                .font(.system(size: 10.5, weight: .semibold))
+                                .monospacedDigit()
                                 .foregroundColor(vm.detectedTerminalStopCodon != nil ? (vm.removeTerminalStopCodon ? .orange : .blue) : .secondary)
                         }
                         
@@ -1011,7 +1026,8 @@ public struct SingleFragmentCloneView: View {
     // MARK: - 载体与供体子控件抽取 (确保全场景响应式复用)
     private func targetRangeBadge(delLen: Int) -> some View {
         Text(delLen > 0 ? "目标替换区间: \(vm.cutStart)..\(vm.cutEnd) (切除 \(delLen) bp)" : "目标插入位点: @\(vm.cutStart) bp (无缝纯插入)")
-            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+            .font(.system(size: 11, weight: .semibold))
+            .monospacedDigit()
             .foregroundColor(.blue)
             .padding(.horizontal, 9)
             .padding(.vertical, 3)
@@ -1043,7 +1059,8 @@ public struct SingleFragmentCloneView: View {
     
     private func donorExtractionBadge(cleanInsertLen: Int) -> some View {
         Text("\(vm.insertGeneName) [\(vm.insertStartText)..\(vm.insertEndText), \(cleanInsertLen)bp\(vm.insertUseReverseComplement ? " 反补" : "")]")
-            .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+            .font(.system(size: 10.5, weight: .semibold))
+            .monospacedDigit()
             .foregroundColor(.green)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
@@ -1431,7 +1448,8 @@ public struct SingleFragmentCloneView: View {
                 Spacer()
                 if vm.vectorDNAInfo != nil {
                     Text("已同步自载体 \(max(1, vm.cutStart - 60))..\(max(1, vm.cutStart - 1)) bp")
-                        .font(.system(size: 10.5, design: .monospaced))
+                        .font(.system(size: 10.5))
+                        .monospacedDigit()
                         .foregroundColor(.blue)
                 }
             }
@@ -1441,7 +1459,8 @@ public struct SingleFragmentCloneView: View {
                 Spacer()
                 if vm.vectorDNAInfo != nil {
                     Text("已同步自载体 \(vm.cutEnd + 1)..\(min(vm.vectorDNAInfo?.length ?? 9999, vm.cutEnd + 60)) bp")
-                        .font(.system(size: 10.5, design: .monospaced))
+                        .font(.system(size: 10.5))
+                        .monospacedDigit()
                         .foregroundColor(.blue)
                 }
             }
