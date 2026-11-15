@@ -12,7 +12,7 @@
 - **Python 桥接与 MCP 服务 (`Sources/CloneStudioCore/Resources/` & `python/wbquant/`)**：
   - `snapgene_bridge.py`：无损读写 SnapGene `.dna` 二进制文件特征、引物与重组质粒组装。
   - `export_order.py`：灌装导出擎科（Tsingke）、生工（Sangon）商业引物合成与测序 Excel 订单。
-  - `clonestudio_mcp_server.py`：**Labworker MCP Server v3.0**（JSON-RPC 2.0 协议，暴露 17 个全栈实验工具，算法与 Swift 核心引擎 100% 统一并支持实时同步回写 GUI 画布）。
+  - `clonestudio_mcp_server.py`：**Labworker MCP Server 20261115**（JSON-RPC 2.0 协议，暴露 17 个全栈实验工具，算法与 Swift 核心引擎 100% 统一并支持实时同步回写 GUI 画布）。
   - `python/wbquant/`：16-bit TIFF 化学发光与明场 Marker 科学图像处理包（支持 CLI 与 PySide6 高级查看器）。
 - **自动化回归测试 (`Tests/CloneStudioVerify/main.swift`)**：内置 **50 项端到端自动化验证测试**，覆盖全部核心算法、引物二级结构热力学质检、Sanger `.ab1` 二进制峰图与质粒比对、Swift-Python 跨引擎共享测试向量（`Tests/vectors/*.json`）一致性、真实质粒与 16-bit WB 样本、UI 偏好状态机、多曝光线性检查及跨模块 `AnalysisRun` 质粒溯源；
 
@@ -36,8 +36,9 @@
    # 1. 编译并运行全部 50 项自动化验证测试
    swift build --disable-sandbox && swift run --disable-sandbox CloneStudioVerify
 
-   # 2. 更新构建并签名 labworker/Labworker.app
+   # 2. 更新构建并签名 labworker/Labworker.app（及打包 Labworker-20261115.dmg）
    bash Scripts/build_app.sh
+   bash Scripts/package_dmg.sh --skip-build
 
    # 3. 使用清晰中文提交 Git 记录
    git add <修改文件> && git commit -m "清晰的中文提交说明"
@@ -92,7 +93,7 @@
 | 模块枚举 (`NavItem`) | 界面名称 | 核心源码文件 | 核心算法与业务功能说明 |
 | :--- | :--- | :--- | :--- |
 | `.orderCenter` | **订购中心** | `Views/Order/OrderExportView.swift`<br>`Services/ExcelOrderExporter.swift` | 汇总各模块加入订购池的引物与测序样品，支持成对重命名、批量写回 `.dna` 质粒文件，并一键导出符合擎科（Tsingke）、生工（Sangon）官方模板格式的 `.xlsx` 订购表。 |
-| `.settings` | **系统设置** | `Views/Settings/SettingsView.swift`<br>`ViewModels/AppState.swift` | **四段式极简响应式设置中心**：<br>① **参数与外观**：浅色/深色/跟随系统主题、画布底色、强调色、状态栏图标开关，以及分子克隆、WB/微孔板/qPCR、蛋白质工作台与订购人档案默认参数。<br>② **侧边栏定制**：提供 3 个一键预设（显示全部 / 仅分子克隆与基因编辑 / 仅图像定量与蛋白工具）及 5 大分类自适应开关矩阵。<br>③ **MCP 服务**：集中管理 `labworker-mcp` v3.0，支持一键注入 Claude Desktop / Cursor / Windsurf、复制标准 JSON、查看跨进程同步记录与 17 项工具清单。<br>④ **全局说明书**：支持按名称/算法/文件格式实时检索全部 22 个模块的功能定位、支持格式与实操提示，并提供 `直达功能` 与 `恢复显示` 按钮。 |
+| `.settings` | **系统设置** | `Views/Settings/SettingsView.swift`<br>`ViewModels/AppState.swift` | **四段式极简响应式设置中心**：<br>① **参数与外观**：浅色/深色/跟随系统主题、画布底色、强调色、状态栏图标开关，以及分子克隆、WB/微孔板/qPCR、蛋白质工作台与订购人档案默认参数。<br>② **侧边栏定制**：提供 3 个一键预设（显示全部 / 仅分子克隆与基因编辑 / 仅图像定量与蛋白工具）及 5 大分类自适应开关矩阵。<br>③ **MCP 服务**：集中管理 `labworker-mcp` 20261115，支持一键注入 Claude Desktop / Cursor / Windsurf、复制标准 JSON、查看跨进程同步记录与 17 项工具清单。<br>④ **全局说明书**：支持按名称/算法/文件格式实时检索全部 22 个模块的功能定位、支持格式与实操提示，并提供 `直达功能` 与 `恢复显示` 按钮。 |
 
 ## 4. Finder 多格式智能快导与状态栏极简工作台
 
@@ -109,9 +110,9 @@
    - 定义于 `Sources/CloneStudioCore/Models/CloneStudioIconProvider.swift`。
    - 摒弃与设置面板重复的繁琐配置项，专注提供 **“序列随手算（实时显示 bp 长度、GC%、SantaLucia $T_m$ 及一键反向互补）”** 与 **“8 宫格高频工作台直达按钮”**。
 
-## 5. Labworker MCP Server v3.0 协议与 17 大工具清单
+## 5. Labworker MCP Server 20261115 协议与 17 大工具清单
 
-MCP 服务端脚本位于 `Sources/CloneStudioCore/Resources/clonestudio_mcp_server.py`（服务标识 `labworker-mcp` v3.0.0），遵循标准 JSON-RPC 2.0 (stdio) 协议，无需任何第三方 Python 依赖（纯标准库实现）。
+MCP 服务端脚本位于 `Sources/CloneStudioCore/Resources/clonestudio_mcp_server.py`（服务标识 `labworker-mcp` 20261115），遵循标准 JSON-RPC 2.0 (stdio) 协议，无需任何第三方 Python 依赖（纯标准库实现）。
 
 ### 5.1 标准客户端配置 (`mcpServers.labworker`)
 可在 **“系统设置 → MCP 服务”** 中点击 **“一键注入 Claude / Cursor / Windsurf”** 自动写入，或手动配置：

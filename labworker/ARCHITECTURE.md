@@ -12,12 +12,13 @@
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
 | `../.github/workflows/ci.yml` | GitHub Actions `macos-14` 自动化 CI 门禁：在每次 `push`/`pull_request` 执行 Python 跨语言测试向量、防篡改校验及 `check_doc_counts.sh` 全量回归 |
-| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、22 模块算法速查、UI 响应式规范与 MCP v3.0 协议指南 |
+| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、22 模块算法速查、UI 响应式规范与 MCP 20261115 协议指南 |
 | `labworker/HANDOVER.md` | AI 项目架构交接与维护规范手册：包含目录拓扑、Single Source of Truth 门禁契约、双端 (Swift + Python MCP) 同步机制、跨语言测试向量与编码红线 |
 | `labworker/Package.swift` | SwiftPM 工程定义（Swift 6.4 / 最低支持 `macOS 27.0`），包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |
 | `labworker/Labworker.app` | 每次原子步骤完成后由 `labworker/Scripts/build_app.sh` 自动构建并签名的最新可执行 macOS 应用包 |
-| `labworker/Scripts/build_app.sh` | Release 编译、组装 `labworker/Labworker.app` 应用包、写入 `Info.plist`（`LSMinimumSystemVersion = 27.0`）并执行 Apple Ad-hoc 签名校验 |
+| `labworker/Scripts/build_app.sh` | Release 编译、组装 `labworker/Labworker.app` 应用包、写入 `Info.plist`（版本 `20261115`、`LSMinimumSystemVersion = 27.0`）并执行 Apple Ad-hoc 签名校验 |
+| `labworker/Scripts/package_dmg.sh` | 基于 `Labworker.app` 读取版本号生成 `Labworker-<version>.dmg`（含 `/Applications` 快捷方式、`ditto` 无损拷贝、UDZO 压缩与 `hdiutil verify` + SHA-256 校验） |
 | `labworker/Scripts/check_doc_counts.sh` | 自动提取 `CloneStudioVerify` 测试数、`MCP_TOOLS` 工具数与 `NavItem` 模块数真值，校验证书/文档数字一致性，并自动核验 `Sources/`、`Scripts/`、`python/`、`Tests/` 下全量文件均已在 `ARCHITECTURE.md` 登记 |
 | `labworker/Scripts/generate_icon.py` | 遵循 Apple HIG 生成浅色/深色应用图标（`.icns`/`.png`）与 macOS 状态栏模板图标 |
 | `labworker/Scripts/build_libraries_db.py` | 将原始全基因组靶点数据离线编译为 `Libraries.sqlite` 数据库的构建脚本 |

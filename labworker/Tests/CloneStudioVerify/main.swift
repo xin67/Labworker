@@ -619,7 +619,7 @@ if let appSup = FileManager.default.urls(for: .applicationSupportDirectory, in: 
     try? FileManager.default.removeItem(at: appSup.appendingPathComponent("CloneStudio/plasmid_pool.json"))
 }
 
-// 验证 Labworker MCP Server v3.0 JSON-RPC 2.0 协议与新增全栈实验工具 (16 Tools)
+// 验证 Labworker MCP Server 20261115 JSON-RPC 2.0 协议与新增全栈实验工具 (17 Tools)
 let mcpRpcProc = Process()
 mcpRpcProc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
 mcpRpcProc.arguments = [mcpScript]
@@ -639,13 +639,13 @@ try? rpcInPipe.fileHandleForWriting.close()
 let rpcOutData = rpcOutPipe.fileHandleForReading.readDataToEndOfFile()
 mcpRpcProc.waitUntilExit()
 let rpcOutStr = String(data: rpcOutData, encoding: .utf8) ?? ""
-assert(rpcOutStr.contains("labworker-mcp") && rpcOutStr.contains("3.0.0"), "MCP Server must identify as labworker-mcp v3.0.0")
-assert(rpcOutStr.contains("analyze_protein_and_docking_box") && rpcOutStr.contains("analyze_western_blot") && rpcOutStr.contains("analyze_qpcr_ddct") && rpcOutStr.contains("design_plate_layout") && rpcOutStr.contains("analyze_phylogenetic_tree") && rpcOutStr.contains("verify_sanger_sequencing"), "MCP Server v3.0 must expose all 17 full-stack tools")
-assert(rpcOutStr.contains("vina_config") && rpcOutStr.contains("mean_fold"), "MCP Server v3.0 protein docking box & WB analysis tools must execute and return structured JSON")
+assert(rpcOutStr.contains("labworker-mcp") && rpcOutStr.contains("20261115"), "MCP Server must identify as labworker-mcp 20261115")
+assert(rpcOutStr.contains("analyze_protein_and_docking_box") && rpcOutStr.contains("analyze_western_blot") && rpcOutStr.contains("analyze_qpcr_ddct") && rpcOutStr.contains("design_plate_layout") && rpcOutStr.contains("analyze_phylogenetic_tree") && rpcOutStr.contains("verify_sanger_sequencing"), "MCP Server 20261115 must expose all 17 full-stack tools")
+assert(rpcOutStr.contains("vina_config") && rpcOutStr.contains("mean_fold"), "MCP Server 20261115 protein docking box & WB analysis tools must execute and return structured JSON")
 let catalogCount = await MainActor.run { PlasmidPoolManager.mcpToolsCatalog.count }
 let cfgJSON = await MainActor.run { PlasmidPoolManager.shared.mcpConfigJSONString }
 assert(catalogCount == 17 && cfgJSON.contains("\"labworker\""), "PlasmidPoolManager must expose 17 MCP tools and labworker JSON config")
-pass("StatusBarIcon toggle, PlasmidPoolManager (\(poolCount) plasmids) & Labworker MCP Server v3.0 (17 tools) passed.")
+pass("StatusBarIcon toggle, PlasmidPoolManager (\(poolCount) plasmids) & Labworker MCP Server 20261115 (17 tools) passed.")
 
 // 24. 验证 Phase 1 实验台工具引擎 (PlateLayoutEngine + QPCRAnalysisEngine + PhylogeneticTreeEngine)
 print("🧪 [24/51] Testing Phase 1 Bench Engines (PlateLayoutEngine, QPCRAnalysisEngine & PhylogeneticTreeEngine)...")

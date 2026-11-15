@@ -1855,7 +1855,7 @@ def tool_manage_primer_cart_and_export(args: dict) -> dict:
 
 
 # ============================================================================
-# 3.5 Labworker v3.0 新增 5 大全栈实验工具 (蛋白质对接盒 / WB 16-bit 定量 / qPCR / 微孔板 / 进化树)
+# 3.5 Labworker 20261115 全栈实验工具 (蛋白质对接盒 / WB 16-bit 定量 / qPCR / 微孔板 / 进化树)
 # ============================================================================
 
 KD_HYDROPATHY = {
@@ -2939,7 +2939,7 @@ def tool_verify_sanger_sequencing(args: dict) -> dict:
 
 
 # ============================================================================
-# 4. MCP JSON-RPC 2.0 协议路由与 17 大全栈工具声明 (Labworker MCP v3.0.0)
+# 4. MCP JSON-RPC 2.0 协议路由与 17 大全栈工具声明 (Labworker MCP 20261115)
 # ============================================================================
 
 MCP_TOOLS = [
@@ -3269,7 +3269,7 @@ def handle_jsonrpc_request(req: dict) -> dict:
                 },
                 "serverInfo": {
                     "name": "labworker-mcp",
-                    "version": "3.0.0"
+                    "version": "20261115"
                 }
             }
         }

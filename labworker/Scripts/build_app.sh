@@ -71,9 +71,9 @@ package_app_bundle() {
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>3.0.0</string>
+    <string>20261115</string>
     <key>CFBundleVersion</key>
-    <string>6</string>
+    <string>20261115</string>
     <key>LWGitCommit</key>
     <string>$GIT_COMMIT</string>
     <key>LSMinimumSystemVersion</key>

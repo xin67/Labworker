@@ -226,7 +226,7 @@ public struct SettingsView: View {
         let tools = PlasmidPoolManager.mcpToolsCatalog
         return VStack(alignment: .leading, spacing: 12) {
             StudioResponsiveSplitLayout(breakpoint: 820, spacing: 12, leftRatio: 0.48) {
-                StudioCard(title: "Labworker MCP Server v3.0 控制中心") {
+                StudioCard(title: "Labworker MCP Server 20261115 控制中心") {
                     StudioMetricBadge(label: "协议状态", value: "JSON-RPC 2.0 就绪", color: .green)
                 } content: {
                     VStack(alignment: .leading, spacing: 10) {
@@ -313,7 +313,7 @@ public struct SettingsView: View {
             }
 
             StudioCard(title: "已注册的 \(tools.count) 大全栈 MCP 实验工具清单") {
-                StudioMetricBadge(label: "版本", value: "labworker-mcp 3.0.0", color: .teal)
+                StudioMetricBadge(label: "版本", value: "labworker-mcp 20261115", color: .teal)
             } content: {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 270, maximum: 460), spacing: 10)], spacing: 10) {
                     ForEach(tools) { t in

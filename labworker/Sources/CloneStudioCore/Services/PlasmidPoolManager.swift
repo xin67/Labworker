@@ -856,13 +856,13 @@ public final class PlasmidPoolManager: ObservableObject {
         }
     }
     
-    // MARK: - MCP Server v3.0 配置与跨进程实时联动
+    // MARK: - MCP Server 20261115 配置与跨进程实时联动
     public var mcpServerScriptPath: String {
         CloneStudioResourceLocator.path(forResource: "clonestudio_mcp_server", ofType: "py")
             ?? CloneStudioResourceLocator.projectRootDirectory.appendingPathComponent("Sources/CloneStudioCore/Resources/clonestudio_mcp_server.py").path
     }
     
-    /// Labworker MCP Server v3.0 支持的 16 大全栈实验工具清单（供设置面板展示与检索）
+    /// Labworker MCP Server 20261115 支持的 17 大全栈实验工具清单（供设置面板展示与检索）
     public struct MCPToolDescriptor: Identifiable, Sendable {
         public var id: String { name }
         public let name: String
@@ -910,10 +910,10 @@ public final class PlasmidPoolManager: ObservableObject {
     public func copyMCPConfigToClipboard() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(mcpConfigJSONString, forType: .string)
-        AppState.shared.showToast("已复制 Labworker MCP v3.0 配置 JSON 到剪贴板！")
+        AppState.shared.showToast("已复制 Labworker MCP 20261115 配置 JSON 到剪贴板！")
     }
     
-    /// 一键将 Labworker MCP Server v3.0 注入 Claude Desktop、Cursor 与 Windsurf 的配置文件中
+    /// 一键将 Labworker MCP Server 20261115 注入 Claude Desktop、Cursor 与 Windsurf 的配置文件中
     public func installMCPToLocalAIClients() {
         let scriptPath = mcpServerScriptPath
         let fm = FileManager.default
@@ -951,7 +951,7 @@ public final class PlasmidPoolManager: ObservableObject {
         }
         
         if !installedNames.isEmpty {
-            AppState.shared.showToast("已自动注入 Labworker MCP v3.0 至：\(installedNames.joined(separator: "、"))")
+            AppState.shared.showToast("已自动注入 Labworker MCP 20261115 至：\(installedNames.joined(separator: "、"))")
         } else {
             copyMCPConfigToClipboard()
         }

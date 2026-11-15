@@ -14,6 +14,7 @@ xcuserdata/
 *.app/
 CloneStudio.app/
 Labworker.app/
+*.dmg
 
 # Private Plasmid Sequences & Local Runtime State (Never Commit User Plasmids)
 *.dna

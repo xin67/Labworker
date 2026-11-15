@@ -3012,6 +3012,8 @@ public enum FinderFileDropHelper {
         provenanceFooter: String? = nil
     ) -> String {
         let nowStr = ISO8601DateFormatter().string(from: Date())
+        let rawVer = AnalysisRun.resolveAppVersion()
+        let reportAppVersion = (rawVer == "dev") ? "20261115" : rawVer
         let metricsHTML = metrics.map { item in
             """
             <div class="metric-card">
@@ -3072,7 +3074,7 @@ public enum FinderFileDropHelper {
         <body>
           <div class="report-box">
             <h1>\(title)</h1>
-            <div class="sub">\(subtitle) · 生成时间: \(nowStr) · Labworker v3.0 (Offline Scientific Report)</div>
+            <div class="sub">\(subtitle) · 生成时间: \(nowStr) · Labworker \(reportAppVersion) (Offline Scientific Report)</div>
             <div class="badge">\(credibilityBadge)</div>
             <h2>1. 核心实验与构象指标汇总</h2>
             <div class="metrics-grid">
