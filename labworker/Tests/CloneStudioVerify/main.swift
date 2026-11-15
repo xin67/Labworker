@@ -683,19 +683,128 @@ assert(rfComparison.rfDistance == 0 && rfComparison.identical == true, "Identica
 pass("Phase 1 Bench Engines passed (Plate 96-well auto layout, qPCR ΔΔCt & Newick tree RF=0 verified).")
 
 // 25. 验证 Phase 2 生物图像底层引擎与菌落计数器 (BioImageProcessor + ColonyCounterEngine)
-print("🧪 [25/51] Testing BioImageProcessor & ColonyCounterEngine (Otsu, Connected Components, Blue-White HSV & Garwood Poisson CI)...")
+print("🧪 [25/51] Testing BioImageProcessor & ColonyCounterEngine (Illumination Flattening, Watershed Splitting, Blue-White HSV & Garwood Poisson CI)...")
 let demoPlatePlane = BioImageProcessor.generateDemoColonyPlatePlane(width: 320, height: 320)
 let colonyParams = ColonySegmentationParams(dilutionFactor: 100, platedVolumeMl: 0.1)
 let colonySeg = ColonyCounterEngine.segmentPlate(plane: demoPlatePlane, params: colonyParams)
-assert(colonySeg.markers.count >= 25, "Demo agar plate must detect >= 25 colonies, got \(colonySeg.markers.count)")
+assert(colonySeg.markers.count >= 38, "Demo agar plate 320x320 must detect >= 38 colonies, got \(colonySeg.markers.count)")
 let colonySummary = ColonyCounterEngine.summarize(
     markers: colonySeg.markers,
     otsu: colonySeg.otsu,
     appliedThreshold: colonySeg.appliedThreshold,
     params: colonyParams
 )
-assert(colonySummary.blueCount > 0 && colonySummary.whiteCount > 0, "Blue-white screening must classify both blue and white colonies")
+assert(colonySummary.blueCount > 20 && colonySummary.whiteCount > 12, "Blue-white screening must classify both blue and white colonies, got B=\(colonySummary.blueCount) W=\(colonySummary.whiteCount)")
 assert(colonySummary.poissonLow < Double(colonySummary.includedCount) && colonySummary.poissonHigh > Double(colonySummary.includedCount), "Garwood 95% Poisson CI must bracket includedCount")
+
+// 验证微小菌落、不均光照、粘连团块（含蓝白交界与 2x2 白斑）、椭圆形防过分割及全噪空白对照
+do {
+    func buildColonyStressPlate(
+        width: Int = 360,
+        height: Int = 360,
+        noiseSigma: Double,
+        bgTilt: Double = 0.0,
+        seed: UInt32 = 123456,
+        colonies: [(x: Double, y: Double, rx: Double, ry: Double, isBlue: Bool, contrast: Double)]
+    ) -> BioImagePlane {
+        var rgba = [UInt8](repeating: 0, count: width * height * 4)
+        var gray = [Float](repeating: 0, count: width * height)
+        var rng = Mulberry32Generator(seed: seed)
+        let cx = Double(width) / 2.0, cy = Double(height) / 2.0, dishR = Double(min(width, height)) * 0.45
+        for y in 0..<height {
+            for x in 0..<width {
+                let idx = y * width + x
+                let dCenter = hypot(Double(x) - cx, Double(y) - cy)
+                var r: Double, g: Double, b: Double
+                if dCenter > dishR {
+                    r = 45; g = 48; b = 56
+                } else if dCenter > dishR - 4.0 {
+                    r = 180; g = 184; b = 192
+                } else {
+                    let tilt = bgTilt * ((Double(x) / Double(width) - 0.5) * 0.7 + (Double(y) / Double(height) - 0.5) * 0.5)
+                    r = 224 + tilt; g = 220 + tilt; b = 206 + tilt
+                    for col in colonies {
+                        if hypot((Double(x) - col.x) / col.rx, (Double(y) - col.y) / col.ry) <= 1.0 {
+                            let c = col.contrast
+                            if col.isBlue { r -= c * 1.3; g -= c * 0.9; b -= c * 0.25 }
+                            else { r -= c * 0.95; g -= c * 0.98; b -= c * 1.05 }
+                            break
+                        }
+                    }
+                    if noiseSigma > 0 {
+                        let u1 = max(1e-6, rng.nextDouble())
+                        let u2 = rng.nextDouble()
+                        let n = sqrt(-2.0 * log(u1)) * cos(2.0 * .pi * u2) * noiseSigma
+                        r += n; g += n; b += n
+                    }
+                }
+                let ru = UInt8(min(255, max(0, Int(round(r)))))
+                let gu = UInt8(min(255, max(0, Int(round(g)))))
+                let bu = UInt8(min(255, max(0, Int(round(b)))))
+                rgba[idx * 4] = ru; rgba[idx * 4 + 1] = gu; rgba[idx * 4 + 2] = bu; rgba[idx * 4 + 3] = 255
+                gray[idx] = 0.299 * Float(ru) + 0.587 * Float(gu) + 0.114 * Float(bu)
+            }
+        }
+        return BioImagePlane(width: width, height: height, gray: gray, rgba: rgba)
+    }
+
+    // 1) 微小低对比度 + 强斜坡光照
+    var tinyGrid: [(Double, Double, Double, Double, Bool, Double)] = []
+    for gy in 0..<4 {
+        for gx in 0..<4 {
+            tinyGrid.append((
+                105.0 + Double(gx) * 50.0,
+                105.0 + Double(gy) * 50.0,
+                1.6 + Double((gx + gy) % 3) * 0.45,
+                1.6 + Double((gx + gy) % 3) * 0.45,
+                (gx + gy) % 2 == 0,
+                28.0 + Double((gx * 3 + gy) % 4) * 16.0
+            ))
+        }
+    }
+    let tinySeg = ColonyCounterEngine.segmentPlate(
+        plane: buildColonyStressPlate(noiseSigma: 1.5, bgTilt: 48.0, colonies: tinyGrid),
+        params: ColonySegmentationParams()
+    )
+    assert(tinySeg.markers.count == 16, "Uneven-illumination tiny colony plate must detect 16/16, got \(tinySeg.markers.count)")
+
+    // 2) 含噪微小粘连对 + 2x2 白斑团块 + 蓝白异色贴合
+    let touchingCols: [(Double, Double, Double, Double, Bool, Double)] = [
+        (110, 140, 2.4, 2.4, true, 110), (113.8, 140, 2.4, 2.4, true, 110),
+        (220, 200, 4.5, 4.5, false, 95), (227.8, 200, 4.5, 4.5, false, 95),
+        (220, 207.8, 4.5, 4.5, false, 95), (227.8, 207.8, 4.5, 4.5, false, 95),
+        (140, 240, 5.5, 5.5, true, 105), (150.0, 240, 5.5, 5.5, false, 85)
+    ]
+    let touchSeg = ColonyCounterEngine.segmentPlate(
+        plane: buildColonyStressPlate(noiseSigma: 1.5, colonies: touchingCols),
+        params: ColonySegmentationParams()
+    )
+    assert(touchSeg.markers.count == 8, "Touching tiny pair + 2x2 cluster + blue/white pair must split to 8/8, got \(touchSeg.markers.count)")
+
+    // 3) 单个椭圆菌落 (1.44:1) 防过分割 & 空白高噪培养皿零误报
+    let ovalSeg = ColonyCounterEngine.segmentPlate(
+        plane: buildColonyStressPlate(noiseSigma: 2.0, colonies: [
+            (130, 150, 7.2, 5.0, true, 100),
+            (225, 205, 5.0, 7.2, false, 95)
+        ]),
+        params: ColonySegmentationParams()
+    )
+    assert(ovalSeg.markers.count == 2, "Single elliptical colonies must not over-split, got \(ovalSeg.markers.count)")
+
+    let blankSeg = ColonyCounterEngine.segmentPlate(
+        plane: buildColonyStressPlate(noiseSigma: 2.5, bgTilt: 30.0, colonies: []),
+        params: ColonySegmentationParams()
+    )
+    assert(blankSeg.markers.isEmpty, "Blank noisy uneven plate must yield 0 false positives, got \(blankSeg.markers.count)")
+
+    // 4) ColonySegmentationParams 向后兼容旧 JSON 解码
+    let legacyJSON = Data("{\"minArea\":12,\"maxArea\":5000,\"minCircularity\":0.35,\"thresholdOffset\":0}".utf8)
+    let decodedLegacy = try JSONDecoder().decode(ColonySegmentationParams.self, from: legacyJSON)
+    assert(decodedLegacy.splitTouchingColonies == true && decodedLegacy.minArea == 12, "Legacy ColonySegmentationParams must default splitTouchingColonies to true")
+} catch {
+    fatalError("Colony stress/compat test failed: \(error)")
+}
+
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_colony_prov_\(UUID().uuidString)", isDirectory: true)

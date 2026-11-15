@@ -494,7 +494,7 @@ public enum BioImageProcessor {
         return out
     }
     
-    // MARK: - 4. 八邻域连通域提取与 RGB/HSV 颜色统计 (支持菌落计数与蓝白斑筛选)
+    // MARK: - 4. 八邻域连通域提取、距离变换分水岭拆分与 RGB/HSV 颜色统计
     
     public static func rgbToHSV(r: Double, g: Double, b: Double) -> (h: Double, s: Double, v: Double) {
         let rn = r / 255.0
@@ -517,55 +517,215 @@ public enum BioImageProcessor {
         let s = maxC <= 1e-6 ? 0.0 : (delta / maxC)
         return (h, s, maxC)
     }
-    
-    public static func extractConnectedComponents(
-        mask: [UInt8],
+
+    /// 计算像素集合的统计几何属性 (Marching Squares 亚像素轮廓周长 + RGB/HSV 均值)
+    public static func buildConnectedComponent(
+        id: Int,
+        pixels: [Int],
         plane: BioImagePlane
-    ) -> [BioConnectedComponent] {
+    ) -> BioConnectedComponent? {
         let w = plane.width
         let h = plane.height
-        guard mask.count == w * h else { return [] }
-        
-        var visited = [Bool](repeating: false, count: w * h)
-        var components: [BioConnectedComponent] = []
+        guard w > 0, h > 0, !pixels.isEmpty else { return nil }
+
+        var minX = w, minY = h, maxX = 0, maxY = 0
+        var sumX = 0.0, sumY = 0.0, sumGray = 0.0
+        var sumR = 0.0, sumG = 0.0, sumB = 0.0
+
+        for p in pixels {
+            let x = p % w
+            let y = p / w
+            if x < minX { minX = x }
+            if x > maxX { maxX = x }
+            if y < minY { minY = y }
+            if y > maxY { maxY = y }
+            sumX += Double(x)
+            sumY += Double(y)
+            sumGray += Double(plane.gray[p])
+            sumR += Double(plane.rgba[p * 4])
+            sumG += Double(plane.rgba[p * 4 + 1])
+            sumB += Double(plane.rgba[p * 4 + 2])
+        }
+
+        let area = pixels.count
+        let perimeter = marchingSquaresPerimeter(
+            pixels: pixels,
+            imageWidth: w,
+            minX: minX,
+            minY: minY,
+            maxX: maxX,
+            maxY: maxY
+        )
+        let circ = perimeter > 1e-6
+            ? min(1.0, max(0.0, (4.0 * Double.pi * Double(area)) / (perimeter * perimeter)))
+            : 0.0
+        let nD = Double(area)
+        let meanR = sumR / nD
+        let meanG = sumG / nD
+        let meanB = sumB / nD
+        let hsv = rgbToHSV(r: meanR, g: meanG, b: meanB)
+
+        return BioConnectedComponent(
+            id: id,
+            area: area,
+            minX: minX,
+            minY: minY,
+            maxX: maxX,
+            maxY: maxY,
+            centroidX: sumX / nD + 0.5,
+            centroidY: sumY / nD + 0.5,
+            radius: sqrt(nD / Double.pi),
+            meanIntensity: sumGray / nD,
+            circularity: circ,
+            meanR: meanR,
+            meanG: meanG,
+            meanB: meanB,
+            hueDegrees: hsv.h,
+            saturation: hsv.s,
+            pixels: pixels
+        )
+    }
+
+    /// 使用 2×2 Marching Squares 子轮廓近似真实欧氏周长，避免 4-邻域曼哈顿周长在小圆与锯齿边缘上严重低估圆度
+    private static func marchingSquaresPerimeter(
+        pixels: [Int],
+        imageWidth: Int,
+        minX: Int,
+        minY: Int,
+        maxX: Int,
+        maxY: Int
+    ) -> Double {
+        let occW = (maxX - minX + 1) + 2
+        let occH = (maxY - minY + 1) + 2
+        var occ = [Bool](repeating: false, count: occW * occH)
+        for p in pixels {
+            let lx = (p % imageWidth) - minX + 1
+            let ly = (p / imageWidth) - minY + 1
+            occ[ly * occW + lx] = true
+        }
+        var perimeter = 0.0
+        let diag = 0.7071067811865476
+        for cy in 0..<(occH - 1) {
+            let row0 = cy * occW
+            let row1 = (cy + 1) * occW
+            for cx in 0..<(occW - 1) {
+                let b0 = occ[row0 + cx] ? 1 : 0
+                let b1 = occ[row0 + cx + 1] ? 2 : 0
+                let b2 = occ[row1 + cx + 1] ? 4 : 0
+                let b3 = occ[row1 + cx] ? 8 : 0
+                switch b0 | b1 | b2 | b3 {
+                case 0, 15:
+                    break
+                case 3, 6, 9, 12:
+                    perimeter += 1.0
+                case 1, 2, 4, 7, 8, 11, 13, 14:
+                    perimeter += diag
+                case 5, 10:
+                    perimeter += 2.0 * diag
+                default:
+                    break
+                }
+            }
+        }
+        return perimeter
+    }
+
+    /// 一维平方欧氏距离变换 (Felzenszwalb & Huttenlocher 2012, O(N) 精确下包络线扫描)
+    private static func edt1D(_ f: [Double]) -> [Double] {
+        let n = f.count
+        guard n > 0 else { return [] }
+        var d = [Double](repeating: 0, count: n)
+        var v = [Int](repeating: 0, count: n)
+        var z = [Double](repeating: 0, count: n + 1)
+        var k = 0
+        v[0] = 0
+        z[0] = -Double.infinity
+        z[1] = Double.infinity
+
+        for q in 1..<n {
+            while true {
+                let r = v[k]
+                let s = ((f[q] + Double(q * q)) - (f[r] + Double(r * r))) / Double(2 * q - 2 * r)
+                if s <= z[k] {
+                    k -= 1
+                } else {
+                    k += 1
+                    v[k] = q
+                    z[k] = s
+                    z[k + 1] = Double.infinity
+                    break
+                }
+            }
+        }
+        k = 0
+        for q in 0..<n {
+            while z[k + 1] < Double(q) {
+                k += 1
+            }
+            let r = v[k]
+            let diff = Double(q - r)
+            d[q] = diff * diff + f[r]
+        }
+        return d
+    }
+
+    /// 精确二维欧氏距离变换 (返回前景像元至最近背景像元的欧氏距离)
+    public static func euclideanDistanceTransform(mask: [Bool], width: Int, height: Int) -> [Double] {
+        guard width > 0, height > 0, mask.count == width * height else { return [] }
+        let infVal = 1e12
+        var grid = [Double](repeating: 0, count: width * height)
+        var col = [Double](repeating: 0, count: height)
+        for x in 0..<width {
+            for y in 0..<height {
+                col[y] = mask[y * width + x] ? infVal : 0.0
+            }
+            let transformed = edt1D(col)
+            for y in 0..<height {
+                grid[y * width + x] = transformed[y]
+            }
+        }
+        var row = [Double](repeating: 0, count: width)
+        var out = [Double](repeating: 0, count: width * height)
+        for y in 0..<height {
+            let offset = y * width
+            for x in 0..<width {
+                row[x] = grid[offset + x]
+            }
+            let transformed = edt1D(row)
+            for x in 0..<width {
+                out[offset + x] = mask[offset + x] ? sqrt(max(0.0, transformed[x])) : 0.0
+            }
+        }
+        return out
+    }
+
+    /// 对二值掩膜提取 8-邻域连通像素集合列表
+    private static func extractRawPixelGroups(mask: [UInt8], width: Int, height: Int) -> [[Int]] {
+        guard width > 0, height > 0, mask.count == width * height else { return [] }
+        var visited = [Bool](repeating: false, count: width * height)
+        var groups: [[Int]] = []
         var stack: [Int] = []
-        stack.reserveCapacity(1024)
-        var nextId = 1
-        
-        for seed in 0..<(w * h) {
+        stack.reserveCapacity(512)
+
+        for seed in 0..<(width * height) {
             if mask[seed] == 0 || visited[seed] { continue }
             visited[seed] = true
             stack.removeAll(keepingCapacity: true)
             stack.append(seed)
-            
             var pixels: [Int] = []
-            var minX = w, minY = h, maxX = 0, maxY = 0
-            var sumX = 0.0, sumY = 0.0, sumGray = 0.0
-            var sumR = 0.0, sumG = 0.0, sumB = 0.0
-            
+
             while let p = stack.popLast() {
                 pixels.append(p)
-                let x = p % w
-                let y = p / w
-                if x < minX { minX = x }
-                if x > maxX { maxX = x }
-                if y < minY { minY = y }
-                if y > maxY { maxY = y }
-                sumX += Double(x)
-                sumY += Double(y)
-                sumGray += Double(plane.gray[p])
-                sumR += Double(plane.rgba[p * 4])
-                sumG += Double(plane.rgba[p * 4 + 1])
-                sumB += Double(plane.rgba[p * 4 + 2])
-                
+                let x = p % width
+                let y = p / width
                 for dy in -1...1 {
                     let ny = y + dy
-                    if ny < 0 || ny >= h { continue }
+                    if ny < 0 || ny >= height { continue }
                     for dx in -1...1 {
                         if dx == 0 && dy == 0 { continue }
                         let nx = x + dx
-                        if nx < 0 || nx >= w { continue }
-                        let ni = ny * w + nx
+                        if nx < 0 || nx >= width { continue }
+                        let ni = ny * width + nx
                         if mask[ni] > 0 && !visited[ni] {
                             visited[ni] = true
                             stack.append(ni)
@@ -573,51 +733,558 @@ public enum BioImageProcessor {
                     }
                 }
             }
-            
-            let area = pixels.count
-            guard area > 0 else { continue }
-            var perimeter = 0
-            for p in pixels {
-                let x = p % w
-                let y = p / w
-                if x == 0 || mask[p - 1] == 0 { perimeter += 1 }
-                if x == w - 1 || mask[p + 1] == 0 { perimeter += 1 }
-                if y == 0 || mask[p - w] == 0 { perimeter += 1 }
-                if y == h - 1 || mask[p + w] == 0 { perimeter += 1 }
+            if !pixels.isEmpty {
+                groups.append(pixels)
             }
-            let circ = perimeter > 0
-                ? min(1.0, max(0.0, (4.0 * Double.pi * Double(area)) / Double(perimeter * perimeter)))
-                : 0.0
-            let nD = Double(area)
-            let meanR = sumR / nD
-            let meanG = sumG / nD
-            let meanB = sumB / nD
-            let hsv = rgbToHSV(r: meanR, g: meanG, b: meanB)
-            
-            components.append(
-                BioConnectedComponent(
-                    id: nextId,
-                    area: area,
-                    minX: minX,
-                    minY: minY,
-                    maxX: maxX,
-                    maxY: maxY,
-                    centroidX: sumX / nD + 0.5,
-                    centroidY: sumY / nD + 0.5,
-                    radius: sqrt(nD / Double.pi),
-                    meanIntensity: sumGray / nD,
-                    circularity: circ,
-                    meanR: meanR,
-                    meanG: meanG,
-                    meanB: meanB,
-                    hueDegrees: hsv.h,
-                    saturation: hsv.s,
-                    pixels: pixels
-                )
-            )
-            nextId += 1
+        }
+        return groups
+    }
+
+    public static func extractConnectedComponents(
+        mask: [UInt8],
+        plane: BioImagePlane
+    ) -> [BioConnectedComponent] {
+        let groups = extractRawPixelGroups(mask: mask, width: plane.width, height: plane.height)
+        var components: [BioConnectedComponent] = []
+        components.reserveCapacity(groups.count)
+        var nextId = 1
+        for pixels in groups {
+            if let comp = buildConnectedComponent(id: nextId, pixels: pixels, plane: plane) {
+                components.append(comp)
+                nextId += 1
+            }
         }
         return components
+    }
+
+    /// 提取连通域并对粘连菌落簇执行「距离变换 + 持久性峰筛选 + 色彩界面感知分水岭」自动拆分
+    public static func extractSplitColonyComponents(
+        mask: [UInt8],
+        plane: BioImagePlane,
+        splitTouching: Bool = true,
+        colorAwareSplitting: Bool = true
+    ) -> [BioConnectedComponent] {
+        let groups = extractRawPixelGroups(mask: mask, width: plane.width, height: plane.height)
+        var components: [BioConnectedComponent] = []
+        components.reserveCapacity(groups.count)
+        var nextId = 1
+
+        for pixels in groups {
+            let splitGroups = splitTouching && pixels.count >= 8
+                ? splitColonyCluster(pixels: pixels, plane: plane, colorAware: colorAwareSplitting)
+                : [pixels]
+            for subPixels in splitGroups {
+                if let comp = buildConnectedComponent(id: nextId, pixels: subPixels, plane: plane) {
+                    components.append(comp)
+                    nextId += 1
+                }
+            }
+        }
+        return components
+    }
+
+    private struct WatershedHeapNode {
+        let cost: Double
+        let li: Int
+        let label: Int
+    }
+
+    private struct MinHeap<Element> {
+        private var storage: [Element] = []
+        private let lessThan: (Element, Element) -> Bool
+
+        init(lessThan: @escaping (Element, Element) -> Bool) {
+            self.lessThan = lessThan
+        }
+
+        var isEmpty: Bool { storage.isEmpty }
+
+        mutating func push(_ item: Element) {
+            storage.append(item)
+            siftUp(storage.count - 1)
+        }
+
+        mutating func pop() -> Element? {
+            guard !storage.isEmpty else { return nil }
+            let top = storage[0]
+            let last = storage.removeLast()
+            if !storage.isEmpty {
+                storage[0] = last
+                siftDown(0)
+            }
+            return top
+        }
+
+        private mutating func siftUp(_ idx: Int) {
+            var c = idx
+            while c > 0 {
+                let p = (c - 1) >> 1
+                if lessThan(storage[c], storage[p]) {
+                    storage.swapAt(c, p)
+                    c = p
+                } else {
+                    break
+                }
+            }
+        }
+
+        private mutating func siftDown(_ idx: Int) {
+            var p = idx
+            let n = storage.count
+            while true {
+                let left = p * 2 + 1
+                if left >= n { break }
+                var best = left
+                let right = left + 1
+                if right < n && lessThan(storage[right], storage[left]) {
+                    best = right
+                }
+                if lessThan(storage[best], storage[p]) {
+                    storage.swapAt(p, best)
+                    p = best
+                } else {
+                    break
+                }
+            }
+        }
+    }
+
+    /// 对单个粘连连通域像素集执行局部 Patch 拆分
+    private static func splitColonyCluster(
+        pixels: [Int],
+        plane: BioImagePlane,
+        colorAware: Bool
+    ) -> [[Int]] {
+        let w = plane.width
+        var minX = w, minY = plane.height, maxX = 0, maxY = 0
+        for p in pixels {
+            let x = p % w
+            let y = p / w
+            if x < minX { minX = x }
+            if x > maxX { maxX = x }
+            if y < minY { minY = y }
+            if y > maxY { maxY = y }
+        }
+        let pw = (maxX - minX + 1) + 2
+        let ph = (maxY - minY + 1) + 2
+        let nPatch = pw * ph
+
+        var inComp = [Bool](repeating: false, count: nPatch)
+        var origIdx = [Int](repeating: -1, count: nPatch)
+        for p in pixels {
+            let lx = (p % w) - minX + 1
+            let ly = (p / w) - minY + 1
+            let li = ly * pw + lx
+            inComp[li] = true
+            origIdx[li] = p
+        }
+
+        var cr = [Double](repeating: 0, count: nPatch)
+        var cg = [Double](repeating: 0, count: nPatch)
+        var cb = [Double](repeating: 0, count: nPatch)
+        var isChromaWall = [Bool](repeating: false, count: nPatch)
+
+        if colorAware {
+            for li in 0..<nPatch where inComp[li] {
+                let p = origIdx[li]
+                let r = Double(plane.rgba[p * 4])
+                let g = Double(plane.rgba[p * 4 + 1])
+                let b = Double(plane.rgba[p * 4 + 2])
+                let sum = max(60.0, r + g + b)
+                cr[li] = r / sum
+                cg[li] = g / sum
+                cb[li] = b / sum
+            }
+            func chromaDist(_ a: Int, _ b: Int) -> Double {
+                let dr = cr[a] - cr[b]
+                let dg = cg[a] - cg[b]
+                let db = cb[a] - cb[b]
+                return sqrt(dr * dr + dg * dg + db * db)
+            }
+            // 使用对称中心差分与锐利正交跳变探测蓝/白交界，抑制单像元噪点误切断
+            for ly in 1..<(ph - 1) {
+                for lx in 1..<(pw - 1) {
+                    let li = ly * pw + lx
+                    guard inComp[li] else { continue }
+                    if inComp[li - 1] && inComp[li + 1] && chromaDist(li - 1, li + 1) >= 0.16 {
+                        isChromaWall[li] = true
+                    } else if inComp[li - pw] && inComp[li + pw] && chromaDist(li - pw, li + pw) >= 0.16 {
+                        isChromaWall[li] = true
+                    } else if inComp[li + 1] && chromaDist(li, li + 1) >= 0.18 && !(inComp[li - 1] && chromaDist(li - 1, li) >= 0.12) {
+                        isChromaWall[li] = true
+                    } else if inComp[li + pw] && chromaDist(li, li + pw) >= 0.18 && !(inComp[li - pw] && chromaDist(li - pw, li) >= 0.12) {
+                        isChromaWall[li] = true
+                    }
+                }
+            }
+        }
+
+        let edtGeo = euclideanDistanceTransform(mask: inComp, width: pw, height: ph)
+        let edtSplit: [Double]
+        if colorAware && isChromaWall.contains(true) {
+            var splitMask = inComp
+            for li in 0..<nPatch where isChromaWall[li] {
+                splitMask[li] = false
+            }
+            let tmp = euclideanDistanceTransform(mask: splitMask, width: pw, height: ph)
+            // 确保完全不抹除色彩界壁处微弱信号
+            edtSplit = tmp
+        } else {
+            edtSplit = edtGeo
+        }
+
+        // 极轻度可分离平滑 (权重 0.04 / 0.92 / 0.04) 消除像素网格奇偶台阶毛刺，同时保留微小菌落峰尖与粘连窄鞍部
+        var tempScore = [Double](repeating: 0, count: nPatch)
+        var score = [Double](repeating: 0, count: nPatch)
+        for ly in 1..<(ph - 1) {
+            for lx in 1..<(pw - 1) {
+                let li = ly * pw + lx
+                guard inComp[li] else { continue }
+                let sL = inComp[li - 1] ? edtSplit[li - 1] : 0.0
+                let sR = inComp[li + 1] ? edtSplit[li + 1] : 0.0
+                tempScore[li] = 0.04 * sL + 0.92 * edtSplit[li] + 0.04 * sR
+            }
+        }
+        for ly in 1..<(ph - 1) {
+            for lx in 1..<(pw - 1) {
+                let li = ly * pw + lx
+                guard inComp[li] else { continue }
+                let sU = inComp[li - pw] ? tempScore[li - pw] : 0.0
+                let sD = inComp[li + pw] ? tempScore[li + pw] : 0.0
+                score[li] = 0.04 * sU + 0.92 * tempScore[li] + 0.04 * sD
+            }
+        }
+
+        // 拓扑持久性降序淹没筛选真实菌落峰种子
+        var fgIndices: [Int] = []
+        fgIndices.reserveCapacity(pixels.count)
+        for ly in 1..<(ph - 1) {
+            for lx in 1..<(pw - 1) {
+                let li = ly * pw + lx
+                if inComp[li] { fgIndices.append(li) }
+            }
+        }
+        fgIndices.sort { a, b in
+            if abs(score[a] - score[b]) > 1e-7 { return score[a] > score[b] }
+            if abs(edtGeo[a] - edtGeo[b]) > 1e-7 { return edtGeo[a] > edtGeo[b] }
+            return a < b
+        }
+
+        struct BasinInfo {
+            var id: Int
+            var seedLi: Int
+            var seedX: Double
+            var seedY: Double
+            var peakScore: Double
+            var seedCR: Double
+            var seedCG: Double
+            var seedCB: Double
+            var mergedInto: Int?
+        }
+
+        var basinAt = [Int](repeating: 0, count: nPatch) // 0=未处理, >0=basin id
+        var basins: [BasinInfo] = []
+        basins.reserveCapacity(16)
+
+        func resolveBasin(_ id: Int) -> Int {
+            var cur = id
+            while let parent = basins[cur - 1].mergedInto {
+                cur = parent
+            }
+            return cur
+        }
+
+        for li in fgIndices {
+            let lx = li % pw
+            let ly = li / pw
+            let s = score[li]
+
+            var neighborRoots: [Int] = []
+            for dy in -1...1 {
+                for dx in -1...1 {
+                    if dx == 0 && dy == 0 { continue }
+                    let ni = (ly + dy) * pw + (lx + dx)
+                    let bid = basinAt[ni]
+                    if bid > 0 {
+                        let root = resolveBasin(bid)
+                        if !neighborRoots.contains(root) {
+                            neighborRoots.append(root)
+                        }
+                    }
+                }
+            }
+
+            if neighborRoots.isEmpty {
+                // 新局部最大值：要求距离峰 >= 1.05 px (允许最小 r≈1.5 px 微小粘连群)
+                if s >= 1.05 {
+                    let newId = basins.count + 1
+                    var sumR = 0.0, sumG = 0.0, sumB = 0.0, cnt = 0.0
+                    if colorAware {
+                        for dy in -1...1 {
+                            for dx in -1...1 {
+                                let ni = (ly + dy) * pw + (lx + dx)
+                                if inComp[ni] && !isChromaWall[ni] {
+                                    sumR += cr[ni]; sumG += cg[ni]; sumB += cb[ni]; cnt += 1.0
+                                }
+                            }
+                        }
+                    }
+                    let inv = cnt > 0 ? 1.0 / cnt : 1.0
+                    basins.append(BasinInfo(
+                        id: newId,
+                        seedLi: li,
+                        seedX: Double(lx),
+                        seedY: Double(ly),
+                        peakScore: s,
+                        seedCR: cnt > 0 ? sumR * inv : cr[li],
+                        seedCG: cnt > 0 ? sumG * inv : cg[li],
+                        seedCB: cnt > 0 ? sumB * inv : cb[li],
+                        mergedInto: nil
+                    ))
+                    basinAt[li] = newId
+                }
+            } else if neighborRoots.count == 1 {
+                basinAt[li] = neighborRoots[0]
+            } else {
+                // 多个盆地于鞍点 s 处相遇：选择最高峰作为主盆，判断其余子峰是独立菌落还是噪声假峰
+                let mainRoot = neighborRoots.max { a, b in
+                    let pa = basins[a - 1].peakScore
+                    let pb = basins[b - 1].peakScore
+                    if abs(pa - pb) > 1e-7 { return pa < pb }
+                    return a > b
+                }!
+                let mInfo = basins[mainRoot - 1]
+                for rOther in neighborRoots where rOther != mainRoot {
+                    let oInfo = basins[rOther - 1]
+                    let chromaGap = colorAware
+                        ? sqrt(pow(mInfo.seedCR - oInfo.seedCR, 2) + pow(mInfo.seedCG - oInfo.seedCG, 2) + pow(mInfo.seedCB - oInfo.seedCB, 2))
+                        : 0.0
+                    if chromaGap >= 0.14 { continue } // 异色斑（如蓝斑连白斑）绝对保留拆分
+
+                    let distPeaks = hypot(mInfo.seedX - oInfo.seedX, mInfo.seedY - oInfo.seedY)
+                    let hSmall = oInfo.peakScore
+                    let drop = hSmall - s
+                    let neckRatio = s / max(1e-6, hSmall)
+
+                    let tooClose = distPeaks < max(2.2, 0.68 * hSmall)
+                    let farApart = distPeaks >= 1.30 * hSmall
+                    let shallowRipple = farApart
+                        ? (drop < 0.20 || neckRatio > 0.965)
+                        : (drop < 0.40 || (neckRatio > 0.935 && distPeaks < 1.15 * hSmall))
+                    if tooClose || shallowRipple {
+                        basins[rOther - 1].mergedInto = mainRoot
+                    }
+                }
+                // 鞍点归属最近种子（但不跨盆合并有效双峰）
+                let bestAttach = neighborRoots.map { resolveBasin($0) }.min { a, b in
+                    let ba = basins[a - 1]
+                    let bb = basins[b - 1]
+                    let da = hypot(Double(lx) - ba.seedX, Double(ly) - ba.seedY)
+                    let db = hypot(Double(lx) - bb.seedX, Double(ly) - bb.seedY)
+                    return da < db
+                } ?? resolveBasin(mainRoot)
+                basinAt[li] = bestAttach
+            }
+        }
+
+        let activeSeeds = basins.filter { $0.mergedInto == nil }
+        guard activeSeeds.count >= 2 else { return [pixels] }
+
+        // 仅当聚类中确实存在明显异色菌落（如蓝斑连白斑）时启用色彩引力，避免同色团块因传感噪声产生锯齿界
+        var maxSeedChromaGap = 0.0
+        if colorAware {
+            for i in 0..<activeSeeds.count {
+                for j in (i + 1)..<activeSeeds.count {
+                    let gap = sqrt(
+                        pow(activeSeeds[i].seedCR - activeSeeds[j].seedCR, 2) +
+                        pow(activeSeeds[i].seedCG - activeSeeds[j].seedCG, 2) +
+                        pow(activeSeeds[i].seedCB - activeSeeds[j].seedCB, 2)
+                    )
+                    if gap > maxSeedChromaGap { maxSeedChromaGap = gap }
+                }
+            }
+        }
+        let useColorWatershed = colorAware && maxSeedChromaGap >= 0.10
+
+        // 第二阶段：基于优先队列的 Meyer 色彩 + 地形分水岭淹没，精准沿咽喉与色差界面切分
+        var seedIdMap = [Int: Int]()
+        for (idx, sInfo) in activeSeeds.enumerated() {
+            seedIdMap[sInfo.id] = idx + 1
+        }
+
+        var label = [Int](repeating: 0, count: nPatch)
+        var heap = MinHeap<WatershedHeapNode> { a, b in
+            if abs(a.cost - b.cost) > 1e-9 { return a.cost < b.cost }
+            return a.li < b.li
+        }
+
+        // 先标定每颗存活峰的种子点及与其同平台 8-邻点
+        for sInfo in activeSeeds {
+            guard let compactLabel = seedIdMap[sInfo.id] else { continue }
+            label[sInfo.seedLi] = compactLabel
+            let sx = sInfo.seedLi % pw
+            let sy = sInfo.seedLi / pw
+            for dy in -1...1 {
+                for dx in -1...1 {
+                    let ni = (sy + dy) * pw + (sx + dx)
+                    if inComp[ni] && label[ni] == 0 && abs(score[ni] - sInfo.peakScore) <= 0.15 {
+                        label[ni] = compactLabel
+                    }
+                }
+            }
+        }
+
+        func pushNeighbors(of li: Int, assignedLabel: Int) {
+            let x = li % pw
+            let y = li / pw
+            let sInfo = activeSeeds[assignedLabel - 1]
+            let colorWeight = useColorWatershed ? 14.0 : 0.0
+            for dy in -1...1 {
+                for dx in -1...1 {
+                    if dx == 0 && dy == 0 { continue }
+                    let nx = x + dx
+                    let ny = y + dy
+                    let ni = ny * pw + nx
+                    if !inComp[ni] || label[ni] != 0 { continue }
+                    let rawChromaPen: Double = useColorWatershed
+                        ? sqrt(pow(cr[ni] - sInfo.seedCR, 2) + pow(cg[ni] - sInfo.seedCG, 2) + pow(cb[ni] - sInfo.seedCB, 2))
+                        : 0.0
+                    let cPen = max(0.0, rawChromaPen - 0.045)
+                    let distSeed = hypot(Double(nx) - sInfo.seedX, Double(ny) - sInfo.seedY)
+                    let wallPen = (useColorWatershed && isChromaWall[ni]) ? 4.0 : 0.0
+                    let cost = -score[ni] + colorWeight * cPen + wallPen + 0.002 * distSeed
+                    heap.push(WatershedHeapNode(cost: cost, li: ni, label: assignedLabel))
+                }
+            }
+        }
+
+        for ly in 1..<(ph - 1) {
+            for lx in 1..<(pw - 1) {
+                let li = ly * pw + lx
+                if label[li] > 0 {
+                    pushNeighbors(of: li, assignedLabel: label[li])
+                }
+            }
+        }
+
+        while let node = heap.pop() {
+            if label[node.li] != 0 { continue }
+            label[node.li] = node.label
+            pushNeighbors(of: node.li, assignedLabel: node.label)
+        }
+
+        reconnectWatershedOrphans(
+            label: &label,
+            inComp: inComp,
+            width: pw,
+            height: ph,
+            seedLocations: activeSeeds.map { ($0.seedLi, $0.seedX, $0.seedY) }
+        )
+
+        // 若因隔离边存在极少数未触及前景像元，兜底归属最近存活峰
+        var buckets = [[Int]](repeating: [], count: activeSeeds.count)
+        for p in pixels {
+            let lx = (p % w) - minX + 1
+            let ly = (p / w) - minY + 1
+            let li = ly * pw + lx
+            var lbl = label[li]
+            if lbl <= 0 {
+                var bestIdx = 1
+                var bestDist = Double.infinity
+                for (idx, sInfo) in activeSeeds.enumerated() {
+                    let d = hypot(Double(lx) - sInfo.seedX, Double(ly) - sInfo.seedY)
+                    if d < bestDist {
+                        bestDist = d
+                        bestIdx = idx + 1
+                    }
+                }
+                lbl = bestIdx
+            }
+            buckets[lbl - 1].append(p)
+        }
+        return buckets.filter { !$0.isEmpty }
+    }
+
+    /// 清理分水岭切割边缘可能产生的孤立碎点，将与主峰断连的像元重新归属相邻有效连通体。
+    private static func reconnectWatershedOrphans(
+        label: inout [Int],
+        inComp: [Bool],
+        width pw: Int,
+        height ph: Int,
+        seedLocations: [(li: Int, x: Double, y: Double)]
+    ) {
+        let nPatch = pw * ph
+        var connected = [Bool](repeating: false, count: nPatch)
+        for (idx, seed) in seedLocations.enumerated() {
+            let target = idx + 1
+            guard seed.li >= 0, seed.li < nPatch, label[seed.li] == target, !connected[seed.li] else { continue }
+            var queue = [seed.li]
+            connected[seed.li] = true
+            var head = 0
+            while head < queue.count {
+                let cur = queue[head]
+                head += 1
+                let x = cur % pw
+                let y = cur / pw
+                for dy in -1...1 {
+                    let ny = y + dy
+                    if ny < 0 || ny >= ph { continue }
+                    for dx in -1...1 {
+                        if dx == 0 && dy == 0 { continue }
+                        let nx = x + dx
+                        if nx < 0 || nx >= pw { continue }
+                        let ni = ny * pw + nx
+                        if !connected[ni] && label[ni] == target {
+                            connected[ni] = true
+                            queue.append(ni)
+                        }
+                    }
+                }
+            }
+        }
+
+        var orphans: [Int] = []
+        for li in 0..<nPatch where inComp[li] && label[li] > 0 && !connected[li] {
+            orphans.append(li)
+        }
+        guard !orphans.isEmpty else { return }
+
+        // 多轮向已连通主体邻域吸附
+        for _ in 0..<4 {
+            var remaining: [Int] = []
+            for li in orphans {
+                let x = li % pw
+                let y = li / pw
+                var bestLbl = 0
+                var bestDist = Double.infinity
+                for dy in -1...1 {
+                    let ny = y + dy
+                    if ny < 0 || ny >= ph { continue }
+                    for dx in -1...1 {
+                        if dx == 0 && dy == 0 { continue }
+                        let nx = x + dx
+                        if nx < 0 || nx >= pw { continue }
+                        let ni = ny * pw + nx
+                        if connected[ni] && label[ni] > 0 {
+                            let s = seedLocations[label[ni] - 1]
+                            let d = hypot(Double(x) - s.x, Double(y) - s.y)
+                            if d < bestDist {
+                                bestDist = d
+                                bestLbl = label[ni]
+                            }
+                        }
+                    }
+                }
+                if bestLbl > 0 {
+                    label[li] = bestLbl
+                    connected[li] = true
+                } else {
+                    remaining.append(li)
+                }
+            }
+            if remaining.count == orphans.count || remaining.isEmpty { break }
+            orphans = remaining
+        }
     }
     
     // MARK: - 5. 一维灰度积分投影与局部峰值检测 (用于 Gel 与 Western Blot 自动泳道/条带定位)

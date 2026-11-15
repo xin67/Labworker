@@ -53,7 +53,7 @@
 | `Views/BenchTools/PlateDesignerView.swift` | 微孔板（6～384 孔）可视化点选涂刷、随机种子排布与 CSV/qPCR 导出视图 |
 | `Views/BenchTools/QPCRAnalysisView.swift` | qPCR $\Delta\Delta C_t$ 相对定量、标准曲线拟合、反应孔 QC 质控与 `Swift Charts` 显著性柱状图/热图视图 |
 | `Views/BenchTools/PhylogeneticTreeView.swift` | 系统发育树（直角/等距/环形布局）矢量交互画布、演化支折叠旋转与 Robinson-Foulds 双树拓扑比对视图 |
-| `Views/BenchTools/ColonyCounterView.swift` | 菌落计数器与蓝白斑筛选视图（Otsu 自动分割、X-gal 色相分类、点选修正与 Garwood 95% 泊松区间 CFU 换算） |
+| `Views/BenchTools/ColonyCounterView.swift` | 菌落计数器与蓝白斑筛选视图（900 px 高清采样、分水岭粘连拆分开关、`minArea=4` 微小菌落支持、X-gal 色相分类、点选修正与 Garwood 95% 泊松区间 CFU 换算） |
 | `Views/BenchTools/WesternBlotView.swift` | Western Blot 16-bit 自动圈定、明场 Marker 混叠、Rolling-ball 背景扣除、可拖拽条带框、1D 峰剖面与内参归一化统计视图 |
 | `Views/BenchTools/GelFigureEditorView.swift` | 凝胶电泳分子量回归拟合、Marker 标准品标尺与质粒双酶切虚拟电泳对照叠加视图 |
 | `Views/BenchTools/FigureAnnotatorView.swift` | 科研多图拼版、RGB 多通道荧光伪彩合成、微米比例尺与共定位像素强度剖面图视图 |
@@ -92,8 +92,8 @@
 - `Engine/PlateLayoutEngine.swift`：微孔板确定性随机排布（Mulberry32）、正交连通冲突核验、CSV/TSV 样品解析导出及全局微孔板共享状态中心 `PlateLayoutStore`。
 - `Engine/QPCRAnalysisEngine.swift`：qPCR $\Delta\Delta C_t$ 相对定量、多内参几何平均、标准曲线最小二乘回归、反应孔 QC 质控与 Welch's t-test 显著性检验引擎。
 - `Engine/PhylogeneticTreeEngine.swift`：系统发育树 Newick 递归解析与序列化、中点定根/阶梯化排序、直角/等距/环形三种几何布局解算及双树 Robinson-Foulds 拓扑距离对比引擎。
-- `Engine/BioImageProcessor.swift`：生物图像底层处理引擎（RGBA/灰度平面提取、高斯滤波、Otsu 大津法分割、积分图自适应局部均值二值化、形态学开闭运算、8 邻域连通域与 HSV 色相统计、一维灰度投影峰值检测及高仿真实验示范图生成器）。
-- `Engine/ColonyCounterEngine.swift`：菌落自动分割、X-gal 蓝白斑 HSV 色相判别、Garwood 精确泊松 95% 置信区间、CFU/mL 滴度计算及 `AnalysisRun` v2 (`.run.json`) 溯源导出引擎。
+- `Engine/BioImageProcessor.swift`：生物图像底层处理引擎（RGBA/灰度平面提取、高斯滤波、Otsu 大津法分割、积分图自适应局部均值二值化、形态学开闭运算、Felzenszwalb 精确欧氏距离变换 EDT、拓扑持久性选峰与色彩边界感知 Meyer 分水岭粘连拆分、Marching Squares 亚像素周长圆度评估、HSV 色相统计、一维灰度投影峰值检测及高仿真实验示范图生成器）。
+- `Engine/ColonyCounterEngine.swift`：皿内琼脂局部背景平场估计与双滞后阈值菌落分割（微小与模糊低对比度菌落保留 + 分水岭粘连拆分）、X-gal 蓝白斑 HSV 色相判别、Garwood 精确泊松 95% 置信区间、CFU/mL 滴度计算及 `AnalysisRun` v2 (`.run.json`) 溯源导出引擎。
 - `Engine/WesternBlotEngine.swift`：融合 `WBStudio` 的 16-bit 无损读取、显影增强、同批次曝光配对、有效膜条定位（Active Strip ROI）、Rolling-ball 背景扣除、高斯加权剖面四边收紧框、内参归一化与分组 Welch's t 检验双引擎。
 - `Engine/GelAnalysisEngine.swift`：凝胶电泳泳道/条带寻峰、Marker 对数分子量回归拟合（$\log_{10}(\text{size}) = a\cdot y + b$）、质粒酶切虚拟电泳对照生成及 `AnalysisRun` v2 (`.run.json` + 质粒关联索引) 溯源导出引擎。
 - `Engine/FigureAnnotatorEngine.swift`：科研多图拼版 RGB 荧光通道伪彩增益合成、线段像素强度剖面采样（Line Intensity Profile）与共聚焦四通道示范生成引擎。

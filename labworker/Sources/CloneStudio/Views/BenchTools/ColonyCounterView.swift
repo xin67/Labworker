@@ -135,6 +135,11 @@ public struct ColonyCounterView: View {
                         .toggleStyle(.checkbox)
                         .font(.system(size: 12.5))
                         .onChange(of: params.classifyBlueWhite) { _, _ in runSegmentation() }
+
+                    Toggle("分水岭拆分粘连菌落", isOn: $params.splitTouchingColonies)
+                        .toggleStyle(.checkbox)
+                        .font(.system(size: 12.5))
+                        .onChange(of: params.splitTouchingColonies) { _, _ in runSegmentation() }
                 }
                 
                 if useManualThreshold {
@@ -156,7 +161,7 @@ public struct ColonyCounterView: View {
                         Text("最小面积(px²):")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
-                        TextField("12", value: $params.minArea, format: .number)
+                        TextField("4", value: $params.minArea, format: .number)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 12, design: .monospaced))
                             .frame(width: 54)
@@ -167,7 +172,7 @@ public struct ColonyCounterView: View {
                         Text("最大面积(px²):")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
-                        TextField("2500", value: $params.maxArea, format: .number)
+                        TextField("6000", value: $params.maxArea, format: .number)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 12, design: .monospaced))
                             .frame(width: 64)
@@ -398,7 +403,7 @@ public struct ColonyCounterView: View {
     private func importPlateImage() {
         FinderFileDropHelper.presentOpenPanel { url in
             if let img = NSImage(contentsOf: url),
-               let loadedPlane = BioImagePlane.fromNSImage(img, maxDimension: 480) {
+               let loadedPlane = BioImagePlane.fromNSImage(img, maxDimension: 900) {
                 sourceImageURL = url
                 plane = loadedPlane
                 runSegmentation()
