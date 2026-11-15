@@ -14,10 +14,10 @@
 | `../.github/workflows/ci.yml` | GitHub Actions `macos-14` 自动化 CI 门禁：在每次 `push`/`pull_request` 执行 Python 跨语言测试向量、防篡改校验及 `check_doc_counts.sh` 全量回归 |
 | `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、22 模块算法速查、UI 响应式规范与 MCP v3.0 协议指南 |
 | `labworker/HANDOVER.md` | AI 项目架构交接与维护规范手册：包含目录拓扑、Single Source of Truth 门禁契约、双端 (Swift + Python MCP) 同步机制、跨语言测试向量与编码红线 |
-| `labworker/Package.swift` | SwiftPM 工程定义，包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
+| `labworker/Package.swift` | SwiftPM 工程定义（Swift 6.4 / 最低支持 `macOS 27.0`），包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |
 | `labworker/Labworker.app` | 每次原子步骤完成后由 `labworker/Scripts/build_app.sh` 自动构建并签名的最新可执行 macOS 应用包 |
-| `labworker/Scripts/build_app.sh` | Release 编译、组装 `labworker/Labworker.app` 应用包、写入 `Info.plist` 并执行 Apple Ad-hoc 签名校验 |
+| `labworker/Scripts/build_app.sh` | Release 编译、组装 `labworker/Labworker.app` 应用包、写入 `Info.plist`（`LSMinimumSystemVersion = 27.0`）并执行 Apple Ad-hoc 签名校验 |
 | `labworker/Scripts/check_doc_counts.sh` | 自动提取 `CloneStudioVerify` 测试数、`MCP_TOOLS` 工具数与 `NavItem` 模块数真值，校验证书/文档数字一致性，并自动核验 `Sources/`、`Scripts/`、`python/`、`Tests/` 下全量文件均已在 `ARCHITECTURE.md` 登记 |
 | `labworker/Scripts/generate_icon.py` | 遵循 Apple HIG 生成浅色/深色应用图标（`.icns`/`.png`）与 macOS 状态栏模板图标 |
 | `labworker/Scripts/build_libraries_db.py` | 将原始全基因组靶点数据离线编译为 `Libraries.sqlite` 数据库的构建脚本 |
@@ -29,10 +29,10 @@
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
 | `CloneStudioApp.swift` | 应用入口、菜单栏命令快捷键、macOS 系统深浅色 / 强调色 / 辅助透明 / Liquid Glass 强度广播与激活刷新监听、状态栏 `NSStatusItem` 快捷工作台及退出进度保存提示 |
-| `Views/Main/ContentView.swift` | 主窗口容器：透明窗口底色 + 原生 `NSVisualEffectView(.sidebar, .behindWindow)` 磨砂侧边栏、单一像素级 `.separatorColor` 可拖拽调宽（双击重置）分栏线、顶部 Liquid Glass 折射搜索框（无默认自动聚焦闪烁）+ SDK 圆形导入按钮、全局拖拽导入遮罩与 Liquid Glass HDR Toast 通知 |
-| `Views/Components/DesignSystem.swift` | 全局 macOS 26/27 Liquid Glass + HDR 设计系统与复用组件库：`StudioPalette`（系统语义 `NSColor` 黑白/浅灰背景与分割线）、`StudioGlassSupport`、`studioGlassButton` / `studioGlassMenu`（默认直用原生 `.buttonStyle(.glass / .glassProminent)` 与 `Menu`）、`StudioNoAutoFocusSearchField`、`StudioPageLayout`（`.scrollEdgeEffectStyle(.soft)` + `.safeAreaBar` 渐隐顶栏）、`StudioOverflowToolbar`（原生 `ControlGroup` + `Picker(.segmented)`）、`StudioCard`、`StudioSegmentedPicker`、`StudioSegmentedPillGroup`、`StudioActionPillButton`、`StudioCompactPillButton`、`StudioMenuPillButton`、`StudioPrimaryActionButton`、`StudioSectionClearButton`、`FinderRevealButton`、`SpeciesSwitchBar`、`StudioMetricBadge`、`SequenceEditorBox`、`StudioFlowLayout`、`StudioResponsiveSplitLayout`、`AdaptiveTwoColumnWorkspace`、`PlasmidPreviewToggle`、`PlasmidFileToolbarGroup`、`StudioRadius`（三层连续圆角规范）、`StandardLinkerPreset`、`FinderFileDropHelper` |
-| `Views/Components/PlasmidPreviewCanvas.swift` | 质粒全景图谱引擎：对齐系统语义深浅色底与原生 `Picker(.segmented)` 的 `PlasmidPreviewPanel` 同屏双视工作台（无冗余折叠/关闭按钮）、OVE 同心多轨环形质粒图、`PlasmidMapBuilder` 图谱构建器与沉浸式透明标题栏（`.fullSizeContentView`）独立预览窗口控制器 `PlasmidWindowPresenter` |
-| `Views/Components/SequenceRowCanvasView.swift` | 微观单碱基双链序列画布：对齐系统语义浅白/深灰炭底的 `LazyVStack` 视口虚拟化、静态序列层与选区浮层分离、互补链、氨基酸密码子带、内切酶裂解切口与 120Hz 拖拽选区 |
+| `Views/Main/ContentView.swift` | 主窗口容器：透明窗口底色 + 原生 `NSVisualEffectView(.sidebar, .behindWindow)` 磨砂侧边栏、单一像素级 `.separatorColor` 可拖拽调宽（双击重置）分栏线、顶部 macOS 27 Liquid Glass 折射搜索框（无默认自动聚焦闪烁）+ SDK 圆形导入按钮、全局拖拽导入遮罩与 Liquid Glass HDR Toast 通知 |
+| `Views/Components/DesignSystem.swift` | 全局 macOS 27 Liquid Glass + HDR 设计系统与复用组件库：`StudioPalette`（系统语义 `NSColor` 黑白/浅灰背景与分割线）、`StudioGlassSupport`、`studioGlassButton` / `studioGlassMenu` / `studioJoinedGlassCapsule` / `studioOptionalForeground`（默认直用原生 `.buttonStyle(.glass / .glassProminent)` 且非高亮按钮保持中性通透玻璃杜绝同色淹没）、`StudioNoAutoFocusSearchField`、`StudioPageLayout`（`.scrollEdgeEffectStyle(.soft)` + `.safeAreaBar` 渐隐顶栏）、`StudioOverflowToolbar` & `StudioGlassSegmentedBar`（统一由 `GlassEffectContainer` + `.glassEffect` 驱动，替代内容区退化为扁平灰的 `ControlGroup` 与 `.pickerStyle(.segmented)`）、`StudioCard`、`StudioSegmentedPicker`、`StudioSegmentedPillGroup`、`StudioActionPillButton`、`StudioCompactPillButton`、`StudioMenuPillButton`、`StudioPrimaryActionButton`、`StudioSectionClearButton`、`FinderRevealButton`、`SpeciesSwitchBar`、`StudioMetricBadge`、`SequenceEditorBox`、`StudioFlowLayout`、`StudioResponsiveSplitLayout`、`AdaptiveTwoColumnWorkspace`、`PlasmidPreviewToggle`、`PlasmidFileToolbarGroup`、`StudioRadius`（三层连续圆角规范）、`StandardLinkerPreset`、`FinderFileDropHelper` |
+| `Views/Components/PlasmidPreviewCanvas.swift` | 质粒全景图谱引擎：对齐系统语义深浅色底与 `StudioGlassSegmentedBar` 液态玻璃分段切换的 `PlasmidPreviewPanel` 同屏双视工作台（无冗余折叠/关闭按钮）、OVE 同心多轨环形质粒图（工具按钮适配 `.colorScheme` 与高亮白显对比度）、`PlasmidMapBuilder` 图谱构建器与沉浸式透明标题栏（`.fullSizeContentView`）独立预览窗口控制器 `PlasmidWindowPresenter` |
+| `Views/Components/SequenceRowCanvasView.swift` | 微观单碱基双链序列画布：对齐系统语义浅白/深灰炭底（同步 `.colorScheme`）与 `GlassEffectContainer` 液态玻璃视口/功能按钮的 `LazyVStack` 视口虚拟化画布、静态序列层与选区浮层分离、互补链、氨基酸密码子带、内切酶裂解切口与 120Hz 拖拽选区 |
 | `Views/Components/SequenceMinimapView.swift` | 全长序列缩略图导航条与视口快速定位滑块 |
 | `Views/Components/RestrictionEnzymeInspectorView.swift` | 限制性内切酶切点汇总与点击跳转浮层面板（系统语义深色浮层 + SDK `.studioGlassButton` / `.studioGlassMenu` 预设与搜索操作栏） |
 | `Views/Components/SequenceHighlightText.swift` | 引物 5' 同源臂 / 3' 特异结合区分色高亮文本、`PrimerCardView` 引物卡片（含二级结构风险等级徽章、$\text{Mg}^{2+}$/dNTP 即时调节滑块与可展开碱基配对示意图）、`PrimerPairDimerSummaryBar` 对间异二聚体摘要条与 `PrimerPairQuickRenameBar` 成对重命名栏 |
@@ -59,7 +59,7 @@
 | `Views/BenchTools/FigureAnnotatorView.swift` | 科研多图拼版、RGB 多通道荧光伪彩合成、微米比例尺与共定位像素强度剖面图视图 |
 | `Views/BenchTools/ProteinWorkbenchView.swift` | 极简声明式窗口响应式蛋白质工作台：三维 Cα 骨架与 Vina 对接盒视窗、SPICE 五维指标、对齐 `DockFlowLab` 的 LIGSITE 共识融合盒与经验启发式 (`empirical_heuristic`) 突变 ΔΔG 扫描视图 |
 | `Views/Order/OrderExportView.swift` | 商业引物合成与测序订单（擎科/生工等）一键导出中心及引物批量写入 `.dna` 工具 |
-| `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观（仿 macOS 26/27 系统设置 Liquid Glass 实时预览与强度滑块、多色/系统主题色阵与跟随系统设置按钮、HDR 动态高光及双引擎协同调度模式）② 侧边栏定制 ③ MCP 智能体服务 (17 工具) ④ 22 模块全局功能说明书 |
+| `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观（仿 macOS 27 系统设置 Liquid Glass 实时预览与强度滑块、多色/系统主题色阵与跟随系统设置按钮、HDR 动态高光及双引擎协同调度模式）② 侧边栏定制 ③ MCP 智能体服务 (17 工具) ④ 22 模块全局功能说明书 |
 
 ## 三、 核心算法与业务服务层 (`labworker/Sources/CloneStudioCore/`)
 

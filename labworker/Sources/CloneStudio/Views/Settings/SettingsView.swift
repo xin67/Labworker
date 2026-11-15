@@ -567,7 +567,7 @@ public struct SettingsView: View {
 
                 Divider().opacity(0.45)
 
-                // macOS 26/27 系统设置风格：Liquid Glass 实时折射预览窗格 + 强度滑块 + 跟随系统设置按钮
+                // macOS 27 系统设置风格：Liquid Glass 实时折射预览窗格 + 强度滑块 + 跟随系统设置按钮
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 16) {
                         liquidGlassControlSidebar
@@ -591,7 +591,7 @@ public struct SettingsView: View {
 
                 Divider().opacity(0.45)
 
-                // macOS 26/27 系统设置风格：主题颜色圆形色卡阵列（多色/跟随系统 + 单色点选 + 跟随系统按钮）
+                // macOS 27 系统设置风格：主题颜色圆形色卡阵列（多色/跟随系统 + 单色点选 + 跟随系统按钮）
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .center, spacing: 8) {
                         Text("主题颜色:")
@@ -628,7 +628,7 @@ public struct SettingsView: View {
 
                 Divider().opacity(0.45)
 
-                Toggle("启用 HDR 液态玻璃动态高光 (macOS 26/27 XDR 广色域辉光)", isOn: $appState.enableAmbientGlassGlow)
+                Toggle("启用 HDR 液态玻璃动态高光 (macOS 27 XDR 广色域辉光)", isOn: $appState.enableAmbientGlassGlow)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .font(.system(size: 11.5, weight: .medium))
@@ -689,7 +689,7 @@ public struct SettingsView: View {
         )
 
         return VStack(alignment: .leading, spacing: 8) {
-            // 实时折射预览框（仿 macOS 26/27 系统设置 Apple Park 玻璃预览卡片）
+            // 实时折射预览框（仿 macOS 27 系统设置 Apple Park 玻璃预览卡片）
             ZStack(alignment: .top) {
                 liquidGlassScenicBackdrop
 

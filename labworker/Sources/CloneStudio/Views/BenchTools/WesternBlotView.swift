@@ -266,6 +266,7 @@ public struct WesternBlotView: View {
                         selectSyntheticDualDemo()
                     } label: {
                         Label("TP53 / GAPDH 示范", systemImage: "square.stack.3d.up.fill")
+                            .studioOptionalForeground(synthSelected ? nil : .purple)
                     }
                     .studioGlassButton(
                         tint: .purple,
@@ -300,15 +301,13 @@ public struct WesternBlotView: View {
     }
     
     private func layerRoleSwitcher(for group: WBSampleGroup) -> some View {
-        Picker("", selection: $activeLayerRole) {
-            ForEach(group.availableLayers, id: \.role) { layer in
-                Text(layer.label).tag(layer.role)
-            }
-        }
-        .labelsHidden()
-        .pickerStyle(.segmented)
-        .controlSize(.regular)
-        .fixedSize()
+        StudioGlassSegmentedBar(
+            selection: $activeLayerRole,
+            options: group.availableLayers.map { layer in
+                StudioSegmentedOption(value: layer.role, title: layer.label)
+            },
+            controlSize: .regular
+        )
         .onChange(of: activeLayerRole) { _, _ in
             refreshDisplayImages()
         }

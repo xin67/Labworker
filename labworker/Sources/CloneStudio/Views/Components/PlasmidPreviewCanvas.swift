@@ -1458,15 +1458,15 @@ public struct PlasmidPreviewPanel: View {
             }
             .frame(minHeight: isStandaloneWindow ? 28 : nil)
             
-            // 顶栏第二行：macOS 原生 segmented 分段选择器
-            Picker("预览视图", selection: $selectedTab) {
-                ForEach(PreviewTab.allCases, id: \.self) { tab in
-                    Text(tab.rawValue).tag(tab)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .controlSize(.large)
+            // 顶栏第二行：macOS 27 原生 Liquid Glass 分段控制器
+            StudioGlassSegmentedBar(
+                selection: $selectedTab,
+                options: PreviewTab.allCases.map { tab in
+                    StudioSegmentedOption(value: tab, title: tab.rawValue)
+                },
+                controlSize: .large,
+                fillWidth: true
+            )
             
             // 主视图区 (精细同屏 / 环形 / 微观序列 / 线性 / 谱系)
             Group {
@@ -1491,25 +1491,32 @@ public struct PlasmidPreviewPanel: View {
                     .foregroundColor(.secondary)
                 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(data.features) { feat in
-                            let isSel = (selectedFeatureID == feat.id)
-                            Button(action: {
-                                selectFeature(feat)
-                            }) {
-                                HStack(spacing: 3) {
-                                    Circle().fill(feat.color).frame(width: 5, height: 5)
-                                    Text(feat.name).font(.system(size: 10, weight: isSel ? .bold : .regular))
-                                    Text("\(feat.lengthBp)bp").font(.system(size: 9, design: .monospaced)).foregroundColor(.secondary)
+                    GlassEffectContainer(spacing: 4) {
+                        HStack(spacing: 4) {
+                            ForEach(data.features) { feat in
+                                let isSel = (selectedFeatureID == feat.id)
+                                Button(action: {
+                                    selectFeature(feat)
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Circle()
+                                            .fill(isSel ? Color.white : feat.color)
+                                            .frame(width: 5, height: 5)
+                                        Text(feat.name)
+                                            .font(.system(size: 10, weight: isSel ? .semibold : .medium))
+                                        Text("\(feat.lengthBp)bp")
+                                            .font(.system(size: 9, design: .monospaced))
+                                            .studioOptionalForeground(isSel ? nil : .secondary)
+                                    }
+                                    .studioOptionalForeground(isSel ? nil : .primary)
                                 }
-                                .padding(.horizontal, 8)
-                                .frame(height: 22)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(isSel ? feat.color.opacity(0.25) : Color.primary.opacity(0.05))
+                                .studioGlassButton(
+                                    tint: isSel ? feat.color : nil,
+                                    isProminent: isSel,
+                                    isSelected: isSel,
+                                    controlSize: .small
                                 )
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -1696,6 +1703,7 @@ public struct PlasmidPreviewPanel: View {
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
+        .environment(\.colorScheme, isDark ? .dark : .light)
     }
     
     private var circularTopToolbar: some View {
@@ -1709,44 +1717,46 @@ public struct PlasmidPreviewPanel: View {
             
             Spacer(minLength: 4)
             
-            HStack(spacing: 5) {
-                circularToolbarBtn(icon: "cursorarrow", isActive: toolMode == .select, tooltip: "Select Mode") {
-                    toolMode = .select
-                }
-                circularToolbarBtn(icon: "hand.draw", isActive: toolMode == .pan, tooltip: "Pan Canvas") {
-                    toolMode = .pan
-                }
-                circularToolbarBtn(icon: "arrow.triangle.2.circlepath", isActive: toolMode == .rotate, tooltip: "Rotate +30°") {
-                    toolMode = .rotate
-                    withAnimation(.easeInOut(duration: 0.18)) {
-                        rotationDegrees = (rotationDegrees + 30).truncatingRemainder(dividingBy: 360)
+            GlassEffectContainer(spacing: 5) {
+                HStack(spacing: 5) {
+                    circularToolbarBtn(icon: "cursorarrow", isActive: toolMode == .select, tooltip: "Select Mode") {
+                        toolMode = .select
                     }
-                }
-                circularToolbarBtn(icon: "plus.magnifyingglass", isActive: false, tooltip: "Zoom In") {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        zoomScale = min(2.0, zoomScale + 0.18)
+                    circularToolbarBtn(icon: "hand.draw", isActive: toolMode == .pan, tooltip: "Pan Canvas") {
+                        toolMode = .pan
                     }
-                }
-                circularToolbarBtn(icon: "minus.magnifyingglass", isActive: false, tooltip: "Zoom Out") {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        zoomScale = max(0.70, zoomScale - 0.18)
+                    circularToolbarBtn(icon: "arrow.triangle.2.circlepath", isActive: toolMode == .rotate, tooltip: "Rotate +30°") {
+                        toolMode = .rotate
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            rotationDegrees = (rotationDegrees + 30).truncatingRemainder(dividingBy: 360)
+                        }
                     }
-                }
-                circularToolbarBtn(icon: "arrow.counterclockwise", isActive: false, tooltip: "Reset View") {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        zoomScale = 1.0
-                        panOffset = .zero
-                        rotationDegrees = 0
+                    circularToolbarBtn(icon: "plus.magnifyingglass", isActive: false, tooltip: "Zoom In") {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            zoomScale = min(2.0, zoomScale + 0.18)
+                        }
                     }
+                    circularToolbarBtn(icon: "minus.magnifyingglass", isActive: false, tooltip: "Zoom Out") {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            zoomScale = max(0.70, zoomScale - 0.18)
+                        }
+                    }
+                    circularToolbarBtn(icon: "arrow.counterclockwise", isActive: false, tooltip: "Reset View") {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            zoomScale = 1.0
+                            panOffset = .zero
+                            rotationDegrees = 0
+                        }
+                    }
+                    Button(action: {
+                        appState.showToast("已将「\(data.constructTitle)」环形图谱快照复制至剪贴板")
+                    }) {
+                        Label("PNG", systemImage: "camera")
+                            .font(.system(size: 10.5, weight: .semibold))
+                    }
+                    .studioGlassButton(controlSize: .regular)
+                    .help("导出高分辨率 PNG 图谱")
                 }
-                Button(action: {
-                    appState.showToast("已将「\(data.constructTitle)」环形图谱快照复制至剪贴板")
-                }) {
-                    Label("PNG", systemImage: "camera")
-                        .font(.system(size: 10.5, weight: .semibold))
-                }
-                .studioGlassButton(controlSize: .regular)
-                .help("导出高分辨率 PNG 图谱")
             }
         }
         .padding(.horizontal, 10)
@@ -2150,10 +2160,11 @@ public struct PlasmidPreviewPanel: View {
         return Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 10.5, weight: isActive ? .bold : .medium))
-                .foregroundStyle(isActive ? activeCol : .primary)
+                .studioOptionalForeground(isActive ? nil : .primary)
         }
         .studioGlassButton(
             tint: isActive ? activeCol : nil,
+            isProminent: isActive,
             isSelected: isActive,
             isCircle: true,
             controlSize: .regular

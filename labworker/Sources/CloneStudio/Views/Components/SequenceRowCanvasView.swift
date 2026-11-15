@@ -282,6 +282,7 @@ public struct SequenceRowCanvasView: View {
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
+        .environment(\.colorScheme, isDark ? .dark : .light)
     }
     
     private var sequenceMinimapBar: some View {
@@ -540,45 +541,46 @@ public struct SequenceRowCanvasView: View {
     @ViewBuilder
     private var viewportSwitcherCapsules: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
-                if !fullSequence.isEmpty {
-                    let isFull = (selectedWindowIndex == -1)
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedWindowIndex = -1
+            GlassEffectContainer(spacing: 4) {
+                HStack(spacing: 4) {
+                    if !fullSequence.isEmpty {
+                        let isFull = (selectedWindowIndex == -1)
+                        let fullAccent: Color = isDark ? .cyan : .blue
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedWindowIndex = -1
+                            }
+                        }) {
+                            Text("全长序列")
+                                .font(.system(size: 10, weight: isFull ? .semibold : .medium))
+                                .studioOptionalForeground(isFull ? nil : primaryTextColor.opacity(0.84))
                         }
-                    }) {
-                        Text("全长序列")
-                            .font(.system(size: 9.5, weight: isFull ? .bold : .medium))
-                            .foregroundColor(isFull ? .white : primaryTextColor.opacity(0.78))
-                            .padding(.horizontal, 8)
-                            .frame(height: 22)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(isFull ? Color.blue : Color.primary.opacity(0.08))
-                            )
+                        .studioGlassButton(
+                            tint: isFull ? fullAccent : nil,
+                            isProminent: isFull,
+                            isSelected: isFull,
+                            controlSize: .small
+                        )
                     }
-                    .buttonStyle(.plain)
-                }
-                
-                ForEach(Array(windows.enumerated()), id: \.element.id) { idx, win in
-                    let isSel = (idx == selectedWindowIndex) || (fullSequence.isEmpty && idx == 0 && selectedWindowIndex == -1)
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedWindowIndex = idx
+                    
+                    ForEach(Array(windows.enumerated()), id: \.element.id) { idx, win in
+                        let isSel = (idx == selectedWindowIndex) || (fullSequence.isEmpty && idx == 0 && selectedWindowIndex == -1)
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedWindowIndex = idx
+                            }
+                        }) {
+                            Text(win.title)
+                                .font(.system(size: 10, weight: isSel ? .semibold : .medium))
+                                .studioOptionalForeground(isSel ? nil : primaryTextColor.opacity(0.84))
                         }
-                    }) {
-                        Text(win.title)
-                            .font(.system(size: 9.5, weight: isSel ? .bold : .medium))
-                            .foregroundColor(isSel ? .white : primaryTextColor.opacity(0.78))
-                            .padding(.horizontal, 8)
-                            .frame(height: 22)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(isSel ? Color.purple : Color.primary.opacity(0.08))
-                            )
+                        .studioGlassButton(
+                            tint: isSel ? .purple : nil,
+                            isProminent: isSel,
+                            isSelected: isSel,
+                            controlSize: .small
+                        )
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
@@ -586,7 +588,8 @@ public struct SequenceRowCanvasView: View {
     
     // MARK: - 左侧垂直工具栏
     private var leftVerticalToolbar: some View {
-        VStack(spacing: 6) {
+        GlassEffectContainer(spacing: 6) {
+            VStack(spacing: 6) {
             toolbarIconBtn(
                 icon: "cursorarrow.rays",
                 isActive: effectiveSelectedRangeBp != nil,
@@ -664,6 +667,7 @@ public struct SequenceRowCanvasView: View {
                 copyActiveSequence()
             }
         }
+        }
         .padding(.vertical, 8)
         .frame(width: 30)
         .background(subBarBgColor)
@@ -679,10 +683,11 @@ public struct SequenceRowCanvasView: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 10.5, weight: isActive ? .bold : .medium))
-                .foregroundStyle(isActive ? activeColor : secondaryTextColor)
+                .studioOptionalForeground(isActive ? nil : secondaryTextColor)
         }
         .studioGlassButton(
             tint: isActive ? activeColor : nil,
+            isProminent: isActive,
             isSelected: isActive,
             isCircle: true,
             controlSize: .small

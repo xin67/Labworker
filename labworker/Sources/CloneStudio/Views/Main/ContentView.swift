@@ -116,7 +116,7 @@ private struct ImmersiveWindowConfigurator: NSViewRepresentable {
     }
 }
 
-/// 主窗口视图 (macOS 系统磨砂侧边栏 + macOS 26/27 Liquid Glass HDR 搜索框与按钮 + 静态黑白工作区)
+/// 主窗口视图 (macOS 系统磨砂侧边栏 + macOS 27 Liquid Glass HDR 搜索框与按钮 + 静态黑白工作区)
 public struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @ObservedObject private var plasmidPool = PlasmidPoolManager.shared
@@ -343,7 +343,7 @@ public struct ContentView: View {
         }
         .scrollEdgeEffectStyle(.soft, for: .top)
         .safeAreaBar(edge: .top, spacing: 0) {
-            // 顶部原生 macOS 26 Liquid Glass 搜索胶囊 + 等高 30pt 快导圆形按钮（无默认抢焦闪烁光标）
+            // 顶部原生 macOS 27 Liquid Glass 搜索胶囊 + 等高 30pt 快导圆形按钮（无默认抢焦闪烁光标）
             GlassEffectContainer(spacing: 8) {
                 HStack(spacing: 8) {
                     HStack(spacing: 7) {

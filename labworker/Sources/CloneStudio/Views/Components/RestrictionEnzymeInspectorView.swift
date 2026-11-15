@@ -69,6 +69,7 @@ public struct RestrictionEnzymeInspectorView: View {
                 .shadow(color: Color.black.opacity(0.45), radius: 14, x: 0, y: 6)
         )
         .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
+        .environment(\.colorScheme, .dark)
     }
     
     private var inspectorHeaderBar: some View {
@@ -119,7 +120,7 @@ public struct RestrictionEnzymeInspectorView: View {
                 }
             }
             .studioGlassMenu(
-                tint: .cyan,
+                tint: nil,
                 controlSize: .regular,
                 hideIndicator: !appState.followSystemLiquidGlass
             )

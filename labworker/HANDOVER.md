@@ -17,7 +17,7 @@
   - `本地个人备份_勿上传/`（用户个人本地 `.dna` / 备份数据与私人订购模板）
   - `*.dna`, `*.ab1`, `*.seq`, `*.gb`, `*.gbk`, `plasmid_pool.json`, `.clonestudio_plasmid_pool.json`, `.clonestudio_mcp_sync.json`, `workspace_autosave.json`, `analysis_runs_index.json`, `*_MCP_*.xlsx`, `*订购表_*.xlsx`, `*.bak*`
 - **技术栈与编译要求**：
-  - **语言与平台**：Swift 5.9+ / **macOS 26.0+ (`Tahoe` / `Golden Gate` 原生 Liquid Glass UI)**（见 `labworker/Package.swift` `platforms: [.macOS(.v26)]`）
+  - **语言与平台**：Swift 6.4+ / **macOS 27.0+ (原生 Liquid Glass UI SDK)**（见 `labworker/Package.swift` `platforms: [.macOS(.v27)]`）
   - **零第三方 Swift Package 依赖**：100% 基于 Apple 原生框架（`SwiftUI`, `AppKit`, `Accelerate`, `SQLite3`, `CryptoKit`, `ImageIO`, `WebKit`, `Charts`, `UniformTypeIdentifiers`）
   - **Python 桥接层**：系统 `/usr/bin/python3`（MCP 与核心测试向量仅依赖 Python 标准库，无强制第三方依赖；可选增强包：`primer3-py`, `biopython`, `snapgene_reader`, `openpyxl`, `scipy`, `PySide6`, `pyqtgraph`）
 
@@ -42,7 +42,7 @@
 ├── .github/workflows/ci.yml                    # macOS-14 CI：Python 共享向量 + 防篡改检查 + check_doc_counts.sh
 ├── ARCHITECTURE.md                             # 仓库根指向 labworker/ARCHITECTURE.md
 └── labworker/                                  # Swift Package 主目录
-    ├── Package.swift                           # macOS 26+，3 Targets: CloneStudioCore, CloneStudio, CloneStudioVerify
+    ├── Package.swift                           # macOS 27+，3 Targets: CloneStudioCore, CloneStudio, CloneStudioVerify
     ├── README.md / ARCHITECTURE.md / HANDOVER.md
     ├── Scripts/
     │   ├── check_doc_counts.sh                 # 【核心门禁】校验 50 测试 + 17 MCP 工具 + 22 UI 模块 + 文档一致性

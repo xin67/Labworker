@@ -334,7 +334,7 @@ public enum CanvasThemeOverride: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// 全局主题强调色（对齐 macOS 26/27 系统设置外观颜色，支持跟随系统/多色与手动单色选择）
+/// 全局主题强调色（对齐 macOS 27 系统设置外观颜色，支持跟随系统/多色与手动单色选择）
 public enum AppAccentTheme: String, CaseIterable, Identifiable, Sendable {
     case system = "system"
     case blue = "blue"
@@ -380,7 +380,7 @@ public enum AppAccentTheme: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// macOS 26 / 27 原生 Liquid Glass 折射材质档位
+/// macOS 27 原生 Liquid Glass 折射材质档位
 public enum LiquidGlassStyleMode: String, CaseIterable, Identifiable, Sendable {
     case regular = "regular"
     case clear = "clear"
