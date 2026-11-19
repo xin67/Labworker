@@ -10,10 +10,10 @@
 [![Version](https://img.shields.io/badge/Release-v20261115-0A84FF?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/xin67/Labworker/releases/tag/v20261115)
 [![macOS](https://img.shields.io/badge/macOS-27.0%2B%20Liquid%20Glass-1D1D1F?style=for-the-badge)](https://github.com/xin67/Labworker/releases/tag/v20261115)
 [![Swift](https://img.shields.io/badge/Swift-6.4%20%7C%20Zero%203rd--Party%20Deps-F05138?style=for-the-badge&logo=swift&logoColor=white)](#-架构设计与协同工作流)
-[![MCP](https://img.shields.io/badge/MCP%20Tools-17%20Ready-30D158?style=for-the-badge)](#-ai-智能体协同)
+[![MCP](https://img.shields.io/badge/MCP%20Tools-23%20Ready-30D158?style=for-the-badge)](#-ai-智能体协同)
 [![License](https://img.shields.io/badge/License-MIT-8E8E93?style=for-the-badge)](LICENSE)
 
-[⬇️ 下载最新版 DMG (`v20261115`)](https://github.com/xin67/Labworker/releases/tag/v20261115) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 22 个功能模块](#-22-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 源码构建](#-安装与源码构建)
+[⬇️ 下载最新版 DMG (`v20261115`)](https://github.com/xin67/Labworker/releases/tag/v20261115) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 20 个功能模块](#-20-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 源码构建](#-安装与源码构建)
 
 <br/>
 
@@ -27,10 +27,10 @@
 
 ## ✨ 为什么选择 Labworker？
 
-- **🎨 原生 macOS 27 Liquid Glass 体验**：纯 SwiftUI + AppKit 构建，深浅色与系统强调色实时跟随，统一 macOS 系统字体与 `.monospacedDigit()` 等宽数值排版；支持将 `.dna`、`.ab1`、`.tif`、`.pdb`、`.nwk` 等文件从 Finder 直接拖入或右键打开自动跳转对应模块。
+- **🎨 原生 macOS 27 Liquid Glass 体验**：纯 SwiftUI + AppKit 构建，深浅色与系统强调色实时跟随，统一 macOS 系统字体与 `.monospacedDigit()` 等宽数值排版；支持将 `.dna`、`.ab1`、`.tif`、`.pdb` 等文件从 Finder 直接拖入或右键打开自动跳转对应模块。
 - **⚡️ 零第三方 Swift 依赖 · 本地硬件加速**：底层完全依托 Apple 原生 `Accelerate/vDSP`、`SQLite3` 与本地计算引擎离线运行——**实验序列与原始图像无需离开本机**。
 - **🔬 对齐期刊审稿标准的湿实验统计**：内置 SantaLucia 最近邻 $T_m$ 与二级结构 $\Delta G$ 计算、Rolling-Ball 背景扣减、Otsu + 分水岭粘连拆解、Garwood 95% 泊松置信区间、Welch's *t*-test 及 Holm–Bonferroni 多重检验校正。
-- **🤖 开箱即用的 AI MCP 双端协同**：随包内置 `clonestudio_mcp_server.py`（**17** 个工具），可直接接入 Claude Desktop、Cursor、Windsurf、Antigravity 等 AI 客户端，实现自动化引物设计、测序 QC 与工作台联动同步。
+- **🤖 开箱即用的 AI MCP 双端协同**：随包内置 `clonestudio_mcp_server.py`（**23** 个工具），可直接接入 Claude Desktop、Cursor、Windsurf、Antigravity 等 AI 客户端，实现自动化引物设计、测序 QC 与工作台联动同步。
 
 ---
 
@@ -109,7 +109,7 @@ flowchart LR
         I1[".dna / .gb / .fasta\n质粒与序列"]
         I2[".ab1 / .abi\nSanger 测序"]
         I3["16-bit .tif / .png\nWB / 胶图 / 菌落"]
-        I4[".pdb / .cif / .nwk / .csv\n蛋白 / 进化树 / qPCR"]
+        I4[".pdb / .cif / .csv\n蛋白结构 / qPCR"]
     end
 
     subgraph Core["⚙️ 原生 Swift 计算内核 (CloneStudioCore · 零第三方依赖)"]
@@ -120,8 +120,8 @@ flowchart LR
     end
 
     subgraph Surfaces["🖥️ 交互与自动化双端面"]
-        S1["macOS 27 Liquid Glass App\n5 大分类 · 22 个功能模块"]
-        S2["Python MCP Server\n17 大自动化工具 · 双向同步通道"]
+        S1["macOS 27 Liquid Glass App\n5 大分类 · 20 个功能模块"]
+        S2["Python MCP Server\n23 大自动化工具 · 双向同步通道"]
     end
 
     subgraph Out["📤 学术交付与实验产出"]
@@ -141,24 +141,24 @@ flowchart LR
 
 ---
 
-## 🧩 22 个全栈功能模块
+## 🧩 20 个全栈功能模块
 
 | 分类板块 | 模块名称 | 核心功能与支持格式 |
 | :--- | :--- | :--- |
-| **分子克隆与质粒 (7)** | `质粒池` / `入门克隆` / `单片段克隆` / `多片段克隆` / `定点突变` / `片段删除` / `Sanger 测序` | `.dna` (SnapGene)、`.gb`、`.fasta`、`.ab1` 解析与导出；支持矢量环形图谱、双链碱基视图、3n 移码校验与批量测序看板 |
+| **分子克隆与质粒 (7)** | `质粒池` / `入门克隆` / `单片段克隆` / `多片段克隆` / `定点突变` / `片段删除` / `Sanger 测序` | `.dna` (SnapGene)、`.gb`、`.fasta`、`.ab1` 解析与导出；支持矢量环形图谱、双链碱基视图、同源重组 PCR 凝胶电泳模拟、3n 移码校验与批量测序看板 |
 | **基因编辑与靶点 (3)** | `sgRNA 设计` / `shRNA 设计` / `靶点对比` | 基于 `Libraries.sqlite`（hg38/mm39）扫描 `NGG/TTTV` PAM、热力学不对称性与 CHOPCHOP 靶点分档比对，自动带酶切粘性末端 |
-| **电泳与图像定量 (4)** | `WB 灰度定量` / `凝胶分子量` / `菌落计数器` / `科研多图拼版` | 原生 16-bit TIFF 滚球扣背景与显著性柱状图、Ladder $\log_{10}(\text{MW})$ 回归、Otsu+分水岭蓝白斑统计、多通道伪彩拼版与 Line Profile |
-| **定量、进化与蛋白 (4)** | `微孔板设计` / `qPCR 定量` / `进化树分析` / `蛋白工作台` | 96/384 孔防边缘效应排布、$2^{-\Delta\Delta C_t}$ 与标准曲线定量、NJ/UPGMA 建树与 `.nwk` 渲染、三维 Cα + LIGSITE 口袋 + Vina 盒 + 点突变 $\Delta\Delta G$ |
-| **工具、订购与系统 (4)** | `体系用量计算` / `序列工具箱` / `引物测序订购` / `全局设置` | 载体:片段摩尔配比算液、SantaLucia 速算与状态栏弹窗小工具、擎科/生工标准 `.xlsx` 订购单生成、主题与酶库管理 |
+| **电泳与图像定量 (3)** | `WB 灰度定量` / `凝胶分子量` / `菌落计数器` | 原生 16-bit TIFF 滚球扣背景与显著性柱状图、Ladder $\log_{10}(\text{MW})$ 回归、Otsu+分水岭蓝白斑统计 |
+| **定量与蛋白工具 (3)** | `微孔板设计` / `qPCR 定量` / `蛋白工作台` | 96/384 孔防边缘效应排布、$2^{-\Delta\Delta C_t}$ 与标准曲线定量、三维 Cα + LIGSITE 口袋 + Vina 盒 + 点突变 $\Delta\Delta G$ |
+| **工具、订购与系统 (4)** | `生物计算器` / `序列工具箱` / `引物测序订购` / `全局设置` | 克隆与经典 0.03 pmol 摩尔比配液、dsDNA/ssDNA/Linear/OD260 核酸定量、蛋白摩尔与编码容量、溶液配制/稀释 ($C_1V_1=C_2V_2$)/温标转换；SantaLucia 速算、Excel 订购单与主题管理 |
 
 ---
 
 ## 🤖 AI 智能体协同
 
-`Labworker.app` 内部打包了开箱即用的 `clonestudio_mcp_server.py`（通过标准 `stdio` MCP 协议提供 **17** 个结构化科研工具），兼容 Claude Desktop、Cursor、Windsurf、Antigravity 与 Codex CLI。
+`Labworker.app` 内部打包了开箱即用的 `clonestudio_mcp_server.py`（通过标准 `stdio` MCP 协议提供 **23** 个结构化科研工具），兼容 Claude Desktop、Cursor、Windsurf、Antigravity 与 Codex CLI。
 
 <details>
-<summary><b>查看 MCP 客户端接入配置与 17 项内置工具清单</b></summary>
+<summary><b>查看 MCP 客户端接入配置与 23 项内置工具清单</b></summary>
 
 在你的 AI 客户端 MCP 配置文件（例如 `mcp_config.json`）中添加以下配置（安装至 `/Applications/Labworker.app` 后无需额外依赖环境）：
 
@@ -175,10 +175,11 @@ flowchart LR
 }
 ```
 
-**17 项可用工具覆盖全流程**：
-- **质粒池与序列检索**：`list_plasmid_pool`、`inspect_plasmid`、`add_plasmid_to_pool`
-- **克隆与基因编辑设计**：`design_single_clone_primers`、`design_multi_fragment_primers`、`design_mutagenesis_primers`、`design_fragment_deletion_primers`、`calculate_recombination_dosage`、`design_sgrna_primers`、`design_shrna_primers`
-- **测序、蛋白与湿实验定量**：`verify_sanger_sequencing`、`analyze_protein_and_docking_box`、`analyze_western_blot`、`analyze_qpcr_ddct`、`design_plate_layout`、`analyze_phylogenetic_tree`
+**23 项可用工具覆盖全流程**：
+- **质粒池与序列检索**：`list_plasmid_pool`、`inspect_plasmid`、`add_plasmid_to_pool`、`auto_annotate_sequence`
+- **克隆与基因编辑设计**：`design_single_clone_primers`、`design_multi_fragment_primers`、`design_golden_gate_assembly`、`design_mutagenesis_primers`、`design_fragment_deletion_primers`、`calculate_recombination_dosage`、`design_sgrna_primers`、`design_shrna_primers`、`design_hdr_donor`
+- **生物换算与溶液配置**：`convert_nucleic_acid_units`、`convert_protein_and_coding`、`calculate_solution_and_temperature`
+- **测序、蛋白与湿实验定量**：`verify_sanger_sequencing`、`deconvolute_crispr_sanger`、`analyze_protein_and_docking_box`、`analyze_western_blot`、`analyze_qpcr_ddct`、`design_plate_layout`
 - **订购交付**：`manage_primer_cart_and_export`
 
 </details>
@@ -199,7 +200,7 @@ flowchart LR
 git clone https://github.com/xin67/Labworker.git
 cd Labworker/labworker
 
-# 1. 运行全部 50 项底层算法与跨语言测试向量（含文档单一真值门禁）
+# 1. 运行全部 51 项底层算法与跨语言测试向量（含文档单一真值门禁）
 bash Scripts/check_doc_counts.sh
 
 # 2. Release 编译并打包 Labworker.app（自动完成 Ad-hoc 签名校验）

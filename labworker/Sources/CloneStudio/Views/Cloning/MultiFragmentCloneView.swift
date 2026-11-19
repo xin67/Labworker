@@ -59,6 +59,14 @@ public struct MultiFragmentCloneView: View {
                 .action(title: "算用量", icon: "function", tint: .purple, help: "将多片段与载体长度送入用量计算") {
                     vm.sendLengthsToCalculator(navigate: true)
                 },
+                .action(title: "电泳模拟", icon: "chart.bar.doc.horizontal", tint: .green, help: "在独立窗口放大检视多片段同源组装 PCR 模拟电泳") {
+                    GelSimulationWindowPresenter.shared.openWindow(
+                        title: "多片段同源组装 PCR 模拟电泳",
+                        accentTint: .green,
+                        compareLaneTitle: "显示组装体系混合对照",
+                        buildSimulation: multiGelSimulation
+                    )
+                },
                 .action(title: "示例", icon: "sparkles", help: "载入多片段组装示例", action: loadSampleMultiFragments),
                 .action(id: "clear_multi", title: "", icon: "trash", tint: .red, help: "清空当前多片段配置", action: vm.clear)
             ]
@@ -540,6 +548,14 @@ public struct MultiFragmentCloneView: View {
                                 }
                             }
                         }
+
+                        // 6. 多片段同源重组扩增凝胶电泳片段模拟
+                        HomologousPCRGelSectionCard(
+                            title: "多片段同源重组 PCR 凝胶电泳模拟",
+                            accentTint: .green,
+                            compareLaneTitle: "显示组装体系混合对照",
+                            buildSimulation: multiGelSimulation
+                        )
                     }
                 } right: {
                     if let pData = previewData {
@@ -723,5 +739,27 @@ public struct MultiFragmentCloneView: View {
     
     private func selectDNAFile(completion: @escaping (URL) -> Void) {
         FinderFileDropHelper.selectDNAFile(completion: completion)
+    }
+
+    private func multiGelSimulation(
+        concOverride: AgaroseGelConcentration?,
+        ladderOverride: String?,
+        includeMixLane: Bool
+    ) -> HomologousPCRGelSimulationResult {
+        let hasFullVector = vm.vectorDNAInfo != nil || vm.rawVectorLengthBp >= 300
+        return HomologousPCRGelSimulator.simulateMultiFragment(
+            effectiveVectorBackboneLengthBp: hasFullVector ? vm.effectiveVectorBackboneLengthBp : 0,
+            deletedVectorBp: hasFullVector ? vm.deletedVectorBp : 0,
+            rawVectorLengthBp: hasFullVector ? vm.rawVectorLengthBp : 0,
+            fragments: vm.fragments,
+            fragmentExtra5Bases: vm.fragmentExtra5Bases,
+            terminalExtra3Bases: vm.terminalExtra3Bases,
+            homologyLength: vm.homologyLength,
+            primers: vm.primers,
+            omittedShortVectorBp: hasFullVector ? 0 : vm.effectiveVectorBackboneLengthBp,
+            concentrationOverride: concOverride,
+            ladderIDOverride: ladderOverride,
+            includeMixControlLane: includeMixLane
+        )
     }
 }

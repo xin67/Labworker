@@ -49,6 +49,14 @@ public struct FragmentDeletionView: View {
                         }
                     }
                 ),
+                .action(title: "电泳模拟", icon: "chart.bar.doc.horizontal", tint: .purple, help: "在独立窗口放大检视片段删除前后质粒电泳迁移对比") {
+                    GelSimulationWindowPresenter.shared.openWindow(
+                        title: "片段删除反向 PCR 迁移对比模拟",
+                        accentTint: .purple,
+                        compareLaneTitle: "显示亲本/产物同泳道对照",
+                        buildSimulation: deletionGelSimulation
+                    )
+                },
                 .action(title: "示例", icon: "sparkles", help: "载入质粒片段删除示例", action: vm.loadSampleData),
                 .action(id: "clear_deletion", title: "", icon: "trash", tint: .red, help: "清空当前删除配置", action: vm.clear)
             ]
@@ -495,6 +503,14 @@ public struct FragmentDeletionView: View {
                                 }
                             }
                         }
+
+                        // 6. 反向 PCR 缺失前后凝胶电泳迁移对比模拟
+                        HomologousPCRGelSectionCard(
+                            title: "反向 PCR 缺失电泳迁移对比",
+                            accentTint: .purple,
+                            compareLaneTitle: "显示亲本/产物同泳道对照",
+                            buildSimulation: deletionGelSimulation
+                        )
                     }
                 } right: {
                     if let preview = previewData {
@@ -570,5 +586,21 @@ public struct FragmentDeletionView: View {
                 AppState.shared.pendingChainedNode = nil
             }
         }
+    }
+
+    private func deletionGelSimulation(
+        concOverride: AgaroseGelConcentration?,
+        ladderOverride: String?,
+        includeCompareLane: Bool
+    ) -> HomologousPCRGelSimulationResult {
+        HomologousPCRGelSimulator.simulateFragmentDeletion(
+            parentalLengthBp: BioSequence.clean(vm.plasmidSeq).count,
+            deletedLengthBp: vm.estimatedDeletionLengthBp,
+            homologyLength: vm.homologyLength,
+            primers: vm.primers,
+            concentrationOverride: concOverride,
+            ladderIDOverride: ladderOverride,
+            includeCompareLane: includeCompareLane
+        )
     }
 }

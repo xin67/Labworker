@@ -18,7 +18,7 @@ public enum SidebarSectionKind: String, CaseIterable, Identifiable, Sendable {
         case .cloning:          return "分子克隆与质粒"
         case .targeting:        return "基因编辑与靶点"
         case .bioImaging:       return "电泳与图像定量"
-        case .benchTools:       return "定量、进化与蛋白"
+        case .benchTools:       return "定量与蛋白工具"
         case .orderAndSettings: return "合成订购与设置"
         }
     }
@@ -39,10 +39,8 @@ public enum NavItem: String, CaseIterable, Identifiable {
     case westernBlot = "westernBlot"
     case gelFigure = "gelFigure"
     case colonyCounter = "colonyCounter"
-    case figureAnnotator = "figureAnnotator"
     case plateDesigner = "plateDesigner"
     case qpcrAnalysis = "qpcrAnalysis"
-    case phylogeneticTree = "phylogeneticTree"
     case proteinWorkbench = "proteinWorkbench"
     case dnaCalculator = "dnaCalculator"
     case sequenceTools = "sequenceTools"
@@ -57,9 +55,9 @@ public enum NavItem: String, CaseIterable, Identifiable {
             return .cloning
         case .sgRNADesign, .shRNADesign, .chopchopCompare:
             return .targeting
-        case .westernBlot, .gelFigure, .colonyCounter, .figureAnnotator:
+        case .westernBlot, .gelFigure, .colonyCounter:
             return .bioImaging
-        case .plateDesigner, .qpcrAnalysis, .phylogeneticTree, .proteinWorkbench, .dnaCalculator, .sequenceTools:
+        case .plateDesigner, .qpcrAnalysis, .proteinWorkbench, .dnaCalculator, .sequenceTools:
             return .benchTools
         case .orderCenter, .settings:
             return .orderAndSettings
@@ -81,12 +79,10 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .westernBlot:      return "WB 灰度定量"
         case .gelFigure:        return "凝胶分子量"
         case .colonyCounter:    return "菌落计数器"
-        case .figureAnnotator:  return "科研多图拼版"
         case .plateDesigner:    return "微孔板设计"
         case .qpcrAnalysis:     return "qPCR 定量"
-        case .phylogeneticTree: return "系统发育树"
         case .proteinWorkbench: return "蛋白质工作台"
-        case .dnaCalculator:    return "用量计算"
+        case .dnaCalculator:    return "生物计算器"
         case .sequenceTools:    return "序列与 Tm"
         case .orderCenter:      return "订购中心"
         case .settings:         return "系统设置"
@@ -108,10 +104,8 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .westernBlot:      return "slider.horizontal.below.rectangle"
         case .gelFigure:        return "chart.bar.doc.horizontal.fill"
         case .colonyCounter:    return "circle.hexagongrid.fill"
-        case .figureAnnotator:  return "square.grid.2x2.fill"
         case .plateDesigner:    return "square.grid.3x3.fill"
         case .qpcrAnalysis:     return "chart.bar.xaxis"
-        case .phylogeneticTree: return "point.3.connected.trianglepath.dotted"
         case .proteinWorkbench: return "atom"
         case .dnaCalculator:    return "function"
         case .sequenceTools:    return "character.textbox"
@@ -136,12 +130,10 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .westernBlot:      return "wb 灰度定量 western blot densitometry 条带 内参 显影 tif"
         case .gelFigure:        return "凝胶分子量 gel electrophoresis figure marker ladder 电泳 胶图"
         case .colonyCounter:    return "菌落计数器 colony counter cfu 蓝白斑 平板 涂板"
-        case .figureAnnotator:  return "科研多图拼版 figure annotator merge 荧光 伪彩 比例尺"
         case .plateDesigner:    return "微孔板设计 plate layout well 96孔板 384孔板 排布 样品"
         case .qpcrAnalysis:     return "qpcr 定量 ct ddct 标准曲线 荧光定量 表达量 csv"
-        case .phylogeneticTree: return "系统发育树 phylogenetic tree newick 进化树 聚类 nwk"
         case .proteinWorkbench: return "蛋白质工作台 protein workbench structure pdb plddt ramachandran 等电点 疏水 折叠"
-        case .dnaCalculator:    return "用量计算 dna molar calculator 摩尔 质量 ng pmol 体系"
+        case .dnaCalculator:    return "生物计算器 dna molar calculator 摩尔 质量 ng pmol 体系 dsdna ssdna linear dna od260 核酸 蛋白摩尔 编码容量 kda 摩尔浓度 稀释 c1v1 c2v2 温度 华氏 摄氏 开尔文 连接"
         case .sequenceTools:    return "序列与 tm sequence gc 反向互补 退火温度"
         case .orderCenter:      return "订购中心 order export 擎科 生工 引物合成 测序 excel"
         case .settings:         return "系统设置 settings 外观 主题 参数 内切酶"
@@ -182,18 +174,14 @@ public enum NavItem: String, CaseIterable, Identifiable {
             return "电泳胶图泳道自动识别与 Log10(MW) 标准曲线回归计算，支持条带分子量插值估算、泳道标签注释与高分辨率图像导出。"
         case .colonyCounter:
             return "基于 Otsu 自适应阈值、连通域分割与 HSV 色彩空间识别平板菌落，支持蓝白斑筛选自动分类计数与 Garwood 泊松 95% 置信区间统计。"
-        case .figureAnnotator:
-            return "多通道荧光显微图像 RGB 伪彩合成、微米比例尺绘制与跨越 ROI 共定位荧光强度剖面 (Line Profile) 定量拼版工具。"
         case .plateDesigner:
             return "96 孔 / 384 孔微孔板实验排布设计器，支持边缘效应规避 (Edge Avoidance)、梯度稀释序列生成、生物学重复分组与 CSV 机器表导出。"
         case .qpcrAnalysis:
             return "实时荧光定量 PCR 2^(-ΔΔCt) 相对表达量与扩增效率标准曲线解算引擎，严格基于生物学样品级 ΔCt 执行 Welch's t 检验、Holm–Bonferroni 多组比较校正并输出 95% 置信区间。"
-        case .phylogeneticTree:
-            return "支持多序列距离矩阵构建邻接树 (NJ / UPGMA) 及外部 Newick (.nwk) 进化树解析渲染，提供 Robinson-Foulds 拓扑距离比对。"
         case .proteinWorkbench:
             return "集成蛋白质理化性质 (pI/GRAVY/ε280)、三维 Cα 骨架与二面角拉氏图、LIGSITE 七方向 P-S-P 结合口袋扫描、共晶配体共识 Vina 对接盒推荐及点突变 ΔΔG 评估。"
         case .dnaCalculator:
-            return "重组连接与转染体系摩尔质量互算工具，支持载体:片段摩尔比 (1:1 至 1:5) 自动配比、稀释体积计算与多组分加样表生成。"
+            return "全栈生物科研与分子克隆计算工作台：涵盖克隆与经典摩尔比 (0.03 pmol, 1:1~1:5) 体系计算、dsDNA/ssDNA/Linear DNA 质量摩尔互算与 OD260 核酸浓度测定、蛋白质摩尔转换与 DNA 编码容量推算，以及溶液摩尔配制、C1V1=C2V2 稀释与温标换算。"
         case .sequenceTools:
             return "快速 DNA/RNA/氨基酸序列清洗、反向互补、三框密码子翻译、GC% 分布、SantaLucia 最近邻退火温度 (Tm) 及 primer3 发夹/自二聚体 ΔG 即时验算。"
         case .orderCenter:
@@ -212,12 +200,10 @@ public enum NavItem: String, CaseIterable, Identifiable {
             return ".ab1 / .abi (ABIF 四色峰图) / .seq / .fasta"
         case .sgRNADesign, .shRNADesign, .chopchopCompare, .sequenceTools:
             return ".fa / .fasta / .dna / 纯文本序列"
-        case .westernBlot, .gelFigure, .colonyCounter, .figureAnnotator:
+        case .westernBlot, .gelFigure, .colonyCounter:
             return ".tif / .tiff (原生16-bit) / .png / .jpg"
         case .plateDesigner, .qpcrAnalysis, .orderCenter:
             return ".csv / .tsv / .xlsx 制表文本"
-        case .phylogeneticTree:
-            return ".nwk / .tree / .newick / 多序列 .fasta"
         case .proteinWorkbench:
             return ".pdb / .cif / .ent / 氨基酸 .fasta"
         case .dnaCalculator, .settings:
@@ -241,12 +227,10 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .westernBlot:      return "支持主条带与内参双行联动定量，可手动微调泳道框与基线，并导出带显著性星号的离线 HTML 报告。"
         case .gelFigure:        return "选择预设 Marker (如 DL2000 / 1kb Ladder) 后点击标准带即可拟合 R² 并自动测算未知条带大小。"
         case .colonyCounter:    return "开启蓝白斑模式后可自动区分 X-gal 显色菌落与白色阳性克隆并计算转化效率。"
-        case .figureAnnotator:  return "支持 DAPI / GFP / RFP 多通道独立增益调节与一键添加微米标尺。"
         case .plateDesigner:    return "开启「避开最外圈孔」可显著降低 96 孔板边缘蒸发带来的 ELISA / 细胞活性定量偏差。"
         case .qpcrAnalysis:     return "支持直接粘贴仪器导出的 Well / Gene / Sample / Ct 表格，自动剔除或警示 SD > 0.30 的异常复孔。"
-        case .phylogeneticTree: return "支持从侧边栏「快导」直接打开 .nwk 树文件，并在矩形进化分支图与辐射树之间切换。"
         case .proteinWorkbench: return "导入含共晶配体的 PDB 时会自动启用「共晶配体 + LIGSITE 共识融合盒」，一键复制 AutoDock Vina 配置。"
-        case .dnaCalculator:    return "输入载体与片段长度及浓度后，实时给出最优 ng 质量与 μL 加样体积。"
+        case .dnaCalculator:    return "支持从克隆页面直接带入载体/片段长度，也支持在 DNA、蛋白与生理生化分页间快速换算并一键复制结果。"
         case .sequenceTools:    return "菜单栏托盘弹窗也内置了与本模块同源的极简序列 Tm / GC / 反向互补速算器。"
         case .orderCenter:      return "可在「系统设置 → 参数与外观」中预先保存课题组订购人姓名、电话与抗性偏好，免去每次重复填写。"
         case .settings:         return "所有隐藏的侧边栏功能均可在本页随时恢复，也可通过侧边栏搜索框或说明书「直达功能」随时打开。"
@@ -901,7 +885,7 @@ public final class AppState: ObservableObject {
         didSet { saveSetting("cs_defaultProteinTempK", defaultProteinTempK) }
     }
     
-    /// Finder 打开或拖入的待处理实验文件 URL（供 WB / 蛋白质工作台 / 进化树 / qPCR 视图自动消费载入）
+    /// Finder 打开或拖入的待处理实验文件 URL（供 WB / 蛋白质工作台 / qPCR 视图自动消费载入）
     @Published public var pendingFinderOpenedFileURL: URL? = nil
     
     // MARK: - 6. 商业订购与引物池状态

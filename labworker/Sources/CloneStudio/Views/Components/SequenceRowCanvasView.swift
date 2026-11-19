@@ -466,42 +466,49 @@ public struct SequenceRowCanvasView: View {
     
     // MARK: - 顶部 Sequence Map 标题栏
     private var sequenceTopBar: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                HStack(spacing: 6) {
-                    Text("Sequence Map")
-                        .font(.system(size: 11.5, weight: .bold))
-                        .foregroundColor(primaryTextColor)
-                        .fixedSize()
-                    Text("Length: \(totalLengthBp) bp")
-                        .font(.system(size: 10, weight: .medium))
-                        .monospacedDigit()
-                        .foregroundColor(secondaryTextColor)
-                        .fixedSize()
-                }
-                
-                Spacer(minLength: 4)
-                
-                viewportSwitcherCapsules
-                
-                codonSnapModeToggleBtn
-                
-                enzymeInspectorToggleBtn
-            }
-            
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Text("Sequence Map")
-                        .font(.system(size: 11.5, weight: .bold))
-                        .foregroundColor(primaryTextColor)
-                    Text("Length: \(totalLengthBp) bp")
-                        .font(.system(size: 10))
-                        .monospacedDigit()
-                        .foregroundColor(secondaryTextColor)
-                    Spacer()
+        VStack(alignment: .leading, spacing: 5) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        Text("Sequence Map")
+                            .font(.system(size: 11.5, weight: .bold))
+                            .foregroundColor(primaryTextColor)
+                            .fixedSize(horizontal: true, vertical: false)
+                        Text("Length: \(totalLengthBp) bp")
+                            .font(.system(size: 10, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundColor(secondaryTextColor)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+
+                    Spacer(minLength: 4)
+
                     codonSnapModeToggleBtn
                     enzymeInspectorToggleBtn
                 }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Text("Sequence Map")
+                            .font(.system(size: 11.5, weight: .bold))
+                            .foregroundColor(primaryTextColor)
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 4)
+                        Text("Length: \(totalLengthBp) bp")
+                            .font(.system(size: 10, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundColor(secondaryTextColor)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                    HStack(spacing: 6) {
+                        codonSnapModeToggleBtn
+                        enzymeInspectorToggleBtn
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+
+            if !fullSequence.isEmpty || !windows.isEmpty {
                 viewportSwitcherCapsules
             }
         }

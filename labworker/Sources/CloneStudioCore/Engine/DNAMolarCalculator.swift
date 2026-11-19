@@ -1,22 +1,50 @@
 import Foundation
 
-/// 重组反应 DNA 使用量与移液吸取体积计算器 (支持公式推荐 ng 与用户自定义 ng 实时联动计算)
+/// 重组反应与经典连接 DNA 使用量与移液吸取体积计算器 (支持 ClonExpress 经验公式推荐、用户自定义 ng 及 0.03 pmol 经典摩尔比互算)
 public struct DNAMolarCalculator {
     
     public enum CloneType: String, CaseIterable, Identifiable {
         case simple = "SimpleClone"
         case single = "SingleClone"
         case multi = "MultiClone"
+        case ligationRatio = "LigationRatio"
         
         public var id: String { rawValue }
         
         public var title: String {
             switch self {
-            case .simple: return "入门克隆 (SimpleClone)"
-            case .single: return "单片段克隆 (SingleClone)"
-            case .multi:  return "多片段克隆 (MultiClone)"
+            case .simple:        return "入门克隆 (SimpleClone)"
+            case .single:        return "单片段克隆 (SingleClone)"
+            case .multi:         return "多片段克隆 (MultiClone)"
+            case .ligationRatio: return "经典摩尔比 (Ligation)"
             }
         }
+    }
+
+    /// 经典连接 / 同源重组载体-片段摩尔比枚举 (`1:1` ~ `1:5`)
+    public enum LigationMolarRatio: Int, CaseIterable, Identifiable, Sendable {
+        case r1_1 = 1
+        case r1_2 = 2
+        case r1_3 = 3
+        case r1_4 = 4
+        case r1_5 = 5
+
+        public var id: Int { rawValue }
+        public var title: String { "1:\(rawValue)" }
+    }
+
+    /// 经典摩尔比连接计算结果（对齐 `0.65 ng/(pmol·bp)` 换算系数）
+    public struct LigationRatioResult: Equatable, Sendable {
+        public let vectorLengthBp: Int
+        public let vectorPmol: Double
+        public let vectorNg: Double
+        public let vectorVolUl: Double?
+        public let insertLengthBp: Int
+        public let molarRatio: LigationMolarRatio
+        public let insertNg: Double
+        public let insertVolUl: Double?
+        public let lowInsertSingleWarning: Bool
+        public let lowInsertMultiWarning: Bool
     }
     
     public struct CalculationResult {
@@ -118,6 +146,10 @@ public struct DNAMolarCalculator {
                     ngMultiInsert(&recNg, lengthKb: lengthKb)
                 }
             }
+
+        case .ligationRatio:
+            // 默认按 0.03 pmol × bp × 0.65 (即 19.5 ng/kb) 计算基准投入
+            recNg = 0.03 * (lengthKb * 1000.0) * 0.65
         }
         
         let useCustom = (customNg != nil && customNg! > 0)
@@ -133,6 +165,34 @@ public struct DNAMolarCalculator {
             actualNg: effectiveNg,
             isCustomNg: useCustom,
             recommendedVol: vol
+        )
+    }
+
+    /// 经典连接 / 同源重组载体-片段摩尔比使用量计算器（对齐 `0.65 pg/(fmol·bp)` 即 `0.65 ng/(pmol·bp)`）
+    public static func calculateLigationByMolarRatio(
+        vectorLengthBp: Int,
+        vectorConcNgPerUl: Double? = nil,
+        vectorPmol: Double = 0.03,
+        insertLengthBp: Int,
+        insertConcNgPerUl: Double? = nil,
+        molarRatio: LigationMolarRatio = .r1_3
+    ) -> LigationRatioResult? {
+        guard vectorLengthBp > 0, vectorPmol > 0, insertLengthBp > 0 else { return nil }
+        let vecNg = vectorPmol * Double(vectorLengthBp) * 0.65
+        let vecVol = (vectorConcNgPerUl ?? 0) > 0 ? (vecNg / vectorConcNgPerUl!) : nil
+        let insNg = vectorPmol * Double(molarRatio.rawValue) * Double(insertLengthBp) * 0.65
+        let insVol = (insertConcNgPerUl ?? 0) > 0 ? (insNg / insertConcNgPerUl!) : nil
+        return LigationRatioResult(
+            vectorLengthBp: vectorLengthBp,
+            vectorPmol: vectorPmol,
+            vectorNg: vecNg,
+            vectorVolUl: vecVol,
+            insertLengthBp: insertLengthBp,
+            molarRatio: molarRatio,
+            insertNg: insNg,
+            insertVolUl: insVol,
+            lowInsertSingleWarning: insNg < 20.0,
+            lowInsertMultiWarning: insNg < 10.0
         )
     }
     

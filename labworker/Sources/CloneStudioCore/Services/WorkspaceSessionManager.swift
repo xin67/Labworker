@@ -16,6 +16,7 @@ public final class WorkspaceSessionManager: ObservableObject {
     public let shRNAVM = ShRNADesignViewModel()
     public let chopchopVM = CHOPCHOPCompareViewModel()
     public let calculatorVM = CalculatorViewModel()
+    public let bioCalculatorVM = BioCalculatorSuiteViewModel()
     public let sequenceToolVM = SequenceToolViewModel()
     
     // MARK: - 持久化模型
@@ -611,7 +612,6 @@ public final class WorkspaceSessionManager: ObservableObject {
         let dnaURLs = validURLs.filter { $0.pathExtension.lowercased() == "dna" }
         let ab1URLs = validURLs.filter { ["ab1", "abi"].contains($0.pathExtension.lowercased()) }
         let pdbURLs = validURLs.filter { ["pdb", "cif", "ent"].contains($0.pathExtension.lowercased()) }
-        let treeURLs = validURLs.filter { ["nwk", "newick", "tree", "tre"].contains($0.pathExtension.lowercased()) }
         let imageURLs = validURLs.filter { ["tif", "tiff", "png", "jpg", "jpeg"].contains($0.pathExtension.lowercased()) }
         let csvURLs = validURLs.filter { ["csv", "tsv"].contains($0.pathExtension.lowercased()) }
         let seqURLs = validURLs.filter { ["fa", "fasta", "gb", "gbk", "seq", "txt"].contains($0.pathExtension.lowercased()) }
@@ -632,19 +632,11 @@ public final class WorkspaceSessionManager: ObservableObject {
             return
         }
         
-        // 2. Newick 进化树文件 -> 自动跳转「系统发育树」并渲染
-        if let firstTree = treeURLs.first {
-            AppState.shared.pendingFinderOpenedFileURL = firstTree
-            AppState.shared.selectedNav = .phylogeneticTree
-            AppState.shared.showToast("已从 Finder 载入进化树 \(firstTree.lastPathComponent) 至「系统发育树」")
-            return
-        }
-        
-        // 3. 16-bit TIFF / 电泳或胶片图像 -> 若当前已在图像相关模块则留在当前模块，否则直达「WB 灰度定量」
+        // 2. 16-bit TIFF / 电泳或胶片图像 -> 若当前已在图像相关模块则留在当前模块，否则直达「WB 灰度定量」
         if let firstImg = imageURLs.first {
             AppState.shared.pendingFinderOpenedFileURL = firstImg
             let currentNav = AppState.shared.selectedNav
-            if ![NavItem.westernBlot, .gelFigure, .colonyCounter, .figureAnnotator].contains(currentNav) {
+            if ![NavItem.westernBlot, .gelFigure, .colonyCounter].contains(currentNav) {
                 AppState.shared.selectedNav = .westernBlot
             }
             AppState.shared.showToast("已从 Finder 载入图像 \(firstImg.lastPathComponent) 至「\(AppState.shared.selectedNav.title)」")

@@ -37,6 +37,14 @@ public struct EntryCloneView: View {
                 .action(title: "算用量", icon: "function", tint: .purple, help: "将载体与片段长度送入体系用量计算") {
                     vm.sendLengthsToCalculator(navigate: true)
                 },
+                .action(title: "电泳模拟", icon: "chart.bar.doc.horizontal", tint: .blue, help: "在独立窗口放大检视入门克隆 PCR 模拟电泳") {
+                    GelSimulationWindowPresenter.shared.openWindow(
+                        title: "入门克隆 PCR 模拟电泳",
+                        accentTint: .blue,
+                        compareLaneTitle: "显示 pCE2+PCR 混合对照",
+                        buildSimulation: entryGelSimulation
+                    )
+                },
                 .action(title: "示例", icon: "sparkles", help: "载入 EGFP 标准示例序列", action: loadSampleEGFP),
                 .action(
                     id: "clear_entry",
@@ -216,6 +224,14 @@ public struct EntryCloneView: View {
                                 }
                             }
                         }
+
+                        // 入门克隆 PCR 凝胶电泳模拟
+                        HomologousPCRGelSectionCard(
+                            title: "入门克隆 PCR 凝胶电泳模拟",
+                            accentTint: .blue,
+                            compareLaneTitle: "显示 pCE2+PCR 混合对照",
+                            buildSimulation: entryGelSimulation
+                        )
                     }
                 } right: {
                     if let pData = previewData {
@@ -250,5 +266,24 @@ public struct EntryCloneView: View {
             "GGC", "GAC", "GTA", "AAC", "GGC", "CAC", "AAG", "TTC", "AGC", "GTG"
         ]
         vm.sequence = Array(repeating: codons.joined(), count: 8).joined() + "TAA"
+    }
+
+    private func entryGelSimulation(
+        concOverride: AgaroseGelConcentration?,
+        ladderOverride: String?,
+        includeMixLane: Bool
+    ) -> HomologousPCRGelSimulationResult {
+        HomologousPCRGelSimulator.simulateEntryClone(
+            cleanInsertLengthBp: vm.cleanLength,
+            hasEnzymes: vm.hasEnzymes,
+            enzyme5: vm.enzyme5,
+            enzyme3: vm.enzyme3,
+            primerF: vm.primerF,
+            primerR: vm.primerR,
+            vectorLengthBp: vm.vectorLengthBp,
+            concentrationOverride: concOverride,
+            ladderIDOverride: ladderOverride,
+            includeMixControlLane: includeMixLane
+        )
     }
 }

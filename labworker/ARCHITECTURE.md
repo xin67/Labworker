@@ -11,10 +11,10 @@
 
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
-| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、6 张内置公开示例实机界面截图、Mermaid 架构工作流、22 模块速览、MCP 配置与 `v20261115` DMG 下载及源码构建说明 |
+| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、6 张内置公开示例实机界面截图、Mermaid 架构工作流、20 模块速览、MCP 配置与 `v20261115` DMG 下载及源码构建说明 |
 | `../docs/images/*.png` | GitHub 根目录 `README.md` 引用的实机高分界面截图集（`01-single-clone-map.png` 至 `06-qpcr-analysis.png`，仅使用公开示例数据，零隐私脱敏留档） |
 | `../.github/workflows/ci.yml` | GitHub Actions `macos-14` 自动化 CI 门禁：在每次 `push`/`pull_request` 执行 Python 跨语言测试向量、防篡改校验及 `check_doc_counts.sh` 全量回归 |
-| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、22 模块算法速查、UI 响应式规范与 MCP 20261115 协议指南 |
+| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、20 模块算法速查、UI 响应式规范与 MCP 20261115 协议指南 |
 | `labworker/HANDOVER.md` | AI 项目架构交接与维护规范手册：包含目录拓扑、Single Source of Truth 门禁契约、双端 (Swift + Python MCP) 同步机制、跨语言测试向量与编码红线 |
 | `labworker/Package.swift` | SwiftPM 工程定义（Swift 6.4 / 最低支持 `macOS 27.0`），包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |
@@ -24,6 +24,8 @@
 | `labworker/Scripts/check_doc_counts.sh` | 自动提取 `CloneStudioVerify` 测试数、`MCP_TOOLS` 工具数与 `NavItem` 模块数真值，校验证书/文档数字一致性，并自动核验 `Sources/`、`Scripts/`、`python/`、`Tests/` 下全量文件均已在 `ARCHITECTURE.md` 登记 |
 | `labworker/Scripts/generate_icon.py` | 遵循 Apple HIG 生成浅色/深色应用图标（`.icns`/`.png`）与 macOS 状态栏模板图标 |
 | `labworker/Scripts/build_libraries_db.py` | 将原始全基因组靶点数据离线编译为 `Libraries.sqlite` 数据库的构建脚本 |
+| `labworker/Scripts/seed_plasmid_features.py` | 在 `Libraries.sqlite` 中幂等创建 `plasmid_features` 表并写入标准启动子/抗性基因/复制起点/标签/荧光蛋白种子数据的初始化脚本（无损保留既有 `sgrna`/`shrna` 表） |
+| `labworker/Scripts/seed_neb_ligase_fidelity.py` | 在 `Libraries.sqlite` 中幂等创建 `neb_t4_overhang_stats` 与 `neb_t4_ligase_fidelity` 表并写入 NEB T4 DNA Ligase 4-bp 黏性末端配对/错配保真度矩阵 |
 | `labworker/Samples/WB/gapdh_*.tif` | 迁移自 `WBStudio` 的真实 16-bit 原始化学发光图、常规发光图、明场 Marker 图与合成叠加图样本 |
 | `labworker/python/wbquant/` | 迁移自 `WBStudio` 的 Python 科学计算与 `PySide6 + pyqtgraph` 协同分析包（`__init__.py`、`models.py`、`io.py`、`preprocess.py`、`detect.py`、`quantify.py`、`pipeline.py`、`qt_viewer.py`、`cli.py`） |
 
@@ -40,6 +42,7 @@
 | `Views/Components/RestrictionEnzymeInspectorView.swift` | 限制性内切酶切点汇总与点击跳转浮层面板（系统语义深色浮层 + SDK `.studioGlassButton` / `.studioGlassMenu` 预设与搜索操作栏） |
 | `Views/Components/SequenceHighlightText.swift` | 引物 5' 同源臂 / 3' 特异结合区分色高亮文本、`PrimerCardView` 引物卡片（含二级结构风险等级徽章、$\text{Mg}^{2+}$/dNTP 即时调节滑块与可展开碱基配对示意图）、`PrimerPairDimerSummaryBar` 对间异二聚体摘要条与 `PrimerPairQuickRenameBar` 成对重命名栏 |
 | `Views/Components/HistoryTreeView.swift` | 质粒构建谱系树与上下游特征坐标偏移对比视图 |
+| `Views/Components/HomologousPCRGelView.swift` | 质粒片段同源重组 PCR 扩增琼脂糖凝胶电泳模拟视图与独立放大窗（`0.8%–2.0%` 胶浓度调控、Marker 自动选档、条带共迁移诊断与防碰撞 `bp` 标签排版） |
 | `Views/Components/TargetScoreBadge.swift` | CRISPR sgRNA / RNAi shRNA 靶点评分胶囊徽章 |
 | `Views/Cloning/EntryCloneView.swift` | pCE2 入门克隆引物设计视图 |
 | `Views/Cloning/SingleFragmentCloneView.swift` | 单片段同源重组引物设计视图（支持按载体特征、按已有引物对、按真实酶切位点、按自定义坐标四维定位） |
@@ -51,18 +54,17 @@
 | `Views/CRISPR/SgRNADesignView.swift` | CRISPR sgRNA 离线文库检索与引物设计视图 |
 | `Views/RNAi/ShRNADesignView.swift` | shRNA 发夹结构离线文库检索与引物设计视图 |
 | `Views/Compare/CHOPCHOPWebView.swift` | CHOPCHOP 在线靶点检索与本地已选靶点置顶对比视图 |
-| `Views/Calculator/RestructureCalculatorView.swift` | 重组反应体系载体/片段 DNA 质量与摩尔数计算器视图 |
+| `Views/Calculator/RestructureCalculatorView.swift` | 生物计算器工作台（含克隆与经典 0.03 pmol 摩尔比配液、DNA 换算、蛋白质换算与生理生化公式四大分页外壳） |
+| `Views/Calculator/LabBioCalculatorsView.swift` | DNA 换算（dsDNA / ssDNA / Linear / OD260）、蛋白质换算（摩尔互算 / DNA 编码容量）与生理生化公式（摩尔配制 / C1V1=C2V2 稀释 / 温度转换）视图及原生矢量公式卡 |
 | `Views/Tools/SequenceToolsView.swift` | 序列反向互补、GC 含量与 SantaLucia 近邻热力学 Tm 计算工具视图 |
 | `Views/BenchTools/PlateDesignerView.swift` | 微孔板（6～384 孔）可视化点选涂刷、随机种子排布与 CSV/qPCR 导出视图 |
 | `Views/BenchTools/QPCRAnalysisView.swift` | qPCR $\Delta\Delta C_t$ 相对定量、标准曲线拟合、反应孔 QC 质控与 `Swift Charts` 显著性柱状图/热图视图 |
-| `Views/BenchTools/PhylogeneticTreeView.swift` | 系统发育树（直角/等距/环形布局）矢量交互画布、演化支折叠旋转与 Robinson-Foulds 双树拓扑比对视图 |
 | `Views/BenchTools/ColonyCounterView.swift` | 菌落计数器与蓝白斑筛选视图（900 px 高清采样、分水岭粘连拆分开关、`minArea=4` 微小菌落支持、X-gal 色相分类、点选修正与 Garwood 95% 泊松区间 CFU 换算） |
 | `Views/BenchTools/WesternBlotView.swift` | Western Blot 16-bit 自动圈定、明场 Marker 混叠、Rolling-ball 背景扣除、可拖拽条带框、1D 峰剖面与内参归一化统计视图 |
 | `Views/BenchTools/GelFigureEditorView.swift` | 凝胶电泳分子量回归拟合、Marker 标准品标尺与质粒双酶切虚拟电泳对照叠加视图 |
-| `Views/BenchTools/FigureAnnotatorView.swift` | 科研多图拼版、RGB 多通道荧光伪彩合成、微米比例尺与共定位像素强度剖面图视图 |
 | `Views/BenchTools/ProteinWorkbenchView.swift` | 极简声明式窗口响应式蛋白质工作台：三维 Cα 骨架与 Vina 对接盒视窗、SPICE 五维指标、对齐 `DockFlowLab` 的 LIGSITE 共识融合盒与经验启发式 (`empirical_heuristic`) 突变 ΔΔG 扫描视图 |
 | `Views/Order/OrderExportView.swift` | 商业引物合成与测序订单（擎科/生工等）一键导出中心及引物批量写入 `.dna` 工具 |
-| `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观（仿 macOS 27 系统设置 Liquid Glass 实时预览与强度滑块、多色/系统主题色阵与跟随系统设置按钮、HDR 动态高光及双引擎协同调度模式）② 侧边栏定制 ③ MCP 智能体服务 (17 工具) ④ 22 模块全局功能说明书 |
+| `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观（仿 macOS 27 系统设置 Liquid Glass 实时预览与强度滑块、多色/系统主题色阵与跟随系统设置按钮、HDR 动态高光及双引擎协同调度模式）② 侧边栏定制 ③ MCP 智能体服务 (23 工具) ④ 20 模块全局功能说明书 |
 
 ## 三、 核心算法与业务服务层 (`labworker/Sources/CloneStudioCore/`)
 
@@ -72,7 +74,7 @@
 - `ViewModels/MultiFragmentViewModel.swift`：多片段无缝组装 (`MultiFragmentViewModel`，2–10 片段动态增减、供体特征截取与总阅读框核验) 状态机。
 - `ViewModels/MutagenesisViewModel.swift`：定点突变 (`MutagenesisViewModel` 与 `MutagenesisResidueItem`，密码子/氨基酸交互点选与突变质粒导出) 状态机。
 - `ViewModels/FragmentDeletionViewModel.swift`：质粒大片段删除/敲除 (`FragmentDeletionViewModel`，四模式删除边界定位与谱系记录) 状态机。
-- `ViewModels/BenchCalculatorViewModels.swift`：重组体系 DNA 摩尔用量计算 (`CalculatorViewModel`) 与序列/SantaLucia $T_m$ 工具 (`SequenceToolViewModel`) 状态机。
+- `ViewModels/BenchCalculatorViewModels.swift`：克隆体系用量 (`CalculatorViewModel`)、生物科研换算工作台 (`BioCalculatorSuiteViewModel`) 与序列/SantaLucia $T_m$ 工具 (`SequenceToolViewModel`) 状态机。
 - `ViewModels/SgRNADesignViewModel.swift` & `ShRNADesignViewModel.swift`：CRISPR sgRNA 与 RNAi shRNA 检索及引物生成 ViewModel。
 - `ViewModels/CHOPCHOPCompareViewModel.swift`：CHOPCHOP 在线查询与本地靶点匹配比对 ViewModel。
 - `ViewModels/OrderExportViewModel.swift`：商业合成与测序订购单导出 ViewModel。
@@ -88,24 +90,29 @@
 - `Engine/PrimerQualityEngine.swift`：参考 `primer3-py` 的寡核苷酸二级结构（发夹 `calcHairpin`、自二聚体 `calcHomodimer`、异二聚体 `calcDimer`）热力学 $\Delta G$ / $T_m$ 解算、$\text{Mg}^{2+}$/dNTP 二价盐校正、风险分级与 ASCII 碱基配对示意图渲染引擎。
 - `Engine/SangerAlignmentEngine.swift`：原生 Applied Biosystems ABIF (`.ab1` / `.abi`) 四色荧光毛细管电泳峰图解析、Phred 质量窗口修剪、杂合双峰检测与环状质粒双向带状 DP 比对验证引擎。
 - `Engine/SangerBatchEngine.swift`：Sanger 批量测序验证与克隆分组合并看板引擎（三级参考质粒自动匹配、正则引物后缀剥离、正反向双端环状覆盖并集计算、并发限流 `withTaskGroup` 与 `batch_summary.csv` + `.run.json` 溯源导出）。
+- `Engine/CRISPRDeconvolutionEngine.swift`：Synthego ICE 风格 Sanger 编辑池四色荧光峰值矩阵解卷积引擎（基于 Apple 原生 Accelerate `vDSP` 实现 Lawson-Hanson Active-Set NNLS 非负最小二乘求解器，计算 `-20..+20 bp` 移码分布、Indel%、KO Score、HDR% 与拟合优度 $R^2$）。
+- `Engine/PlasmidAnnotationEngine.swift`：纯本地离线未知质粒 FASTA 自动注释引擎（读取 `Libraries.sqlite` 中 `plasmid_features` 元件库，支持正反双链扫描、环形质粒跨零点 Origin 拼接匹配、30%–90% 历史克隆残留片段 Fragment 标记及 `SnapGeneFeature` 转换）。
+- `Engine/GoldenGateEngine.swift`：Type IIS Golden Gate 组装引擎（`BsaI` / `BsmBI` / `BbsI` / `SapI`），基于 `Libraries.sqlite` NEB T4 4-bp 保真度矩阵实现 2–6 片段无交叉错配接头自动分配与编码区同义密码子内源位点抹除 (Domestication)。
+- `Engine/DiagnosticDigestEngine.swift`：正/阴性克隆最佳鉴定酶推荐引擎，遍历可用单/双内切酶组合并筛选 0.8%–2.0% 琼脂糖凝胶上条带数为 2–4 条且迁移位移与分辨率差异最显著的 Top 3 方案。
+- `Engine/HDRDonorEngine.swift`：CRISPR Knock-in HDR Donor 自动设计引擎（生成 ssODN `60 nt` / dsDNA 质粒 `600 bp` 左右同源臂模板，自动识别 CDS 编码区并利用密码子简并性引入同义 PAM/Seed 阻断突变防 Cas9 二次切割且保证氨基酸 100% 守恒，支持可选同义 RFLP 位点构建/消除及同源臂外侧 Out-Out PCR 分型引物自动生成）。
 - `Engine/DualEngineCoordinator.swift`：本地离线引擎与在线 API 双引擎智能协同调度器。
 - `Engine/CRISPRDesigner.swift` & `SgRNAScoringEngine.swift`：sgRNA 引物构建与靶点评分引擎。
 - `Engine/ShRNADesigner.swift` & `ShRNAScoringEngine.swift`：shRNA 发夹引物构建与靶点评分引擎。
-- `Engine/DNAMolarCalculator.swift`：重组体系 DNA 最适投入量（ng / pmol）计算引擎。
+- `Engine/DNAMolarCalculator.swift`：重组体系 DNA 最适投入量（ng / pmol）与经典 0.03 pmol 载体-片段摩尔比连接计算引擎。
+- `Engine/LabBioCalculatorsEngine.swift`：生物科研全能换算内核（dsDNA/ssDNA/Linear DNA/OD260 核酸定量、蛋白质摩尔互算与 DNA 编码容量、摩尔溶液配制、$C_1V_1=C_2V_2$ 稀释度与 °F/°C/K 温标转换及自适应精度格式化）。
 - `Engine/PlateLayoutEngine.swift`：微孔板确定性随机排布（Mulberry32）、正交连通冲突核验、CSV/TSV 样品解析导出及全局微孔板共享状态中心 `PlateLayoutStore`。
 - `Engine/QPCRAnalysisEngine.swift`：qPCR $\Delta\Delta C_t$ 相对定量、多内参几何平均、标准曲线最小二乘回归、反应孔 QC 质控与 Welch's t-test 显著性检验引擎。
-- `Engine/PhylogeneticTreeEngine.swift`：系统发育树 Newick 递归解析与序列化、中点定根/阶梯化排序、直角/等距/环形三种几何布局解算及双树 Robinson-Foulds 拓扑距离对比引擎。
 - `Engine/BioImageProcessor.swift`：生物图像底层处理引擎（RGBA/灰度平面提取、高斯滤波、Otsu 大津法分割、积分图自适应局部均值二值化、形态学开闭运算、Felzenszwalb 精确欧氏距离变换 EDT、拓扑持久性选峰与色彩边界感知 Meyer 分水岭粘连拆分、Marching Squares 亚像素周长圆度评估、HSV 色相统计、一维灰度投影峰值检测及高仿真实验示范图生成器）。
 - `Engine/ColonyCounterEngine.swift`：皿内琼脂局部背景平场估计与双滞后阈值菌落分割（微小与模糊低对比度菌落保留 + 分水岭粘连拆分）、X-gal 蓝白斑 HSV 色相判别、Garwood 精确泊松 95% 置信区间、CFU/mL 滴度计算及 `AnalysisRun` v2 (`.run.json`) 溯源导出引擎。
 - `Engine/WesternBlotEngine.swift`：融合 `WBStudio` 的 16-bit 无损读取、显影增强、同批次曝光配对、有效膜条定位（Active Strip ROI）、Rolling-ball 背景扣除、高斯加权剖面四边收紧框、内参归一化与分组 Welch's t 检验双引擎。
 - `Engine/GelAnalysisEngine.swift`：凝胶电泳泳道/条带寻峰、Marker 对数分子量回归拟合（$\log_{10}(\text{size}) = a\cdot y + b$）、质粒酶切虚拟电泳对照生成及 `AnalysisRun` v2 (`.run.json` + 质粒关联索引) 溯源导出引擎。
-- `Engine/FigureAnnotatorEngine.swift`：科研多图拼版 RGB 荧光通道伪彩增益合成、线段像素强度剖面采样（Line Intensity Profile）与共聚焦四通道示范生成引擎。
+- `Engine/HomologousPCRGelSimulator.swift`：质粒片段同源重组 PCR 扩增琼脂糖凝胶电泳模拟引擎（`0.8%–2.0%` 孔径筛分迁移模型、单片段/多片段/片段删除/入门克隆扩增子推演、自动 DNA Marker 匹配与条带共迁移分辨率告警）。
 - `Engine/ProteinBiophysicsEngine.swift`：蛋白质理化性质（分子量、等电点 pI、消光系数、GRAVY 疏水剖面）、PDB 三维结构解析、Ramachandran 二面角、Cα 接触图、结合口袋探测与明确标注 `empirical_heuristic` 的点突变 ΔΔG 经验初筛引擎。
 
 ### 3.4 领域模型 (`Models/`)
 - `Models/BioSequence.swift`：DNA 序列清洗、互补链、反向互补与 GC% 基础工具。
 - `Models/PrimerItem.swift`：引物数据结构（区分 5' 同源臂/接头与 3' 特异退火序列）及成对命名提取器。
-- `Models/RestrictionEnzyme.swift`：限制性内切酶数据库、切点扫描器与 NEB/常用酶预设组。
+- `Models/RestrictionEnzyme.swift`：限制性内切酶数据库、Type IIS (`BsaI` / `BsmBI` / `BbsI` / `SapI`) 外切规范与双链切点扫描器及 NEB/常用酶预设组。
 - `Models/ConstructHistory.swift`：质粒构建谱系树节点与特征偏移模型。
 - `Models/CloneStudioIconProvider.swift`：动态深浅色应用图标渲染器与右上角状态栏弹窗视图 `CloneStudioStatusBarPopoverView`。
 - `Models/GenomicTarget.swift`、`TargetScore.swift`、`CHOPCHOPResult.swift`、`OrderFormProfile.swift`：靶点、评分与订购人档案数据模型。
@@ -123,12 +130,12 @@
 
 ### 3.6 打包资源 (`Resources/`)
 - 图标资源：`AppIcon.icns`、`AppIcon_Light.icns`、`AppIcon_Dark.icns`、`AppIcon_1024.png`、`AppIcon_Light_1024.png`、`AppIcon_Dark_1024.png`、`StatusBarIcon.png`、`StatusBarIcon@2x.png`。
-- 数据库与配置：`Libraries.sqlite`（离线基因组靶点库）、`select.json`。
-- Python 桥接脚本：`snapgene_bridge.py`、`export_order.py`、`chopchop_query.py`、`clonestudio_mcp_server.py`。
+- 数据库与配置：`Libraries.sqlite`（离线基因组 `sgrna`/`shrna` 靶点库、标准质粒元件 `plasmid_features` 特征库及 `neb_t4_overhang_stats`/`neb_t4_ligase_fidelity` 连接保真度矩阵）、`select.json`。
+- Python 桥接脚本：`snapgene_bridge.py`、`export_order.py`、`chopchop_query.py`、`clonestudio_mcp_server.py`（MCP 20261115 标准协议服务端，暴露 23 项工具含 `deconvolute_crispr_sanger`、`auto_annotate_sequence`、`design_golden_gate_assembly`、`design_hdr_donor` 四大高阶复合引擎，带严格 Pydantic / TypedDict 与 JSON `inputSchema`/`outputSchema` 校验）。
 - 商业订购表母版：`擎科引物合成订购表.xlsx`、`擎科测序订购表专属电子订单.xlsx`、`生工DNA测序订购表.xlsx`、`DNA测序订购表_V9(1).xlsx`。
 
 ## 四、 命令行自检与测试 (`labworker/Tests/`)
 - `Tests/CloneStudioVerify/main.swift`：`CloneStudioVerify` 靶点入口，用于对引物设计、Tm 计算、`.dna` 解析、几何排版与实验台算法（含 `Samples/WB/gapdh_*.tif` 真实 16-bit 样本）执行回归校验。
-- `Tests/vectors/*.json`：Swift (`CloneStudioCore`) 与 Python (`clonestudio_mcp_server.py`) 跨语言共享黄金测试向量集（`tm_santalucia.json`、`reverse_complement.json`、`primer_thermo_dg.json`、`protein_pi_ddg.json`、`qpcr_ddct.json`、`holm_adjust.json`）。
+- `Tests/vectors/*.json`：Swift (`CloneStudioCore`) 与 Python (`clonestudio_mcp_server.py`) 跨语言共享黄金测试向量集（`tm_santalucia.json`、`reverse_complement.json`、`primer_thermo_dg.json`、`protein_pi_ddg.json`、`qpcr_ddct.json`、`holm_adjust.json`、`crispr_deconv_golden.json`、`plasmid_auto_annotation.json`、`golden_gate_and_digest.json`、`crispr_hdr_donor.json`）。
 - `Tests/vectors/run_python_vectors.py`：Python 端共享测试向量执行器与防篡改校验脚本（支持 `--tamper-check`）。
 - `Tests/vectors/generate/generate_vectors.py`：基于 `primer3` / `scipy` / SantaLucia 1998 黄金真值的测试向量一次性生成脚本。

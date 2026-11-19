@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-CloneStudio MCP (Model Context Protocol) Server v2.3.0
-支持 Claude Desktop, Cursor, Windsurf, Cline, Gemini CLI 等所有 MCP 客户端通过自然语言调用：
+CloneStudio MCP (Model Context Protocol) Server v2.4.0
+支持 Claude Desktop, Cursor, Windsurf, Cline, Gemini CLI 等所有 MCP 客户端通过自然语言调用 23 项分子克隆与生物信息工具：
 1. 质粒池三维检索与管理 (`list_plasmid_pool`, `inspect_plasmid`, `add_plasmid_to_pool`)：
    - 支持按 载体 (vector)、目的基因 (gene)、抗性 (resistance)、分类 (category) 精准筛选
 2. 五大分子克隆引物设计与重组质粒组装：
@@ -10,13 +10,19 @@ CloneStudio MCP (Model Context Protocol) Server v2.3.0
    - 多片段无缝组装 (`design_multi_fragment_primers`)
    - 定点突变 (`design_mutagenesis_primers`)：含野生型氨基酸一致性校验、邻近位点提示与原核/真核宿主密码子偏好自动选择
    - 质粒片段删除 (`design_fragment_deletion_primers`)
-3. 靶点设计 (`design_sgrna_primers`, `design_shrna_primers`)：
-   - CRISPR/Cas9 sgRNA 靶点扫描打分与 lentiCRISPRv2 / pX459 退火引物生成
-   - RNAi shRNA 靶点扫描打分与 pLKO.1 (AgeI/EcoRI) 发夹引物生成
-4. 重组反应 DNA 用量与 20 μL 体系配比计算 (`calculate_recombination_dosage`)：
-   - 支持 bp/kb 自动识别、自定义 ng 投入量与实时移液体积/ddH2O 计算
-5. 引物订购池管理与擎科 Excel 订购表导出 (`manage_primer_cart_and_export`)
-6. 全模块双向 GUI 实时同步：通过 macOS DistributedNotificationCenter 自动切换 CloneStudio 模块画布并加载载体/片段/引物
+   - Type IIS Golden Gate 组装规划与 Domestication (`design_golden_gate_assembly`)：基于 Libraries.sqlite NEB T4 保真度矩阵
+3. CRISPR / RNAi / HDR 基因编辑工具组：
+   - CRISPR/Cas9 sgRNA 靶点扫描打分与 lentiCRISPRv2 / pX459 退火引物生成 (`design_sgrna_primers`)
+   - RNAi shRNA 靶点扫描打分与 pLKO.1 (AgeI/EcoRI) 发夹引物生成 (`design_shrna_primers`)
+   - CRISPR 编辑池 Sanger 峰图 NNLS 解卷积定量 (`deconvolute_crispr_sanger`)
+   - CRISPR Knock-in HDR Donor、PAM/Seed 同义阻断突变、可选 RFLP 与 Out-Out PCR 引物设计 (`design_hdr_donor`)
+4. 质粒注释与序列/测序分析：
+   - 基于 Libraries.sqlite 的本地离线未知质粒 FASTA 自动注释与残留片段标记 (`auto_annotate_sequence`)
+   - Sanger 测序 (.ab1/.abi/.seq) 比对与克隆验证 (`verify_sanger_sequencing`)
+5. 实验台定量、结构预测与换算：
+   - 重组反应 DNA 用量配比 (`calculate_recombination_dosage`)、核酸/蛋白/溶液换算、qPCR ΔΔCt、Western Blot、微孔板排布、蛋白质结构与结合口袋评估
+6. 引物订购池管理与擎科 Excel 订购表导出 (`manage_primer_cart_and_export`)
+7. 全模块双向 GUI 实时同步：通过 macOS DistributedNotificationCenter 自动切换 CloneStudio 模块画布并加载载体/片段/引物
 """
 
 import sys
@@ -28,6 +34,13 @@ import uuid
 import datetime
 import subprocess
 import inspect
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, Literal
+
+try:
+    from pydantic import BaseModel, Field, ConfigDict, model_validator
+    _HAS_PYDANTIC = True
+except ImportError:
+    _HAS_PYDANTIC = False
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -1494,6 +1507,48 @@ def tool_design_fragment_deletion_primers(args: dict) -> dict:
         "primers": [pf, pr]
     }
 
+def adaptive_round(val: float) -> float:
+    if not math.isfinite(val):
+        return val
+    if val == 0:
+        return 0.0
+    av = abs(val)
+    if av >= 0.1:
+        return round(val, 2)
+    if av >= 0.01:
+        return round(val, 3)
+    if av >= 0.001:
+        return round(val, 4)
+    if av >= 1e-4:
+        return round(val, 5)
+    exp = int(math.floor(math.log10(av)))
+    return round(val, max(0, 2 - exp))
+
+def format_bio_number(val: float, fixed_decimals: int = None) -> str:
+    if not math.isfinite(val):
+        return "--"
+    rounded = val if fixed_decimals is not None else adaptive_round(val)
+    if rounded == 0:
+        return "0"
+    av = abs(rounded)
+    if av > 0 and av < 1e-6 and fixed_decimals is None:
+        return f"{rounded:.3e}"
+    if fixed_decimals is not None:
+        s = f"{rounded:,.{max(0, fixed_decimals)}f}"
+    elif av >= 0.1:
+        s = f"{rounded:,.2f}"
+    elif av >= 0.01:
+        s = f"{rounded:,.3f}"
+    elif av >= 0.001:
+        s = f"{rounded:,.4f}"
+    elif av >= 1e-4:
+        s = f"{rounded:,.5f}"
+    else:
+        s = f"{rounded:,.6f}"
+    if "." in s:
+        s = s.rstrip("0").rstrip(".")
+    return s
+
 def normalize_length_to_kb(val: float) -> float:
     if val <= 0:
         return 0.0
@@ -1501,10 +1556,12 @@ def normalize_length_to_kb(val: float) -> float:
 
 def tool_calculate_recombination_dosage(args: dict) -> dict:
     """
-    增强 3：DNA 重组反应使用量与 20 μL 移液体系配比计算器（支持自定义 ng 投入量并同步至 GUI）
+    增强 3：DNA 重组反应与经典摩尔比 (0.03 pmol, 1:1~1:5) 使用量及 20 μL 移液体系配比计算器
     """
     raw_type = (args.get("clone_type") or "single").strip().lower()
-    if "multi" in raw_type or "多" in raw_type:
+    if "ligat" in raw_type or "ratio" in raw_type or "摩尔" in raw_type or "连接" in raw_type:
+        clone_type = "LigationRatio"
+    elif "multi" in raw_type or "多" in raw_type:
         clone_type = "MultiClone"
     elif "simple" in raw_type or "entry" in raw_type or "入门" in raw_type:
         clone_type = "SimpleClone"
@@ -1517,6 +1574,75 @@ def tool_calculate_recombination_dosage(args: dict) -> dict:
     vec_bp = int(round(vec_kb * 1000))
     vec_conc = max(0.1, float(args.get("vector_conc", 50.0)))
     vec_custom_ng = args.get("vector_custom_ng")
+    raw_inserts = args.get("inserts") or [{"name": "插入片段 1", "length": 1000, "conc": 20.0}]
+
+    if clone_type == "LigationRatio":
+        vec_pmol = max(0.0001, float(args.get("vector_pmol", 0.03)))
+        ratio = max(1, min(5, int(args.get("molar_ratio", 3))))
+        first_ins = raw_inserts[0]
+        ins_name = first_ins.get("name") or "插入片段"
+        ikb = max(0.05, normalize_length_to_kb(float(first_ins.get("length", 1000))))
+        ibp = int(round(ikb * 1000))
+        iconc = max(0.1, float(first_ins.get("conc", 20.0)))
+
+        vec_ng = round(vec_pmol * vec_bp * 0.65, 2)
+        vec_vol = round(vec_ng / vec_conc, 2)
+        ins_ng = round(vec_pmol * ratio * ibp * 0.65, 2)
+        ins_vol = round(ins_ng / iconc, 2)
+        mix_vol = 10.0
+        water_vol = round(max(0.0, 20.0 - mix_vol - vec_vol - ins_vol), 2)
+        warnings = []
+        if ins_ng < 20.0:
+            warnings.append("对于单片段，插入片段使用量建议大于 20 ng；对于多片段，插入片段使用量建议大于 10 ng。")
+
+        if args.get("sync_to_gui", True):
+            notify_gui_and_sync_primers(
+                f"经典摩尔比连接计算：{vec_name} ({vec_bp}bp, {vec_pmol}pmol={vec_ng}ng) + {ins_name} ({ibp}bp, 1:{ratio}={ins_ng}ng)",
+                [],
+                target_module="dnaCalculator",
+                extra_workspace_state={
+                    "calculatorCloneTypeRaw": "LigationRatio",
+                    "calculatorVectorName": vec_name,
+                    "calculatorVectorLengthKb": f"{vec_kb:.3f}",
+                    "calculatorVectorConc": f"{vec_conc:g}",
+                    "calculatorInsertNames": [ins_name],
+                    "calculatorInsertLengthsKb": [f"{ikb:.3f}"],
+                    "calculatorInsertConcs": [f"{iconc:g}"],
+                    "calculatorLigationPmol": f"{vec_pmol:g}",
+                    "calculatorLigationRatio": ratio,
+                }
+            )
+
+        return {
+            "status": "success",
+            "cloneType": "LigationRatio",
+            "vectorPmol": vec_pmol,
+            "molarRatio": f"1:{ratio}",
+            "reactionTotalVolumeUl": 20.0,
+            "clonExpressMix2xVolumeUl": mix_vol,
+            "vector": {
+                "name": vec_name,
+                "lengthBp": vec_bp,
+                "lengthKb": round(vec_kb, 3),
+                "concentrationNgPerUl": vec_conc,
+                "recommendedNg": vec_ng,
+                "actualNg": vec_ng,
+                "pipetteVolumeUl": vec_vol
+            },
+            "inserts": [{
+                "name": ins_name,
+                "lengthBp": ibp,
+                "lengthKb": round(ikb, 3),
+                "concentrationNgPerUl": iconc,
+                "recommendedNg": ins_ng,
+                "actualNg": ins_ng,
+                "isCustomNg": False,
+                "pipetteVolumeUl": ins_vol
+            }],
+            "ddH2OVolumeUl": water_vol,
+            "warnings": warnings,
+            "formula": "载体最适用量(ng)=pmol×bp×0.65; 片段最适用量(ng)=pmol×比例×bp×0.65"
+        }
 
     if vec_kb <= 2.0:
         vec_rec_ng = 50.0
@@ -1593,6 +1719,307 @@ def tool_calculate_recombination_dosage(args: dict) -> dict:
         "ddH2OVolumeUl": water_vol,
         "reactionCondition": "50℃ 反应 15 min"
     }
+
+def tool_convert_nucleic_acid_units(args: dict) -> dict:
+    """
+    DNA / 核酸单位换算器：dsDNA (μg⇄pmol)、ssDNA (μg/mL⇄pmol/μL)、Linear DNA 末端 (pmol Ends)、Nucleic Acid OD260 定量
+    """
+    mode = (args.get("mode") or "").strip().lower()
+    val = float(args.get("value", 0))
+    if mode in ("dsdna_ug_to_pmol", "dsdna_pmol_to_ug"):
+        bp = float(args.get("length_bp_or_nt", 0))
+        if bp <= 0 or val < 0:
+            return {"status": "error", "error": "length_bp_or_nt 必须 > 0 且 value >= 0"}
+        if mode == "dsdna_ug_to_pmol":
+            res = (val / bp) * 1515.1
+            return {
+                "status": "success",
+                "mode": mode,
+                "result_value": adaptive_round(res),
+                "formatted_result": f"{format_bio_number(res)} pmol",
+                "unit": "pmol",
+                "formula": "pmol = (µg / N_bp) × 1515.1"
+            }
+        res = val * bp * 0.00066
+        return {
+            "status": "success",
+            "mode": mode,
+            "result_value": adaptive_round(res),
+            "formatted_result": f"{format_bio_number(res)} µg",
+            "unit": "µg",
+            "formula": "µg = pmol × N_bp × 0.00066"
+        }
+
+    if mode in ("ssdna_ug_per_ml_to_pmol_per_ul", "ssdna_pmol_per_ul_to_ug_per_ml"):
+        nt = float(args.get("length_bp_or_nt", 0))
+        if nt <= 0 or val < 0:
+            return {"status": "error", "error": "length_bp_or_nt 必须 > 0 且 value >= 0"}
+        if mode == "ssdna_ug_per_ml_to_pmol_per_ul":
+            res = (val * 3.03) / nt
+            return {
+                "status": "success",
+                "mode": mode,
+                "result_value": adaptive_round(res),
+                "formatted_result": f"{format_bio_number(res)} pmol/µL",
+                "unit": "pmol/µL",
+                "formula": "pmol/µL = (µg/mL × 3.03) / N_nt"
+            }
+        res = val * 0.33 * nt
+        return {
+            "status": "success",
+            "mode": mode,
+            "result_value": adaptive_round(res),
+            "formatted_result": f"{format_bio_number(res)} µg/mL",
+            "unit": "µg/mL",
+            "formula": "µg/mL = (pmol/µL) × 0.33 × N_nt"
+        }
+
+    if mode == "linear_dna_ug_to_pmol_ends":
+        kb = float(args.get("length_kb", args.get("length_bp_or_nt", 0)))
+        if kb <= 0 or val < 0:
+            return {"status": "error", "error": "length_kb 必须 > 0 且 value >= 0"}
+        res = (val * 3.03) / kb
+        return {
+            "status": "success",
+            "mode": mode,
+            "result_value": adaptive_round(res),
+            "formatted_result": f"{format_bio_number(res)} pmol Ends",
+            "unit": "pmol Ends",
+            "formula": "pmol Ends = (µg × 3.03) / length_kb"
+        }
+
+    if mode == "od260_to_ug_per_ml":
+        if val < 0:
+            return {"status": "error", "error": "OD260 不能为负数"}
+        stype = (args.get("sample_type") or "dna").strip().lower()
+        factor_map = {
+            "dna": ("DNA", 50.0),
+            "dsdna": ("DNA", 50.0),
+            "rna": ("RNA", 40.0),
+            "ssdna": ("Single-stranded DNA", 35.0),
+            "single-stranded dna": ("Single-stranded DNA", 35.0),
+            "ssoligo": ("Single-stranded Oligo", 20.0),
+            "oligo": ("Single-stranded Oligo", 20.0),
+            "single-stranded oligo": ("Single-stranded Oligo", 20.0),
+        }
+        if stype not in factor_map:
+            return {"status": "error", "error": f"不支持的 sample_type: {stype}"}
+        label, factor = factor_map[stype]
+        dil = max(1e-9, float(args.get("dilution_factor", 1.0)))
+        res = val * factor * dil
+        out_of_range = val > 0 and (val < 0.1 or val > 1.0)
+        return {
+            "status": "success",
+            "mode": mode,
+            "sample_type": label,
+            "factor": factor,
+            "dilution_factor": dil,
+            "result_value": adaptive_round(res),
+            "formatted_result": f"{format_bio_number(res)} µg/mL",
+            "unit": "µg/mL",
+            "out_of_linear_range": out_of_range,
+            "warning": "大多数分光光度计在低于 0.1 OD 单位或高于 1.0 OD 单位时精度下降，建议调整稀释倍数重新测读。" if out_of_range else None,
+            "formula": f"浓度 (µg/mL) = OD260 × {int(factor)} × 稀释倍数"
+        }
+
+    return {"status": "error", "error": f"未知 mode: {mode}"}
+
+def tool_convert_protein_and_coding(args: dict) -> dict:
+    """
+    蛋白质摩尔转换 (kDa ⇄ µg ⇄ pmol) 与 DNA 编码容量 (bp ⇄ aa ⇄ kDa) 三向互算
+    """
+    mode = (args.get("mode") or "").strip().lower()
+    if mode == "protein_size_kda":
+        ug = float(args.get("mass_ug", 0))
+        pmol = float(args.get("amount_pmol", 0))
+        if ug < 0 or pmol <= 0:
+            return {"status": "error", "error": "mass_ug >= 0 且 amount_pmol > 0"}
+        res = (1000.0 * ug) / pmol
+        return {
+            "status": "success", "mode": mode,
+            "result_value": adaptive_round(res),
+            "formatted_result": f"{format_bio_number(res)} kDa",
+            "unit": "kDa",
+            "formula": "Size (kDa) = 1000 × mass(µg) / moles(pmol)"
+        }
+    if mode == "protein_mass_ug":
+        kda = float(args.get("size_kda", 0))
+        pmol = float(args.get("amount_pmol", 0))
+        if kda < 0 or pmol < 0:
+            return {"status": "error", "error": "size_kda 与 amount_pmol 必须 >= 0"}
+        res = kda * pmol * 0.001
+        return {
+            "status": "success", "mode": mode,
+            "result_value": adaptive_round(res),
+            "formatted_result": f"{format_bio_number(res)} µg of protein",
+            "unit": "µg",
+            "formula": "Mass (µg) = Size(kDa) × moles(pmol) × 0.001"
+        }
+    if mode == "protein_moles_pmol":
+        kda = float(args.get("size_kda", 0))
+        ug = float(args.get("mass_ug", 0))
+        if kda <= 0 or ug < 0:
+            return {"status": "error", "error": "size_kda > 0 且 mass_ug >= 0"}
+        res = (1000.0 * ug) / kda
+        return {
+            "status": "success", "mode": mode,
+            "result_value": adaptive_round(res),
+            "formatted_result": f"{format_bio_number(res)} pmol of protein",
+            "unit": "pmol",
+            "formula": "Moles (pmol) = 1000 × mass(µg) / Size(kDa)"
+        }
+    if mode in ("coding_from_bp", "coding_from_aa", "coding_from_kda"):
+        v = float(args.get("value", 0))
+        if v < 0:
+            return {"status": "error", "error": "value 不能为负"}
+        if mode == "coding_from_bp":
+            aa = float(math.floor(v / 3.0))
+            bp = v
+            kda = aa * 0.11
+        elif mode == "coding_from_aa":
+            aa = v
+            bp = aa * 3.0
+            kda = aa * 0.11
+        else:
+            aa = float(round(v / 0.11))
+            bp = aa * 3.0
+            kda = v
+        return {
+            "status": "success", "mode": mode,
+            "dna_bp": adaptive_round(bp),
+            "amino_acids": adaptive_round(aa),
+            "protein_kda": adaptive_round(kda),
+            "formatted_result": f"{format_bio_number(bp)} bp ⇄ {format_bio_number(aa)} aa ⇄ {format_bio_number(kda)} kDa",
+            "formula": "AA = floor(bp/3); bp = AA×3; kDa = AA×0.11"
+        }
+    return {"status": "error", "error": f"未知 mode: {mode}"}
+
+def _parse_conc_scale(u: str) -> float:
+    m = {"m": 1.0, "mm": 1e-3, "um": 1e-6, "µm": 1e-6, "nm": 1e-9, "pm": 1e-12}
+    k = (u or "m").strip().lower()
+    if k not in m:
+        raise ValueError(f"不支持的浓度单位: {u}")
+    return m[k]
+
+def _parse_vol_scale(u: str) -> tuple:
+    m = {"l": (1.0, "L"), "ml": (1e-3, "mL"), "ul": (1e-6, "µL"), "µl": (1e-6, "µL")}
+    k = (u or "ml").strip().lower()
+    if k not in m:
+        raise ValueError(f"不支持的体积单位: {u}")
+    return m[k]
+
+def tool_calculate_solution_and_temperature(args: dict) -> dict:
+    """
+    生理生化公式计算器：摩尔浓度溶液溶质称量质量、C1V1=C2V2 溶液稀释、°F/°C/K 温度转换
+    """
+    mode = (args.get("mode") or "").strip().lower()
+    if mode == "molarity_mass":
+        mw = float(args.get("mw_g_per_mol", 0))
+        conc = float(args.get("concentration", 0))
+        vol = float(args.get("volume", 0))
+        if mw <= 0 or conc <= 0 or vol <= 0:
+            return {"status": "error", "error": "mw_g_per_mol、concentration、volume 均须 > 0"}
+        c_m = conc * _parse_conc_scale(args.get("conc_unit", "mM"))
+        v_l, _ = _parse_vol_scale(args.get("vol_unit", "mL"))
+        mass_g = vol * v_l * c_m * mw
+        if mass_g > 1e6:
+            return {"status": "error", "error": "超出质量可显示上限（> 10^6 g）", "mass_g": mass_g}
+        if mass_g >= 1.0:
+            scaled = round(mass_g, 3)
+            unit = "g"
+            warn = None
+        elif mass_g >= 1e-3:
+            scaled = round(mass_g * 1e3, 2)
+            unit = "mg"
+            warn = None
+        else:
+            raw_ug = mass_g * 1e6
+            scaled = round(raw_ug, 1) if raw_ug >= 0.1 else adaptive_round(raw_ug)
+            unit = "µg"
+            warn = "请考虑配置浓度更高的母液，然后稀释到您所需的最终浓度。"
+        return {
+            "status": "success", "mode": mode,
+            "mass_g": mass_g, "scaled_value": scaled, "scaled_unit": unit,
+            "formatted_mass": f"{format_bio_number(scaled, 3 if unit == 'g' else (2 if unit == 'mg' else None))} {unit}",
+            "warning": warn
+        }
+
+    if mode == "dilution":
+        c1_raw = float(args.get("stock_conc", 0))
+        c2_raw = float(args.get("final_conc", 0))
+        v2_raw = float(args.get("final_volume", 0))
+        if c1_raw <= 0 or c2_raw <= 0 or v2_raw <= 0:
+            return {"status": "error", "error": "stock_conc、final_conc、final_volume 均须 > 0"}
+        c1 = c1_raw * _parse_conc_scale(args.get("stock_unit", "M"))
+        c2 = c2_raw * _parse_conc_scale(args.get("final_unit", "mM"))
+        v_scale, v_label = _parse_vol_scale(args.get("vol_unit", "mL"))
+        v2_l = v2_raw * v_scale
+        fold = c1 / c2
+        if c2 > c1:
+            return {
+                "status": "error",
+                "error": f"您输入的母液浓度低于稀释液浓度，需要将母液浓缩 {format_bio_number(c2 / c1)} 倍。"
+            }
+        v1_l = v2_l / fold
+        diluent_l = max(0.0, v2_l - v1_l)
+        diluent_scaled = diluent_l / v_scale
+        warn = None
+        if v1_l >= 1.0:
+            scaled, unit = round(v1_l, 3), "L"
+        elif v1_l >= 1e-3:
+            scaled, unit = round(v1_l * 1e3, 2), "mL"
+        elif v1_l >= 1e-6:
+            scaled, unit = round(v1_l * 1e6, 1), "µL"
+        elif v1_l >= 1e-9:
+            scaled, unit = round(v1_l * 1e9, 0), "nL"
+            warn = "通常，移液器很难准确移取该体积，您需要考虑将母液预稀释。"
+        elif v1_l >= 1e-12:
+            scaled, unit = round(v1_l * 1e12, 0), "pL"
+            warn = "通常，移液器很难准确移取该体积，您需要考虑将母液预稀释。"
+        else:
+            return {
+                "status": "error",
+                "error": "所需体积小于 1 pL，请确保输入正确；建议将母液大幅预稀释后配置。"
+            }
+        return {
+            "status": "success", "mode": mode,
+            "stock_volume_liters": v1_l,
+            "scaled_value": scaled,
+            "scaled_unit": unit,
+            "formatted_stock_volume": f"{format_bio_number(scaled, 3 if unit == 'L' else (2 if unit == 'mL' else (1 if unit == 'µL' else 0)))} {unit}",
+            "diluent_volume": f"{format_bio_number(diluent_scaled, 2)} {v_label}",
+            "dilution_fold": adaptive_round(fold),
+            "warning": warn
+        }
+
+    if mode == "temperature":
+        v = float(args.get("value", 0))
+        fu = (args.get("from_unit") or "C").strip().upper()
+        if fu == "F":
+            c = (5.0 / 9.0) * (v - 32.0)
+            f = v
+            k = c + 273.16
+        elif fu == "C":
+            c = v
+            f = (9.0 / 5.0) * c + 32.0
+            k = c + 273.16
+        elif fu == "K":
+            k = v
+            c = k - 273.16
+            f = (9.0 / 5.0) * c + 32.0
+        else:
+            return {"status": "error", "error": f"不支持的 from_unit: {fu}，请传 F / C / K"}
+        if k < 0:
+            return {"status": "error", "error": "温度低于绝对零度（0 K / -273.16 °C）。", "kelvin": round(k, 2)}
+        return {
+            "status": "success", "mode": mode,
+            "fahrenheit": round(f, 2),
+            "celsius": round(c, 2),
+            "kelvin": round(k, 2),
+            "formula": "°C=5/9(°F-32); °F=9/5°C+32; °K=°C+273.16"
+        }
+
+    return {"status": "error", "error": f"未知 mode: {mode}"}
 
 def resolve_sequence_for_target_design(target_source: str) -> tuple:
     raw = (target_source or "").strip()
@@ -1855,7 +2282,7 @@ def tool_manage_primer_cart_and_export(args: dict) -> dict:
 
 
 # ============================================================================
-# 3.5 Labworker 20261115 全栈实验工具 (蛋白质对接盒 / WB 16-bit 定量 / qPCR / 微孔板 / 进化树)
+# 3.5 Labworker 20261115 全栈实验工具 (蛋白质对接盒 / WB 16-bit 定量 / qPCR / 微孔板)
 # ============================================================================
 
 KD_HYDROPATHY = {
@@ -2589,27 +3016,6 @@ def tool_design_plate_layout(args: dict) -> dict:
     }
 
 
-def tool_analyze_phylogenetic_tree(args: dict) -> dict:
-    """解析 Newick 进化树或基于多序列距离矩阵构建邻接进化树"""
-    newick = (args.get("newick") or "((Human:0.12,Mouse:0.15):0.08,(Zebrafish:0.22,Xenopus:0.19):0.10);").strip()
-    import re
-    leaves = re.findall(r'([A-Za-z0-9_.\-]+)\s*:', newick)
-    branch_lengths = [float(x) for x in re.findall(r':\s*([0-9.]+)', newick)]
-    total_len = round(sum(branch_lengths), 4)
-
-    notify_gui_and_sync_primers(
-        action_summary=f"MCP 系统发育树解析 ({len(leaves)} 个分类单元, 总枝长 {total_len})",
-        primers=[],
-        target_module="phylogeneticTree"
-    )
-    return {
-        "newick": newick,
-        "taxa_count": len(leaves),
-        "taxa": leaves,
-        "total_branch_length": total_len
-    }
-
-
 def _parse_ab1_bytes(raw_bytes: bytes) -> dict:
     """原生解析 Applied Biosystems ABIF (.ab1/.abi) 二进制文件的 PBAS、PCON、PLOC 与 DATA 9..12 四通道"""
     if len(raw_bytes) < 34 or raw_bytes[:4] != b"ABIF":
@@ -2668,6 +3074,61 @@ def _parse_ab1_bytes(raw_bytes: bytes) -> dict:
                     "secondary_ratio": round(sigs[1][1] / sigs[0][1], 2)
                 })
     return {"is_ab1": True, "sequence": seq, "qualities": quals, "double_peaks": double_peaks}
+
+
+def _extract_ab1_peaks_acgt(raw_bytes: bytes) -> Dict[str, Any]:
+    """从 ABIF (.ab1/.abi) 测序文件提取全长序列及各碱基位点的四通道峰高矩阵 [[A, C, G, T]]。"""
+    if len(raw_bytes) < 34 or raw_bytes[:4] != b"ABIF":
+        raise ValueError("输入文件不是有效的 Applied Biosystems ABIF (.ab1/.abi) 格式")
+
+    import struct
+    num_elem = struct.unpack(">i", raw_bytes[18:22])[0]
+    dir_offset = struct.unpack(">i", raw_bytes[26:30])[0]
+    entries = {}
+    for i in range(max(0, min(5000, num_elem))):
+        base = dir_offset + i * 28
+        if base + 28 > len(raw_bytes):
+            break
+        t_name = raw_bytes[base:base + 4].decode("ascii", errors="ignore")
+        t_num, e_type, e_size, n_el, d_size, d_off = struct.unpack(">ihhi ii", raw_bytes[base + 4:base + 24])
+        entries[f"{t_name}#{t_num}"] = (e_type, e_size, n_el, d_size, d_off)
+
+    def get_bytes(key: str) -> bytes:
+        if key not in entries:
+            return b""
+        _, _, _, d_size, d_off = entries[key]
+        if d_size <= 4:
+            return struct.pack(">i", d_off)[:max(0, d_size)]
+        return raw_bytes[d_off:d_off + d_size] if d_off + d_size <= len(raw_bytes) else b""
+
+    def get_i16_array(key: str) -> List[int]:
+        b = get_bytes(key)
+        cnt = len(b) // 2
+        return list(struct.unpack(f">{cnt}h", b[:cnt * 2])) if cnt > 0 else []
+
+    fwo = get_bytes("FWO_#1").decode("ascii", errors="ignore").upper() or "GATC"
+    d_nums = [9, 10, 11, 12] if "DATA#9" in entries else [1, 2, 3, 4]
+    traces = {}
+    for idx, ch in enumerate(fwo[:4]):
+        traces[ch] = get_i16_array(f"DATA#{d_nums[idx]}")
+
+    pbas_bytes = get_bytes("PBAS#1") or get_bytes("PBAS#2")
+    seq = "".join(ch for ch in pbas_bytes.decode("ascii", errors="ignore").upper() if ch in "ACGTN")
+    plocs = get_i16_array("PLOC#1") or get_i16_array("PLOC#2")
+
+    peaks_acgt: List[List[float]] = []
+    for i in range(len(seq)):
+        if i < len(plocs):
+            t_idx = plocs[i]
+            row = [
+                float(traces.get(ch, [])[t_idx]) if (0 <= t_idx < len(traces.get(ch, []))) else 0.0
+                for ch in ("A", "C", "G", "T")
+            ]
+        else:
+            row = [0.0, 0.0, 0.0, 0.0]
+        peaks_acgt.append(row)
+
+    return {"is_ab1": True, "sequence": seq, "peaks_acgt": peaks_acgt}
 
 
 _DEFAULT_SANGER_PRIMER_SUFFIX_RE = re.compile(r"[-_.]?(F|R|Fwd|Rev|T7|T3|SP6|M13F|M13R|CMV[-_]?F|BGH[-_]?R|U6[-_]?F|Seq\d*)$", re.IGNORECASE)
@@ -2938,8 +3399,3076 @@ def tool_verify_sanger_sequencing(args: dict) -> dict:
     return res
 
 
+def _lawson_hanson_nnls_fallback(columns: list, rhs: list, tol: float = 1e-11) -> tuple:
+    """当系统自带 Python 环境未安装 scipy 时的纯 Python Lawson-Hanson Active-Set Householder QR 求解器（与 scipy.optimize.nnls 数学等价）"""
+    n = len(columns)
+    m = len(rhs)
+    if n == 0 or m == 0:
+        return ([0.0] * max(0, n), 0.0)
+
+    x = [0.0] * n
+    passive = []
+    is_passive = [False] * n
+    max_col_norm = max([1.0] + [math.sqrt(sum(v * v for v in col)) for col in columns])
+    dual_tol = tol * max_col_norm
+
+    def compute_residual(cur_x):
+        r = list(rhs)
+        for j, wj in enumerate(cur_x):
+            if wj != 0.0:
+                col = columns[j]
+                for i in range(m):
+                    r[i] -= wj * col[i]
+        return r
+
+    def compute_dual_grad(res):
+        return [sum(col[i] * res[i] for i in range(m)) for col in columns]
+
+    def solve_passive_ls(p_indices):
+        k = len(p_indices)
+        if k == 0:
+            return []
+        qr_cols = [list(columns[idx]) for idx in p_indices]
+        qt_b = list(rhs)
+        steps = min(k, m)
+        for j in range(steps):
+            norm_sq = sum(qr_cols[j][r] * qr_cols[j][r] for r in range(j, m))
+            norm = math.sqrt(norm_sq)
+            if norm < 1e-14:
+                continue
+            pivot = qr_cols[j][j]
+            alpha = -norm if pivot >= 0.0 else norm
+            v = [qr_cols[j][r] for r in range(j, m)]
+            v[0] -= alpha
+            v_norm_sq = sum(val * val for val in v)
+            qr_cols[j][j] = alpha
+            for r in range(j + 1, m):
+                qr_cols[j][r] = 0.0
+            if v_norm_sq <= 1e-28:
+                continue
+            for c in range(j + 1, k):
+                dot = sum(v[idx] * qr_cols[c][j + idx] for idx in range(m - j))
+                scale = -2.0 * dot / v_norm_sq
+                for idx in range(m - j):
+                    qr_cols[c][j + idx] += scale * v[idx]
+            dot_b = sum(v[idx] * qt_b[j + idx] for idx in range(m - j))
+            scale_b = -2.0 * dot_b / v_norm_sq
+            for idx in range(m - j):
+                qt_b[j + idx] += scale_b * v[idx]
+
+        s_p = [0.0] * k
+        for r in range(min(k, m) - 1, -1, -1):
+            val = qt_b[r]
+            for c in range(r + 1, k):
+                val -= qr_cols[c][r] * s_p[c]
+            diag = qr_cols[r][r]
+            s_p[r] = (val / diag) if abs(diag) > 1e-12 else 0.0
+        return s_p
+
+    residual = compute_residual(x)
+    dual_grad = compute_dual_grad(residual)
+    max_iter = max(50, 3 * n)
+    for _ in range(max_iter):
+        best_idx = -1
+        best_grad = dual_tol
+        for j in range(n):
+            if not is_passive[j] and dual_grad[j] > best_grad:
+                best_grad = dual_grad[j]
+                best_idx = j
+        if best_idx == -1:
+            break
+        passive.append(best_idx)
+        is_passive[best_idx] = True
+
+        for _ in range(max(20, 2 * n)):
+            s_p = solve_passive_ls(passive)
+            if min(s_p) > 0.0:
+                for loc_i, col_i in enumerate(passive):
+                    x[col_i] = s_p[loc_i]
+                break
+            alpha = 1.0
+            for loc_i, col_i in enumerate(passive):
+                sj = s_p[loc_i]
+                if sj <= 0.0:
+                    xj = x[col_i]
+                    denom = xj - sj
+                    ratio = (xj / denom) if denom > 0.0 else 0.0
+                    if ratio < alpha:
+                        alpha = ratio
+            new_passive = []
+            for loc_i, col_i in enumerate(passive):
+                upd = x[col_i] + alpha * (s_p[loc_i] - x[col_i])
+                if upd <= 1e-13:
+                    x[col_i] = 0.0
+                    is_passive[col_i] = False
+                else:
+                    x[col_i] = upd
+                    new_passive.append(col_i)
+            passive = new_passive
+            if not passive:
+                break
+
+        residual = compute_residual(x)
+        dual_grad = compute_dual_grad(residual)
+
+    residual = compute_residual(x)
+    res_norm = math.sqrt(sum(r * r for r in residual))
+    return (x, res_norm)
+
+
+def solve_nnls_deconv(columns: list, rhs: list) -> tuple:
+    """优先调用 scipy.optimize.nnls 求解非负最小二乘 min_{w>=0} ||X*w - y||_2，与 Swift CRISPRDeconvolutionEngine.solveNNLS 严格对齐"""
+    n = len(columns)
+    m = len(rhs)
+    if n == 0 or m == 0:
+        return ([0.0] * max(0, n), 0.0)
+    try:
+        import numpy as np
+        from scipy.optimize import nnls as scipy_nnls
+        x_mat = np.column_stack([np.asarray(col, dtype=np.float64) for col in columns])
+        y_vec = np.asarray(rhs, dtype=np.float64)
+        weights, res_norm = scipy_nnls(x_mat, y_vec)
+        return ([float(w) for w in weights], float(res_norm))
+    except ImportError:
+        return _lawson_hanson_nnls_fallback(columns, rhs)
+
+
+def peaks_from_sequence(seq: str, primary_signal: float = 1000.0, background_signal: float = 20.0) -> list:
+    """将 DNA 序列转为标准四通道荧光峰高矩阵 [[A, C, G, T]]"""
+    cleaned = clean_seq(seq)
+    out = []
+    for b in cleaned:
+        if b == "A":
+            out.append([primary_signal, background_signal, background_signal, background_signal])
+        elif b == "C":
+            out.append([background_signal, primary_signal, background_signal, background_signal])
+        elif b == "G":
+            out.append([background_signal, background_signal, primary_signal, background_signal])
+        elif b == "T":
+            out.append([background_signal, background_signal, background_signal, primary_signal])
+        else:
+            mid = (primary_signal + 3.0 * background_signal) / 4.0
+            out.append([mid, mid, mid, mid])
+    return out
+
+
+def locate_crispr_cut_site(wt_sequence: str, sgrna_sequence: str):
+    """在 WT 序列中定位 sgRNA 及其 SpCas9 切割位点 (0-based 下标)"""
+    clean_wt = clean_seq(wt_sequence)
+    clean_sg = clean_seq(sgrna_sequence)
+    if len(clean_wt) < len(clean_sg) or len(clean_sg) < 12:
+        return None
+    pos = clean_wt.find(clean_sg)
+    if pos != -1:
+        return (pos + len(clean_sg) - 3, False)
+    rc_sg = rev_comp(clean_sg)
+    rc_pos = clean_wt.find(rc_sg)
+    if rc_pos != -1:
+        return (rc_pos + 3, True)
+    return None
+
+
+def deconvolve_sanger_crispr(args: dict) -> dict:
+    """Synthego ICE 风格 Sanger 编辑池四通道峰图 NNLS 解卷积（使用 scipy.optimize.nnls，对齐 Swift CRISPRDeconvolutionEngine）"""
+    wt_seq = clean_seq(args.get("wt_sequence") or "")
+    sgrna_seq = clean_seq(args.get("sgrna_sequence") or "")
+    hdr_seq = clean_seq(args.get("hdr_donor_sequence") or "") if args.get("hdr_donor_sequence") else ""
+    req_win = int(args.get("window_length_bp") or args.get("requested_window_length_bp") or 150)
+    shift_min = int(args.get("shift_min_bp", -20))
+    shift_max = int(args.get("shift_max_bp", 20))
+    noise_floor = float(args.get("noise_floor_weight", 1e-6))
+
+    wt_peaks = args.get("wt_peaks_acgt")
+    if not wt_peaks and wt_seq:
+        wt_peaks = peaks_from_sequence(wt_seq)
+    wt_peaks = [[float(v) for v in row[:4]] for row in (wt_peaks or [])]
+
+    is_rev_sg = bool(args.get("is_reverse_strand_sgrna", False))
+    if "cut_index_0based" in args and args["cut_index_0based"] is not None:
+        cut_idx = int(args["cut_index_0based"])
+        if wt_seq and sgrna_seq:
+            loc = locate_crispr_cut_site(wt_seq, sgrna_seq)
+            if loc is not None:
+                is_rev_sg = loc[1]
+    else:
+        loc = locate_crispr_cut_site(wt_seq, sgrna_seq)
+        if loc is None:
+            return {
+                "cut_index_0based": 0,
+                "is_reverse_strand_sgrna": False,
+                "requested_window_bp": req_win,
+                "effective_window_bp": 0,
+                "wt_percent": 0.0,
+                "indel_percent": 0.0,
+                "ko_score": 0.0,
+                "hdr_percent": 0.0,
+                "total_edited_percent": 0.0,
+                "r_squared": 0.0,
+                "residual_norm": 0.0,
+                "warnings": ["SGRNA_NOT_FOUND_IN_WT"],
+                "contributions": [],
+                "dominant_indels": []
+            }
+        cut_idx, is_rev_sg = loc
+
+    edited_win_peaks = [[float(v) for v in row[:4]] for row in (args.get("edited_peaks_acgt") or [])]
+    hdr_win_peaks = args.get("hdr_peaks_acgt")
+    if not hdr_win_peaks and hdr_seq:
+        hdr_full = peaks_from_sequence(hdr_seq)
+        if cut_idx < len(hdr_full):
+            hdr_win_peaks = hdr_full[cut_idx:cut_idx + req_win]
+    if hdr_win_peaks:
+        hdr_win_peaks = [[float(v) for v in row[:4]] for row in hdr_win_peaks]
+
+    warnings = []
+    n_wt = len(wt_peaks)
+    max_del = max(0, -shift_min)
+    max_ins = max(0, shift_max)
+    if cut_idx < max_ins:
+        warnings.append("CUT_SITE_TOO_CLOSE_TO_5PRIME")
+
+    max_wt_win = max(0, n_wt - max_del - cut_idx)
+    eff_w = min(req_win, max_wt_win, len(edited_win_peaks))
+    if eff_w < req_win:
+        warnings.append("WINDOW_TRUNCATED_AT_3PRIME_END")
+    if eff_w < 30:
+        warnings.append("INSUFFICIENT_DOWNSTREAM_WINDOW")
+
+    if eff_w <= 0 or cut_idx < 0 or cut_idx >= n_wt:
+        return {
+            "cut_index_0based": cut_idx,
+            "is_reverse_strand_sgrna": is_rev_sg,
+            "requested_window_bp": req_win,
+            "effective_window_bp": max(0, eff_w),
+            "wt_percent": 0.0,
+            "indel_percent": 0.0,
+            "ko_score": 0.0,
+            "hdr_percent": 0.0,
+            "total_edited_percent": 0.0,
+            "r_squared": 0.0,
+            "residual_norm": 0.0,
+            "warnings": warnings,
+            "contributions": [],
+            "dominant_indels": []
+        }
+
+    shifts = list(range(shift_min, shift_max + 1))
+    columns = []
+    for s in shifts:
+        col = []
+        for k in range(eff_w):
+            src_idx = min(max(0, cut_idx + k - s), n_wt - 1)
+            col.extend(wt_peaks[src_idx][:4])
+        columns.append(col)
+
+    has_hdr = False
+    if hdr_win_peaks and len(hdr_win_peaks) >= eff_w:
+        hdr_col = []
+        for k in range(eff_w):
+            hdr_col.extend(hdr_win_peaks[k][:4])
+        columns.append(hdr_col)
+        has_hdr = True
+
+    rhs = []
+    for k in range(eff_w):
+        rhs.extend(edited_win_peaks[k][:4])
+
+    raw_weights, res_norm = solve_nnls_deconv(columns, rhs)
+    ss_res = res_norm * res_norm
+    mean_y = sum(rhs) / len(rhs)
+    ss_tot = sum((val - mean_y) ** 2 for val in rhs)
+    r_squared = max(0.0, min(1.0, 1.0 - (ss_res / ss_tot))) if ss_tot > 1e-12 else 1.0
+    if r_squared < 0.75:
+        warnings.append("LOW_FIT_R_SQUARED")
+
+    cleaned_weights = [w if w >= noise_floor else 0.0 for w in raw_weights]
+    w_sum = sum(cleaned_weights)
+    norm_scale = (100.0 / w_sum) if w_sum > 1e-12 else 0.0
+
+    wt_pct = 0.0
+    indel_pct = 0.0
+    ko_pct = 0.0
+    hdr_pct = 0.0
+    contributions = []
+
+    for idx, s in enumerate(shifts):
+        rw = cleaned_weights[idx]
+        pct = rw * norm_scale
+        is_fs = (abs(s) % 3) != 0
+        lbl = f"+{s}" if s > 0 else f"{s}"
+        if s == 0:
+            wt_pct = pct
+        else:
+            indel_pct += pct
+            if is_fs:
+                ko_pct += pct
+        contributions.append({
+            "label": lbl,
+            "shift_bp": s,
+            "is_hdr": False,
+            "is_frameshift": is_fs,
+            "raw_weight": rw,
+            "percent": pct
+        })
+
+    if has_hdr:
+        rw = cleaned_weights[len(shifts)]
+        pct = rw * norm_scale
+        hdr_pct = pct
+        contributions.append({
+            "label": "HDR",
+            "shift_bp": None,
+            "is_hdr": True,
+            "is_frameshift": False,
+            "raw_weight": rw,
+            "percent": pct
+        })
+
+    dominant = sorted(
+        [c for c in contributions if c["percent"] >= 0.5],
+        key=lambda c: (-round(c["percent"], 6), c["shift_bp"] if c["shift_bp"] is not None else 999)
+    )
+
+    return {
+        "cut_index_0based": cut_idx,
+        "is_reverse_strand_sgrna": is_rev_sg,
+        "requested_window_bp": req_win,
+        "effective_window_bp": eff_w,
+        "wt_percent": wt_pct,
+        "indel_percent": indel_pct,
+        "ko_score": ko_pct,
+        "hdr_percent": hdr_pct,
+        "total_edited_percent": indel_pct + hdr_pct,
+        "r_squared": r_squared,
+        "residual_norm": res_norm,
+        "warnings": warnings,
+        "contributions": contributions,
+        "dominant_indels": dominant
+    }
+
+
+def load_plasmid_features_from_sqlite(db_path: str = None) -> list:
+    """从 Libraries.sqlite 只读加载标准质粒元件表 plasmid_features"""
+    import sqlite3
+    resolved = db_path or os.path.join(SCRIPT_DIR, "Libraries.sqlite")
+    if not os.path.exists(resolved):
+        return []
+    conn = sqlite3.connect(f"file:{os.path.abspath(resolved)}?mode=ro", uri=True)
+    try:
+        rows = conn.execute(
+            "SELECT id, name, category, sequence, direction, color_hex FROM plasmid_features ORDER BY id ASC;"
+        ).fetchall()
+        return [
+            {
+                "id": int(r[0]),
+                "name": str(r[1]),
+                "category": str(r[2]),
+                "sequence": clean_seq(str(r[3])),
+                "direction": int(r[4]),
+                "color_hex": str(r[5]),
+            }
+            for r in rows
+        ]
+    finally:
+        conn.close()
+
+
+def parse_fasta_sequence(raw_text: str, default_name: str = "Unannotated_Plasmid") -> tuple:
+    """解析单条或多行 FASTA / 纯 DNA 文本，返回 (名称, 清洗后序列)"""
+    parsed_name = default_name
+    found_header = False
+    body_parts = []
+    for line in str(raw_text or "").splitlines():
+        trimmed = line.strip()
+        if not trimmed:
+            continue
+        if trimmed.startswith(">"):
+            if not found_header:
+                hdr = trimmed[1:].strip()
+                if hdr:
+                    parsed_name = hdr
+                found_header = True
+        else:
+            body_parts.append(trimmed)
+    return (parsed_name, clean_seq("".join(body_parts)))
+
+
+def annotate_plasmid_sequence(
+    sequence: str,
+    plasmid_name: str = "Unannotated_Plasmid",
+    is_circular: bool = True,
+    features_library: list = None,
+    db_path: str = None,
+    min_identity: float = 0.85,
+    min_fragment_coverage: float = 0.30,
+    full_feature_coverage_threshold: float = 0.90,
+) -> dict:
+    """基于 Libraries.sqlite 的本地离线质粒自动注释算法（双链 + 环形跨零点 + 30%-90% Fragment 标记，与 Swift PlasmidAnnotationEngine 严格对齐）"""
+    from functools import cmp_to_key
+
+    clean_query = clean_seq(sequence)
+    query_len = len(clean_query)
+    if query_len == 0:
+        return {
+            "plasmid_name": plasmid_name,
+            "sequence_length": 0,
+            "is_circular": bool(is_circular),
+            "features_count": 0,
+            "fragment_count": 0,
+            "origin_spanning_count": 0,
+            "annotated_coverage_percent": 0.0,
+            "features": [],
+            "warnings": ["输入质粒序列为空"],
+        }
+
+    library = features_library if features_library is not None else load_plasmid_features_from_sqlite(db_path=db_path)
+    if not library:
+        return {
+            "plasmid_name": plasmid_name,
+            "sequence_length": query_len,
+            "is_circular": bool(is_circular),
+            "features_count": 0,
+            "fragment_count": 0,
+            "origin_spanning_count": 0,
+            "annotated_coverage_percent": 0.0,
+            "features": [],
+            "warnings": ["未能从 Libraries.sqlite 加载 plasmid_features 元件库"],
+        }
+
+    search_seq = (clean_query + clean_query) if is_circular else clean_query
+    search_len = len(search_seq)
+
+    search_kmer_cache = {}
+
+    def get_search_kmer_index(k: int) -> dict:
+        if k in search_kmer_cache:
+            return search_kmer_cache[k]
+        idx = {}
+        if search_len >= k:
+            for s_pos in range(0, search_len - k + 1):
+                km = search_seq[s_pos:s_pos + k]
+                idx.setdefault(km, []).append(s_pos)
+        search_kmer_cache[k] = idx
+        return idx
+
+    candidates = []
+
+    for feat in library:
+        ref_fwd = clean_seq(feat["sequence"])
+        ref_len = len(ref_fwd)
+        if ref_len == 0:
+            continue
+
+        k = min(12, max(6, ref_len // 3))
+        if k > ref_len or search_len < k:
+            continue
+
+        effective_min_cov = full_feature_coverage_threshold if ref_len < 40 else min_fragment_coverage
+        min_aligned_len = min(ref_len, 15) if ref_len < 40 else 20
+        s_kmers = get_search_kmer_index(k)
+
+        ref_rev = rev_comp(ref_fwd)
+        for strand, pattern_seq in (("+", ref_fwd), ("-", ref_rev)):
+            diag_set = set()
+            for p_pos in range(0, ref_len - k + 1):
+                km = pattern_seq[p_pos:p_pos + k]
+                hits = s_kmers.get(km)
+                if hits:
+                    for s_pos in hits:
+                        d = s_pos - p_pos
+                        if d < query_len and (d + ref_len) > 0:
+                            diag_set.add(d)
+            if not diag_set:
+                continue
+
+            for d in sorted(diag_set):
+                p_lo = max(0, -d)
+                p_hi = min(ref_len, search_len - d)
+                if (p_hi - p_lo) < min_aligned_len:
+                    continue
+
+                cur_score = 0
+                cur_start = p_lo
+                best_score = 0
+                best_start = p_lo
+                best_end = p_lo
+
+                for p in range(p_lo, p_hi):
+                    step_score = 1 if search_seq[p + d] == pattern_seq[p] else -3
+                    if cur_score <= 0:
+                        cur_score = step_score
+                        cur_start = p
+                    else:
+                        cur_score += step_score
+                    if cur_score > best_score:
+                        best_score = cur_score
+                        best_start = cur_start
+                        best_end = p + 1
+
+                aligned_len = best_end - best_start
+                if aligned_len < min_aligned_len or aligned_len > query_len:
+                    continue
+
+                s_start = best_start + d
+                s_end = best_end + d
+                if is_circular and s_start >= query_len:
+                    continue
+                if not is_circular and (s_start < 0 or s_end > query_len):
+                    continue
+
+                match_count = sum(1 for p in range(best_start, best_end) if search_seq[p + d] == pattern_seq[p])
+                identity = match_count / float(aligned_len)
+                coverage = aligned_len / float(ref_len)
+                if identity < min_identity or coverage < effective_min_cov:
+                    continue
+
+                align_score = float(match_count) * 2.0 - float(aligned_len - match_count) * 6.0
+                start_1 = (s_start % query_len) + 1
+                end_1 = ((s_end - 1) % query_len) + 1
+                origin_spanning = bool(is_circular and (s_end > query_len))
+
+                feat_start_1 = (best_start + 1) if strand == "+" else (ref_len - best_end + 1)
+                feat_end_1 = best_end if strand == "+" else (ref_len - best_start)
+
+                is_frag = (coverage >= min_fragment_coverage) and (coverage < full_feature_coverage_threshold)
+                cov_pct_rounded = int(math.floor(coverage * 100.0 + 0.5))
+                disp_name = f"{feat['name']} (fragment)" if is_frag else feat["name"]
+                frag_warn = f"历史克隆残留片段 (Fragment，覆盖率 {cov_pct_rounded}%)" if is_frag else None
+
+                candidates.append((
+                    {
+                        "feature_id": int(feat["id"]),
+                        "name": feat["name"],
+                        "display_name": disp_name,
+                        "category": feat["category"],
+                        "strand": strand,
+                        "canonical_direction": int(feat["direction"]),
+                        "start_1based": start_1,
+                        "end_1based": end_1,
+                        "matched_length": aligned_len,
+                        "reference_length": ref_len,
+                        "feature_start_1based": feat_start_1,
+                        "feature_end_1based": feat_end_1,
+                        "coverage": coverage,
+                        "identity": identity,
+                        "alignment_score": align_score,
+                        "is_origin_spanning": origin_spanning,
+                        "is_fragment": is_frag,
+                        "fragment_warning": frag_warn,
+                        "color_hex": feat["color_hex"],
+                    },
+                    s_start,
+                ))
+
+    def _cmp_cand(lhs, rhs):
+        a, b = lhs[0], rhs[0]
+        if abs(a["alignment_score"] - b["alignment_score"]) > 1e-9:
+            return -1 if a["alignment_score"] > b["alignment_score"] else 1
+        if abs(a["identity"] - b["identity"]) > 1e-9:
+            return -1 if a["identity"] > b["identity"] else 1
+        if abs(a["coverage"] - b["coverage"]) > 1e-9:
+            return -1 if a["coverage"] > b["coverage"] else 1
+        if a["matched_length"] != b["matched_length"]:
+            return -1 if a["matched_length"] > b["matched_length"] else 1
+        if a["start_1based"] != b["start_1based"]:
+            return -1 if a["start_1based"] < b["start_1based"] else 1
+        if a["name"] != b["name"]:
+            return -1 if a["name"] < b["name"] else 1
+        if a["strand"] != b["strand"]:
+            return -1 if a["strand"] < b["strand"] else 1
+        return 0
+
+    candidates.sort(key=cmp_to_key(_cmp_cand))
+
+    occupied = [False] * query_len
+    accepted = []
+    for feat_hit, s_start0 in candidates:
+        mlen = feat_hit["matched_length"]
+        already_occ = sum(1 for off in range(mlen) if occupied[(s_start0 + off) % query_len])
+        if (already_occ / float(mlen)) <= 0.15:
+            accepted.append(feat_hit)
+            for off in range(mlen):
+                occupied[(s_start0 + off) % query_len] = True
+
+    accepted.sort(key=lambda f: (f["start_1based"], f["end_1based"], f["name"]))
+
+    frag_count = sum(1 for f in accepted if f["is_fragment"])
+    origin_count = sum(1 for f in accepted if f["is_origin_spanning"])
+    covered_bases = sum(1 for x in occupied if x)
+    cov_percent = covered_bases * 100.0 / float(query_len)
+
+    warnings = []
+    if frag_count > 0:
+        warnings.append(f"检出 {frag_count} 个历史克隆残留片段 (Fragment，覆盖率 30%–90%)，请核查载体改造史。")
+    if origin_count > 0:
+        warnings.append(f"检出 {origin_count} 个跨越环形质粒 1 bp 零点 (Origin) 的连续特征。")
+
+    return {
+        "plasmid_name": plasmid_name,
+        "sequence_length": query_len,
+        "is_circular": bool(is_circular),
+        "features_count": len(accepted),
+        "fragment_count": frag_count,
+        "origin_spanning_count": origin_count,
+        "annotated_coverage_percent": cov_percent,
+        "features": accepted,
+        "warnings": warnings,
+    }
+
+
+def annotate_plasmid_fasta(args: dict) -> dict:
+    """解析 FASTA 或纯序列输入并调用 annotate_plasmid_sequence"""
+    raw_fasta = args.get("fasta_text") or args.get("sequence") or ""
+    default_name = str(args.get("plasmid_name") or "Unannotated_Plasmid").strip()
+    parsed_name, clean_sequence = parse_fasta_sequence(raw_fasta, default_name=default_name)
+    if args.get("plasmid_name") and not str(raw_fasta).lstrip().startswith(">"):
+        parsed_name = str(args["plasmid_name"]).strip()
+    return annotate_plasmid_sequence(
+        sequence=clean_sequence,
+        plasmid_name=parsed_name,
+        is_circular=bool(args.get("is_circular", True)),
+        db_path=args.get("db_path"),
+        min_identity=float(args.get("min_identity", 0.85)),
+        min_fragment_coverage=float(args.get("min_fragment_coverage", 0.30)),
+        full_feature_coverage_threshold=float(args.get("full_feature_coverage_threshold", 0.90)),
+    )
+
+
+TYPE_IIS_ENZYME_SPECS = {
+    "bsai": {"name": "BsaI", "site": "GGTCTC", "rc_site": "GAGACC", "cut_top": 7, "cut_bottom": 11, "overhang_len": 4},
+    "bsmbi": {"name": "BsmBI", "site": "CGTCTC", "rc_site": "GAGACG", "cut_top": 7, "cut_bottom": 11, "overhang_len": 4},
+    "bbsi": {"name": "BbsI", "site": "GAAGAC", "rc_site": "GTCTTC", "cut_top": 8, "cut_bottom": 12, "overhang_len": 4},
+    "sapi": {"name": "SapI", "site": "GCTCTTC", "rc_site": "GAAGAGC", "cut_top": 8, "cut_bottom": 11, "overhang_len": 3},
+}
+
+DEFAULT_DIAGNOSTIC_ENZYMES = {
+    "AgeI": ("ACCGGT", 1, 5),
+    "BamHI": ("GGATCC", 1, 5),
+    "BglII": ("AGATCT", 1, 5),
+    "ClaI": ("ATCGAT", 2, 4),
+    "DraI": ("TTTAAA", 3, 3),
+    "EcoRI": ("GAATTC", 1, 5),
+    "EcoRV": ("GATATC", 3, 3),
+    "HindIII": ("AAGCTT", 1, 5),
+    "KpnI": ("GGTACC", 5, 1),
+    "NcoI": ("CCATGG", 1, 5),
+    "NdeI": ("CATATG", 2, 4),
+    "NheI": ("GCTAGC", 1, 5),
+    "NotI": ("GCGGCCGC", 2, 6),
+    "PstI": ("CTGCAG", 5, 1),
+    "PvuII": ("CAGCTG", 3, 3),
+    "SacI": ("GAGCTC", 5, 1),
+    "SacII": ("CCGCGG", 4, 2),
+    "SalI": ("GTCGAC", 1, 5),
+    "ScaI": ("AGTACT", 3, 3),
+    "SmaI": ("CCCGGG", 3, 3),
+    "SpeI": ("ACTAGT", 1, 5),
+    "StuI": ("AGGCCT", 3, 3),
+    "XbaI": ("TCTAGA", 1, 5),
+    "XhoI": ("CTCGAG", 1, 5),
+}
+
+NEB_BUFFER_COMPAT_TABLE = {
+    "ecori": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 25},
+    "bamhi": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 75},
+    "hindiii": {"CutSmart": 100, "r2.1": 100, "r3.1": 50, "r1.1": 50},
+    "sali": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 10},
+    "xhoi": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 75},
+    "ndei": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 75},
+    "saci": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 10},
+    "kpni": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 25},
+    "bsai": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 50},
+    "bbsi": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 10},
+    "bsmbi": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 50},
+    "sapi": {"CutSmart": 100, "r2.1": 75, "r3.1": 10, "r1.1": 50},
+    "noti": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 10},
+    "xbai": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 25},
+    "psti": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 75},
+    "smai": {"CutSmart": 100, "r2.1": 25, "r3.1": 10, "r1.1": 50},
+    "spei": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 100},
+    "clai": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 100},
+    "bglii": {"CutSmart": 10, "r2.1": 100, "r3.1": 100, "r1.1": 10},
+    "ecorv": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 50},
+    "ncoi": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 50},
+    "scai": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 50},
+    "pvuii": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 50},
+    "stui": {"CutSmart": 100, "r2.1": 100, "r3.1": 50, "r1.1": 50},
+    "drai": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 75},
+    "sacii": {"CutSmart": 100, "r2.1": 100, "r3.1": 10, "r1.1": 10},
+    "nhei": {"CutSmart": 100, "r2.1": 100, "r3.1": 100, "r1.1": 100},
+    "agei": {"CutSmart": 100, "r2.1": 75, "r3.1": 25, "r1.1": 100},
+}
+
+GG_CODON_TO_AA = {
+    "TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L",
+    "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
+    "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M",
+    "GTT": "V", "GTC": "V", "GTA": "V", "GTG": "V",
+    "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S",
+    "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
+    "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
+    "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
+    "TAT": "Y", "TAC": "Y", "TAA": "*", "TAG": "*",
+    "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
+    "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
+    "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E",
+    "TGT": "C", "TGC": "C", "TGA": "*", "TGG": "W",
+    "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
+    "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
+    "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G",
+}
+
+GG_PREFERRED_CODONS = {
+    "A": ["GCC", "GCT", "GCA", "GCG"],
+    "C": ["TGC", "TGT"],
+    "D": ["GAC", "GAT"],
+    "E": ["GAG", "GAA"],
+    "F": ["TTC", "TTT"],
+    "G": ["GGC", "GGT", "GGA", "GGG"],
+    "H": ["CAC", "CAT"],
+    "I": ["ATC", "ATT", "ATA"],
+    "K": ["AAG", "AAA"],
+    "L": ["CTG", "CTC", "CTT", "TTG", "TTA", "CTA"],
+    "M": ["ATG"],
+    "N": ["AAC", "AAT"],
+    "P": ["CCC", "CCT", "CCA", "CCG"],
+    "Q": ["CAG", "CAA"],
+    "R": ["CGC", "CGT", "AGG", "AGA", "CGG", "CGA"],
+    "S": ["AGC", "TCC", "TCT", "AGT", "TCA", "TCG"],
+    "T": ["ACC", "ACT", "ACA", "ACG"],
+    "V": ["GTG", "GTC", "GTT", "GTA"],
+    "W": ["TGG"],
+    "Y": ["TAC", "TAT"],
+    "*": ["TGA", "TAA", "TAG"],
+}
+
+
+def load_neb_ligase_fidelity_from_sqlite(db_path: str = None) -> dict:
+    """从 Libraries.sqlite 只读加载 NEB T4 DNA Ligase 4-bp 保真度矩阵"""
+    import sqlite3
+    resolved = db_path or os.path.join(SCRIPT_DIR, "Libraries.sqlite")
+    if not os.path.exists(resolved):
+        return {"stats": {}, "counts": {}}
+    conn = sqlite3.connect(f"file:{os.path.abspath(resolved)}?mode=ro", uri=True)
+    try:
+        stats = {}
+        for r in conn.execute(
+            "SELECT overhang, rc_overhang, is_palindromic, gc_count, wc_ligation_count, individual_fidelity, is_neb_verified_hf FROM neb_t4_overhang_stats;"
+        ):
+            stats[str(r[0])] = {
+                "overhang": str(r[0]),
+                "rc_overhang": str(r[1]),
+                "is_palindromic": bool(r[2]),
+                "gc_count": int(r[3]),
+                "wc_ligation_count": int(r[4]),
+                "individual_fidelity": float(r[5]),
+                "is_neb_verified_hf": bool(r[6]),
+            }
+        counts = {}
+        for a, b, cnt in conn.execute("SELECT overhang_a, overhang_b, ligation_count FROM neb_t4_ligase_fidelity;"):
+            counts.setdefault(str(a), {})[str(b)] = int(cnt)
+        return {"stats": stats, "counts": counts}
+    finally:
+        conn.close()
+
+
+def evaluate_golden_gate_overhangs(overhangs: list, matrix: dict) -> dict:
+    """评估一组 4-bp Golden Gate 接头的组装保真度与交叉错配数"""
+    normalized = [clean_seq(o) for o in overhangs]
+    counts = matrix.get("counts", {})
+    issues = []
+    seen_canon = set()
+    for ov in normalized:
+        if len(ov) != 4:
+            issues.append(f"接头 {ov} 长度不为 4 bp")
+            continue
+        rc = rev_comp(ov)
+        if ov == rc:
+            issues.append(f"接头 {ov} 为回文序列")
+        canon = min(ov, rc)
+        if canon in seen_canon:
+            issues.append(f"接头 {ov} 存在重复或反向互补冲突")
+        seen_canon.add(canon)
+
+    exposed = []
+    for ov in normalized:
+        if len(ov) == 4:
+            exposed.append(ov)
+            exposed.append(rev_comp(ov))
+
+    mismatches = []
+    for i in range(len(exposed)):
+        u = exposed[i]
+        rc_u = rev_comp(u)
+        u_map = counts.get(u, {})
+        for j in range(i + 1, len(exposed)):
+            v = exposed[j]
+            if v == rc_u:
+                continue
+            cnt = u_map.get(v, 0)
+            if cnt > 0:
+                mismatches.append({"overhang_a": min(u, v), "overhang_b": max(u, v), "ligation_count": cnt})
+    mismatches.sort(key=lambda x: (x["overhang_a"], x["overhang_b"]))
+
+    fidelity = 1.0 if normalized else 0.0
+    for ov in normalized:
+        if len(ov) != 4:
+            continue
+        rc = rev_comp(ov)
+        wc = float(counts.get(ov, {}).get(rc, 0) + counts.get(rc, {}).get(ov, 0))
+        tot = 0.0
+        ov_map = counts.get(ov, {})
+        rc_map = counts.get(rc, {})
+        for end in exposed:
+            tot += float(ov_map.get(end, 0)) + float(rc_map.get(end, 0))
+        fidelity *= (wc / tot) if tot > 0.0 else 0.0
+
+    return {
+        "overhangs": normalized,
+        "is_valid": len(issues) == 0,
+        "assembly_fidelity": fidelity,
+        "cross_mismatch_count": len(mismatches),
+        "cross_mismatch_pairs": mismatches,
+        "issues": issues,
+    }
+
+
+def allocate_golden_gate_overhangs(
+    fragment_count: int,
+    enzyme_name: str = "BsaI",
+    fixed_overhangs: list = None,
+    is_circular: bool = True,
+    matrix: dict = None,
+    db_path: str = None,
+) -> dict:
+    """为 2–6 片段分配无交叉错配 4-bp/3-bp Golden Gate 高保真接头（对齐 Swift GoldenGateEngine）"""
+    from functools import cmp_to_key
+
+    clamped = max(2, min(6, int(fragment_count)))
+    junc_count = clamped if is_circular else (clamped + 1)
+    spec = TYPE_IIS_ENZYME_SPECS.get(enzyme_name.lower(), TYPE_IIS_ENZYME_SPECS["bsai"])
+    ov_len = spec["overhang_len"]
+    warnings = []
+    if fragment_count != clamped:
+        warnings.append(f"片段数已调整至支持范围 2–6 ({clamped})。")
+
+    fixed_list = fixed_overhangs or []
+
+    if ov_len == 3:
+        import itertools
+        all_3mers = []
+        for tup in itertools.product("ACGT", repeat=3):
+            s = "".join(tup)
+            if s in ("AAA", "TTT", "CCC", "GGG"):
+                continue
+            rc = rev_comp(s)
+            if s < rc:
+                all_3mers.append(s)
+
+        def _cmp_3mer(x, y):
+            gc_x = x.count("G") + x.count("C")
+            gc_y = y.count("G") + y.count("C")
+            bal_x = abs(gc_x - 1) <= 1 and 1 <= gc_x <= 2
+            bal_y = abs(gc_y - 1) <= 1 and 1 <= gc_y <= 2
+            if bal_x != bal_y:
+                return -1 if bal_x else 1
+            return -1 if x < y else (1 if x > y else 0)
+
+        all_3mers.sort(key=cmp_to_key(_cmp_3mer))
+        chosen = []
+        used_canon = set()
+        for raw in fixed_list:
+            ov = clean_seq(raw)
+            if len(ov) != 3:
+                continue
+            canon = min(ov, rev_comp(ov))
+            if canon not in used_canon and len(chosen) < junc_count:
+                chosen.append(ov)
+                used_canon.add(canon)
+
+        def _clash_3bp(u: str, v: str) -> bool:
+            mm = 0
+            all_gt = True
+            for i in range(3):
+                a = u[i]
+                b = v[2 - i]
+                is_wc = (a, b) in (("A", "T"), ("T", "A"), ("C", "G"), ("G", "C"))
+                if not is_wc:
+                    mm += 1
+                    if (a, b) not in (("G", "T"), ("T", "G")):
+                        all_gt = False
+            return mm == 1 or (mm == 2 and all_gt)
+
+        while len(chosen) < junc_count:
+            picked = None
+            for cand in all_3mers:
+                canon = min(cand, rev_comp(cand))
+                if canon in used_canon:
+                    continue
+                trial_ends = []
+                for o in chosen + [cand]:
+                    trial_ends.extend([o, rev_comp(o)])
+                clashes = 0
+                for i in range(len(trial_ends)):
+                    rc_i = rev_comp(trial_ends[i])
+                    for j in range(i + 1, len(trial_ends)):
+                        if trial_ends[j] != rc_i and _clash_3bp(trial_ends[i], trial_ends[j]):
+                            clashes += 1
+                if clashes == 0:
+                    picked = cand
+                    break
+            if picked is not None:
+                chosen.append(picked)
+                used_canon.add(min(picked, rev_comp(picked)))
+            else:
+                warnings.append(f"SapI 3-bp 接头空间不足以完全无错配分配 {junc_count} 个位点。")
+                break
+
+        return {
+            "enzyme_name": spec["name"],
+            "fragment_count": clamped,
+            "junction_count": junc_count,
+            "overhang_length": 3,
+            "assigned_overhangs": chosen,
+            "assembly_fidelity": 1.0 if len(chosen) == junc_count else 0.90,
+            "cross_mismatch_count": 0,
+            "cross_mismatch_pairs": [],
+            "warnings": warnings,
+        }
+
+    mat = matrix if matrix is not None else load_neb_ligase_fidelity_from_sqlite(db_path=db_path)
+    stats = mat.get("stats", {})
+    chosen = []
+    used_canon = set()
+
+    for raw_fixed in fixed_list:
+        ov = clean_seq(raw_fixed)
+        if len(ov) != 4:
+            warnings.append(f"已忽略长度非 4 bp 的固定接头: {raw_fixed}")
+            continue
+        rc = rev_comp(ov)
+        if ov == rc:
+            warnings.append(f"已忽略回文固定接头: {ov}")
+            continue
+        canon = min(ov, rc)
+        if canon in used_canon:
+            warnings.append(f"已忽略重复或互补冲突的固定接头: {ov}")
+            continue
+        if len(chosen) < junc_count:
+            chosen.append(ov)
+            used_canon.add(canon)
+
+    seen_pool = set()
+    pool = []
+    for rec in stats.values():
+        if rec["is_palindromic"]:
+            continue
+        canon = min(rec["overhang"], rec["rc_overhang"])
+        if canon in seen_pool:
+            continue
+        seen_pool.add(canon)
+        pool.append(stats.get(canon, rec))
+
+    def _cmp_pool(a, b):
+        if a["is_neb_verified_hf"] != b["is_neb_verified_hf"]:
+            return -1 if a["is_neb_verified_hf"] else 1
+        if abs(a["individual_fidelity"] - b["individual_fidelity"]) > 1e-9:
+            return -1 if a["individual_fidelity"] > b["individual_fidelity"] else 1
+        if a["wc_ligation_count"] != b["wc_ligation_count"]:
+            return -1 if a["wc_ligation_count"] > b["wc_ligation_count"] else 1
+        return -1 if a["overhang"] < b["overhang"] else (1 if a["overhang"] > b["overhang"] else 0)
+
+    pool.sort(key=cmp_to_key(_cmp_pool))
+
+    while len(chosen) < junc_count:
+        best_cand = None
+        best_eval = None
+        for cand in pool:
+            canon = min(cand["overhang"], cand["rc_overhang"])
+            if canon in used_canon:
+                continue
+            trial_eval = evaluate_golden_gate_overhangs(chosen + [cand["overhang"]], mat)
+            if best_eval is not None and best_cand is not None:
+                if trial_eval["cross_mismatch_count"] != best_eval["cross_mismatch_count"]:
+                    better = trial_eval["cross_mismatch_count"] < best_eval["cross_mismatch_count"]
+                elif abs(trial_eval["assembly_fidelity"] - best_eval["assembly_fidelity"]) > 1e-9:
+                    better = trial_eval["assembly_fidelity"] > best_eval["assembly_fidelity"]
+                elif cand["is_neb_verified_hf"] != best_cand["is_neb_verified_hf"]:
+                    better = bool(cand["is_neb_verified_hf"]) and not bool(best_cand["is_neb_verified_hf"])
+                elif abs(cand["individual_fidelity"] - best_cand["individual_fidelity"]) > 1e-9:
+                    better = cand["individual_fidelity"] > best_cand["individual_fidelity"]
+                else:
+                    better = cand["overhang"] < best_cand["overhang"]
+                if better:
+                    best_cand = cand
+                    best_eval = trial_eval
+            else:
+                best_cand = cand
+                best_eval = trial_eval
+        if best_cand is None:
+            break
+        chosen.append(best_cand["overhang"])
+        used_canon.add(min(best_cand["overhang"], best_cand["rc_overhang"]))
+
+    final_eval = evaluate_golden_gate_overhangs(chosen, mat)
+    if final_eval["cross_mismatch_count"] > 0:
+        warnings.append(f"当前约束下存在 {final_eval['cross_mismatch_count']} 组潜在交叉错配。")
+
+    return {
+        "enzyme_name": spec["name"],
+        "fragment_count": clamped,
+        "junction_count": junc_count,
+        "overhang_length": ov_len,
+        "assigned_overhangs": chosen,
+        "assembly_fidelity": final_eval["assembly_fidelity"],
+        "cross_mismatch_count": final_eval["cross_mismatch_count"],
+        "cross_mismatch_pairs": final_eval["cross_mismatch_pairs"],
+        "warnings": warnings,
+    }
+
+
+def domesticate_golden_gate_fragment(
+    sequence: str,
+    enzyme_name: str,
+    fragment_index: int = 0,
+    fragment_name: str = "Fragment",
+    is_coding_sequence: bool = True,
+    reading_frame_offset: int = 0,
+) -> dict:
+    """扫描片段内部内源 Type IIS 位点并生成编码区同义密码子抹除方案 (Domestication)"""
+    clean = clean_seq(sequence)
+    seq_len = len(clean)
+    spec = TYPE_IIS_ENZYME_SPECS.get(enzyme_name.lower(), TYPE_IIS_ENZYME_SPECS["bsai"])
+    site_fwd = spec["site"]
+    site_rev = spec["rc_site"]
+    site_len = len(site_fwd)
+
+    def find_internal_sites(chars_list):
+        s = "".join(chars_list)
+        hits = []
+        for strand, pat in (("+", site_fwd), ("-", site_rev)):
+            pos = s.find(pat)
+            while pos != -1:
+                hits.append((pos, strand, pat))
+                pos = s.find(pat, pos + 1)
+        hits.sort(key=lambda x: (x[0], x[1]))
+        return hits
+
+    def introduces_site(chars_list, center_start, center_end):
+        lo = max(0, center_start - site_len + 1)
+        hi = min(len(chars_list), center_end + site_len - 1)
+        if hi - lo < site_len:
+            return False
+        win = "".join(chars_list[lo:hi])
+        return (site_fwd in win) or (site_rev in win)
+
+    working = list(clean)
+    initial_hits = find_internal_sites(working)
+    suggestions = []
+    frame = ((int(reading_frame_offset) % 3) + 3) % 3
+
+    for _ in range(200):
+        current_hits = find_internal_sites(working)
+        if not current_hits:
+            break
+        s0, strand, site_str = current_hits[0]
+        e0 = s0 + site_len
+        applied = False
+
+        if is_coding_sequence:
+            codon_starts = [
+                c for c in range(frame, seq_len - 2, 3)
+                if (c + 3) > s0 and c < e0
+            ]
+            for req_inside in (True, False):
+                if applied:
+                    break
+                for c_start in codon_starts:
+                    if applied:
+                        break
+                    orig_codon = "".join(working[c_start:c_start + 3])
+                    aa = GG_CODON_TO_AA.get(orig_codon)
+                    syn_list = GG_PREFERRED_CODONS.get(aa, []) if aa else []
+                    for cand_codon in syn_list:
+                        if cand_codon == orig_codon:
+                            continue
+                        diffs = [k for k in range(3) if orig_codon[k] != cand_codon[k]]
+                        if len(diffs) != 1:
+                            continue
+                        mut_off = diffs[0]
+                        mut_pos0 = c_start + mut_off
+                        if req_inside and not (s0 <= mut_pos0 < e0):
+                            continue
+                        trial = list(working)
+                        trial[c_start:c_start + 3] = list(cand_codon)
+                        if not introduces_site(trial, s0, e0):
+                            working = trial
+                            codon_idx1 = ((c_start - frame) // 3) + 1
+                            suggestions.append({
+                                "fragment_index": fragment_index,
+                                "fragment_name": fragment_name,
+                                "enzyme_name": spec["name"],
+                                "site_strand": strand,
+                                "site_start_1based": s0 + 1,
+                                "site_end_1based": e0,
+                                "original_site": site_str,
+                                "is_coding_sequence": True,
+                                "codon_index_1based": codon_idx1,
+                                "original_codon": orig_codon,
+                                "mutated_codon": cand_codon,
+                                "amino_acid": aa,
+                                "mutation_position_1based": mut_pos0 + 1,
+                                "original_base": orig_codon[mut_off],
+                                "mutated_base": cand_codon[mut_off],
+                                "is_synonymous": True,
+                                "note": f"密码子 #{codon_idx1} ({aa}) {orig_codon}→{cand_codon} (pos {mut_pos0 + 1} {orig_codon[mut_off]}>{cand_codon[mut_off]}) 同义抹除 {spec['name']} ({strand})",
+                            })
+                            applied = True
+                            break
+
+        if not applied and not is_coding_sequence:
+            mid_pos0 = s0 + (site_len // 2)
+            orig_ch = working[mid_pos0]
+            for cand_ch in ("A", "C", "G", "T"):
+                if cand_ch == orig_ch:
+                    continue
+                trial = list(working)
+                trial[mid_pos0] = cand_ch
+                if not introduces_site(trial, s0, e0):
+                    working = trial
+                    suggestions.append({
+                        "fragment_index": fragment_index,
+                        "fragment_name": fragment_name,
+                        "enzyme_name": spec["name"],
+                        "site_strand": strand,
+                        "site_start_1based": s0 + 1,
+                        "site_end_1based": e0,
+                        "original_site": site_str,
+                        "is_coding_sequence": False,
+                        "codon_index_1based": None,
+                        "original_codon": None,
+                        "mutated_codon": None,
+                        "amino_acid": None,
+                        "mutation_position_1based": mid_pos0 + 1,
+                        "original_base": orig_ch,
+                        "mutated_base": cand_ch,
+                        "is_synonymous": False,
+                        "note": f"非编码区位点 pos {mid_pos0 + 1} {orig_ch}>{cand_ch} 破坏 {spec['name']} ({strand})",
+                    })
+                    applied = True
+                    break
+
+        if not applied:
+            break
+
+    rem_hits = find_internal_sites(working)
+    return {
+        "fragment_index": fragment_index,
+        "fragment_name": fragment_name,
+        "original_length": seq_len,
+        "internal_sites_found": len(initial_hits),
+        "remaining_sites_after_domestication": len(rem_hits),
+        "suggestions": suggestions,
+        "domesticated_sequence": "".join(working),
+    }
+
+
+def design_golden_gate_assembly(args: dict) -> dict:
+    """端到端 Type IIS Golden Gate 接头分配与内源位点 Domestication 设计"""
+    enzyme_name = str(args.get("enzyme_name") or "BsaI").strip()
+    spec = TYPE_IIS_ENZYME_SPECS.get(enzyme_name.lower(), TYPE_IIS_ENZYME_SPECS["bsai"])
+    fragments = args.get("fragments") or []
+    fixed_overhangs = args.get("fixed_overhangs") or []
+    is_circular = bool(args.get("is_circular", True))
+    db_path = args.get("db_path")
+    frag_cnt = int(args.get("fragment_count") or max(2, len(fragments)))
+
+    ov_plan = allocate_golden_gate_overhangs(
+        fragment_count=frag_cnt,
+        enzyme_name=spec["name"],
+        fixed_overhangs=fixed_overhangs,
+        is_circular=is_circular,
+        db_path=db_path,
+    )
+
+    doms = []
+    total_sites = 0
+    total_frag_len = 0
+    for idx, f in enumerate(fragments):
+        d = domesticate_golden_gate_fragment(
+            sequence=f.get("sequence", ""),
+            enzyme_name=spec["name"],
+            fragment_index=idx,
+            fragment_name=f.get("name", f"Fragment_{idx + 1}"),
+            is_coding_sequence=bool(f.get("is_coding_sequence", True)),
+            reading_frame_offset=int(f.get("reading_frame_offset", 0)),
+        )
+        doms.append(d)
+        total_sites += d["internal_sites_found"]
+        total_frag_len += len(d["domesticated_sequence"])
+
+    return {
+        "enzyme_name": spec["name"],
+        "recognition_site": spec["site"],
+        "overhang_length": spec["overhang_len"],
+        "overhang_plan": ov_plan,
+        "domestications": doms,
+        "total_internal_sites_found": total_sites,
+        "assembled_sequence_length": total_frag_len + len(ov_plan["assigned_overhangs"]) * spec["overhang_len"],
+    }
+
+
+_GEL_CONC_PARAMS = [
+    ("0.8%", 2400.0, 2.02),
+    ("1.0%", 1250.0, 2.12),
+    ("1.2%", 900.0, 2.20),
+    ("1.5%", 620.0, 2.30),
+    ("2.0%", 380.0, 2.42),
+]
+
+
+def agarose_migration_y(size_bp: float, conc_label: str) -> float:
+    """对齐 Swift AgaroseGelConcentration.migrationY 的归一化凝胶迁移距离模型"""
+    mid, k = 1250.0, 2.12
+    for lbl, m_val, k_val in _GEL_CONC_PARAMS:
+        if lbl == conc_label:
+            mid, k = m_val, k_val
+            break
+    clamped = max(25.0, min(50000.0, float(size_bp)))
+    u = math.log10(clamped)
+    u_mid = math.log10(mid)
+    y = 0.06 + 0.88 / (1.0 + math.exp(k * (u - u_mid)))
+    return min(0.94, max(0.06, y))
+
+
+def _find_enzyme_cut_positions(clean_seq: str, enz_name: str, is_circular: bool) -> list:
+    site, snip_top, snip_bot = DEFAULT_DIAGNOSTIC_ENZYMES[enz_name]
+    seq_len = len(clean_seq)
+    site_len = len(site)
+    if seq_len == 0 or site_len > seq_len:
+        return []
+    search_seq = (clean_seq + clean_seq) if is_circular else clean_seq
+    snips = []
+    pos = search_seq.find(site)
+    while pos != -1:
+        if is_circular and pos >= seq_len:
+            break
+        raw_top = pos + snip_top
+        raw_bot = pos + snip_bot
+        if is_circular or (0 <= raw_top <= seq_len and 0 <= raw_bot <= seq_len):
+            top_snip = (raw_top % seq_len) if is_circular else raw_top
+            snips.append(top_snip)
+        pos = search_seq.find(site, pos + 1)
+    return snips
+
+
+def simulate_digest_fragments(clean_seq: str, enzyme_names: list, is_circular: bool = True) -> list:
+    """模拟单/双酶切产生的条带长度列表 (bp, 降序)"""
+    total_len = len(clean_seq)
+    if total_len == 0:
+        return []
+    cut_positions = set()
+    for e_name in enzyme_names:
+        for pos in _find_enzyme_cut_positions(clean_seq, e_name, is_circular):
+            cut_positions.add(pos)
+    sorted_pos = sorted(cut_positions)
+    frags = []
+    if is_circular:
+        if not sorted_pos:
+            return []
+        if len(sorted_pos) == 1:
+            frags = [total_len]
+        else:
+            for i in range(len(sorted_pos)):
+                nxt = sorted_pos[i + 1] if (i + 1 < len(sorted_pos)) else (sorted_pos[0] + total_len)
+                frags.append(max(1, nxt - sorted_pos[i]))
+    else:
+        prev = 0
+        for pos in sorted_pos:
+            if pos > prev:
+                frags.append(pos - prev)
+            prev = pos
+        if total_len > prev:
+            frags.append(total_len - prev)
+    frags.sort(reverse=True)
+    return frags
+
+
+def recommend_diagnostic_digests(args: dict) -> dict:
+    """推荐空载 vs 重组载体的最佳 2–4 条带单/双酶切鉴定 Top N 方案（对齐 Swift DiagnosticDigestEngine）"""
+    from functools import cmp_to_key
+
+    clean_empty = clean_seq(args.get("empty_vector_sequence") or "")
+    clean_recomb = clean_seq(args.get("recombinant_sequence") or "")
+    is_circular = bool(args.get("is_circular", True))
+    min_bands = int(args.get("min_bands", 2))
+    max_bands = int(args.get("max_bands", 4))
+    top_n = int(args.get("top_n", 3))
+
+    if not clean_empty or not clean_recomb:
+        return {
+            "empty_vector_length_bp": len(clean_empty),
+            "recombinant_length_bp": len(clean_recomb),
+            "is_circular": is_circular,
+            "evaluated_combinations": 0,
+            "top_recommendations": [],
+            "warnings": ["输入空载或重组载体序列为空"],
+        }
+
+    raw_names = args.get("enzyme_names") or list(DEFAULT_DIAGNOSTIC_ENZYMES.keys())
+    canon_lookup = {k.lower(): k for k in DEFAULT_DIAGNOSTIC_ENZYMES}
+    seen_lower = set()
+    pool = []
+    for n in raw_names:
+        low = str(n).lower()
+        if low not in seen_lower and low in canon_lookup:
+            seen_lower.add(low)
+            pool.append(canon_lookup[low])
+    pool.sort()
+
+    viable = []
+    single_empty = {}
+    single_recomb = {}
+    for enz in pool:
+        neg_cuts = len(_find_enzyme_cut_positions(clean_empty, enz, is_circular))
+        pos_cuts = len(_find_enzyme_cut_positions(clean_recomb, enz, is_circular))
+        if (neg_cuts >= 1 or pos_cuts >= 1) and neg_cuts <= 6 and pos_cuts <= 6:
+            viable.append(enz)
+            single_empty[enz] = simulate_digest_fragments(clean_empty, [enz], is_circular)
+            single_recomb[enz] = simulate_digest_fragments(clean_recomb, [enz], is_circular)
+
+    def best_buffer(enz_list):
+        compats = [
+            NEB_BUFFER_COMPAT_TABLE.get(e.lower(), {"CutSmart": 100, "r2.1": 100, "r3.1": 75, "r1.1": 75})
+            for e in enz_list
+        ]
+        best_name, best_act = "CutSmart", -1
+        for b_name in ("CutSmart", "r2.1", "r3.1", "r1.1"):
+            min_act = min(c.get(b_name, 0) for c in compats)
+            if min_act > best_act:
+                best_act = min_act
+                best_name = b_name
+        return (best_name, max(0, best_act))
+
+    def eval_combo(enz_list, strict_both):
+        if len(enz_list) == 1:
+            empty_all = single_empty[enz_list[0]]
+            recomb_all = single_recomb[enz_list[0]]
+        else:
+            empty_all = simulate_digest_fragments(clean_empty, enz_list, is_circular)
+            recomb_all = simulate_digest_fragments(clean_recomb, enz_list, is_circular)
+
+        empty_vis = [b for b in empty_all if b >= 100]
+        recomb_vis = [b for b in recomb_all if b >= 100]
+        if len(empty_all) > 6 or len(recomb_all) > 6:
+            return None
+        if strict_both:
+            if not (min_bands <= len(empty_vis) <= max_bands and min_bands <= len(recomb_vis) <= max_bands):
+                return None
+        else:
+            if not (min_bands <= len(recomb_vis) <= max_bands and 1 <= len(empty_vis) <= max_bands):
+                return None
+
+        buf_name, buf_pct = best_buffer(enz_list)
+        best_cand = None
+        for conc_label, _, _ in _GEL_CONC_PARAMS:
+            y_neg = [agarose_migration_y(b, conc_label) for b in empty_vis]
+            y_pos = [agarose_migration_y(b, conc_label) for b in recomb_vis]
+            d_pos = [min(abs(yp - yn) for yn in y_neg) for yp in y_pos]
+            d_neg = [min(abs(yn - yp) for yp in y_pos) for yn in y_neg]
+            max_shift_y = max(max(d_pos), max(d_neg))
+            if max_shift_y < 0.03:
+                continue
+            mean_shift_y = (sum(d_pos) + sum(d_neg)) / float(len(d_pos) + len(d_neg))
+
+            s_neg = sorted(y_neg)
+            s_pos = sorted(y_pos)
+            gaps = [s_neg[i + 1] - s_neg[i] for i in range(len(s_neg) - 1)] + [
+                s_pos[i + 1] - s_pos[i] for i in range(len(s_pos) - 1)
+            ]
+            min_gap_y = min(gaps) if gaps else 0.5
+
+            diff_pos_bp = [min(abs(rp - rn) for rn in empty_vis) for rp in recomb_vis]
+            diff_neg_bp = [min(abs(rn - rp) for rp in recomb_vis) for rn in empty_vis]
+            max_diff_bp = max(max(diff_pos_bp), max(diff_neg_bp))
+
+            shift_comp = min(45.0, max_shift_y * 180.0)
+            mean_comp = min(20.0, mean_shift_y * 120.0)
+            res_comp = min(20.0, min_gap_y * 220.0) - (15.0 if min_gap_y < 0.025 else 0.0)
+            count_bonus = 6.0 if len(empty_vis) != len(recomb_vis) else 0.0
+            if len(enz_list) == 1:
+                buf_bonus = 5.0
+            elif buf_pct >= 100:
+                buf_bonus = 4.0
+            elif buf_pct >= 75:
+                buf_bonus = 1.5
+            else:
+                buf_bonus = -8.0
+            has_extreme = any(b < 150 or b > 12000 for b in (empty_vis + recomb_vis))
+            range_penalty = -10.0 if has_extreme else 0.0
+            total_score = max(0.0, min(100.0, shift_comp + mean_comp + res_comp + count_bonus + buf_bonus + range_penalty))
+
+            cand = {
+                "enzyme_names": list(enz_list),
+                "recommended_gel_concentration": conc_label,
+                "preferred_buffer": buf_name,
+                "buffer_compatibility_percent": buf_pct,
+                "empty_vector_bands_bp": empty_vis,
+                "recombinant_bands_bp": recomb_vis,
+                "max_migration_shift_y": max_shift_y,
+                "mean_migration_shift_y": mean_shift_y,
+                "min_intra_lane_gap_y": min_gap_y,
+                "max_band_size_diff_bp": max_diff_bp,
+                "score": total_score,
+            }
+            if best_cand is None or cand["score"] > best_cand["score"] + 1e-9:
+                best_cand = cand
+        return best_cand
+
+    combos = [[e] for e in viable]
+    for i in range(len(viable) - 1):
+        for j in range(i + 1, len(viable)):
+            combos.append([viable[i], viable[j]])
+
+    strict_hits = []
+    for combo in combos:
+        res = eval_combo(combo, True)
+        if res is not None:
+            strict_hits.append(res)
+
+    final_pool = list(strict_hits)
+    warnings = []
+    if len(final_pool) < top_n:
+        seen_keys = {"+".join(x["enzyme_names"]) for x in final_pool}
+        for combo in combos:
+            key = "+".join(combo)
+            if key in seen_keys:
+                continue
+            rel = eval_combo(combo, False)
+            if rel is not None:
+                final_pool.append(rel)
+                seen_keys.add(key)
+        if not strict_hits and final_pool:
+            warnings.append(f"未能找到空载与重组载体均严格产生 {min_bands}–{max_bands} 条带的组合，已补充单带对照候选方案。")
+
+    def _cmp_digest(a, b):
+        if abs(a["score"] - b["score"]) > 1e-9:
+            return -1 if a["score"] > b["score"] else 1
+        if abs(a["max_migration_shift_y"] - b["max_migration_shift_y"]) > 1e-9:
+            return -1 if a["max_migration_shift_y"] > b["max_migration_shift_y"] else 1
+        if len(a["enzyme_names"]) != len(b["enzyme_names"]):
+            return -1 if len(a["enzyme_names"]) < len(b["enzyme_names"]) else 1
+        ka, kb = "+".join(a["enzyme_names"]), "+".join(b["enzyme_names"])
+        return -1 if ka < kb else (1 if ka > kb else 0)
+
+    final_pool.sort(key=cmp_to_key(_cmp_digest))
+    top_items = []
+    for idx, item in enumerate(final_pool[:top_n]):
+        out_item = dict(item)
+        out_item["rank"] = idx + 1
+        neg_str = " / ".join(str(x) for x in item["empty_vector_bands_bp"])
+        pos_str = " / ".join(str(x) for x in item["recombinant_bands_bp"])
+        out_item["rationale"] = f"{' + '.join(item['enzyme_names'])} ({item['preferred_buffer']} {item['buffer_compatibility_percent']}%): 空载 [{neg_str}] bp vs 重组 [{pos_str}] bp，{item['recommended_gel_concentration']} 胶最大迁移差 Δy={item['max_migration_shift_y']:.3f}"
+        top_items.append(out_item)
+
+    if not top_items:
+        warnings.append("在可用酶切面板中未找到可区分空载与重组载体的有效鉴定方案。")
+
+    return {
+        "empty_vector_length_bp": len(clean_empty),
+        "recombinant_length_bp": len(clean_recomb),
+        "is_circular": is_circular,
+        "evaluated_combinations": len(combos),
+        "top_recommendations": top_items,
+        "warnings": warnings,
+    }
+
+
+RFLP_CANDIDATE_ENZYMES = [
+    {"name": "EcoRI", "site": "GAATTC", "top_cut_offset": 1},
+    {"name": "BamHI", "site": "GGATCC", "top_cut_offset": 1},
+    {"name": "HindIII", "site": "AAGCTT", "top_cut_offset": 1},
+    {"name": "XhoI", "site": "CTCGAG", "top_cut_offset": 1},
+    {"name": "SalI", "site": "GTCGAC", "top_cut_offset": 1},
+    {"name": "NheI", "site": "GCTAGC", "top_cut_offset": 1},
+    {"name": "SpeI", "site": "ACTAGT", "top_cut_offset": 1},
+    {"name": "XbaI", "site": "TCTAGA", "top_cut_offset": 1},
+    {"name": "AgeI", "site": "ACCGGT", "top_cut_offset": 1},
+    {"name": "NcoI", "site": "CCATGG", "top_cut_offset": 1},
+    {"name": "KpnI", "site": "GGTACC", "top_cut_offset": 5},
+    {"name": "PstI", "site": "CTGCAG", "top_cut_offset": 5},
+    {"name": "SacI", "site": "GAGCTC", "top_cut_offset": 5},
+    {"name": "EcoRV", "site": "GATATC", "top_cut_offset": 3},
+    {"name": "SmaI", "site": "CCCGGG", "top_cut_offset": 3},
+    {"name": "StuI", "site": "AGGCCT", "top_cut_offset": 3},
+    {"name": "BglII", "site": "AGATCT", "top_cut_offset": 1},
+    {"name": "ClaI", "site": "ATCGAT", "top_cut_offset": 2},
+    {"name": "PvuII", "site": "CAGCTG", "top_cut_offset": 3},
+    {"name": "ScaI", "site": "AGTACT", "top_cut_offset": 3},
+]
+
+
+def detect_cds_region(reference_sequence: str, cut_index_0based: int, min_length_bp: int = 90):
+    """自动扫描正链三读码框，提取覆盖 cut_index_0based 的最长完整 ORF（>= 90 bp）。"""
+    seq = clean_seq(reference_sequence)
+    n = len(seq)
+    if n < min_length_bp:
+        return None
+    best_start = None
+    best_end = None
+    best_len = -1
+    for frame in range(3):
+        pos = frame
+        while pos + 3 <= n:
+            if seq[pos:pos + 3] == "ATG" and pos <= cut_index_0based:
+                end_pos = pos + 3
+                hit_stop = False
+                while end_pos + 3 <= n:
+                    c = seq[end_pos:end_pos + 3]
+                    if c in ("TAA", "TAG", "TGA"):
+                        end_pos += 3
+                        hit_stop = True
+                        break
+                    end_pos += 3
+                if not hit_stop:
+                    end_pos = pos + ((n - pos) // 3) * 3
+                orf_len = end_pos - pos
+                if pos <= cut_index_0based < end_pos and orf_len >= min_length_bp:
+                    if orf_len > best_len or (orf_len == best_len and (best_start is None or pos < best_start)):
+                        best_len = orf_len
+                        best_start = pos
+                        best_end = end_pos
+            pos += 3
+    if best_start is not None and best_end is not None:
+        return (best_start, best_end)
+    return None
+
+
+def _hdr_translate_cds(sequence: str, start_0based: int, end_0based: int) -> str:
+    seq = clean_seq(sequence)
+    s = max(0, int(start_0based))
+    e = min(len(seq), int(end_0based))
+    out = []
+    i = s
+    while i + 3 <= e:
+        out.append(GG_CODON_TO_AA.get(seq[i:i + 3], "X"))
+        i += 3
+    return "".join(out)
+
+
+def _hdr_predict_linear_digest_bands(sequence: str, site: str, top_cut_offset: int) -> list:
+    seq = clean_seq(sequence)
+    site_c = clean_seq(site)
+    n = len(seq)
+    m = len(site_c)
+    if n == 0:
+        return []
+    if m == 0 or n < m:
+        return [n]
+    cuts = []
+    i = 0
+    while i + m <= n:
+        if seq[i:i + m] == site_c:
+            cuts.append(i + top_cut_offset)
+            i += m
+        else:
+            i += 1
+    sorted_cuts = sorted({c for c in cuts if 0 < c < n})
+    boundaries = [0] + sorted_cuts + [n]
+    bands = [boundaries[idx + 1] - boundaries[idx] for idx in range(len(boundaries) - 1)]
+    bands = [b for b in bands if b > 0]
+    return sorted(bands, reverse=True)
+
+
+def design_crispr_hdr_donor(args: dict) -> dict:
+    """CRISPR Knock-in HDR Donor 模板、PAM/Seed 同义阻断突变、可选 RFLP 位点与 Out-Out PCR 引物设计（与 HDRDonorEngine.swift 1:1 对齐）"""
+    ref = clean_seq(args.get("reference_sequence", ""))
+    guide = clean_seq(args.get("sgrna_sequence", args.get("sgRNASequence", "")))
+    rep = clean_seq(args.get("replacement_sequence", ""))
+    strand = str(args.get("strand", "+")).strip()
+    L = len(ref)
+    if L < 25:
+        raise ValueError("参考序列长度不足（至少需要 25 bp）")
+    if len(guide) < 15:
+        raise ValueError("sgRNA protospacer 长度不足（至少需要 15 nt）")
+    if strand not in ("+", "-"):
+        raise ValueError("strand 必须为 '+' 或 '-'")
+
+    edit_start0 = int(args["edit_start_0based"])
+    edit_end0 = int(args["edit_end_0based"])
+    if not (0 <= edit_start0 <= edit_end0 <= L):
+        raise ValueError("编辑坐标 [edit_start_0based, edit_end_0based) 越界")
+
+    donor_format = str(args.get("donor_format", "ssODN"))
+    if donor_format not in ("ssODN", "dsDNAPlasmid"):
+        raise ValueError(f"不支持的 donor_format: {donor_format}")
+    default_arm = 60 if donor_format == "ssODN" else 600
+    req_left_arm = max(1, int(args.get("left_arm_length_bp") or default_arm))
+    req_right_arm = max(1, int(args.get("right_arm_length_bp") or default_arm))
+    auto_detect_cds = bool(args.get("auto_detect_cds", True))
+    enable_rflp = bool(args.get("enable_rflp", False))
+    rflp_radius = max(3, int(args.get("rflp_search_radius_bp", 15)))
+    out_out_margin = int(args.get("out_out_margin_bp", 100))
+    primer_target_tm = float(args.get("primer_target_tm", 60.0))
+    donor_name = str(args.get("donor_name", "HDR_Donor"))
+
+    g_len = len(guide)
+    # 1. Locate sgRNA and PAM on WT reference
+    if strand == "+":
+        cands = []
+        if L >= g_len + 3:
+            for p in range(0, L - g_len - 3 + 1):
+                if ref[p:p + g_len] == guide:
+                    pam_idx = p + g_len
+                    has_gg = ref[pam_idx + 1] == "G" and ref[pam_idx + 2] == "G"
+                    cands.append((p, pam_idx - 3, has_gg))
+        gg_pool = [c for c in cands if c[2]]
+        pool = gg_pool if gg_pool else cands
+        if not pool:
+            raise ValueError(f"在参考序列正链上未找到 sgRNA {guide} 及 3' PAM")
+        best = min(pool, key=lambda c: (abs(c[1] - edit_start0), c[0]))
+        wt_pam_start0 = best[0] + g_len
+        wt_cut_index0 = best[1]
+    else:
+        rc_guide = rev_comp(guide)
+        cands = []
+        if L >= g_len + 3:
+            for p in range(3, L - g_len + 1):
+                if ref[p:p + g_len] == rc_guide:
+                    pam_idx = p - 3
+                    has_cc = ref[pam_idx] == "C" and ref[pam_idx + 1] == "C"
+                    cands.append((p, p + 3, has_cc))
+        cc_pool = [c for c in cands if c[2]]
+        pool = cc_pool if cc_pool else cands
+        if not pool:
+            raise ValueError(f"在参考序列负链上未找到 sgRNA {guide} 反向互补及 5' CCN PAM")
+        best = min(pool, key=lambda c: (abs(c[1] - edit_start0), c[0]))
+        wt_pam_start0 = best[0] - 3
+        wt_cut_index0 = best[1]
+
+    wt_pam_seq = ref[wt_pam_start0:wt_pam_start0 + 3]
+
+    # 2. Detect or validate CDS
+    is_in_cds = False
+    cds_auto_detected = False
+    wt_cds_start0 = None
+    wt_cds_end0 = None
+    cs1 = args.get("cds_start_1based")
+    ce1 = args.get("cds_end_1based")
+    if cs1 is not None and ce1 is not None:
+        s0 = int(cs1) - 1
+        e0 = int(ce1)
+        if not (0 <= s0 and s0 + 3 <= e0 <= L):
+            raise ValueError("显式 CDS 区间 [cds_start_1based, cds_end_1based] 非法或越界")
+        if s0 <= wt_cut_index0 < e0:
+            is_in_cds = True
+            wt_cds_start0 = s0
+            wt_cds_end0 = e0
+    elif auto_detect_cds:
+        detected = detect_cds_region(ref, wt_cut_index0)
+        if detected is not None:
+            is_in_cds = True
+            cds_auto_detected = True
+            wt_cds_start0, wt_cds_end0 = detected
+
+    # 3. Apply intentional replacement & map coordinates
+    delta = len(rep) - (edit_end0 - edit_start0)
+    edited_chars = list(ref[:edit_start0] + rep + ref[edit_end0:])
+
+    def _map_wt(i: int) -> int:
+        if i < edit_start0:
+            return i
+        if i >= edit_end0:
+            return i + delta
+        return edit_start0
+
+    if is_in_cds:
+        edited_cds_start0 = wt_cds_start0 if wt_cds_start0 <= edit_start0 else (wt_cds_start0 + delta if wt_cds_start0 >= edit_end0 else edit_start0)
+        edited_cds_end0 = wt_cds_end0 + delta if wt_cds_end0 >= edit_end0 else (wt_cds_end0 if wt_cds_end0 <= edit_start0 else edit_start0 + len(rep))
+    else:
+        edited_cds_start0 = 0
+        edited_cds_end0 = 0
+
+    protein_before = _hdr_translate_cds("".join(edited_chars), edited_cds_start0, edited_cds_end0) if is_in_cds else ""
+    edited_pam_start0 = _map_wt(wt_pam_start0)
+
+    def _is_pam_intact(chars: list) -> bool:
+        if edited_pam_start0 < 0 or edited_pam_start0 + 3 > len(chars):
+            return False
+        if strand == "+":
+            return chars[edited_pam_start0 + 1] == "G" and chars[edited_pam_start0 + 2] == "G"
+        return chars[edited_pam_start0] == "C" and chars[edited_pam_start0 + 1] == "C"
+
+    pam_crit_indices = [edited_pam_start0 + 1, edited_pam_start0 + 2] if strand == "+" else [edited_pam_start0, edited_pam_start0 + 1]
+    edit_locked = set(range(edit_start0, edit_start0 + len(rep)))
+
+    warnings = []
+    blocking_mutations = []
+
+    def _try_1bp_syn(pos: int, chars: list, locked: set, reason: str):
+        if not is_in_cds or pos < edited_cds_start0 or pos >= edited_cds_end0 or pos in locked:
+            return None
+        rel = pos - edited_cds_start0
+        c_start = edited_cds_start0 + (rel // 3) * 3
+        if c_start + 3 > edited_cds_end0:
+            return None
+        off = pos - c_start
+        orig_codon = "".join(chars[c_start:c_start + 3])
+        aa = GG_CODON_TO_AA.get(orig_codon)
+        if aa is None:
+            return None
+        for alt_codon in GG_PREFERRED_CODONS.get(aa, []):
+            if alt_codon == orig_codon:
+                continue
+            diffs = [k for k in range(3) if alt_codon[k] != orig_codon[k]]
+            if len(diffs) == 1 and diffs[0] == off:
+                return alt_codon[off], {
+                    "position_0based": pos,
+                    "position_1based": pos + 1,
+                    "original_base": orig_codon[off],
+                    "mutated_base": alt_codon[off],
+                    "reason": reason,
+                    "codon_before": orig_codon,
+                    "codon_after": alt_codon,
+                    "amino_acid": aa,
+                }
+        return None
+
+    if not _is_pam_intact(edited_chars):
+        blocking_strategy = "already_disrupted_by_edit"
+    elif is_in_cds:
+        broke_pam = False
+        for cp in pam_crit_indices:
+            hit = _try_1bp_syn(cp, edited_chars, edit_locked, "pam_block")
+            if hit is not None:
+                nb, rec = hit
+                cand = list(edited_chars)
+                cand[cp] = nb
+                if not _is_pam_intact(cand):
+                    edited_chars = cand
+                    blocking_mutations.append(rec)
+                    broke_pam = True
+                    break
+        if broke_pam:
+            blocking_strategy = "pam_synonymous"
+        else:
+            if strand == "+":
+                s_start = max(0, edited_pam_start0 - 8)
+                seed_positions = list(range(edited_pam_start0 - 1, s_start - 1, -1))
+            else:
+                proto_start = edited_pam_start0 + 3
+                s_end = min(len(edited_chars) - 1, proto_start + 7)
+                seed_positions = list(range(proto_start, s_end + 1)) if proto_start <= s_end else []
+            used_codons = set()
+            for sp in seed_positions:
+                if len(blocking_mutations) >= 2:
+                    break
+                if sp < edited_cds_start0 or sp >= edited_cds_end0:
+                    continue
+                c_start = edited_cds_start0 + ((sp - edited_cds_start0) // 3) * 3
+                if c_start in used_codons:
+                    continue
+                hit = _try_1bp_syn(sp, edited_chars, edit_locked, "seed_block")
+                if hit is not None:
+                    nb, rec = hit
+                    edited_chars[sp] = nb
+                    blocking_mutations.append(rec)
+                    used_codons.add(c_start)
+            if not blocking_mutations:
+                blocking_strategy = "failed_to_block"
+                warnings.append("未能找到同义 PAM 或 Seed 阻断突变位点，请人工复核 Cas9 二次切割风险。")
+            else:
+                blocking_strategy = "seed_synonymous_fallback"
+                warnings.append(f"PAM 位点无法在不改变氨基酸的前提下同义破坏，已回退并在近 PAM 8-nt Seed 区引入 {len(blocking_mutations)} 处同义突变。")
+    else:
+        mp = None
+        for cp in pam_crit_indices:
+            if 0 <= cp < len(edited_chars) and cp not in edit_locked:
+                mp = cp
+                break
+        if mp is not None:
+            ob = edited_chars[mp]
+            ab = ("A" if ob == "G" else "G") if strand == "+" else ("T" if ob == "C" else "C")
+            edited_chars[mp] = ab
+            blocking_mutations.append({
+                "position_0based": mp,
+                "position_1based": mp + 1,
+                "original_base": ob,
+                "mutated_base": ab,
+                "reason": "pam_block",
+                "codon_before": None,
+                "codon_after": None,
+                "amino_acid": None,
+            })
+            blocking_strategy = "pam_non_coding"
+        else:
+            blocking_strategy = "failed_to_block"
+            warnings.append("非编码区 PAM 关键碱基被用户编辑区间完全锁定，未能自动写入 PAM 阻断突变。")
+
+    # 4. Arm bounds
+    left_arm_start0 = max(0, edit_start0 - req_left_arm)
+    right_arm_end0_edited = min(len(edited_chars), edit_start0 + len(rep) + req_right_arm)
+    right_arm_end0_wt = min(L, edit_end0 + (right_arm_end0_edited - (edit_start0 + len(rep))))
+    if edit_start0 - left_arm_start0 < req_left_arm or right_arm_end0_edited - (edit_start0 + len(rep)) < req_right_arm:
+        warnings.append("参考序列在编辑位点侧翼长度不足，同源臂已按边界自动截断。")
+
+    # 5. Optional RFLP design
+    rflp_spec = None
+    rflp_mode = "none"
+    rflp_muts = []
+    rflp_note = ""
+    if enable_rflp:
+        rflp_locked = set(edit_locked) | {m["position_0based"] for m in blocking_mutations} | set(pam_crit_indices)
+        pam_broken_before = not _is_pam_intact(edited_chars)
+        if is_in_cds:
+            win_start = max(edited_cds_start0, max(left_arm_start0, edit_start0 - rflp_radius))
+            win_end = min(edited_cds_end0, min(right_arm_end0_edited, edit_start0 + len(rep) + rflp_radius))
+            found_destroy = False
+            for enz in RFLP_CANDIDATE_ENZYMES:
+                site = enz["site"]
+                matches = []
+                if right_arm_end0_edited - left_arm_start0 >= 6:
+                    for sp in range(left_arm_start0, right_arm_end0_edited - 6 + 1):
+                        if "".join(edited_chars[sp:sp + 6]) == site and sp + 6 > win_start and sp < win_end:
+                            matches.append(sp)
+                matches.sort(key=lambda sp: (abs((sp + 3) - edit_start0), sp))
+                for sp in matches:
+                    overlap_codons = []
+                    cs = edited_cds_start0
+                    while cs + 3 <= edited_cds_end0:
+                        if cs + 3 > sp and cs < sp + 6:
+                            overlap_codons.append(cs)
+                        cs += 3
+                    overlap_codons.sort(key=lambda c: (abs((c + 1) - edit_start0), c))
+                    for cs in overlap_codons:
+                        orig_codon = "".join(edited_chars[cs:cs + 3])
+                        aa = GG_CODON_TO_AA.get(orig_codon)
+                        if aa is None:
+                            continue
+                        for alt_codon in GG_PREFERRED_CODONS.get(aa, []):
+                            if alt_codon == orig_codon:
+                                continue
+                            diffs = [k for k in range(3) if alt_codon[k] != orig_codon[k]]
+                            if len(diffs) == 1:
+                                k = diffs[0]
+                                mut_pos = cs + k
+                                if sp <= mut_pos < sp + 6 and mut_pos not in rflp_locked:
+                                    cand = list(edited_chars)
+                                    cand[mut_pos] = alt_codon[k]
+                                    if pam_broken_before and _is_pam_intact(cand):
+                                        continue
+                                    if "".join(cand[sp:sp + 6]) != site:
+                                        edited_chars = cand
+                                        rflp_muts = [{
+                                            "position_0based": mut_pos,
+                                            "position_1based": mut_pos + 1,
+                                            "original_base": orig_codon[k],
+                                            "mutated_base": alt_codon[k],
+                                            "reason": "rflp_destroy",
+                                            "codon_before": orig_codon,
+                                            "codon_after": alt_codon,
+                                            "amino_acid": aa,
+                                        }]
+                                        rflp_mode = "destroyed"
+                                        rflp_spec = enz
+                                        rflp_note = f"在 {mut_pos + 1} bp 处通过同义突变 ({orig_codon}->{alt_codon}, {aa}) 消除内源 {enz['name']} ({site}) 位点用于 RFLP 鉴定"
+                                        found_destroy = True
+                                        break
+                        if found_destroy:
+                            break
+                    if found_destroy:
+                        break
+                if found_destroy:
+                    break
+
+            if not found_destroy:
+                ordered_codons = []
+                cs = edited_cds_start0
+                while cs + 3 <= edited_cds_end0:
+                    if cs >= win_start and cs + 3 <= win_end:
+                        ordered_codons.append(cs)
+                    cs += 3
+                ordered_codons.sort(key=lambda c: (abs((c + 1) - edit_start0), c))
+                found_create = False
+                for target_diffs in (1, 2):
+                    if found_create:
+                        break
+                    for cs in ordered_codons:
+                        if found_create:
+                            break
+                        orig_codon = "".join(edited_chars[cs:cs + 3])
+                        aa = GG_CODON_TO_AA.get(orig_codon)
+                        if aa is None:
+                            continue
+                        for alt_codon in GG_PREFERRED_CODONS.get(aa, []):
+                            if found_create:
+                                break
+                            if alt_codon == orig_codon:
+                                continue
+                            diffs = [k for k in range(3) if alt_codon[k] != orig_codon[k]]
+                            if len(diffs) != target_diffs:
+                                continue
+                            mut_positions = [cs + k for k in diffs]
+                            if any(p in rflp_locked for p in mut_positions):
+                                continue
+                            cand = list(edited_chars)
+                            for k in diffs:
+                                cand[cs + k] = alt_codon[k]
+                            if pam_broken_before and _is_pam_intact(cand):
+                                continue
+                            scan_start = max(left_arm_start0, cs - 5)
+                            scan_end_max = min(right_arm_end0_edited - 6, cs + 2)
+                            if scan_start > scan_end_max:
+                                continue
+                            for enz in RFLP_CANDIDATE_ENZYMES:
+                                if found_create:
+                                    break
+                                site = enz["site"]
+                                for sp in range(scan_start, scan_end_max + 1):
+                                    if "".join(cand[sp:sp + 6]) == site and "".join(edited_chars[sp:sp + 6]) != site:
+                                        if any(sp <= mp < sp + 6 for mp in mut_positions):
+                                            edited_chars = cand
+                                            rflp_muts = [{
+                                                "position_0based": cs + k,
+                                                "position_1based": cs + k + 1,
+                                                "original_base": orig_codon[k],
+                                                "mutated_base": alt_codon[k],
+                                                "reason": "rflp_create",
+                                                "codon_before": orig_codon,
+                                                "codon_after": alt_codon,
+                                                "amino_acid": aa,
+                                            } for k in diffs]
+                                            rflp_mode = "created"
+                                            rflp_spec = enz
+                                            rflp_note = f"在 {cs + 1}..{cs + 3} bp 处引入同义密码子 ({orig_codon}->{alt_codon}, {aa}) 构建新 {enz['name']} ({site}) RFLP 鉴定位点"
+                                            found_create = True
+                                            break
+                if not found_create:
+                    warnings.append(f"在目标附近 ±{rflp_radius} bp 窗口内未能通过同义密码子替换引入或消除 RFLP 酶切位点。")
+        else:
+            win_start = max(left_arm_start0, edit_start0 - rflp_radius)
+            win_end = min(right_arm_end0_edited, edit_start0 + len(rep) + rflp_radius)
+            found_nc = False
+            for enz in RFLP_CANDIDATE_ENZYMES:
+                if found_nc:
+                    break
+                site = enz["site"]
+                if win_end - win_start >= 6:
+                    for sp in range(win_start, win_end - 6 + 1):
+                        if "".join(edited_chars[sp:sp + 6]) == site:
+                            mut_pos = next((p for p in range(sp, sp + 6) if p not in rflp_locked), None)
+                            if mut_pos is not None:
+                                ob = edited_chars[mut_pos]
+                                nb = "T" if ob == "A" else "A"
+                                cand = list(edited_chars)
+                                cand[mut_pos] = nb
+                                if pam_broken_before and _is_pam_intact(cand):
+                                    continue
+                                edited_chars = cand
+                                rflp_muts = [{
+                                    "position_0based": mut_pos,
+                                    "position_1based": mut_pos + 1,
+                                    "original_base": ob,
+                                    "mutated_base": nb,
+                                    "reason": "rflp_destroy",
+                                    "codon_before": None,
+                                    "codon_after": None,
+                                    "amino_acid": None,
+                                }]
+                                rflp_mode = "destroyed"
+                                rflp_spec = enz
+                                rflp_note = f"在非编码区 {mut_pos + 1} bp 破坏 {enz['name']} ({site}) 位点用于 RFLP 鉴定"
+                                found_nc = True
+                                break
+            if not found_nc:
+                positions = sorted(range(win_start, win_end), key=lambda p: abs(p - edit_start0))
+                for pos in positions:
+                    if found_nc or pos in rflp_locked:
+                        continue
+                    ob = edited_chars[pos]
+                    for nb in ("A", "C", "G", "T"):
+                        if found_nc or nb == ob:
+                            continue
+                        cand = list(edited_chars)
+                        cand[pos] = nb
+                        if pam_broken_before and _is_pam_intact(cand):
+                            continue
+                        s_start = max(left_arm_start0, pos - 5)
+                        s_end = min(right_arm_end0_edited - 6, pos)
+                        if s_start > s_end:
+                            continue
+                        for enz in RFLP_CANDIDATE_ENZYMES:
+                            if found_nc:
+                                break
+                            site = enz["site"]
+                            for sp in range(s_start, s_end + 1):
+                                if "".join(cand[sp:sp + 6]) == site and "".join(edited_chars[sp:sp + 6]) != site:
+                                    edited_chars = cand
+                                    rflp_muts = [{
+                                        "position_0based": pos,
+                                        "position_1based": pos + 1,
+                                        "original_base": ob,
+                                        "mutated_base": nb,
+                                        "reason": "rflp_create",
+                                        "codon_before": None,
+                                        "codon_after": None,
+                                        "amino_acid": None,
+                                    }]
+                                    rflp_mode = "created"
+                                    rflp_spec = enz
+                                    rflp_note = f"在非编码区 {pos + 1} bp 引入新 {enz['name']} ({site}) RFLP 鉴定位点"
+                                    found_nc = True
+                                    break
+
+    # 6. Final locus checks & protein conservation check
+    final_edited_seq = "".join(edited_chars)
+    protein_after = _hdr_translate_cds(final_edited_seq, edited_cds_start0, edited_cds_end0) if is_in_cds else ""
+    amino_acid_conserved = (not is_in_cds) or (protein_before == protein_after)
+    edited_pam_seq = final_edited_seq[edited_pam_start0:edited_pam_start0 + 3] if 0 <= edited_pam_start0 <= len(edited_chars) - 3 else ""
+    pam_still_intact = _is_pam_intact(edited_chars)
+    cas9_recut_blocked = (blocking_strategy != "failed_to_block") and ((not pam_still_intact) or blocking_strategy == "seed_synonymous_fallback")
+
+    # 7. Slice homology arms & donor
+    left_arm = final_edited_seq[left_arm_start0:edit_start0]
+    insert_payload = final_edited_seq[edit_start0:edit_start0 + len(rep)]
+    right_arm = final_edited_seq[edit_start0 + len(rep):right_arm_end0_edited]
+    donor_seq = left_arm + insert_payload + right_arm
+
+    # 8. Out-Out PCR genotyping primers strictly outside homology arms
+    out_out = None
+    left_flank = left_arm_start0
+    right_flank = L - right_arm_end0_wt
+    eff_left_margin = min(out_out_margin, max(10, left_flank - 25))
+    eff_right_margin = min(out_out_margin, max(10, right_flank - 25))
+    if left_flank >= eff_left_margin + 18 and right_flank >= eff_right_margin + 18:
+        fwd_search_end = left_arm_start0 - eff_left_margin
+        fwd_search_start = max(0, fwd_search_end - 40)
+        fwd_window = ref[fwd_search_start:fwd_search_end]
+        fwd_seq = pick_specific_annealing_seq(fwd_window, five_prime_overhang="", target_tm=primer_target_tm, tolerance=0.0)
+        fwd_tm = calc_snapgene_tm(fwd_seq)
+        fwd_start0 = fwd_search_start
+        fwd_end0 = fwd_start0 + len(fwd_seq)
+
+        rev_search_start = right_arm_end0_wt + eff_right_margin
+        rev_search_end = min(L, rev_search_start + 40)
+        rev_window = ref[rev_search_start:rev_search_end]
+        rev_seq = pick_specific_annealing_seq(rev_comp(rev_window), five_prime_overhang="", target_tm=primer_target_tm, tolerance=0.0)
+        rev_tm = calc_snapgene_tm(rev_seq)
+        rev_end0 = rev_search_end
+        rev_start0 = rev_end0 - len(rev_seq)
+
+        wt_amp_seq = ref[fwd_start0:rev_end0]
+        hdr_amp_seq = final_edited_seq[fwd_start0:rev_end0 + delta]
+        out_out = {
+            "forward_primer": {
+                "name": f"{donor_name}_OutOut_F",
+                "full_sequence": fwd_seq,
+                "specific_sequence": fwd_seq,
+                "tm": fwd_tm,
+                "gc_percent": gc_percent(fwd_seq),
+            },
+            "reverse_primer": {
+                "name": f"{donor_name}_OutOut_R",
+                "full_sequence": rev_seq,
+                "specific_sequence": rev_seq,
+                "tm": rev_tm,
+                "gc_percent": gc_percent(rev_seq),
+            },
+            "forward_start_0based": fwd_start0,
+            "forward_end_0based": fwd_end0,
+            "reverse_start_0based": rev_start0,
+            "reverse_end_0based": rev_end0,
+            "wt_amplicon_length_bp": len(wt_amp_seq),
+            "hdr_amplicon_length_bp": len(hdr_amp_seq),
+            "wt_amplicon_sequence": wt_amp_seq,
+            "hdr_amplicon_sequence": hdr_amp_seq,
+            "left_margin_from_arm_bp": left_arm_start0 - fwd_end0,
+            "right_margin_from_arm_bp": rev_start0 - right_arm_end0_wt,
+        }
+    else:
+        warnings.append("侧翼序列长度不足以在左右同源臂外侧设计 Out-Out PCR 引物（需同源臂外侧至少各预留 28 bp）。")
+
+    # 9. Finalize RFLP result
+    rflp_res = None
+    if rflp_spec is not None and rflp_mode != "none":
+        wt_target = out_out["wt_amplicon_sequence"] if out_out is not None else ref
+        hdr_target = out_out["hdr_amplicon_sequence"] if out_out is not None else final_edited_seq
+        rflp_res = {
+            "mode": rflp_mode,
+            "enzyme_name": rflp_spec["name"],
+            "recognition_site": rflp_spec["site"],
+            "top_cut_offset": rflp_spec["top_cut_offset"],
+            "wt_amplicon_bands_bp": _hdr_predict_linear_digest_bands(wt_target, rflp_spec["site"], rflp_spec["top_cut_offset"]),
+            "hdr_amplicon_bands_bp": _hdr_predict_linear_digest_bands(hdr_target, rflp_spec["site"], rflp_spec["top_cut_offset"]),
+            "silent_mutations": rflp_muts,
+            "note": rflp_note,
+        }
+
+    return {
+        "donor_format": donor_format,
+        "sgrna_sequence": guide,
+        "strand": strand,
+        "wt_cut_index_0based": wt_cut_index0,
+        "wt_pam_start_0based": wt_pam_start0,
+        "wt_pam_sequence": wt_pam_seq,
+        "is_in_cds": is_in_cds,
+        "cds_start_1based": (wt_cds_start0 + 1) if wt_cds_start0 is not None else None,
+        "cds_end_1based": wt_cds_end0,
+        "cds_auto_detected": cds_auto_detected,
+        "protein_before_blocking": protein_before,
+        "protein_after_blocking": protein_after,
+        "amino_acid_conserved": amino_acid_conserved,
+        "blocking_strategy": blocking_strategy,
+        "blocking_mutations": blocking_mutations,
+        "edited_pam_sequence": edited_pam_seq,
+        "pam_still_intact": pam_still_intact,
+        "cas9_recut_blocked": cas9_recut_blocked,
+        "left_homology_arm": left_arm,
+        "insert_payload": insert_payload,
+        "right_homology_arm": right_arm,
+        "left_arm_length_bp": len(left_arm),
+        "right_arm_length_bp": len(right_arm),
+        "donor_sequence": donor_seq,
+        "donor_length_bp": len(donor_seq),
+        "final_edited_locus_sequence": final_edited_seq,
+        "rflp": rflp_res,
+        "out_out_pcr": out_out,
+        "warnings": warnings,
+    }
+
+
 # ============================================================================
-# 4. MCP JSON-RPC 2.0 协议路由与 17 大全栈工具声明 (Labworker MCP 20261115)
+# 3.6 四大高阶复合算法 MCP 工具 Pydantic/TypedDict 类型契约与校验器
+# ============================================================================
+
+class IndelContributionDict(TypedDict):
+    label: str
+    shift_bp: Optional[int]
+    is_hdr: bool
+    is_frameshift: bool
+    raw_weight: float
+    percent: float
+
+
+class DeconvoluteCrisprSangerInputDict(TypedDict, total=False):
+    wt_sequence: Optional[str]
+    sgrna_sequence: Optional[str]
+    wt_peaks_acgt: Optional[List[List[float]]]
+    edited_peaks_acgt: Optional[List[List[float]]]
+    hdr_donor_sequence: Optional[str]
+    hdr_peaks_acgt: Optional[List[List[float]]]
+    cut_index_0based: Optional[int]
+    is_reverse_strand_sgrna: bool
+    window_length_bp: Optional[int]
+    requested_window_length_bp: Optional[int]
+    shift_min_bp: int
+    shift_max_bp: int
+    noise_floor_weight: float
+    wt_ab1_path: Optional[str]
+    edited_ab1_path: Optional[str]
+
+
+class DeconvoluteCrisprSangerOutputDict(TypedDict):
+    cut_index_0based: int
+    is_reverse_strand_sgrna: bool
+    requested_window_bp: int
+    effective_window_bp: int
+    wt_percent: float
+    indel_percent: float
+    ko_score: float
+    hdr_percent: float
+    total_edited_percent: float
+    r_squared: float
+    residual_norm: float
+    warnings: List[str]
+    contributions: List[IndelContributionDict]
+    dominant_indels: List[IndelContributionDict]
+
+
+class AutoAnnotateSequenceInputDict(TypedDict, total=False):
+    fasta_text: Optional[str]
+    sequence: Optional[str]
+    plasmid_name: str
+    is_circular: bool
+    min_identity: float
+    min_fragment_coverage: float
+    full_feature_coverage_threshold: float
+    db_path: Optional[str]
+
+
+class AnnotatedFeatureDict(TypedDict):
+    feature_id: int
+    name: str
+    display_name: str
+    category: str
+    strand: str
+    canonical_direction: int
+    start_1based: int
+    end_1based: int
+    matched_length: int
+    reference_length: int
+    feature_start_1based: int
+    feature_end_1based: int
+    coverage: float
+    identity: float
+    alignment_score: float
+    is_origin_spanning: bool
+    is_fragment: bool
+    fragment_warning: Optional[str]
+    color_hex: str
+
+
+class AutoAnnotateSequenceOutputDict(TypedDict):
+    plasmid_name: str
+    sequence_length: int
+    is_circular: bool
+    features_count: int
+    fragment_count: int
+    origin_spanning_count: int
+    annotated_coverage_percent: float
+    features: List[AnnotatedFeatureDict]
+    warnings: List[str]
+
+
+class GoldenGateFragmentInputDict(TypedDict, total=False):
+    name: str
+    sequence: str
+    is_coding_sequence: bool
+    reading_frame_offset: int
+
+
+class DesignGoldenGateAssemblyInputDict(TypedDict, total=False):
+    enzyme_name: str
+    fragment_count: Optional[int]
+    is_circular: bool
+    fixed_overhangs: List[str]
+    fragments: List[GoldenGateFragmentInputDict]
+    db_path: Optional[str]
+
+
+class CrossMismatchPairDict(TypedDict):
+    overhang_a: str
+    overhang_b: str
+    ligation_count: int
+
+
+class OverhangPlanDict(TypedDict):
+    enzyme_name: str
+    fragment_count: int
+    junction_count: int
+    overhang_length: int
+    assigned_overhangs: List[str]
+    assembly_fidelity: float
+    cross_mismatch_count: int
+    cross_mismatch_pairs: List[CrossMismatchPairDict]
+    warnings: List[str]
+
+
+class DomesticationSuggestionDict(TypedDict):
+    fragment_index: int
+    fragment_name: str
+    enzyme_name: str
+    site_strand: str
+    site_start_1based: int
+    site_end_1based: int
+    original_site: str
+    is_coding_sequence: bool
+    codon_index_1based: Optional[int]
+    original_codon: Optional[str]
+    mutated_codon: Optional[str]
+    amino_acid: Optional[str]
+    mutation_position_1based: int
+    original_base: str
+    mutated_base: str
+    is_synonymous: bool
+    note: str
+
+
+class FragmentDomesticationDict(TypedDict):
+    fragment_index: int
+    fragment_name: str
+    original_length: int
+    internal_sites_found: int
+    remaining_sites_after_domestication: int
+    suggestions: List[DomesticationSuggestionDict]
+    domesticated_sequence: str
+
+
+class DesignGoldenGateAssemblyOutputDict(TypedDict):
+    enzyme_name: str
+    recognition_site: str
+    overhang_length: int
+    overhang_plan: OverhangPlanDict
+    domestications: List[FragmentDomesticationDict]
+    total_internal_sites_found: int
+    assembled_sequence_length: int
+
+
+class SilentMutationDict(TypedDict):
+    position_0based: int
+    position_1based: int
+    original_base: str
+    mutated_base: str
+    reason: str
+    codon_before: Optional[str]
+    codon_after: Optional[str]
+    amino_acid: Optional[str]
+
+
+class RFLPDesignDict(TypedDict):
+    mode: str
+    enzyme_name: str
+    recognition_site: str
+    top_cut_offset: int
+    wt_amplicon_bands_bp: List[int]
+    hdr_amplicon_bands_bp: List[int]
+    silent_mutations: List[SilentMutationDict]
+    note: str
+
+
+class OutOutPrimerDict(TypedDict):
+    name: str
+    full_sequence: str
+    specific_sequence: str
+    tm: float
+    gc_percent: float
+
+
+class OutOutPCRDict(TypedDict):
+    forward_primer: OutOutPrimerDict
+    reverse_primer: OutOutPrimerDict
+    forward_start_0based: int
+    forward_end_0based: int
+    reverse_start_0based: int
+    reverse_end_0based: int
+    wt_amplicon_length_bp: int
+    hdr_amplicon_length_bp: int
+    wt_amplicon_sequence: str
+    hdr_amplicon_sequence: str
+    left_margin_from_arm_bp: int
+    right_margin_from_arm_bp: int
+
+
+class DesignHdrDonorInputDict(TypedDict, total=False):
+    reference_sequence: str
+    sgrna_sequence: str
+    strand: str
+    edit_start_0based: int
+    edit_end_0based: int
+    replacement_sequence: str
+    donor_format: str
+    left_arm_length_bp: Optional[int]
+    right_arm_length_bp: Optional[int]
+    cds_start_1based: Optional[int]
+    cds_end_1based: Optional[int]
+    auto_detect_cds: bool
+    enable_rflp: bool
+    rflp_search_radius_bp: int
+    out_out_margin_bp: int
+    primer_target_tm: float
+    donor_name: str
+
+
+class DesignHdrDonorOutputDict(TypedDict):
+    donor_format: str
+    sgrna_sequence: str
+    strand: str
+    wt_cut_index_0based: int
+    wt_pam_start_0based: int
+    wt_pam_sequence: str
+    is_in_cds: bool
+    cds_start_1based: Optional[int]
+    cds_end_1based: Optional[int]
+    cds_auto_detected: bool
+    protein_before_blocking: str
+    protein_after_blocking: str
+    amino_acid_conserved: bool
+    blocking_strategy: str
+    blocking_mutations: List[SilentMutationDict]
+    edited_pam_sequence: str
+    pam_still_intact: bool
+    cas9_recut_blocked: bool
+    left_homology_arm: str
+    insert_payload: str
+    right_homology_arm: str
+    left_arm_length_bp: int
+    right_arm_length_bp: int
+    donor_sequence: str
+    donor_length_bp: int
+    final_edited_locus_sequence: str
+    rflp: Optional[RFLPDesignDict]
+    out_out_pcr: Optional[OutOutPCRDict]
+    warnings: List[str]
+
+
+_GG_ENZYME_NORMALIZE = {
+    "bsai": "BsaI",
+    "bsmbi": "BsmBI",
+    "bbsi": "BbsI",
+    "sapi": "SapI",
+}
+
+
+def _is_non_bool_int(val: Any) -> bool:
+    return isinstance(val, int) and not isinstance(val, bool)
+
+
+def _is_non_bool_number(val: Any) -> bool:
+    return isinstance(val, (int, float)) and not isinstance(val, bool)
+
+
+def _validate_peaks_matrix(mat: Any, field_name: str) -> None:
+    if mat is None:
+        return
+    if not isinstance(mat, list):
+        raise ValueError(f"{field_name} 必须为四通道峰高二维数组 [[A, C, G, T], ...]")
+    for idx, row in enumerate(mat):
+        if not isinstance(row, list) or len(row) != 4 or not all(_is_non_bool_number(x) for x in row):
+            raise ValueError(f"{field_name}[{idx}] 必须为长度为 4 的数值数组 [A, C, G, T]")
+
+
+def _prepare_deconv_input_dict(raw: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ValueError("deconvolute_crispr_sanger 参数必须为 JSON object")
+    d = dict(raw)
+    if d.get("is_reverse_strand_sgrna") is None:
+        d["is_reverse_strand_sgrna"] = False
+    for k, dv in (("shift_min_bp", -20), ("shift_max_bp", 20), ("noise_floor_weight", 1e-6)):
+        if d.get(k) is None:
+            d[k] = dv
+    for k in ("window_length_bp", "requested_window_length_bp", "cut_index_0based", "shift_min_bp", "shift_max_bp"):
+        if d.get(k) is not None and not _is_non_bool_int(d[k]):
+            raise ValueError(f"{k} 必须为整数，收到 {type(d[k]).__name__}")
+    if d.get("noise_floor_weight") is not None and not _is_non_bool_number(d["noise_floor_weight"]):
+        raise ValueError("noise_floor_weight 必须为数值")
+    for k in ("wt_peaks_acgt", "edited_peaks_acgt", "hdr_peaks_acgt"):
+        _validate_peaks_matrix(d.get(k), k)
+    return d
+
+
+def _prepare_annotate_input_dict(raw: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ValueError("auto_annotate_sequence 参数必须为 JSON object")
+    d = dict(raw)
+    if d.get("plasmid_name") is None:
+        d["plasmid_name"] = "Unannotated_Plasmid"
+    if d.get("is_circular") is None:
+        d["is_circular"] = True
+    for k, dv in (("min_identity", 0.85), ("min_fragment_coverage", 0.30), ("full_feature_coverage_threshold", 0.90)):
+        if d.get(k) is None:
+            d[k] = dv
+        elif not _is_non_bool_number(d[k]):
+            raise ValueError(f"{k} 必须为数值")
+    return d
+
+
+def _prepare_gg_input_dict(raw: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ValueError("design_golden_gate_assembly 参数必须为 JSON object")
+    d = dict(raw)
+    if d.get("enzyme_name") is None:
+        d["enzyme_name"] = "BsaI"
+    elif isinstance(d["enzyme_name"], str):
+        norm = _GG_ENZYME_NORMALIZE.get(d["enzyme_name"].strip().lower())
+        if norm:
+            d["enzyme_name"] = norm
+    if d.get("is_circular") is None:
+        d["is_circular"] = True
+    if d.get("fixed_overhangs") is None:
+        d["fixed_overhangs"] = []
+    if d.get("fragments") is None:
+        d["fragments"] = []
+    if d.get("fragment_count") is not None and not _is_non_bool_int(d["fragment_count"]):
+        raise ValueError("fragment_count 必须为整数")
+    frags = d.get("fragments")
+    if isinstance(frags, list):
+        norm_frags = []
+        for idx, item in enumerate(frags):
+            if not isinstance(item, dict):
+                raise ValueError(f"fragments[{idx}] 必须为对象")
+            fi = dict(item)
+            if fi.get("reading_frame_offset") is not None and not _is_non_bool_int(fi["reading_frame_offset"]):
+                raise ValueError(f"fragments[{idx}].reading_frame_offset 必须为整数")
+            norm_frags.append(fi)
+        d["fragments"] = norm_frags
+    return d
+
+
+def _prepare_hdr_input_dict(raw: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ValueError("design_hdr_donor 参数必须为 JSON object")
+    d = dict(raw)
+    if "sgRNASequence" in d:
+        legacy = d.pop("sgRNASequence")
+        if "sgrna_sequence" not in d or d["sgrna_sequence"] is None:
+            d["sgrna_sequence"] = legacy
+    for k, dv in (("strand", "+"), ("donor_format", "ssODN"), ("auto_detect_cds", True), ("enable_rflp", False), ("rflp_search_radius_bp", 15), ("out_out_margin_bp", 100), ("primer_target_tm", 60.0), ("donor_name", "HDR_Donor")):
+        if d.get(k) is None:
+            d[k] = dv
+    for k in ("edit_start_0based", "edit_end_0based", "left_arm_length_bp", "right_arm_length_bp", "cds_start_1based", "cds_end_1based", "rflp_search_radius_bp", "out_out_margin_bp"):
+        if d.get(k) is not None and not _is_non_bool_int(d[k]):
+            raise ValueError(f"{k} 必须为整数")
+    if d.get("primer_target_tm") is not None and not _is_non_bool_number(d["primer_target_tm"]):
+        raise ValueError("primer_target_tm 必须为数值")
+    return d
+
+
+if _HAS_PYDANTIC:
+    class IndelContributionModel(BaseModel):
+        label: str
+        shift_bp: Optional[int] = None
+        is_hdr: bool
+        is_frameshift: bool
+        raw_weight: float
+        percent: float
+
+
+    class DeconvoluteCrisprSangerInput(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        wt_sequence: Optional[str] = None
+        sgrna_sequence: Optional[str] = None
+        wt_peaks_acgt: Optional[List[List[float]]] = None
+        edited_peaks_acgt: Optional[List[List[float]]] = None
+        hdr_donor_sequence: Optional[str] = None
+        hdr_peaks_acgt: Optional[List[List[float]]] = None
+        cut_index_0based: Optional[int] = Field(default=None, ge=0)
+        is_reverse_strand_sgrna: bool = False
+        window_length_bp: Optional[int] = Field(default=None, ge=1, le=1000)
+        requested_window_length_bp: Optional[int] = Field(default=None, ge=1, le=1000)
+        shift_min_bp: int = Field(default=-20, ge=-50, le=0)
+        shift_max_bp: int = Field(default=20, ge=0, le=50)
+        noise_floor_weight: float = Field(default=1e-6, ge=0.0)
+        wt_ab1_path: Optional[str] = None
+        edited_ab1_path: Optional[str] = None
+
+        @model_validator(mode="after")
+        def _validate_cross(self) -> "DeconvoluteCrisprSangerInput":
+            has_wt = bool(self.wt_peaks_acgt) or bool((self.wt_sequence or "").strip()) or bool((self.wt_ab1_path or "").strip())
+            has_ed = bool(self.edited_peaks_acgt) or bool((self.edited_ab1_path or "").strip())
+            if not has_wt:
+                raise ValueError("必须提供 wt_peaks_acgt、wt_sequence 或 wt_ab1_path 之一")
+            if not has_ed:
+                raise ValueError("必须提供 edited_peaks_acgt 或 edited_ab1_path")
+            if self.cut_index_0based is None and not (self.sgrna_sequence or "").strip():
+                raise ValueError("未指定 cut_index_0based 时必须提供 sgrna_sequence 以定位切点")
+            if self.shift_min_bp > 0 or self.shift_max_bp < 0 or self.shift_min_bp > self.shift_max_bp:
+                raise ValueError("移码搜索范围必须满足 shift_min_bp <= 0 <= shift_max_bp")
+            return self
+
+
+    class DeconvoluteCrisprSangerOutput(BaseModel):
+        cut_index_0based: int
+        is_reverse_strand_sgrna: bool
+        requested_window_bp: int
+        effective_window_bp: int
+        wt_percent: float
+        indel_percent: float
+        ko_score: float
+        hdr_percent: float
+        total_edited_percent: float
+        r_squared: float
+        residual_norm: float
+        warnings: List[str]
+        contributions: List[IndelContributionModel]
+        dominant_indels: List[IndelContributionModel]
+
+
+    class AutoAnnotateSequenceInput(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        fasta_text: Optional[str] = None
+        sequence: Optional[str] = None
+        plasmid_name: str = "Unannotated_Plasmid"
+        is_circular: bool = True
+        min_identity: float = Field(default=0.85, ge=0.5, le=1.0)
+        min_fragment_coverage: float = Field(default=0.30, ge=0.1, le=0.95)
+        full_feature_coverage_threshold: float = Field(default=0.90, ge=0.5, le=1.0)
+        db_path: Optional[str] = None
+
+        @model_validator(mode="after")
+        def _validate_cross(self) -> "AutoAnnotateSequenceInput":
+            if not ((self.fasta_text or "").strip() or (self.sequence or "").strip()):
+                raise ValueError("必须提供 fasta_text 或 sequence")
+            if self.full_feature_coverage_threshold < self.min_fragment_coverage:
+                raise ValueError("full_feature_coverage_threshold 不能小于 min_fragment_coverage")
+            return self
+
+
+    class AnnotatedFeatureModel(BaseModel):
+        feature_id: int
+        name: str
+        display_name: str
+        category: str
+        strand: str
+        canonical_direction: int
+        start_1based: int
+        end_1based: int
+        matched_length: int
+        reference_length: int
+        feature_start_1based: int
+        feature_end_1based: int
+        coverage: float
+        identity: float
+        alignment_score: float
+        is_origin_spanning: bool
+        is_fragment: bool
+        fragment_warning: Optional[str] = None
+        color_hex: str
+
+
+    class AutoAnnotateSequenceOutput(BaseModel):
+        plasmid_name: str
+        sequence_length: int
+        is_circular: bool
+        features_count: int
+        fragment_count: int
+        origin_spanning_count: int
+        annotated_coverage_percent: float
+        features: List[AnnotatedFeatureModel]
+        warnings: List[str]
+
+
+    class GoldenGateFragmentInput(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        name: str = "Fragment"
+        sequence: str = Field(min_length=1)
+        is_coding_sequence: bool = True
+        reading_frame_offset: int = Field(default=0, ge=0, le=2)
+
+
+    class DesignGoldenGateAssemblyInput(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        enzyme_name: Literal["BsaI", "BsmBI", "BbsI", "SapI"] = "BsaI"
+        fragment_count: Optional[int] = Field(default=None, ge=2, le=6)
+        is_circular: bool = True
+        fixed_overhangs: List[str] = Field(default_factory=list)
+        fragments: List[GoldenGateFragmentInput] = Field(default_factory=list)
+        db_path: Optional[str] = None
+
+        @model_validator(mode="after")
+        def _validate_cross(self) -> "DesignGoldenGateAssemblyInput":
+            if not self.fragments and self.fragment_count is None:
+                raise ValueError("未传入 fragments 时必须显式指定 fragment_count (2–6)")
+            eff = self.fragment_count if self.fragment_count is not None else len(self.fragments)
+            if not (2 <= eff <= 6):
+                raise ValueError(f"有效组装片段数必须在 2–6 之间，当前为 {eff}")
+            return self
+
+
+    class CrossMismatchPairModel(BaseModel):
+        overhang_a: str
+        overhang_b: str
+        ligation_count: int
+
+
+    class OverhangPlanModel(BaseModel):
+        enzyme_name: str
+        fragment_count: int
+        junction_count: int
+        overhang_length: int
+        assigned_overhangs: List[str]
+        assembly_fidelity: float
+        cross_mismatch_count: int
+        cross_mismatch_pairs: List[CrossMismatchPairModel]
+        warnings: List[str]
+
+
+    class DomesticationSuggestionModel(BaseModel):
+        fragment_index: int
+        fragment_name: str
+        enzyme_name: str
+        site_strand: str
+        site_start_1based: int
+        site_end_1based: int
+        original_site: str
+        is_coding_sequence: bool
+        codon_index_1based: Optional[int] = None
+        original_codon: Optional[str] = None
+        mutated_codon: Optional[str] = None
+        amino_acid: Optional[str] = None
+        mutation_position_1based: int
+        original_base: str
+        mutated_base: str
+        is_synonymous: bool
+        note: str
+
+
+    class FragmentDomesticationModel(BaseModel):
+        fragment_index: int
+        fragment_name: str
+        original_length: int
+        internal_sites_found: int
+        remaining_sites_after_domestication: int
+        suggestions: List[DomesticationSuggestionModel]
+        domesticated_sequence: str
+
+
+    class DesignGoldenGateAssemblyOutput(BaseModel):
+        enzyme_name: str
+        recognition_site: str
+        overhang_length: int
+        overhang_plan: OverhangPlanModel
+        domestications: List[FragmentDomesticationModel]
+        total_internal_sites_found: int
+        assembled_sequence_length: int
+
+
+    class DesignHdrDonorInput(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        reference_sequence: str = Field(min_length=25)
+        sgrna_sequence: str = Field(min_length=15)
+        strand: Literal["+", "-"] = "+"
+        edit_start_0based: int = Field(ge=0)
+        edit_end_0based: int = Field(ge=0)
+        replacement_sequence: str
+        donor_format: Literal["ssODN", "dsDNAPlasmid"] = "ssODN"
+        left_arm_length_bp: Optional[int] = Field(default=None, ge=1)
+        right_arm_length_bp: Optional[int] = Field(default=None, ge=1)
+        cds_start_1based: Optional[int] = Field(default=None, ge=1)
+        cds_end_1based: Optional[int] = Field(default=None, ge=3)
+        auto_detect_cds: bool = True
+        enable_rflp: bool = False
+        rflp_search_radius_bp: int = Field(default=15, ge=3)
+        out_out_margin_bp: int = Field(default=100, ge=0)
+        primer_target_tm: float = Field(default=60.0, ge=40.0, le=85.0)
+        donor_name: str = "HDR_Donor"
+
+        @model_validator(mode="after")
+        def _validate_cross(self) -> "DesignHdrDonorInput":
+            if self.edit_end_0based < self.edit_start_0based:
+                raise ValueError("edit_end_0based 不能小于 edit_start_0based")
+            if (self.cds_start_1based is None) != (self.cds_end_1based is None):
+                raise ValueError("cds_start_1based 与 cds_end_1based 必须同时提供或同时留空")
+            if self.cds_start_1based is not None and self.cds_end_1based is not None and self.cds_start_1based >= self.cds_end_1based:
+                raise ValueError("cds_start_1based 必须小于 cds_end_1based")
+            return self
+
+
+    class SilentMutationModel(BaseModel):
+        position_0based: int
+        position_1based: int
+        original_base: str
+        mutated_base: str
+        reason: str
+        codon_before: Optional[str] = None
+        codon_after: Optional[str] = None
+        amino_acid: Optional[str] = None
+
+
+    class RFLPDesignModel(BaseModel):
+        mode: str
+        enzyme_name: str
+        recognition_site: str
+        top_cut_offset: int
+        wt_amplicon_bands_bp: List[int]
+        hdr_amplicon_bands_bp: List[int]
+        silent_mutations: List[SilentMutationModel]
+        note: str
+
+
+    class OutOutPrimerModel(BaseModel):
+        name: str
+        full_sequence: str
+        specific_sequence: str
+        tm: float
+        gc_percent: float
+
+
+    class OutOutPCRModel(BaseModel):
+        forward_primer: OutOutPrimerModel
+        reverse_primer: OutOutPrimerModel
+        forward_start_0based: int
+        forward_end_0based: int
+        reverse_start_0based: int
+        reverse_end_0based: int
+        wt_amplicon_length_bp: int
+        hdr_amplicon_length_bp: int
+        wt_amplicon_sequence: str
+        hdr_amplicon_sequence: str
+        left_margin_from_arm_bp: int
+        right_margin_from_arm_bp: int
+
+
+    class DesignHdrDonorOutput(BaseModel):
+        donor_format: str
+        sgrna_sequence: str
+        strand: str
+        wt_cut_index_0based: int
+        wt_pam_start_0based: int
+        wt_pam_sequence: str
+        is_in_cds: bool
+        cds_start_1based: Optional[int] = None
+        cds_end_1based: Optional[int] = None
+        cds_auto_detected: bool
+        protein_before_blocking: str
+        protein_after_blocking: str
+        amino_acid_conserved: bool
+        blocking_strategy: str
+        blocking_mutations: List[SilentMutationModel]
+        edited_pam_sequence: str
+        pam_still_intact: bool
+        cas9_recut_blocked: bool
+        left_homology_arm: str
+        insert_payload: str
+        right_homology_arm: str
+        left_arm_length_bp: int
+        right_arm_length_bp: int
+        donor_sequence: str
+        donor_length_bp: int
+        final_edited_locus_sequence: str
+        rflp: Optional[RFLPDesignModel] = None
+        out_out_pcr: Optional[OutOutPCRModel] = None
+        warnings: List[str]
+
+
+def _stdlib_validate_deconv(raw: Dict[str, Any]) -> Dict[str, Any]:
+    allowed = {
+        "wt_sequence", "sgrna_sequence", "wt_peaks_acgt", "edited_peaks_acgt",
+        "hdr_donor_sequence", "hdr_peaks_acgt", "cut_index_0based",
+        "is_reverse_strand_sgrna", "window_length_bp", "requested_window_length_bp",
+        "shift_min_bp", "shift_max_bp", "noise_floor_weight", "wt_ab1_path", "edited_ab1_path",
+    }
+    unknown = set(raw.keys()) - allowed
+    if unknown:
+        raise ValueError(f"deconvolute_crispr_sanger 存在未定义字段: {sorted(unknown)}")
+    d = _prepare_deconv_input_dict(raw)
+    if d.get("cut_index_0based") is not None and d["cut_index_0based"] < 0:
+        raise ValueError("cut_index_0based 不能小于 0")
+    win = d.get("window_length_bp") if d.get("window_length_bp") is not None else d.get("requested_window_length_bp")
+    if win is not None and not (1 <= win <= 1000):
+        raise ValueError("window_length_bp 必须在 1–1000 之间")
+    smin = d.get("shift_min_bp", -20)
+    smax = d.get("shift_max_bp", 20)
+    if not (-50 <= smin <= 0 <= smax <= 50 and smin <= smax):
+        raise ValueError("移码范围必须满足 -50 <= shift_min_bp <= 0 <= shift_max_bp <= 50")
+    if float(d.get("noise_floor_weight", 1e-6)) < 0.0:
+        raise ValueError("noise_floor_weight 不能为负数")
+    has_wt = bool(d.get("wt_peaks_acgt")) or bool(str(d.get("wt_sequence") or "").strip()) or bool(str(d.get("wt_ab1_path") or "").strip())
+    has_ed = bool(d.get("edited_peaks_acgt")) or bool(str(d.get("edited_ab1_path") or "").strip())
+    if not has_wt:
+        raise ValueError("必须提供 wt_peaks_acgt、wt_sequence 或 wt_ab1_path 之一")
+    if not has_ed:
+        raise ValueError("必须提供 edited_peaks_acgt 或 edited_ab1_path")
+    if d.get("cut_index_0based") is None and not str(d.get("sgrna_sequence") or "").strip():
+        raise ValueError("未指定 cut_index_0based 时必须提供 sgrna_sequence 以定位切点")
+    return d
+
+
+def _stdlib_validate_annotate(raw: Dict[str, Any]) -> Dict[str, Any]:
+    allowed = {
+        "fasta_text", "sequence", "plasmid_name", "is_circular",
+        "min_identity", "min_fragment_coverage", "full_feature_coverage_threshold", "db_path",
+    }
+    unknown = set(raw.keys()) - allowed
+    if unknown:
+        raise ValueError(f"auto_annotate_sequence 存在未定义字段: {sorted(unknown)}")
+    d = _prepare_annotate_input_dict(raw)
+    if not (str(d.get("fasta_text") or "").strip() or str(d.get("sequence") or "").strip()):
+        raise ValueError("必须提供 fasta_text 或 sequence")
+    min_id = float(d["min_identity"])
+    min_fc = float(d["min_fragment_coverage"])
+    full_cov = float(d["full_feature_coverage_threshold"])
+    if not (0.5 <= min_id <= 1.0):
+        raise ValueError("min_identity 必须在 [0.5, 1.0] 之间")
+    if not (0.1 <= min_fc <= 0.95):
+        raise ValueError("min_fragment_coverage 必须在 [0.1, 0.95] 之间")
+    if not (0.5 <= full_cov <= 1.0):
+        raise ValueError("full_feature_coverage_threshold 必须在 [0.5, 1.0] 之间")
+    if full_cov < min_fc:
+        raise ValueError("full_feature_coverage_threshold 不能小于 min_fragment_coverage")
+    return d
+
+
+def _stdlib_validate_gg(raw: Dict[str, Any]) -> Dict[str, Any]:
+    allowed = {"enzyme_name", "fragment_count", "is_circular", "fixed_overhangs", "fragments", "db_path"}
+    unknown = set(raw.keys()) - allowed
+    if unknown:
+        raise ValueError(f"design_golden_gate_assembly 存在未定义字段: {sorted(unknown)}")
+    d = _prepare_gg_input_dict(raw)
+    if d["enzyme_name"] not in ("BsaI", "BsmBI", "BbsI", "SapI"):
+        raise ValueError(f"enzyme_name 仅支持 BsaI/BsmBI/BbsI/SapI，收到 {d['enzyme_name']}")
+    frags = d.get("fragments") or []
+    frag_allowed = {"name", "sequence", "is_coding_sequence", "reading_frame_offset"}
+    for idx, f in enumerate(frags):
+        u_f = set(f.keys()) - frag_allowed
+        if u_f:
+            raise ValueError(f"fragments[{idx}] 存在未定义字段: {sorted(u_f)}")
+        if not isinstance(f.get("sequence"), str) or not f["sequence"].strip():
+            raise ValueError(f"fragments[{idx}].sequence 不能为空")
+        rfo = f.get("reading_frame_offset", 0)
+        if not (0 <= int(rfo) <= 2):
+            raise ValueError(f"fragments[{idx}].reading_frame_offset 必须为 0、1 或 2")
+    fc = d.get("fragment_count")
+    if fc is not None and not (2 <= int(fc) <= 6):
+        raise ValueError("fragment_count 必须在 2–6 之间")
+    if not frags and fc is None:
+        raise ValueError("未传入 fragments 时必须显式指定 fragment_count (2–6)")
+    eff = int(fc) if fc is not None else len(frags)
+    if not (2 <= eff <= 6):
+        raise ValueError(f"有效组装片段数必须在 2–6 之间，当前为 {eff}")
+    return d
+
+
+def _stdlib_validate_hdr(raw: Dict[str, Any]) -> Dict[str, Any]:
+    allowed = {
+        "reference_sequence", "sgrna_sequence", "strand", "edit_start_0based",
+        "edit_end_0based", "replacement_sequence", "donor_format",
+        "left_arm_length_bp", "right_arm_length_bp", "cds_start_1based",
+        "cds_end_1based", "auto_detect_cds", "enable_rflp",
+        "rflp_search_radius_bp", "out_out_margin_bp", "primer_target_tm", "donor_name",
+    }
+    d = _prepare_hdr_input_dict(raw)
+    unknown = set(d.keys()) - allowed
+    if unknown:
+        raise ValueError(f"design_hdr_donor 存在未定义字段: {sorted(unknown)}")
+    for req in ("reference_sequence", "sgrna_sequence", "edit_start_0based", "edit_end_0based", "replacement_sequence"):
+        if req not in d or d[req] is None:
+            raise ValueError(f"缺少必填参数: {req}")
+    if not isinstance(d["reference_sequence"], str) or len(d["reference_sequence"]) < 25:
+        raise ValueError("reference_sequence 长度至少需要 25 bp")
+    if not isinstance(d["sgrna_sequence"], str) or len(d["sgrna_sequence"]) < 15:
+        raise ValueError("sgrna_sequence 长度至少需要 15 nt")
+    if d["strand"] not in ("+", "-"):
+        raise ValueError("strand 必须为 '+' 或 '-'")
+    if d["edit_start_0based"] < 0 or d["edit_end_0based"] < d["edit_start_0based"]:
+        raise ValueError("edit_start_0based / edit_end_0based 非法")
+    if d["donor_format"] not in ("ssODN", "dsDNAPlasmid"):
+        raise ValueError(f"donor_format 必须为 ssODN 或 dsDNAPlasmid，收到 {d['donor_format']}")
+    for arm_k in ("left_arm_length_bp", "right_arm_length_bp"):
+        if d.get(arm_k) is not None and d[arm_k] < 1:
+            raise ValueError(f"{arm_k} 必须 >= 1")
+    cs, ce = d.get("cds_start_1based"), d.get("cds_end_1based")
+    if (cs is None) != (ce is None):
+        raise ValueError("cds_start_1based 与 cds_end_1based 必须同时提供或同时留空")
+    if cs is not None and ce is not None and (cs < 1 or ce < 3 or cs >= ce):
+        raise ValueError("cds_start_1based 与 cds_end_1based 范围非法")
+    if d["rflp_search_radius_bp"] < 3:
+        raise ValueError("rflp_search_radius_bp 必须 >= 3")
+    if d["out_out_margin_bp"] < 0:
+        raise ValueError("out_out_margin_bp 不能为负数")
+    tm = float(d["primer_target_tm"])
+    if not (40.0 <= tm <= 85.0):
+        raise ValueError("primer_target_tm 必须在 40.0–85.0 °C 之间")
+    return d
+
+
+def tool_deconvolute_crispr_sanger(args: Dict[str, Any]) -> DeconvoluteCrisprSangerOutputDict:
+    """
+    对 CRISPR 编辑池 Sanger 测序信号执行 Synthego ICE 风格非负最小二乘（NNLS）混杂峰解卷积定量。
+
+    支持直接传入与 Swift 黄金测试向量 `crispr_deconv_golden.json` 对齐的四通道荧光峰值矩阵
+    （`wt_peaks_acgt`、`edited_peaks_acgt`、`hdr_peaks_acgt`），也支持传入本地 `.ab1`/`.abi` 文件路径
+    （`wt_ab1_path`、`edited_ab1_path`）自动解析切点下游窗口峰高后求解 -20..+20 bp 移码分布、
+    总编辑效率（Indel%）、移码敲除率（KO Score）、HDR 精确修复率（HDR%）与拟合优度 R²。
+    """
+    prepped = _prepare_deconv_input_dict(args)
+    if _HAS_PYDANTIC:
+        validated = DeconvoluteCrisprSangerInput.model_validate(prepped).model_dump()
+    else:
+        validated = _stdlib_validate_deconv(args)
+
+    req_win = validated.get("window_length_bp") or validated.get("requested_window_length_bp") or 150
+    validated["window_length_bp"] = int(req_win)
+
+    wt_ab1_path = validated.get("wt_ab1_path")
+    if wt_ab1_path and not validated.get("wt_peaks_acgt"):
+        full_wt = os.path.expanduser(str(wt_ab1_path))
+        if not os.path.exists(full_wt):
+            raise FileNotFoundError(f"找不到 WT .ab1 文件: {wt_ab1_path}")
+        with open(full_wt, "rb") as f:
+            wt_parsed = _extract_ab1_peaks_acgt(f.read())
+        validated["wt_peaks_acgt"] = wt_parsed["peaks_acgt"]
+        if not validated.get("wt_sequence"):
+            validated["wt_sequence"] = wt_parsed["sequence"]
+
+    ed_ab1_path = validated.get("edited_ab1_path")
+    if ed_ab1_path and not validated.get("edited_peaks_acgt"):
+        full_ed = os.path.expanduser(str(ed_ab1_path))
+        if not os.path.exists(full_ed):
+            raise FileNotFoundError(f"找不到 Edited .ab1 文件: {ed_ab1_path}")
+        with open(full_ed, "rb") as f:
+            ed_parsed = _extract_ab1_peaks_acgt(f.read())
+        cut_idx = validated.get("cut_index_0based")
+        wt_seq = clean_seq(validated.get("wt_sequence") or "")
+        sg_seq = clean_seq(validated.get("sgrna_sequence") or "")
+        if cut_idx is None and wt_seq and sg_seq:
+            loc = locate_crispr_cut_site(wt_seq, sg_seq)
+            cut_idx = loc[0] if loc is not None else 0
+        cut_idx = int(cut_idx or 0)
+        ed_cut_idx = cut_idx
+        if wt_seq and cut_idx >= 15 and ed_parsed["sequence"]:
+            anc_start = max(0, cut_idx - 25)
+            anchor = wt_seq[anc_start:cut_idx - 5]
+            if len(anchor) >= 10:
+                pos = ed_parsed["sequence"].find(anchor)
+                if pos != -1:
+                    ed_cut_idx = pos + (cut_idx - anc_start)
+        validated["edited_peaks_acgt"] = ed_parsed["peaks_acgt"][ed_cut_idx:ed_cut_idx + int(req_win)]
+
+    result = deconvolve_sanger_crispr(validated)
+    if _HAS_PYDANTIC:
+        return DeconvoluteCrisprSangerOutput.model_validate(result).model_dump()
+    return result  # type: ignore[return-value]
+
+
+def tool_auto_annotate_sequence(args: Dict[str, Any]) -> AutoAnnotateSequenceOutputDict:
+    """
+    基于本地 `Libraries.sqlite` 标准质粒元件库（`plasmid_features`）执行纯离线质粒 FASTA 自动注释。
+
+    支持正反双链特征扫描、环形质粒跨 1 bp 零点（Origin）连续拼接匹配，并对长度覆盖率落在
+    30%–90% 之间的截短元件自动标记历史克隆残留片段（Fragment）警示。输入与输出结构与
+    Swift 黄金测试向量 `plasmid_auto_annotation.json` 完全一致。
+    """
+    prepped = _prepare_annotate_input_dict(args)
+    if _HAS_PYDANTIC:
+        validated = AutoAnnotateSequenceInput.model_validate(prepped).model_dump()
+    else:
+        validated = _stdlib_validate_annotate(args)
+    result = annotate_plasmid_fasta(validated)
+    if _HAS_PYDANTIC:
+        return AutoAnnotateSequenceOutput.model_validate(result).model_dump()
+    return result  # type: ignore[return-value]
+
+
+def tool_design_golden_gate_assembly(args: Dict[str, Any]) -> DesignGoldenGateAssemblyOutputDict:
+    """
+    执行 Type IIS（BsaI / BsmBI / BbsI / SapI）Golden Gate 2–6 片段无交叉错配接头规划与 Domestication。
+
+    读取 `Libraries.sqlite` 中 NEB T4 DNA Ligase 4-bp 保真度矩阵，避开高错配与回文接头实现最优正交分配，
+    并自动扫描片段内部正反双链内源识别位点，在编码区内给出保持氨基酸 100% 守恒的同义密码子抹除方案。
+    输入与输出结构与 Swift 黄金测试向量 `golden_gate_and_digest.json` 完全一致。
+    """
+    prepped = _prepare_gg_input_dict(args)
+    if _HAS_PYDANTIC:
+        validated = DesignGoldenGateAssemblyInput.model_validate(prepped).model_dump()
+    else:
+        validated = _stdlib_validate_gg(args)
+    result = design_golden_gate_assembly(validated)
+    if _HAS_PYDANTIC:
+        return DesignGoldenGateAssemblyOutput.model_validate(result).model_dump()
+    return result  # type: ignore[return-value]
+
+
+def tool_design_hdr_donor(args: Dict[str, Any]) -> DesignHdrDonorOutputDict:
+    """
+    设计 CRISPR Knock-in HDR 同源供体（ssODN / dsDNA 质粒）、PAM/Seed 同义阻断突变、可选 RFLP 与 Out-Out PCR 引物。
+
+    自动检测目标切点是否位于 CDS 编码区并利用密码子简并性引入同义 PAM（或回退至近 PAM 8-nt Seed）突变
+    阻断 Cas9 二次切割，确保翻译氨基酸序列 100% 守恒；支持同义构建/消除 RFLP 鉴定位点及生成左右同源臂外侧
+    Out-Out PCR 分型引物。输入与输出结构与 Swift 黄金测试向量 `crispr_hdr_donor.json` 完全一致。
+    """
+    prepped = _prepare_hdr_input_dict(args)
+    if _HAS_PYDANTIC:
+        validated = DesignHdrDonorInput.model_validate(prepped).model_dump()
+    else:
+        validated = _stdlib_validate_hdr(args)
+    result = design_crispr_hdr_donor(validated)
+    if _HAS_PYDANTIC:
+        return DesignHdrDonorOutput.model_validate(result).model_dump()
+    return result  # type: ignore[return-value]
+
+
+# ============================================================================
+# 4. MCP JSON-RPC 2.0 协议路由与 23 大全栈工具声明 (Labworker MCP 20261115)
 # ============================================================================
 
 MCP_TOOLS = [
@@ -3048,15 +6577,17 @@ MCP_TOOLS = [
     },
     {
         "name": "calculate_recombination_dosage",
-        "description": "计算同源重组反应 (20 μL 体系) 中线性化载体、各插入片段的最佳或自定义 ng 投入量、移液体积 (μL) 与 ddH2O 补齐体积，并同步至 Labworker 用量计算器。",
+        "description": "计算同源重组反应 (20 μL 体系) 或经典摩尔比连接 (0.03 pmol 载体, 1:1~1:5) 中线性化载体、各插入片段的最佳或自定义 ng 投入量、移液体积 (μL) 与 ddH2O 补齐体积，并同步至 Labworker 生物计算器。",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "clone_type": {"type": "string", "enum": ["single", "multi", "simple"], "default": "single"},
+                "clone_type": {"type": "string", "enum": ["single", "multi", "simple", "ligation"], "default": "single"},
                 "vector_name": {"type": "string", "description": "载体名称"},
                 "vector_length": {"type": "number", "description": "载体长度（支持直接传 bp 如 6349 或 kb 如 6.35）"},
                 "vector_conc": {"type": "number", "description": "载体浓度 (ng/μL)", "default": 50},
                 "vector_custom_ng": {"type": "number", "description": "可选：自定义载体投入量 (ng)，不传则按公式推荐"},
+                "vector_pmol": {"type": "number", "description": "经典摩尔比模式下载体最适使用量 (pmol)，默认 0.03", "default": 0.03},
+                "molar_ratio": {"type": "integer", "description": "经典摩尔比模式下 载体:片段 比例 1~5 (对应 1:1 ~ 1:5)，默认 3", "default": 3},
                 "inserts": {
                     "type": "array",
                     "description": "插入片段列表",
@@ -3184,17 +6715,6 @@ MCP_TOOLS = [
         }
     },
     {
-        "name": "analyze_phylogenetic_tree",
-        "description": "解析 Newick (.nwk) 系统发育树并统计分类单元与总枝长，同步至 Labworker 系统发育树工作台。",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "newick": {"type": "string", "description": "Newick 格式进化树字符串"}
-            },
-            "required": ["newick"]
-        }
-    },
-    {
         "name": "verify_sanger_sequencing",
         "description": "原生解析 Sanger 测序 (.ab1/.abi/.seq) 四色荧光峰图并与质粒池载体或参考序列进行环状双向比对（支持单文件或 files 数组批量克隆分组验证），自动识别 SNP 点突变、移码 Indel 与杂合双峰。",
         "inputSchema": {
@@ -3219,6 +6739,511 @@ MCP_TOOLS = [
                 "trim_quality_threshold": {"type": "integer", "description": "5'/3' 低质量修剪 Phred Q 阈值，默认 20", "default": 20}
             }
         }
+    },
+    {
+        "name": "convert_nucleic_acid_units",
+        "description": "DNA 与核酸单位换算：dsDNA (μg⇄pmol)、ssDNA (μg/mL⇄pmol/μL)、Linear DNA 末端摩尔 (pmol Ends) 及 OD260 核酸定量 (DNA/RNA/ssDNA/Oligo)。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "enum": ["dsdna_ug_to_pmol", "dsdna_pmol_to_ug", "ssdna_ug_per_ml_to_pmol_per_ul", "ssdna_pmol_per_ul_to_ug_per_ml", "linear_dna_ug_to_pmol_ends", "od260_to_ug_per_ml"]
+                },
+                "length_bp_or_nt": {"type": "number", "description": "dsDNA 长度(bp) 或 ssDNA 寡核苷酸长度(nt)"},
+                "length_kb": {"type": "number", "description": "Linear DNA 长度(kb)"},
+                "value": {"type": "number", "description": "输入质量(µg)、摩尔(pmol)、浓度或 OD260 读数"},
+                "sample_type": {"type": "string", "enum": ["dna", "rna", "ssdna", "ssoligo"], "default": "dna"},
+                "dilution_factor": {"type": "number", "default": 1.0}
+            },
+            "required": ["mode", "value"]
+        }
+    },
+    {
+        "name": "convert_protein_and_coding",
+        "description": "蛋白质摩尔互算 (Protein Size kDa ⇄ µg ⇄ pmol) 与 DNA 编码容量推算 (DNA bp ⇄ 氨基酸 aa ⇄ 蛋白大小 kDa)。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "enum": ["protein_size_kda", "protein_mass_ug", "protein_moles_pmol", "coding_from_bp", "coding_from_aa", "coding_from_kda"]
+                },
+                "size_kda": {"type": "number"},
+                "mass_ug": {"type": "number"},
+                "amount_pmol": {"type": "number"},
+                "value": {"type": "number", "description": "DNA 编码容量计算输入值 (bp / aa / kDa)"}
+            },
+            "required": ["mode"]
+        }
+    },
+    {
+        "name": "calculate_solution_and_temperature",
+        "description": "生理生化公式计算：溶液摩尔浓度配制溶质质量 (g/mg/µg)、C1V1=C2V2 稀释移液量 (L/mL/µL/nL/pL) 及 °F/°C/K 温标转换。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "mode": {"type": "string", "enum": ["molarity_mass", "dilution", "temperature"]},
+                "mw_g_per_mol": {"type": "number"},
+                "concentration": {"type": "number"},
+                "conc_unit": {"type": "string", "default": "mM"},
+                "volume": {"type": "number"},
+                "vol_unit": {"type": "string", "default": "mL"},
+                "stock_conc": {"type": "number"},
+                "stock_unit": {"type": "string", "default": "M"},
+                "final_conc": {"type": "number"},
+                "final_unit": {"type": "string", "default": "mM"},
+                "final_volume": {"type": "number"},
+                "from_unit": {"type": "string", "enum": ["F", "C", "K"], "default": "C"},
+                "value": {"type": "number"}
+            },
+            "required": ["mode"]
+        }
+    },
+    {
+        "name": "deconvolute_crispr_sanger",
+        "description": "对 CRISPR 编辑池 Sanger 测序信号执行 Synthego ICE 风格非负最小二乘（NNLS）混杂峰图解卷积定量，输出 -20..+20 bp 移码分布、总 Indel%、移码敲除率（KO Score）、HDR% 与拟合优度 R²，支持四通道峰矩阵（与 Swift 黄金测试向量一致）或本地 .ab1/.abi 文件路径。",
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "wt_sequence": {"type": ["string", "null"], "description": "野生型对照 DNA 序列（与 sgrna_sequence 联用定位切点，或当未传 wt_peaks_acgt 时合成参考峰矩阵）"},
+                "sgrna_sequence": {"type": ["string", "null"], "description": "sgRNA protospacer 序列 (20 nt)"},
+                "wt_peaks_acgt": {
+                    "type": ["array", "null"],
+                    "description": "野生型全长或切点周边四通道荧光峰高矩阵 [[A, C, G, T], ...]",
+                    "items": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}
+                },
+                "edited_peaks_acgt": {
+                    "type": ["array", "null"],
+                    "description": "编辑池样品切点下游窗口的四通道荧光峰高矩阵 [[A, C, G, T], ...]",
+                    "items": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}
+                },
+                "hdr_donor_sequence": {"type": ["string", "null"], "description": "可选：HDR 精确修复预期模板全长序列"},
+                "hdr_peaks_acgt": {
+                    "type": ["array", "null"],
+                    "description": "可选：HDR 精确修复切点下游窗口的四通道峰高矩阵 [[A, C, G, T], ...]",
+                    "items": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}
+                },
+                "cut_index_0based": {"type": ["integer", "null"], "minimum": 0, "description": "可选：切点 0-based 坐标；未提供时自动按 sgrna_sequence 在 wt_sequence 中定位"},
+                "is_reverse_strand_sgrna": {"type": "boolean", "default": False, "description": "sgRNA 是否位于负链"},
+                "window_length_bp": {"type": ["integer", "null"], "minimum": 1, "maximum": 1000, "default": 150, "description": "解卷积分析切点下游窗口长度 (bp)，默认 150"},
+                "requested_window_length_bp": {"type": ["integer", "null"], "minimum": 1, "maximum": 1000, "description": "兼容字段：同 window_length_bp"},
+                "shift_min_bp": {"type": "integer", "minimum": -50, "maximum": 0, "default": -20, "description": "最小缺失移码偏移 (bp)，默认 -20"},
+                "shift_max_bp": {"type": "integer", "minimum": 0, "maximum": 50, "default": 20, "description": "最大插入移码偏移 (bp)，默认 20"},
+                "noise_floor_weight": {"type": "number", "minimum": 0.0, "default": 1e-6, "description": "NNLS 权重噪声过滤阈值，默认 1e-6"},
+                "wt_ab1_path": {"type": ["string", "null"], "description": "可选：野生型 .ab1/.abi 测序文件绝对路径"},
+                "edited_ab1_path": {"type": ["string", "null"], "description": "可选：编辑池 .ab1/.abi 测序文件绝对路径"}
+            }
+        },
+        "outputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "cut_index_0based": {"type": "integer"},
+                "is_reverse_strand_sgrna": {"type": "boolean"},
+                "requested_window_bp": {"type": "integer"},
+                "effective_window_bp": {"type": "integer"},
+                "wt_percent": {"type": "number"},
+                "indel_percent": {"type": "number"},
+                "ko_score": {"type": "number"},
+                "hdr_percent": {"type": "number"},
+                "total_edited_percent": {"type": "number"},
+                "r_squared": {"type": "number"},
+                "residual_norm": {"type": "number"},
+                "warnings": {"type": "array", "items": {"type": "string"}},
+                "contributions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "label": {"type": "string"},
+                            "shift_bp": {"type": ["integer", "null"]},
+                            "is_hdr": {"type": "boolean"},
+                            "is_frameshift": {"type": "boolean"},
+                            "raw_weight": {"type": "number"},
+                            "percent": {"type": "number"}
+                        },
+                        "required": ["label", "shift_bp", "is_hdr", "is_frameshift", "raw_weight", "percent"]
+                    }
+                },
+                "dominant_indels": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "label": {"type": "string"},
+                            "shift_bp": {"type": ["integer", "null"]},
+                            "is_hdr": {"type": "boolean"},
+                            "is_frameshift": {"type": "boolean"},
+                            "raw_weight": {"type": "number"},
+                            "percent": {"type": "number"}
+                        },
+                        "required": ["label", "shift_bp", "is_hdr", "is_frameshift", "raw_weight", "percent"]
+                    }
+                }
+            },
+            "required": [
+                "cut_index_0based", "is_reverse_strand_sgrna", "requested_window_bp",
+                "effective_window_bp", "wt_percent", "indel_percent", "ko_score",
+                "hdr_percent", "total_edited_percent", "r_squared", "residual_norm",
+                "warnings", "contributions", "dominant_indels"
+            ]
+        }
+    },
+    {
+        "name": "auto_annotate_sequence",
+        "description": "基于本地 Libraries.sqlite 标准质粒元件库（plasmid_features）执行纯离线 FASTA / DNA 序列自动注释，支持正反双链匹配、环形质粒跨 1 bp 零点（Origin）连续拼接以及 30%–90% 截短特征的历史克隆残留片段（Fragment）标记。",
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "fasta_text": {"type": ["string", "null"], "description": "标准 FASTA 文本（含可选 >header 与多行 DNA 序列）"},
+                "sequence": {"type": ["string", "null"], "description": "纯 DNA 序列（当未提供 fasta_text 时使用）"},
+                "plasmid_name": {"type": "string", "default": "Unannotated_Plasmid", "description": "质粒名称（若 fasta_text 含 >header 则优先解析 header）"},
+                "is_circular": {"type": "boolean", "default": True, "description": "是否按环形质粒（允许跨 1 bp 零点匹配）扫描，默认 True"},
+                "min_identity": {"type": "number", "minimum": 0.5, "maximum": 1.0, "default": 0.85, "description": "最小序列一致性阈值，默认 0.85"},
+                "min_fragment_coverage": {"type": "number", "minimum": 0.1, "maximum": 0.95, "default": 0.30, "description": "标记为 Fragment 的最小特征覆盖率下限，默认 0.30"},
+                "full_feature_coverage_threshold": {"type": "number", "minimum": 0.5, "maximum": 1.0, "default": 0.90, "description": "判定为完整特征的最小覆盖率阈值，默认 0.90"},
+                "db_path": {"type": ["string", "null"], "description": "可选：自定义 Libraries.sqlite 路径"}
+            }
+        },
+        "outputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "plasmid_name": {"type": "string"},
+                "sequence_length": {"type": "integer"},
+                "is_circular": {"type": "boolean"},
+                "features_count": {"type": "integer"},
+                "fragment_count": {"type": "integer"},
+                "origin_spanning_count": {"type": "integer"},
+                "annotated_coverage_percent": {"type": "number"},
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "feature_id": {"type": "integer"},
+                            "name": {"type": "string"},
+                            "display_name": {"type": "string"},
+                            "category": {"type": "string"},
+                            "strand": {"type": "string", "enum": ["+", "-"]},
+                            "canonical_direction": {"type": "integer"},
+                            "start_1based": {"type": "integer"},
+                            "end_1based": {"type": "integer"},
+                            "matched_length": {"type": "integer"},
+                            "reference_length": {"type": "integer"},
+                            "feature_start_1based": {"type": "integer"},
+                            "feature_end_1based": {"type": "integer"},
+                            "coverage": {"type": "number"},
+                            "identity": {"type": "number"},
+                            "alignment_score": {"type": "number"},
+                            "is_origin_spanning": {"type": "boolean"},
+                            "is_fragment": {"type": "boolean"},
+                            "fragment_warning": {"type": ["string", "null"]},
+                            "color_hex": {"type": "string"}
+                        },
+                        "required": [
+                            "feature_id", "name", "display_name", "category", "strand",
+                            "canonical_direction", "start_1based", "end_1based", "matched_length",
+                            "reference_length", "feature_start_1based", "feature_end_1based",
+                            "coverage", "identity", "alignment_score", "is_origin_spanning",
+                            "is_fragment", "fragment_warning", "color_hex"
+                        ]
+                    }
+                },
+                "warnings": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": [
+                "plasmid_name", "sequence_length", "is_circular", "features_count",
+                "fragment_count", "origin_spanning_count", "annotated_coverage_percent",
+                "features", "warnings"
+            ]
+        }
+    },
+    {
+        "name": "design_golden_gate_assembly",
+        "description": "Type IIS（BsaI / BsmBI / BbsI / SapI）Golden Gate 组装引擎：基于 Libraries.sqlite NEB T4 黏性末端保真度矩阵实现 2–6 片段无交叉错配 4-bp/3-bp 接头自动分配，并对片段内部双链内源酶切位点执行编码区同义密码子抹除（Domestication）。",
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "enzyme_name": {"type": "string", "enum": ["BsaI", "BsmBI", "BbsI", "SapI"], "default": "BsaI", "description": "Type IIS 内切酶名称"},
+                "fragment_count": {"type": ["integer", "null"], "minimum": 2, "maximum": 6, "description": "待组装片段总数 (2–6)；未传 fragments 时必填"},
+                "is_circular": {"type": "boolean", "default": True, "description": "是否为环状多片段组装（决定接点数=fragment_count 或 fragment_count-1）"},
+                "fixed_overhangs": {"type": "array", "items": {"type": "string"}, "default": [], "description": "可选：用户锁定保留的黏性末端接头列表（如 ['GGAG', 'CGCT']）"},
+                "fragments": {
+                    "type": "array",
+                    "default": [],
+                    "description": "待扫描并执行 Domestication 的 DNA 片段对象数组",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "name": {"type": "string", "default": "Fragment"},
+                            "sequence": {"type": "string", "minLength": 1},
+                            "is_coding_sequence": {"type": "boolean", "default": True},
+                            "reading_frame_offset": {"type": "integer", "minimum": 0, "maximum": 2, "default": 0}
+                        },
+                        "required": ["sequence"]
+                    }
+                },
+                "db_path": {"type": ["string", "null"], "description": "可选：自定义 Libraries.sqlite 路径"}
+            }
+        },
+        "outputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "enzyme_name": {"type": "string"},
+                "recognition_site": {"type": "string"},
+                "overhang_length": {"type": "integer"},
+                "overhang_plan": {
+                    "type": "object",
+                    "properties": {
+                        "enzyme_name": {"type": "string"},
+                        "fragment_count": {"type": "integer"},
+                        "junction_count": {"type": "integer"},
+                        "overhang_length": {"type": "integer"},
+                        "assigned_overhangs": {"type": "array", "items": {"type": "string"}},
+                        "assembly_fidelity": {"type": "number"},
+                        "cross_mismatch_count": {"type": "integer"},
+                        "cross_mismatch_pairs": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "overhang_a": {"type": "string"},
+                                    "overhang_b": {"type": "string"},
+                                    "ligation_count": {"type": "integer"}
+                                },
+                                "required": ["overhang_a", "overhang_b", "ligation_count"]
+                            }
+                        },
+                        "warnings": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": [
+                        "enzyme_name", "fragment_count", "junction_count", "overhang_length",
+                        "assigned_overhangs", "assembly_fidelity", "cross_mismatch_count",
+                        "cross_mismatch_pairs", "warnings"
+                    ]
+                },
+                "domestications": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "fragment_index": {"type": "integer"},
+                            "fragment_name": {"type": "string"},
+                            "original_length": {"type": "integer"},
+                            "internal_sites_found": {"type": "integer"},
+                            "remaining_sites_after_domestication": {"type": "integer"},
+                            "suggestions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "fragment_index": {"type": "integer"},
+                                        "fragment_name": {"type": "string"},
+                                        "enzyme_name": {"type": "string"},
+                                        "site_strand": {"type": "string"},
+                                        "site_start_1based": {"type": "integer"},
+                                        "site_end_1based": {"type": "integer"},
+                                        "original_site": {"type": "string"},
+                                        "is_coding_sequence": {"type": "boolean"},
+                                        "codon_index_1based": {"type": ["integer", "null"]},
+                                        "original_codon": {"type": ["string", "null"]},
+                                        "mutated_codon": {"type": ["string", "null"]},
+                                        "amino_acid": {"type": ["string", "null"]},
+                                        "mutation_position_1based": {"type": "integer"},
+                                        "original_base": {"type": "string"},
+                                        "mutated_base": {"type": "string"},
+                                        "is_synonymous": {"type": "boolean"},
+                                        "note": {"type": "string"}
+                                    },
+                                    "required": [
+                                        "fragment_index", "fragment_name", "enzyme_name", "site_strand",
+                                        "site_start_1based", "site_end_1based", "original_site",
+                                        "is_coding_sequence", "codon_index_1based", "original_codon",
+                                        "mutated_codon", "amino_acid", "mutation_position_1based",
+                                        "original_base", "mutated_base", "is_synonymous", "note"
+                                    ]
+                                }
+                            },
+                            "domesticated_sequence": {"type": "string"}
+                        },
+                        "required": [
+                            "fragment_index", "fragment_name", "original_length",
+                            "internal_sites_found", "remaining_sites_after_domestication",
+                            "suggestions", "domesticated_sequence"
+                        ]
+                    }
+                },
+                "total_internal_sites_found": {"type": "integer"},
+                "assembled_sequence_length": {"type": "integer"}
+            },
+            "required": [
+                "enzyme_name", "recognition_site", "overhang_length", "overhang_plan",
+                "domestications", "total_internal_sites_found", "assembled_sequence_length"
+            ]
+        }
+    },
+    {
+        "name": "design_hdr_donor",
+        "description": "CRISPR Knock-in HDR 同源供体自动设计引擎：生成 ssODN（60 nt 臂）或 dsDNA 质粒（600 bp 臂）修复模板，自动识别 CDS 编码区并引入同义 PAM/Seed 阻断突变防止 Cas9 二次切割（保证氨基酸 100% 守恒），可选同义构建/消除 RFLP 鉴定位点并自动生成跨同源臂外侧 Out-Out PCR 分型引物。",
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "reference_sequence": {"type": "string", "minLength": 25, "description": "野生型靶位点基因组/质粒参考 DNA 序列 (>= 25 bp)"},
+                "sgrna_sequence": {"type": "string", "minLength": 15, "description": "sgRNA protospacer 序列 (>= 15 nt)"},
+                "strand": {"type": "string", "enum": ["+", "-"], "default": "+", "description": "sgRNA 靶向链方向 ('+' 或 '-')"},
+                "edit_start_0based": {"type": "integer", "minimum": 0, "description": "预期替换/插入区间在 reference_sequence 中的起始 0-based 坐标"},
+                "edit_end_0based": {"type": "integer", "minimum": 0, "description": "预期替换/插入区间终止 0-based 坐标（纯插入时等于 edit_start_0based）"},
+                "replacement_sequence": {"type": "string", "description": "待敲入或替换的 DNA 序列（删除编辑时可为空串）"},
+                "donor_format": {"type": "string", "enum": ["ssODN", "dsDNAPlasmid"], "default": "ssODN", "description": "Donor 模板形式：ssODN (默认 60 nt 臂) 或 dsDNAPlasmid (默认 600 bp 臂)"},
+                "left_arm_length_bp": {"type": ["integer", "null"], "minimum": 1, "description": "可选：自定义左同源臂长度 (bp/nt)"},
+                "right_arm_length_bp": {"type": ["integer", "null"], "minimum": 1, "description": "可选：自定义右同源臂长度 (bp/nt)"},
+                "cds_start_1based": {"type": ["integer", "null"], "minimum": 1, "description": "可选：显式指定 CDS 起始 1-based 坐标"},
+                "cds_end_1based": {"type": ["integer", "null"], "minimum": 3, "description": "可选：显式指定 CDS 终止 1-based 坐标"},
+                "auto_detect_cds": {"type": "boolean", "default": True, "description": "未显式指定 CDS 时是否自动识别覆盖切点的最长 ORF"},
+                "enable_rflp": {"type": "boolean", "default": False, "description": "是否启用同义 RFLP 鉴定位点构建/消除"},
+                "rflp_search_radius_bp": {"type": "integer", "minimum": 3, "default": 15, "description": "RFLP 位点搜索半径 (bp)，默认 15"},
+                "out_out_margin_bp": {"type": "integer", "minimum": 0, "default": 100, "description": "Out-Out PCR 引物相对同源臂外缘的最小安全边距 (bp)，默认 100"},
+                "primer_target_tm": {"type": "number", "minimum": 40.0, "maximum": 85.0, "default": 60.0, "description": "Out-Out PCR 引物目标退火温度 (°C)，默认 60.0"},
+                "donor_name": {"type": "string", "default": "HDR_Donor", "description": "Donor 与分型引物命名前缀"}
+            },
+            "required": [
+                "reference_sequence", "sgrna_sequence",
+                "edit_start_0based", "edit_end_0based", "replacement_sequence"
+            ]
+        },
+        "outputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "donor_format": {"type": "string"},
+                "sgrna_sequence": {"type": "string"},
+                "strand": {"type": "string"},
+                "wt_cut_index_0based": {"type": "integer"},
+                "wt_pam_start_0based": {"type": "integer"},
+                "wt_pam_sequence": {"type": "string"},
+                "is_in_cds": {"type": "boolean"},
+                "cds_start_1based": {"type": ["integer", "null"]},
+                "cds_end_1based": {"type": ["integer", "null"]},
+                "cds_auto_detected": {"type": "boolean"},
+                "protein_before_blocking": {"type": "string"},
+                "protein_after_blocking": {"type": "string"},
+                "amino_acid_conserved": {"type": "boolean"},
+                "blocking_strategy": {"type": "string"},
+                "blocking_mutations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "position_0based": {"type": "integer"},
+                            "position_1based": {"type": "integer"},
+                            "original_base": {"type": "string"},
+                            "mutated_base": {"type": "string"},
+                            "reason": {"type": "string"},
+                            "codon_before": {"type": ["string", "null"]},
+                            "codon_after": {"type": ["string", "null"]},
+                            "amino_acid": {"type": ["string", "null"]}
+                        },
+                        "required": [
+                            "position_0based", "position_1based", "original_base", "mutated_base",
+                            "reason", "codon_before", "codon_after", "amino_acid"
+                        ]
+                    }
+                },
+                "edited_pam_sequence": {"type": "string"},
+                "pam_still_intact": {"type": "boolean"},
+                "cas9_recut_blocked": {"type": "boolean"},
+                "left_homology_arm": {"type": "string"},
+                "insert_payload": {"type": "string"},
+                "right_homology_arm": {"type": "string"},
+                "left_arm_length_bp": {"type": "integer"},
+                "right_arm_length_bp": {"type": "integer"},
+                "donor_sequence": {"type": "string"},
+                "donor_length_bp": {"type": "integer"},
+                "final_edited_locus_sequence": {"type": "string"},
+                "rflp": {
+                    "type": ["object", "null"],
+                    "properties": {
+                        "mode": {"type": "string"},
+                        "enzyme_name": {"type": "string"},
+                        "recognition_site": {"type": "string"},
+                        "top_cut_offset": {"type": "integer"},
+                        "wt_amplicon_bands_bp": {"type": "array", "items": {"type": "integer"}},
+                        "hdr_amplicon_bands_bp": {"type": "array", "items": {"type": "integer"}},
+                        "silent_mutations": {"type": "array", "items": {"type": "object"}},
+                        "note": {"type": "string"}
+                    },
+                    "required": [
+                        "mode", "enzyme_name", "recognition_site", "top_cut_offset",
+                        "wt_amplicon_bands_bp", "hdr_amplicon_bands_bp", "silent_mutations", "note"
+                    ]
+                },
+                "out_out_pcr": {
+                    "type": ["object", "null"],
+                    "properties": {
+                        "forward_primer": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "full_sequence": {"type": "string"},
+                                "specific_sequence": {"type": "string"},
+                                "tm": {"type": "number"},
+                                "gc_percent": {"type": "number"}
+                            },
+                            "required": ["name", "full_sequence", "specific_sequence", "tm", "gc_percent"]
+                        },
+                        "reverse_primer": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "full_sequence": {"type": "string"},
+                                "specific_sequence": {"type": "string"},
+                                "tm": {"type": "number"},
+                                "gc_percent": {"type": "number"}
+                            },
+                            "required": ["name", "full_sequence", "specific_sequence", "tm", "gc_percent"]
+                        },
+                        "forward_start_0based": {"type": "integer"},
+                        "forward_end_0based": {"type": "integer"},
+                        "reverse_start_0based": {"type": "integer"},
+                        "reverse_end_0based": {"type": "integer"},
+                        "wt_amplicon_length_bp": {"type": "integer"},
+                        "hdr_amplicon_length_bp": {"type": "integer"},
+                        "wt_amplicon_sequence": {"type": "string"},
+                        "hdr_amplicon_sequence": {"type": "string"},
+                        "left_margin_from_arm_bp": {"type": "integer"},
+                        "right_margin_from_arm_bp": {"type": "integer"}
+                    },
+                    "required": [
+                        "forward_primer", "reverse_primer",
+                        "forward_start_0based", "forward_end_0based",
+                        "reverse_start_0based", "reverse_end_0based",
+                        "wt_amplicon_length_bp", "hdr_amplicon_length_bp",
+                        "wt_amplicon_sequence", "hdr_amplicon_sequence",
+                        "left_margin_from_arm_bp", "right_margin_from_arm_bp"
+                    ]
+                },
+                "warnings": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": [
+                "donor_format", "sgrna_sequence", "strand", "wt_cut_index_0based",
+                "wt_pam_start_0based", "wt_pam_sequence", "is_in_cds",
+                "cds_start_1based", "cds_end_1based", "cds_auto_detected",
+                "protein_before_blocking", "protein_after_blocking", "amino_acid_conserved",
+                "blocking_strategy", "blocking_mutations", "edited_pam_sequence",
+                "pam_still_intact", "cas9_recut_blocked", "left_homology_arm",
+                "insert_payload", "right_homology_arm", "left_arm_length_bp",
+                "right_arm_length_bp", "donor_sequence", "donor_length_bp",
+                "final_edited_locus_sequence", "rflp", "out_out_pcr", "warnings"
+            ]
+        }
     }
 ]
 
@@ -3241,6 +7266,9 @@ TOOL_DISPATCH = {
     "design_fragment_deletion_primers": tool_design_fragment_deletion_primers,
     "verify_sanger_sequencing": tool_verify_sanger_sequencing,
     "calculate_recombination_dosage": tool_calculate_recombination_dosage,
+    "convert_nucleic_acid_units": tool_convert_nucleic_acid_units,
+    "convert_protein_and_coding": tool_convert_protein_and_coding,
+    "calculate_solution_and_temperature": tool_calculate_solution_and_temperature,
     "design_sgrna_primers": tool_design_sgrna_primers,
     "design_shrna_primers": tool_design_shrna_primers,
     "manage_primer_cart_and_export": tool_manage_primer_cart_and_export,
@@ -3248,7 +7276,10 @@ TOOL_DISPATCH = {
     "analyze_western_blot": tool_analyze_western_blot,
     "analyze_qpcr_ddct": tool_analyze_qpcr_ddct,
     "design_plate_layout": tool_design_plate_layout,
-    "analyze_phylogenetic_tree": tool_analyze_phylogenetic_tree,
+    "deconvolute_crispr_sanger": tool_deconvolute_crispr_sanger,
+    "auto_annotate_sequence": tool_auto_annotate_sequence,
+    "design_golden_gate_assembly": tool_design_golden_gate_assembly,
+    "design_hdr_donor": tool_design_hdr_donor,
 }
 
 

@@ -6,8 +6,11 @@ public struct HistoryTreeView: View {
     @ObservedObject private var historyManager = ConstructHistoryManager.shared
     @State private var expandedShiftNodeIDs: Set<UUID> = []
     @State private var expandedOverhangNodeIDs: Set<UUID> = []
+    public var fillsAvailableHeight: Bool = false
 
-    public init() {}
+    public init(fillsAvailableHeight: Bool = false) {
+        self.fillsAvailableHeight = fillsAvailableHeight
+    }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -77,6 +80,7 @@ public struct HistoryTreeView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: fillsAvailableHeight ? .infinity : nil, alignment: .topLeading)
     }
 
     private var topToolbar: some View {
@@ -140,7 +144,7 @@ public struct HistoryTreeView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 360)
         }
-        .frame(maxWidth: .infinity, minHeight: 200)
+        .frame(maxWidth: .infinity, minHeight: 220, maxHeight: fillsAvailableHeight ? .infinity : nil)
         .studioInnerBox(paddingH: 12, paddingV: 12)
     }
 }

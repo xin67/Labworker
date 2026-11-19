@@ -366,7 +366,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                 }
                 .buttonStyle(.glassProminent)
                 .controlSize(.small)
-                .help("从 Finder 导入 .dna / .tif / .pdb / .nwk / .csv / .fasta 并自动直达对应模块")
+                .help("从 Finder 导入 .dna / .tif / .pdb / .csv / .fasta 并自动直达对应模块")
             }
             
             Divider().opacity(0.5)

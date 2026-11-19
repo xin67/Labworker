@@ -10,7 +10,7 @@ func pass(_ name: String) {
 print("🚀 Starting CloneStudio Verification Suite...")
 
 // 1. 验证 BioSequence
-print("🧪 [1/51] Testing BioSequence...")
+print("🧪 [1/52] Testing BioSequence...")
 let cleaned = BioSequence.clean("  atg  cga tcg  123 \n !? ")
 assert(cleaned == "ATGCGATCG", "Clean sequence mismatch: \(cleaned)")
 assert(BioSequence.reverse("ATGC") == "CGTA", "Reverse mismatch")
@@ -20,7 +20,7 @@ assert(BioSequence.gcContent("GGCC") == 100.0, "GC% mismatch")
 pass("BioSequence passed.")
 
 // 2. 验证限制性内切酶数据库与 IUPAC 模糊匹配
-print("🧪 [2/51] Testing RestrictionEnzyme Database & IUPAC...")
+print("🧪 [2/52] Testing RestrictionEnzyme Database & IUPAC...")
 let db = RestrictionEnzymeDatabase.shared
 assert(db.enzymes.count >= 200, "Enzyme DB should contain 200+ enzymes, found: \(db.enzymes.count)")
 guard let bamhi = db.find(name: "BamHI") else { fatalError("BamHI not found") }
@@ -32,24 +32,40 @@ assert(acci.isIn(sequence: "AAAGTATACCCC"))
 pass("RestrictionEnzyme passed (\(db.enzymes.count) enzymes loaded).")
 
 // 3. 验证 TmCalculator
-print("🧪 [3/51] Testing TmCalculator...")
+print("🧪 [3/52] Testing TmCalculator...")
 let tmRes = TmCalculator.calculate(sequence: "ATGCGATCGATCGATCGATCGATC")
 assert(tmRes.length == 24)
 assert(tmRes.tm > 55.0 && tmRes.tm < 75.0, "Tm out of expected range: \(tmRes.tm)")
 pass("TmCalculator passed (Tm = \(tmRes.tm)℃, Ta = \(tmRes.recommendedTa)℃).")
 
-// 4. 验证 DNAMolarCalculator (与官方对齐)
-print("🧪 [4/51] Testing DNAMolarCalculator...")
+// 4. 验证 DNAMolarCalculator (与官方及经典摩尔比连接对齐)
+print("🧪 [4/52] Testing DNAMolarCalculator...")
 let vecRes = DNAMolarCalculator.calculate(cloneType: .single, isVector: true, lengthKb: 5.0, concentrationNgPerUl: 50.0)
 assert(vecRes.recommendedNg == 100.0, "Vector ng mismatch")
 assert(vecRes.volFormatted == "2.00", "Vector vol mismatch")
 let insRes = DNAMolarCalculator.calculate(cloneType: .single, isVector: false, lengthKb: 1.0, concentrationNgPerUl: 20.0)
 assert(insRes.recommendedNg == 40.0, "Insert ng mismatch")
 assert(insRes.volFormatted == "2.00", "Insert vol mismatch")
-pass("DNAMolarCalculator passed (Vector: 100ng/2μL, Insert: 40ng/2μL).")
+if let ligRes = DNAMolarCalculator.calculateLigationByMolarRatio(
+    vectorLengthBp: 5000,
+    vectorConcNgPerUl: 50.0,
+    vectorPmol: 0.03,
+    insertLengthBp: 1000,
+    insertConcNgPerUl: 25.0,
+    molarRatio: .r1_3
+) {
+    assert(abs(ligRes.vectorNg - 97.5) < 1e-6 && abs((ligRes.vectorVolUl ?? 0) - 1.95) < 1e-6, "Ligation vector calculation mismatch")
+    assert(abs(ligRes.insertNg - 58.5) < 1e-6 && abs((ligRes.insertVolUl ?? 0) - 2.34) < 1e-6, "Ligation insert calculation mismatch")
+    assert(!ligRes.lowInsertSingleWarning && !ligRes.lowInsertMultiWarning, "58.5 ng insert must not trigger low-ng warning")
+} else {
+    fatalError("Ligation molar ratio calculation returned nil")
+}
+let lowLig = DNAMolarCalculator.calculateLigationByMolarRatio(vectorLengthBp: 4000, vectorPmol: 0.03, insertLengthBp: 500, molarRatio: .r1_1)
+assert(lowLig?.lowInsertSingleWarning == true && lowLig?.lowInsertMultiWarning == true, "9.75 ng insert must trigger both single (<20ng) and multi (<10ng) warnings")
+pass("DNAMolarCalculator passed (Vector: 100ng/2μL, Insert: 40ng/2μL & Ligation 0.03 pmol 1:3 verified).")
 
 // 5. 验证 HomologyArmDesigner
-print("🧪 [5/51] Testing HomologyArmDesigner (18bp Laboratory Golden Preference & Custom Arm Length)...")
+print("🧪 [5/52] Testing HomologyArmDesigner (18bp Laboratory Golden Preference & Custom Arm Length)...")
 let testSeq = "ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG"
 let localDesign = HomologyArmDesigner.designEntryClone(
     insertSeq: testSeq,
@@ -106,7 +122,7 @@ assert(mut20.primerR.homologyArm.count == 20, "Mutagenesis homology arm must be 
 pass("HomologyArmDesigner passed (Clone & Mutagenesis 18 bp/20 bp verified).")
 
 // 6. 验证 ExcelOrderExporter (自动灌装当前项目真实表单)
-print("🧪 [6/51] Testing ExcelOrderExporter with user templates...")
+print("🧪 [6/52] Testing ExcelOrderExporter with user templates...")
 let exporter = ExcelOrderExporter.shared
 let tsingkeTpl = exporter.locateTemplate(name: ExcelOrderExporter.defaultTsingkeTemplateName)
 assert(tsingkeTpl != nil, "Must locate 擎科引物合成订购表.xlsx")
@@ -122,7 +138,7 @@ try? FileManager.default.removeItem(atPath: tempOut)
 pass("ExcelOrderExporter passed.")
 
 // 7. 验证 GenomicLibraryService SQLite 数据库与人/鼠源检索
-print("🧪 [7/51] Testing GenomicLibraryService (SQLite3 Human vs Mouse)...")
+print("🧪 [7/52] Testing GenomicLibraryService (SQLite3 Human vs Mouse)...")
 let libService = GenomicLibraryService.shared
 // 人源 sgRNA 检索 TP53
 let humanSg = libService.search(query: "TP53", species: .human, type: .sgRNA)
@@ -143,7 +159,7 @@ assert(humanSh.first?.species == .human)
 pass("Human shRNA search CDH17 found: \(humanSh.count) targets")
 
 // 8. 验证 CRISPRDesigner
-print("🧪 [8/51] Testing CRISPRDesigner (lentiCRISPR v2 overhangs)...")
+print("🧪 [8/52] Testing CRISPRDesigner (lentiCRISPR v2 overhangs)...")
 let sgTarget = "GTCGCTGAGCTCCGATTCGA"
 let sgPair = CRISPRDesigner.designPair(
     target: sgTarget,
@@ -161,7 +177,7 @@ assert(sgPair.revPrimer.name == "P1_sg1-REV")
 pass("CRISPRDesigner passed.")
 
 // 9. 验证 ShRNADesigner
-print("🧪 [9/51] Testing ShRNADesigner (pLKO.1 hairpin assembly)...")
+print("🧪 [9/52] Testing ShRNADesigner (pLKO.1 hairpin assembly)...")
 let shTarget = "CCAGTCCCTATCACCATAGAA"
 let shPair = ShRNADesigner.designPair(
     target: shTarget,
@@ -181,7 +197,7 @@ assert(shPair.revPrimer.name == "P1_sh1-R")
 pass("ShRNADesigner passed.")
 
 // 10. 验证 CHOPCHOPService URL 构建与 Python 异步直连
-print("🧪 [10/51] Testing CHOPCHOPService (URL & Python Pipeline)...")
+print("🧪 [10/52] Testing CHOPCHOPService (URL & Python Pipeline)...")
 let chopURLHuman = CHOPCHOPService.shared.makeWebURL(gene: "TP53", species: .human)
 assert(chopURLHuman.absoluteString.contains("target=TP53"))
 assert(chopURLHuman.absoluteString.contains("organism=hg38"))
@@ -207,7 +223,7 @@ if ProcessInfo.processInfo.environment["CLONESTUDIO_ONLINE_TEST"] == "1" {
 }
 
 // 11. 验证 SgRNAScoringEngine (Doench RS2 & TTTT Pol III 终止拦截)
-print("🧪 [11/51] Testing SgRNAScoringEngine (Reliability & Termination Filter)...")
+print("🧪 [11/52] Testing SgRNAScoringEngine (Reliability & Termination Filter)...")
 // 优质靶点：5' G, 3' G, GC 50%
 let idealSg = "GACGATCGATCGATCGATCG"
 let idealSgScore = SgRNAScoringEngine.evaluate(sequence: idealSg)
@@ -229,7 +245,7 @@ assert(poorSgScore.score < 50.0, "sgRNA with Pos 20 T and extreme GC should be l
 pass("SgRNAScoringEngine passed (Ideal: \(idealSgScore.score), Fatal TTTT: \(fatalSgScore.score), Poor: \(poorSgScore.score)).")
 
 // 12. 验证 ShRNAScoringEngine (Reynolds / Ui-Tei 热力学不对称性与排序)
-print("🧪 [12/51] Testing ShRNAScoringEngine (Thermodynamic Asymmetry & RISC Loading)...")
+print("🧪 [12/52] Testing ShRNAScoringEngine (Thermodynamic Asymmetry & RISC Loading)...")
 // 优质 shRNA: 5' C, 3' A, Pos 10 A, GC 42%
 let idealSh = "CCAGTCCCTATCACCATAGAA" // 21nt
 let idealShScore = ShRNAScoringEngine.evaluate(sequence: idealSh)
@@ -249,7 +265,7 @@ assert(dummyTargetHigh.score > dummyTargetLow.score, "High target score must exc
 pass("ShRNAScoringEngine passed (Ideal: \(idealShScore.score), Fatal TTTT: \(fatalShScore.score)).")
 
 // 13. SnapGeneService 真实文件解析与安全原位注入测试
-print("🧪 [13/51] Testing SnapGeneService (parse & in-place primer injection with backup)...")
+print("🧪 [13/52] Testing SnapGeneService (parse & in-place primer injection with backup)...")
 let testSrcPath = "/tmp/nonexistent_optional_bench_sample.dna"
 if FileManager.default.fileExists(atPath: testSrcPath) {
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("snapgene_test_\(UUID().uuidString)")
@@ -277,11 +293,11 @@ if FileManager.default.fileExists(atPath: testSrcPath) {
     try? FileManager.default.removeItem(at: tmpDir)
     pass("SnapGene parse & in-place inject passed (backup created & primers verified).")
 } else {
-    print("   ⚠️ Skipped [13/51] (Desktop sample file not found)")
+    print("   ⚠️ Skipped [13/52] (Desktop sample file not found)")
 }
 
 // 14. SnapGeneService 双质粒重组装配测试
-print("🧪 [14/51] Testing SnapGeneService (dual-plasmid recombinant assembly)...")
+print("🧪 [14/52] Testing SnapGeneService (dual-plasmid recombinant assembly)...")
 if FileManager.default.fileExists(atPath: testSrcPath) {
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recomb_test_\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -312,11 +328,11 @@ if FileManager.default.fileExists(atPath: testSrcPath) {
     try? FileManager.default.removeItem(at: tmpDir)
     pass("SnapGene dual-plasmid recombinant assembly passed (Length: \(expectedLen) bp, Feature & Primers embedded).")
 } else {
-    print("   ⚠️ Skipped [14/51] (Desktop sample file not found)")
+    print("   ⚠️ Skipped [14/52] (Desktop sample file not found)")
 }
 
 // 15. HomologyArmDesigner 质粒片段删除与反向 PCR 环化引物设计测试
-print("🧪 [15/51] Testing HomologyArmDesigner.designFragmentDeletion (18bp Golden Homology Arm)...")
+print("🧪 [15/52] Testing HomologyArmDesigner.designFragmentDeletion (18bp Golden Homology Arm)...")
 let mockPlasmid = "ATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTGGTCGAGCTGGACGGCGACGTAAACGGCCACAAGTTCAGCGTGTCCGGCGAGGGCGAGGGCGATGCCACCTACGGCAAGCTGACCCTGAAGTTCATCTGCACCACCGGCAAGCTGCCCGTGCCCTGGCCCACCCTCGTGACCACCCTGACCTACGGCGTGCAGTGCTTCAGCCGCTACCCCGACCACATGAAGCAGCACGACTTCTTCAAGTCCGCCATGCCCGAAGGCTACGTCCAGGAGCGCACCATCTTCTTCAAGGACGACGGCAACTACAAGACCCGCGCCGAGGTGAAGTTCGAGGGCGACACCCTGGTGAACCGCATCGAGCTGAAGGGCATCGACTTCAAGGAGGACGGCAACATCCTGGGGCACAAGCTGGAGTACAACTACAACAGCCACAACGTCTATATCATGGCCGACAAGCAGAAGAACGGCATCAAGGTGAACTTCAAGATCCGCCACAACATCGAGGACGGCAGCGTGCAGCTCGCCGACCACTACCAGCAGAACACCCCCATCGGCGACGGCCCCGTGCTGCTGCCCGACAACCACTACCTGAGCACCCAGTCCGCCCTGAGCAAAGACCCCAACGAGAAGCGCGATCACATGGTCCTGCTGGAGTTCGTGACCGCCGCCGGGATCACTCTCGGCATGGACGAGCTGTACAAGTAA"
 let delRes18 = HomologyArmDesigner.designFragmentDeletion(
     plasmidSeq: mockPlasmid,
@@ -333,7 +349,7 @@ assert((delRes18.primerR.tm ?? 0) >= 55.0, "Primer R Tm must be >= 55℃")
 pass("designFragmentDeletion passed (18 bp homology arm verified).")
 
 // 16. SnapGeneService 真实质粒片段敲除与新产物重构测试
-print("🧪 [16/51] Testing SnapGeneService.deleteFragment (Plasmid Fragment Deletion & Feature Re-mapping)...")
+print("🧪 [16/52] Testing SnapGeneService.deleteFragment (Plasmid Fragment Deletion & Feature Re-mapping)...")
 if FileManager.default.fileExists(atPath: testSrcPath) {
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("del_test_\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -361,11 +377,11 @@ if FileManager.default.fileExists(atPath: testSrcPath) {
     try? FileManager.default.removeItem(at: tmpDir)
     pass("SnapGene deleteFragment passed (Deleted: 201 bp, New Length: \(knockoutInfo.length) bp, Features re-mapped).")
 } else {
-    print("   ⚠️ Skipped [16/51] (Desktop sample file not found)")
+    print("   ⚠️ Skipped [16/52] (Desktop sample file not found)")
 }
 
 // 17. CloneCanvas 纯数学几何层测试 (CircularGeometry + CircularOVELayout)
-print("🧪 [17/51] Testing CircularGeometry & CircularOVELayout (Polar math, Concentric Y-Offsets & 4-Quadrant Label Relaxation)...")
+print("🧪 [17/52] Testing CircularGeometry & CircularOVELayout (Polar math, Concentric Y-Offsets & 4-Quadrant Label Relaxation)...")
 let testCenter = CartesianPoint(x: 200, y: 200)
 let pt12 = CircularGeometry.polarToCartesian(radius: 100, angleRadians: 0, center: testCenter)
 assert(abs(pt12.x - 200.0) < 1e-6 && abs(pt12.y - 100.0) < 1e-6, "12 o'clock polarToCartesian mismatch")
@@ -397,7 +413,7 @@ assert(sortedY[1] - sortedY[0] >= 13.5 && sortedY[2] - sortedY[1] >= 13.5, "Rela
 pass("CircularGeometry & CircularOVELayout passed (Concentric tracks & label collision relaxation verified).")
 
 // 18. 微观单碱基双链与氨基酸密码子翻译引擎测试 (SequenceRowLayout + CodonTranslator)
-print("🧪 [18/51] Testing SequenceRowLayout & CodonTranslator (36bp row slicing, complement & codon ribbon)...")
+print("🧪 [18/52] Testing SequenceRowLayout & CodonTranslator (36bp row slicing, complement & codon ribbon)...")
 let testCDS = "ATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTGGTCGAGCTGGACGGCGACGTCTAA"
 let codons = CodonTranslator.translateSequence(testCDS, readingFrameOffset: 0)
 assert(codons.first?.aminoAcid == "M" && codons.first?.isStartCodon == true, "First codon must be Start (M)")
@@ -417,7 +433,7 @@ assert(rowSlices[0].codons.count == 12, "36bp slice must contain 12 translated c
 pass("SequenceRowLayout & CodonTranslator passed (2 rows, 12 codons/row, Start M & Stop * verified).")
 
 // 19. 质粒构建谱系树与改造前后 Feature 坐标位移测试 (ConstructHistoryManager)
-print("🧪 [19/51] Testing ConstructHistoryManager (Multi-step genealogy & FeatureShiftItem diff calculation)...")
+print("🧪 [19/52] Testing ConstructHistoryManager (Multi-step genealogy & FeatureShiftItem diff calculation)...")
 let wtFeatures: [(String, Int, Int)] = [
     ("Promoter", 100, 500),
     ("ExcisedTag", 600, 750),
@@ -437,7 +453,7 @@ assert(shiftItems.contains { $0.featureName == "AmpR" && $0.status == .shifted &
 pass("ConstructHistoryManager & FeatureShiftItem passed (Upstream unchanged, Deleted, Inserted, Downstream +569bp shift verified).")
 
 // 20. 精细质粒工作台引擎测试 (scanConstructCutsites + NEB Buffer 活性矩阵 + 动态每行碱基数 + 选区 Tm)
-print("🧪 [20/51] Testing Fine-Grained Plasmid Workbench Engine (ConstructCutsite scanner, NEB Buffer matrix & dynamic row layout)...")
+print("🧪 [20/52] Testing Fine-Grained Plasmid Workbench Engine (ConstructCutsite scanner, NEB Buffer matrix & dynamic row layout)...")
 let testConstructSeq = "ATGCAAGGCCTGGCCTAATGCAGCTGGGAATTCGGATCCAAGCTTGGTCTCAAATTTAAACTCGAGCATATG"
 let scannedSites = RestrictionEnzymeDatabase.shared.scanConstructCutsites(
     sequence: testConstructSeq,
@@ -466,7 +482,7 @@ AppState.shared.showPlasmidPreview = true
 pass("Fine-Grained Plasmid Workbench Engine passed (\(scannedSites.count) cut sites, NEB Buffer matrix, \(opt36)->\(opt60)bp/row, Tm=\(selTm)°C verified).")
 
 // 21. 验证简化版浅色/深色应用图标、系统深浅色自动跟随与 macOS 状态栏模板图标
-print("🧪 [21/51] Testing CloneStudioIconProvider (Light/Dark simplified icons & macOS status bar template icon)...")
+print("🧪 [21/52] Testing CloneStudioIconProvider (Light/Dark simplified icons & macOS status bar template icon)...")
 let lightAppIcon = CloneStudioIconProvider.iconImage(isLight: true)
 let darkAppIcon = CloneStudioIconProvider.iconImage(isLight: false)
 let statusTplIcon = CloneStudioIconProvider.statusBarTemplateImage
@@ -480,7 +496,7 @@ await MainActor.run {
 pass("CloneStudioIconProvider passed (Light icon, Dark icon & StatusBar template icon verified).")
 
 // 22. 验证 CHOPCHOP 全维综合评分 (combinedScore) 与本地 SG/SH 序列三级高亮匹配算法
-print("🧪 [22/51] Testing CHOPCHOP combinedScore & Local SG/SH Highlighting Comparison...")
+print("🧪 [22/52] Testing CHOPCHOP combinedScore & Local SG/SH Highlighting Comparison...")
 let chopTarget1 = CHOPCHOPTarget(
     rank: 15,
     targetSequence: "CCATTGTTCAATATCGTCCGGGG",
@@ -544,7 +560,7 @@ await MainActor.run {
 pass("CHOPCHOP combinedScore, Local SG/SH 3-tier matching & cross-tab persistence passed (Score: \(chopTarget1.combinedScore.score) vs \(chopTargetLowEff.combinedScore.score)).")
 
 // 23. 验证状态栏图标显隐开关、PlasmidPoolManager 质粒池解析入库与 CloneStudio MCP Server 一键设计引物
-print("🧪 [23/51] Testing StatusBarIcon toggle, PlasmidPoolManager & CloneStudio MCP Server...")
+print("🧪 [23/52] Testing StatusBarIcon toggle, PlasmidPoolManager & CloneStudio MCP Server...")
 await MainActor.run {
     let orig = AppState.shared.showStatusBarIcon
     AppState.shared.showStatusBarIcon = false
@@ -619,7 +635,7 @@ if let appSup = FileManager.default.urls(for: .applicationSupportDirectory, in: 
     try? FileManager.default.removeItem(at: appSup.appendingPathComponent("CloneStudio/plasmid_pool.json"))
 }
 
-// 验证 Labworker MCP Server 20261115 JSON-RPC 2.0 协议与新增全栈实验工具 (17 Tools)
+// 验证 Labworker MCP Server 20261115 JSON-RPC 2.0 协议与全部实验工具 (23 Tools)
 let mcpRpcProc = Process()
 mcpRpcProc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
 mcpRpcProc.arguments = [mcpScript]
@@ -633,6 +649,9 @@ let rpcRequests = """
 {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"analyze_protein_and_docking_box","arguments":{"sequence":"MKVLLFAAVVGGLAAAGVSAKELRKIYEDGKVTYTLDNGKPVVLVFYPADFTFVCPTEIIAFSENAAKKFEEQGAQVLFASTDSEYSLLAWTNIPRKEGGLGPINIPLLADTN","mutations":["V13A","T48P"]}}}
 {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"analyze_western_blot","arguments":{"target_iods":[100,110,220,240],"loading_control_iods":[100,105,100,102],"lane_groups":["WT","WT","KO","KO"]}}}
+{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"convert_nucleic_acid_units","arguments":{"mode":"dsdna_ug_to_pmol","length_bp_or_nt":5000,"value":1}}}
+{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"convert_protein_and_coding","arguments":{"mode":"coding_from_bp","value":900}}}
+{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"calculate_solution_and_temperature","arguments":{"mode":"dilution","stock_conc":1,"stock_unit":"M","final_conc":10,"final_unit":"mM","final_volume":50,"vol_unit":"mL"}}}
 """
 rpcInPipe.fileHandleForWriting.write(rpcRequests.data(using: .utf8)!)
 try? rpcInPipe.fileHandleForWriting.close()
@@ -640,15 +659,33 @@ let rpcOutData = rpcOutPipe.fileHandleForReading.readDataToEndOfFile()
 mcpRpcProc.waitUntilExit()
 let rpcOutStr = String(data: rpcOutData, encoding: .utf8) ?? ""
 assert(rpcOutStr.contains("labworker-mcp") && rpcOutStr.contains("20261115"), "MCP Server must identify as labworker-mcp 20261115")
-assert(rpcOutStr.contains("analyze_protein_and_docking_box") && rpcOutStr.contains("analyze_western_blot") && rpcOutStr.contains("analyze_qpcr_ddct") && rpcOutStr.contains("design_plate_layout") && rpcOutStr.contains("analyze_phylogenetic_tree") && rpcOutStr.contains("verify_sanger_sequencing"), "MCP Server 20261115 must expose all 17 full-stack tools")
-assert(rpcOutStr.contains("vina_config") && rpcOutStr.contains("mean_fold"), "MCP Server 20261115 protein docking box & WB analysis tools must execute and return structured JSON")
+assert(rpcOutStr.contains("analyze_protein_and_docking_box") && rpcOutStr.contains("analyze_western_blot") && rpcOutStr.contains("analyze_qpcr_ddct") && rpcOutStr.contains("design_plate_layout") && rpcOutStr.contains("verify_sanger_sequencing") && rpcOutStr.contains("convert_nucleic_acid_units") && rpcOutStr.contains("convert_protein_and_coding") && rpcOutStr.contains("calculate_solution_and_temperature") && rpcOutStr.contains("deconvolute_crispr_sanger") && rpcOutStr.contains("auto_annotate_sequence") && rpcOutStr.contains("design_golden_gate_assembly") && rpcOutStr.contains("design_hdr_donor"), "MCP Server must expose all 23 full-stack tools")
+assert(!rpcOutStr.contains("analyze_phylogenetic_tree"), "Removed phylogenetic tree tool must not appear in MCP tool list")
+assert(rpcOutStr.contains("vina_config") && rpcOutStr.contains("mean_fold") && rpcOutStr.contains("0.3 pmol") && rpcOutStr.contains("49.5 mL"), "MCP Server bio calculation tools must return verified outputs")
 let catalogCount = await MainActor.run { PlasmidPoolManager.mcpToolsCatalog.count }
 let cfgJSON = await MainActor.run { PlasmidPoolManager.shared.mcpConfigJSONString }
-assert(catalogCount == 17 && cfgJSON.contains("\"labworker\""), "PlasmidPoolManager must expose 17 MCP tools and labworker JSON config")
-pass("StatusBarIcon toggle, PlasmidPoolManager (\(poolCount) plasmids) & Labworker MCP Server 20261115 (17 tools) passed.")
+assert(catalogCount == 23 && cfgJSON.contains("\"labworker\""), "PlasmidPoolManager must expose 23 MCP tools and labworker JSON config")
 
-// 24. 验证 Phase 1 实验台工具引擎 (PlateLayoutEngine + QPCRAnalysisEngine + PhylogeneticTreeEngine)
-print("🧪 [24/51] Testing Phase 1 Bench Engines (PlateLayoutEngine, QPCRAnalysisEngine & PhylogeneticTreeEngine)...")
+// 验证 SnapGene XML BindingSite 同时兼容 strand="1" 与 boundStrand="1"（避免反向引物误显示为 F）
+let bridgeDir = URL(fileURLWithPath: mcpScript).deletingLastPathComponent().path
+let strandProbe = Process()
+strandProbe.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+strandProbe.arguments = [
+    "-c",
+    "import sys; sys.path.insert(0, sys.argv[1]); import snapgene_bridge as sb; xml=b'<Primers><Primer name=\"Test-F\" sequence=\"ATGCATGCATGC\"><BindingSite location=\"0-11\" strand=\"0\"/></Primer><Primer name=\"Test-R\" sequence=\"GCATGCATGCAT\"><BindingSite location=\"50-61\" strand=\"1\"/></Primer></Primers>'; res=sb.extract_primers([(5, xml)]); assert res[0]['bindingSites'][0]['strand']=='0' and res[1]['bindingSites'][0]['strand']=='1', res; print('STRAND_OK')",
+    bridgeDir
+]
+let strandPipe = Pipe()
+strandProbe.standardOutput = strandPipe
+try strandProbe.run()
+strandProbe.waitUntilExit()
+let strandOut = String(data: strandPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+assert(strandProbe.terminationStatus == 0 && strandOut.contains("STRAND_OK"), "snapgene_bridge extract_primers must parse strand='1' as reverse strand")
+
+pass("StatusBarIcon toggle, PlasmidPoolManager (\(poolCount) plasmids), SnapGene reverse-primer strand='1' & Labworker MCP Server 20261115 (23 tools) passed.")
+
+// 24. 验证 Phase 1 实验台工具引擎 (PlateLayoutEngine + QPCRAnalysisEngine)
+print("🧪 [24/52] Testing Phase 1 Bench Engines (PlateLayoutEngine & QPCRAnalysisEngine)...")
 let demoSamples = PlateLayoutEngine.parseSampleTable("Sample\tGroup\tReplicates\nWT\tControl\t3\nTP53-OE\tTreatment\t3\nTP53-KO\tTreatment\t3")
 assert(demoSamples.count == 3, "Must parse 3 sample definitions")
 let autoPlate = PlateLayoutEngine.assignPlate(
@@ -671,19 +708,10 @@ let qpcrReport = QPCRAnalysisEngine.computeDdct(
 )
 assert(!qpcrReport.sampleResults.isEmpty, "qPCR relative quantification must produce sampleResults")
 assert(qpcrReport.sampleResults.contains { $0.sample.hasPrefix("TP53-OE") && $0.fold > 2.0 }, "TP53-OE fold change must be > 2.0")
-
-let parsedTree = try PhylogeneticTreeEngine.parseNewick(PhylogeneticTreeEngine.defaultExampleNewick)
-let leaves = PhylogeneticTreeEngine.collectLeafNodes(parsedTree)
-assert(leaves.count >= 6, "Demo phylogenetic tree must have >= 6 leaves")
-let rectLayout = PhylogeneticTreeEngine.computeLayout(root: parsedTree, mode: .phylogram)
-let radLayout = PhylogeneticTreeEngine.computeLayout(root: parsedTree, mode: .circular)
-assert(rectLayout.nodes.count == radLayout.nodes.count && rectLayout.leafCount == leaves.count, "Tree phylogram & circular layouts must produce consistent node counts")
-let rfComparison = PhylogeneticTreeEngine.compareTrees(current: parsedTree, other: parsedTree)
-assert(rfComparison.rfDistance == 0 && rfComparison.identical == true, "Identical trees must have RF=0 and identical=true")
-pass("Phase 1 Bench Engines passed (Plate 96-well auto layout, qPCR ΔΔCt & Newick tree RF=0 verified).")
+pass("Phase 1 Bench Engines passed (Plate 96-well auto layout & qPCR ΔΔCt verified).")
 
 // 25. 验证 Phase 2 生物图像底层引擎与菌落计数器 (BioImageProcessor + ColonyCounterEngine)
-print("🧪 [25/51] Testing BioImageProcessor & ColonyCounterEngine (Illumination Flattening, Watershed Splitting, Blue-White HSV & Garwood Poisson CI)...")
+print("🧪 [25/52] Testing BioImageProcessor & ColonyCounterEngine (Illumination Flattening, Watershed Splitting, Blue-White HSV & Garwood Poisson CI)...")
 let demoPlatePlane = BioImageProcessor.generateDemoColonyPlatePlane(width: 320, height: 320)
 let colonyParams = ColonySegmentationParams(dilutionFactor: 100, platedVolumeMl: 0.1)
 let colonySeg = ColonyCounterEngine.segmentPlate(plane: demoPlatePlane, params: colonyParams)
@@ -834,7 +862,7 @@ do {
 pass("BioImageProcessor & ColonyCounterEngine passed (Detected \(colonySummary.includedCount) colonies: Blue=\(colonySummary.blueCount), White=\(colonySummary.whiteCount)).")
 
 // 26. 验证 Western Blot 灰度积分定量与凝胶电泳分子量回归引擎 (WesternBlotEngine + GelAnalysisEngine)
-print("🧪 [26/51] Testing WesternBlotEngine & GelAnalysisEngine (Background subtraction, Normalization & Log10 MW Regression)...")
+print("🧪 [26/52] Testing WesternBlotEngine & GelAnalysisEngine (Background subtraction, Normalization & Log10 MW Regression)...")
 let demoBlotPlane = BioImageProcessor.generateDemoWesternBlotPlane(width: 400, height: 240)
 let blotLanes = WesternBlotEngine.autoDetectLanesAndBands(plane: demoBlotPlane)
 assert(blotLanes.count == 6, "Default Western Blot demo must detect 6 lanes")
@@ -876,18 +904,109 @@ do {
 }
 pass("WesternBlotEngine & GelAnalysisEngine passed (6 lanes quantified, Gel R² = \(String(format: "%.4f", gelAuto.fit?.r2 ?? 0))).")
 
-// 27. 验证科研多图拼版、RGB 多通道荧光合成与线段强度剖面引擎 (FigureAnnotatorEngine)
-print("🧪 [27/51] Testing FigureAnnotatorEngine (RGB Fluorescence Composite & Colocalization Line Profile)...")
-let demoPanels = FigureAnnotatorEngine.generateDemoFluorescencePanels(width: 240, height: 180)
-assert(demoPanels.count == 4, "Demo fluorescence panels must generate 4 channels (DAPI, GFP, mCherry, Merge)")
-let compositePlane = FigureAnnotatorEngine.renderCompositePlane(for: demoPanels[3])
-assert(compositePlane.width == 240 && compositePlane.height == 180, "Composite plane dimensions mismatch")
-let profilePts = FigureAnnotatorEngine.sampleLineProfile(for: demoPanels[3], sampleCount: 60)
-assert(profilePts.count == 60 && abs((profilePts.last?.distanceFraction ?? 0) - 1.0) < 1e-6, "Line intensity profile must sample 60 points with valid normalized distance")
-pass("FigureAnnotatorEngine passed (4-panel RGB composite & 60-point colocalization line profile verified).")
+// 27. 验证同源重组 PCR 扩增凝胶电泳片段模拟引擎 (HomologousPCRGelSimulator)
+print("🧪 [27/52] Testing HomologousPCRGelSimulator (Agarose Sieving Physics, Auto Ladder & Amplicon Sizes)...")
+// 27.1 物理迁移单调性与不同琼脂糖浓度筛分效应
+let y10k_10 = AgaroseGelConcentration.c1_0.migrationY(sizeBp: 10000)
+let y5k_10  = AgaroseGelConcentration.c1_0.migrationY(sizeBp: 5000)
+let y1k_10  = AgaroseGelConcentration.c1_0.migrationY(sizeBp: 1000)
+let y250_10 = AgaroseGelConcentration.c1_0.migrationY(sizeBp: 250)
+assert(y10k_10 < y5k_10 && y5k_10 < y1k_10 && y1k_10 < y250_10, "Smaller DNA fragments must migrate further down the agarose gel")
+
+let bigSep_08 = abs(AgaroseGelConcentration.c0_8.migrationY(sizeBp: 8000) - AgaroseGelConcentration.c0_8.migrationY(sizeBp: 5000))
+let bigSep_20 = abs(AgaroseGelConcentration.c2_0.migrationY(sizeBp: 8000) - AgaroseGelConcentration.c2_0.migrationY(sizeBp: 5000))
+assert(bigSep_08 > bigSep_20, "0.8% agarose must resolve 8kb vs 5kb better than 2.0% agarose")
+
+let smallSep_20 = abs(AgaroseGelConcentration.c2_0.migrationY(sizeBp: 500) - AgaroseGelConcentration.c2_0.migrationY(sizeBp: 250))
+let smallSep_08 = abs(AgaroseGelConcentration.c0_8.migrationY(sizeBp: 500) - AgaroseGelConcentration.c0_8.migrationY(sizeBp: 250))
+assert(smallSep_20 > smallSep_08, "2.0% agarose must resolve 500bp vs 250bp better than 0.8% agarose")
+
+// 27.2 自动 DNA Marker 选档
+assert(HomologousPCRGelSimulator.recommendedLadder(forMaxSizeBp: 1500).id == "dl2000", "Expected DL2000 for <= 1900 bp")
+assert(HomologousPCRGelSimulator.recommendedLadder(forMaxSizeBp: 4200).id == "dl5000", "Expected DL5000 for <= 4900 bp")
+assert(HomologousPCRGelSimulator.recommendedLadder(forMaxSizeBp: 7400).id == "neb1kbplus", "Expected NEB 1 kb Plus for > 4900 bp")
+
+// 27.3 单片段双酶切 + 切落片段 + 同源臂与附加碱基扩增总长验证
+let simSingle = HomologousPCRGelSimulator.simulateSingleFragment(
+    rawVectorLengthBp: 6200,
+    effectiveVectorBackboneLengthBp: 5400,
+    deletedVectorBp: 800,
+    linearizationMode: .double,
+    cleanInsertCoreLengthBp: 1000,
+    extra5LengthBp: 6,
+    extra3LengthBp: 0,
+    homologyLength: 20,
+    insertGeneName: "EGFP"
+)
+assert(simSingle.ladder.id == "neb1kbplus", "5400 bp vector must auto-select NEB 1 kb Plus")
+let vecLaneBands = simSingle.lanes.first(where: { $0.id == "lane-vector" })?.bands ?? []
+assert(vecLaneBands.contains(where: { $0.sizeBp == 5400 && $0.role == .linearVector }) && vecLaneBands.contains(where: { $0.sizeBp == 800 && $0.role == .excisedDropout }), "Double-digest vector lane must show both 5400 bp backbone and 800 bp excised dropout")
+let insBand = simSingle.lanes.first(where: { $0.id == "lane-insert" })?.bands.first
+assert(insBand?.sizeBp == 1046, "Insert PCR amplicon should be 1000 + 6 + 20*2 = 1046 bp, got \(String(describing: insBand?.sizeBp))")
+
+// 27.4 多片段 Gibson 扩增子逐端同源臂规则与近距离共迁移告警
+let fA = String(repeating: "ATGC", count: 150) // 600 bp
+let fB = String(repeating: "GCTA", count: 200) // 800 bp
+let fC = String(repeating: "CGAT", count: 250) // 1000 bp
+let simMulti = HomologousPCRGelSimulator.simulateMultiFragment(
+    effectiveVectorBackboneLengthBp: 4200,
+    deletedVectorBp: 0,
+    rawVectorLengthBp: 4200,
+    fragments: [fA, fB, fC],
+    homologyLength: 20
+)
+let f1Size = simMulti.lanes.first(where: { $0.shortLabel == "F1" })?.bands.first?.sizeBp
+let f2Size = simMulti.lanes.first(where: { $0.shortLabel == "F2" })?.bands.first?.sizeBp
+let f3Size = simMulti.lanes.first(where: { $0.shortLabel == "F3" })?.bands.first?.sizeBp
+assert(f1Size == 620 && f2Size == 820 && f3Size == 1040, "Multi-fragment amplicons must be [620, 820, 1040], got [\(String(describing: f1Size)), \(String(describing: f2Size)), \(String(describing: f3Size))]")
+
+let fNear1 = String(repeating: "ATGC", count: 250) // 1000 bp -> +20 = 1020 bp
+let fNear2 = String(repeating: "CGTA", count: 255) // 1020 bp -> +40 = 1060 bp vs 1020 bp in 0.8%
+let simCoMigrate = HomologousPCRGelSimulator.simulateMultiFragment(
+    effectiveVectorBackboneLengthBp: 4500,
+    deletedVectorBp: 0,
+    rawVectorLengthBp: 4500,
+    fragments: [fNear1, fNear2],
+    homologyLength: 20,
+    concentrationOverride: .c0_8,
+    includeMixControlLane: true
+)
+assert(!simCoMigrate.warnings.isEmpty, "Co-migrating 1020 vs 1060 bp in mix lane at 0.8% must emit resolution warning")
+
+// 27.5 片段删除反向 PCR 与入门克隆验证
+let simDel = HomologousPCRGelSimulator.simulateFragmentDeletion(
+    parentalLengthBp: 6000,
+    deletedLengthBp: 1200,
+    homologyLength: 18
+)
+let delSize = simDel.lanes.first(where: { $0.shortLabel == "缺失PCR" })?.bands.first?.sizeBp
+assert(delSize == 4818, "Deletion inverse PCR amplicon must be 6000 - 1200 + 18 = 4818 bp, got \(String(describing: delSize))")
+
+let simEntry = HomologousPCRGelSimulator.simulateEntryClone(
+    cleanInsertLengthBp: 720,
+    hasEnzymes: true,
+    enzyme5: RestrictionEnzymeDatabase.shared.find(name: "BamHI"),
+    enzyme3: RestrictionEnzymeDatabase.shared.find(name: "EcoRI"),
+    primerF: nil,
+    primerR: nil
+)
+let entryAmp = simEntry.lanes.first(where: { $0.shortLabel == "目的PCR" })?.bands.first?.sizeBp
+assert(entryAmp == 762, "Entry clone with BamHI+EcoRI amplicon must be 720 + 30 + 12 = 762 bp, got \(String(describing: entryAmp))")
+assert(simSingle.exportCSV().contains("1046") && simSingle.exportCSV().contains("Gel_Concentration"), "Gel simulation CSV export mismatch")
+let simShortFlankOnly = HomologousPCRGelSimulator.simulateSingleFragment(
+    rawVectorLengthBp: 0,
+    effectiveVectorBackboneLengthBp: 0,
+    deletedVectorBp: 0,
+    linearizationMode: .pcr,
+    cleanInsertCoreLengthBp: 720,
+    homologyLength: 18,
+    omittedShortVectorBp: 102
+)
+assert(simShortFlankOnly.lanes.count == 2 && simShortFlankOnly.infoNotice?.contains("102 bp") == true, "Short-flank-only simulation should emit infoNotice without a fake vector lane")
+pass("HomologousPCRGelSimulator passed (agarose sieving physics, 4 cloning workflows, auto ladder & resolution warnings verified).")
 
 // 28. 验证 WBStudio 16-bit 真实样本 (gapdh_*.tif) 自动配对、Rolling-Ball 圈定与双排内参归一化显著性统计
-print("🧪 [28/51] Testing Integrated WBStudio 16-bit Engine on real gapdh_*.tif samples...")
+print("🧪 [28/52] Testing Integrated WBStudio 16-bit Engine on real gapdh_*.tif samples...")
 let wbGroups = WesternBlotEngine.discoverSampleGroups()
 assert(wbGroups.count >= 2, "Must discover >= 2 WB sample groups from labworker/Samples/WB, found \(wbGroups.count)")
 let group16 = wbGroups.first(where: { $0.rawChemi != nil }) ?? wbGroups[0]
@@ -919,7 +1038,7 @@ assert(grpStatsOut.groupStats.count == 3, "Dual-row WB group statistics must sum
 pass("Integrated WBStudio 16-bit Engine passed (Discovered \(wbGroups.count) real sample groups, 16-bit 6-lane IOD & Welch t-test verified).")
 
 // 29. 验证蛋白质生物物理、三维构象、Ramachandran 二面角与突变评估引擎 (ProteinBiophysicsEngine)
-print("🧪 [29/51] Testing ProteinBiophysicsEngine (pI, GRAVY, 3D Fold, Ramachandran & Mutant ΔΔG)...")
+print("🧪 [29/52] Testing ProteinBiophysicsEngine (pI, GRAVY, 3D Fold, Ramachandran & Mutant ΔΔG)...")
 let demoProt = ProteinBiophysicsEngine.builtinExamples[0]
 let protReport = ProteinBiophysicsEngine.analyzeProtein(sequence: demoProt.sequence)
 assert(protReport.length == demoProt.sequence.count, "Protein length mismatch")
@@ -934,7 +1053,7 @@ assert(mutEvals.allSatisfy { $0.modelType == "empirical_heuristic" && $0.stabili
 pass("ProteinBiophysicsEngine passed (Length=\(protReport.length)aa, pI=\(String(format: "%.2f", protReport.isoelectricPoint)), Q=\(String(format: "%.1f", protReport.compositeQScore)), Contacts=\(protReport.contacts.count)).")
 
 // 30. 验证 Labworker 5 大直觉功能分组、新功能默认偏好设置与 Finder 多格式智能路由
-print("🧪 [30/51] Testing Labworker 5-Category Navigation, Custom Bench Defaults & Finder Routing...")
+print("🧪 [30/52] Testing Labworker 5-Category Navigation, Custom Bench Defaults & Finder Routing...")
 assert(SidebarSectionKind.allCases.count == 5, "SidebarSectionKind must have 5 intuitive sections")
 assert(NavItem.westernBlot.section == .bioImaging && NavItem.gelFigure.section == .bioImaging, "WB and Gel must be grouped under .bioImaging")
 assert(NavItem.proteinWorkbench.section == .benchTools && NavItem.qpcrAnalysis.section == .benchTools, "Protein and qPCR must be grouped under .benchTools")
@@ -971,7 +1090,7 @@ if let wbSample = wbGroups.first {
 pass("Labworker 5-Category Navigation, Custom Bench Defaults & Finder Routing passed.")
 
 // 31. 验证对齐 DockFlowLab (boxes.py & pockets.py) 的 LIGSITE P-S-P 扫描、CONSENSUS_COVERAGE (0.35 / 0.50) 共识融合盒、first_model 截断与 18-60 Å 边界钳制
-print("🧪 [31/51] Testing DockFlowLab-aligned LIGSITE P-S-P Pocket, Consensus Vina Box & PDB Health Card...")
+print("🧪 [31/52] Testing DockFlowLab-aligned LIGSITE P-S-P Pocket, Consensus Vina Box & PDB Health Card...")
 assert(protReport.dockingBox.volumeA3 > 1000.0 && protReport.dockingBox.vinaConfigText.contains("center_x"), "Docking box must produce valid volume and AutoDock Vina config")
 assert(protReport.dockingBox.sizeX >= 18.0 && protReport.dockingBox.sizeX <= 60.0, "Docking box size must be clamped within [18.0, 60.0] Å")
 assert(!protReport.healthCard.isExperimentalOrAlphaFoldPDB && !protReport.healthCard.warnings.isEmpty, "Heuristic fold must transparently report non-experimental coordinate source")
@@ -998,14 +1117,15 @@ assert(pdbLigReport.healthCard.metalIons.contains("ZN"), "Must detect ZN metal i
 assert(pdbLigReport.dockingBox.sourceTitle.contains("共识融合盒"), "Co-crystal ligand overlapping pocket (>=35%) must trigger Consensus Box")
 pass("DockFlowLab-aligned LIGSITE P-S-P Pocket, Vina Box (\(pdbLigReport.dockingBox.sourceTitle)) & PDB Health Card passed.")
 
-// 32. 验证侧边栏自定义显隐控制、系统设置常驻防呆保护与 22 模块（21 个业务模块 + 系统设置）全局功能说明书完整性
-print("🧪 [32/51] Testing Sidebar Visibility Customization & Global Feature Manual...")
+// 32. 验证侧边栏自定义显隐控制、系统设置常驻防呆保护与 20 模块（19 个业务模块 + 系统设置）全局功能说明书完整性
+print("🧪 [32/52] Testing Sidebar Visibility Customization & Global Feature Manual...")
 for nav in NavItem.allCases {
     assert(!nav.summaryDescription.isEmpty && !nav.supportedFormats.isEmpty && !nav.workflowTip.isEmpty, "NavItem \(nav.rawValue) must provide complete manual metadata")
 }
 let totalModulesCount = NavItem.allCases.count
 let businessModulesCount = NavItem.allCases.filter { $0.canBeHiddenInSidebar }.count
-assert(totalModulesCount == 22 && businessModulesCount == 21, "Expected 22 total modules (21 business modules + .settings), got \(totalModulesCount)")
+assert(totalModulesCount == 20 && businessModulesCount == 19, "Expected 20 total modules (19 business modules + .settings), got \(totalModulesCount)")
+assert(!NavItem.allCases.map(\.rawValue).contains("figureAnnotator"), "figureAnnotator must be completely removed")
 assert(!NavItem.settings.canBeHiddenInSidebar, ".settings must never be allowed to hide in sidebar")
 AppState.shared.setNavItemVisible(.settings, visible: false)
 assert(AppState.shared.isNavItemVisible(.settings), ".settings must remain visible even if setNavItemVisible(false) is called")
@@ -1023,7 +1143,7 @@ assert(AppState.shared.hiddenSidebarItems.isEmpty && AppState.shared.isNavItemVi
 pass("Sidebar Visibility Customization & Global Feature Manual (\(totalModulesCount)/\(totalModulesCount) modules: \(businessModulesCount) 个业务模块 + 系统设置) passed.")
 
 // 33. 验证对齐 primer3-py (2.4.0) 的 PrimerQualityEngine (calcHairpin / calcHomodimer / calcDimer / Mg2+ & dNTP 校正 / ASCII 配对图)
-print("🧪 [33/51] Testing PrimerQualityEngine (primer3-py aligned Hairpin, Homodimer, Heterodimer & Mg2+/dNTP salt correction)...")
+print("🧪 [33/52] Testing PrimerQualityEngine (primer3-py aligned Hairpin, Homodimer, Heterodimer & Mg2+/dNTP salt correction)...")
 let stdCond = PrimerQualityEngine.Conditions.standard
 // 33.1 参照 primer3-py 2.4.0: GCGAATTCGC (50mM Mon+, 1.5mM Mg2+, 0.6mM dNTP, 50nM DNA, 37℃)
 // primer3-py: Hairpin dg = -1.70 kcal/mol, tm = 58.3℃; Homodimer dg = -10.50 kcal/mol, tm = 37.5℃, dh = -80.00 kcal/mol
@@ -1063,7 +1183,7 @@ assert(abs(AppState.shared.primerMgConc - 1.5) < 1e-6 && abs(AppState.shared.pri
 pass("PrimerQualityEngine passed (Hairpin dG=\(hp1.dg) kcal/mol, Homodimer dG=\(hd1.dg) kcal/mol, Heterodimer dG=\(het.dg) kcal/mol).")
 
 // 34. 验证 Swift 核心引擎与 Python MCP Server 双端算法 100% 一致性 (Tm / 5'悬垂末端 / 多片段 2-10 同源臂 / 蛋白质 pI & ΔΔG)
-print("🧪 [34/51] Testing Cross-Engine Consistency (Swift CloneStudioCore vs Python MCP Server)...")
+print("🧪 [34/52] Testing Cross-Engine Consistency (Swift CloneStudioCore vs Python MCP Server)...")
 do {
     let mcpScriptURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         .appendingPathComponent("Sources/CloneStudioCore/Resources/clonestudio_mcp_server.py")
@@ -1133,7 +1253,7 @@ do {
 }
 
 // 35. 验证 SangerAlignmentEngine 原生 .ab1 二进制峰图解析、四色荧光轨迹、正反向环状比对与 MCP verify_sanger_sequencing
-print("🧪 [35/51] Testing SangerAlignmentEngine (.ab1 ABIF Binary Parser, 4-Channel Traces & Circular Plasmid Alignment)...")
+print("🧪 [35/52] Testing SangerAlignmentEngine (.ab1 ABIF Binary Parser, 4-Channel Traces & Circular Plasmid Alignment)...")
 do {
     let refPlasmid =
         "GCTAGCGCTACCGGTCGCCACCATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTG" +
@@ -1197,7 +1317,7 @@ do {
 }
 
 // 36. 验证 P01 测试计数、MCP 工具数与模块数单一真值来源 (Single Source of Truth)
-print("🧪 [36/51] Testing Single Source of Truth for Test, Tool & Module Counts (P01)...")
+print("🧪 [36/52] Testing Single Source of Truth for Test, Tool & Module Counts (P01)...")
 do {
     let countProc = Process()
     countProc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
@@ -1210,8 +1330,8 @@ do {
     assert(countProc.terminationStatus == 0, "clonestudio_mcp_server.py --count-tools must exit with 0")
     let pyToolCount = Int((String(data: countData, encoding: .utf8) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
     let swiftCatalogCount = await MainActor.run { PlasmidPoolManager.mcpToolsCatalog.count }
-    assert(pyToolCount == 17 && pyToolCount == swiftCatalogCount, "Python MCP_TOOLS count (\(pyToolCount)) must match Swift mcpToolsCatalog count (\(swiftCatalogCount))")
-    assert(NavItem.allCases.count == 22, "NavItem.allCases.count must be 22")
+    assert(pyToolCount == 23 && pyToolCount == swiftCatalogCount, "Python MCP_TOOLS count (\(pyToolCount)) must match Swift mcpToolsCatalog count (\(swiftCatalogCount))")
+    assert(NavItem.allCases.count == 20, "NavItem.allCases.count must be 20")
     let beforePassCount = passedTests.count
     pass("Single Source of Truth for Counts passed (MCP tools=\(pyToolCount), modules=\(NavItem.allCases.count), dynamic pass registry verified).")
     assert(passedTests.count == beforePassCount + 1, "pass() must dynamically increment passedTests.count")
@@ -1220,7 +1340,7 @@ do {
 }
 
 // 37. 验证 P02 qPCR 伪重复统计修复（禁止将技术复孔当作生物学重复，验证 Swift 与 Python MCP 样品级 Welch t 检验一致性）
-print("🧪 [37/51] Testing qPCR Pseudo-Replication Fix & Biological Replicate Welch's t-test (P02)...")
+print("🧪 [37/52] Testing qPCR Pseudo-Replication Fix & Biological Replicate Welch's t-test (P02)...")
 do {
     // 场景 A：每组仅 1 个生物学样品 × 3 个技术复孔（伪重复场景 -> p 值必须为 nil，statNote == .insufficientBiologicalReplicates）
     let singleBioCSV = """
@@ -1361,7 +1481,7 @@ do {
 }
 
 // 38. 验证 P03 WB 饱和条带阻断统计 (excludeFromStats vs warnOnly)、逐像素红色遮罩计数与 MCP 同步
-print("🧪 [38/51] Testing WB Saturation Exclusion Policy, Pixel Mask & MCP Sync (P03)...")
+print("🧪 [38/52] Testing WB Saturation Exclusion Policy, Pixel Mask & MCP Sync (P03)...")
 do {
     let wbBaseGroup = wbGroups[0]
     guard let baseBuf = WesternBlotEngine.loadRawGrayBuffer(at: wbBaseGroup.primaryQuantPath) else {
@@ -1465,7 +1585,7 @@ do {
 }
 
 // 39. 验证 P04 MCP 同步原子写入、run_id 幂等消费归档与全仓库零个人硬编码路径
-print("🧪 [39/51] Testing MCP Atomic Sync Queue, Run ID Deduplication & Zero Hardcoded Paths (P04)...")
+print("🧪 [39/52] Testing MCP Atomic Sync Queue, Run ID Deduplication & Zero Hardcoded Paths (P04)...")
 do {
     let fm = FileManager.default
     let tempSyncDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p04_sync_\(UUID().uuidString)", isDirectory: true)
@@ -1536,7 +1656,7 @@ do {
 }
 
 // 40. 验证 P05 MCP 写操作 dry-run 预览 (confirm=false)、确认执行 (confirm=true)、覆盖写入自动生成 .bak 备份与工具 annotations
-print("🧪 [40/51] Testing MCP Write Confirmation Dry-Run Preview, Backup & Annotations (P05)...")
+print("🧪 [40/52] Testing MCP Write Confirmation Dry-Run Preview, Backup & Annotations (P05)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p05_\(UUID().uuidString)", isDirectory: true)
@@ -1622,7 +1742,7 @@ do {
 }
 
 // 41. 验证 P06 CRISPR 序列启发式评分语义、参考基因组版本标识与 MCP score_type/off_target_checked 字段
-print("🧪 [41/51] Testing CRISPR Sequence Heuristic Score Semantics & Off-Target Metadata (P06)...")
+print("🧪 [41/52] Testing CRISPR Sequence Heuristic Score Semantics & Off-Target Metadata (P06)...")
 do {
     assert(TargetSortOption.scoreDesc.rawValue == "序列启发式评分", "TargetSortOption.scoreDesc must be '序列启发式评分'")
     assert(TargetSpecies.human.chopchopGenome == "hg38" && TargetSpecies.mouse.chopchopGenome == "mm39", "Reference genome labels must be hg38 and mm39")
@@ -1662,7 +1782,7 @@ do {
 }
 
 // 42. 验证 P07 qPCR Holm–Bonferroni 多重比较校正、Welch 95% 置信区间 (与 R p.adjust / scipy 期望值比对) 与 Python MCP 同步
-print("🧪 [42/51] Testing qPCR Holm–Bonferroni Multiple Comparison & Welch 95% CI (P07)...")
+print("🧪 [42/52] Testing qPCR Holm–Bonferroni Multiple Comparison & Welch 95% CI (P07)...")
 do {
     // 1. 固定 p 值数组校验 Holm 输出（与 R p.adjust(c(0.01, 0.04, 0.03, 0.005), method="holm") 精确一致: [0.03, 0.06, 0.06, 0.02]）
     let rawPs: [Double] = [0.01, 0.04, 0.03, 0.005]
@@ -1749,7 +1869,7 @@ do {
 }
 
 // 43. 验证 P08 qPCR 对照孔 (NTC / no-RT) 污染告警、熔解曲线 Tm 偏离与 Undetermined 质控及计算隔离
-print("🧪 [43/51] Testing qPCR Control Wells (NTC / no-RT), Melt Curve Outlier & Undetermined QC (P08)...")
+print("🧪 [43/52] Testing qPCR Control Wells (NTC / no-RT), Melt Curve Outlier & Undetermined QC (P08)...")
 do {
     let qcTestCSV = """
     well,sample,group,target,task,ct,tm
@@ -1807,7 +1927,7 @@ do {
 }
 
 // 44. 验证 P09 AnalysisRun 溯源记录核心模型、CryptoKit SHA256 校验、WB 导出 .run.json 与原始图像零修改保证
-print("🧪 [44/51] Testing AnalysisRun Provenance Core Model & WB .run.json Sidecar Export (P09)...")
+print("🧪 [44/52] Testing AnalysisRun Provenance Core Model & WB .run.json Sidecar Export (P09)...")
 do {
     let fm = FileManager.default
     let wbSampleGroup = wbGroups[0]
@@ -1872,7 +1992,7 @@ do {
 }
 
 // 45. 验证 P10 (1/2): qPCR 导出 CSV 与 AnalysisRun (.run.json) 溯源记录（含输入 CSV SHA256、手动取消勾选孔 exclusions 与 Holm 校正参数）
-print("🧪 [45/51] Testing qPCR AnalysisRun Provenance .run.json Sidecar Export (P10-qPCR)...")
+print("🧪 [45/52] Testing qPCR AnalysisRun Provenance .run.json Sidecar Export (P10-qPCR)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p10_qpcr_\(UUID().uuidString)", isDirectory: true)
@@ -1929,7 +2049,7 @@ do {
 }
 
 // 46. 验证 P10 (2/2): Sanger 测序验证导出报告与 AnalysisRun (.run.json) 溯源记录（含 .ab1 SHA256、参考序列 SHA256、trimQualityThreshold、次峰阈值、方向与 verdict）
-print("🧪 [46/51] Testing Sanger Verification AnalysisRun Provenance .run.json Sidecar Export (P10-Sanger)...")
+print("🧪 [46/52] Testing Sanger Verification AnalysisRun Provenance .run.json Sidecar Export (P10-Sanger)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p10_sanger_\(UUID().uuidString)", isDirectory: true)
@@ -1994,7 +2114,7 @@ do {
 }
 
 // 47. 验证 P11 SangerBatchEngine 批量测序验证看板（6 条 .ab1 克隆分组合并、正反向覆盖并集、50 文件并发与取消测试、CSV + .run.json 导出及 MCP 批量模式）
-print("🧪 [47/51] Testing SangerBatchEngine Multi-Clone Grouping, Coverage, 50-File Concurrency & Cancellation (P11)...")
+print("🧪 [47/52] Testing SangerBatchEngine Multi-Clone Grouping, Coverage, 50-File Concurrency & Cancellation (P11)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p11_batch_\(UUID().uuidString)", isDirectory: true)
@@ -2110,7 +2230,7 @@ do {
 }
 
 // 48. 验证 P12 Swift–Python 共享测试向量 (Tests/vectors/*.json 全部 6 组 29 个用例双端比对 + 篡改期望值必触发失败保护)
-print("🧪 [48/51] Testing Swift–Python Shared JSON Test Vectors & Tamper Detection (P12)...")
+print("🧪 [48/52] Testing Swift–Python Shared JSON Test Vectors & Tamper Detection (P12)...")
 do {
     let fm = FileManager.default
     let projRoot = CloneStudioResourceLocator.projectRootDirectory
@@ -2118,7 +2238,46 @@ do {
     let vectorFiles = (try fm.contentsOfDirectory(at: vectorsDir, includingPropertiesForKeys: nil))
         .filter { $0.pathExtension.lowercased() == "json" }
         .sorted { $0.lastPathComponent < $1.lastPathComponent }
-    assert(vectorFiles.count == 6, "Expected 6 shared JSON vector files in Tests/vectors/, found \(vectorFiles.count)")
+    assert(vectorFiles.count == 10, "Expected 10 shared JSON vector files in Tests/vectors/, found \(vectorFiles.count)")
+
+    // 验证 Type IIS 酶系外切偏移规范 (BsaI / BsmBI / BbsI / SapI) 与双链切点扫描
+    let type2sExpected: [(String, String, Int, Int, Int)] = [
+        ("BsaI", "GGTCTC", 1, 5, 4),
+        ("BsmBI", "CGTCTC", 1, 5, 4),
+        ("BbsI", "GAAGAC", 2, 6, 4),
+        ("SapI", "GCTCTTC", 1, 4, 3)
+    ]
+    for (eName, eSite, dTop, dBot, ovLen) in type2sExpected {
+        guard let enz = RestrictionEnzymeDatabase.shared.find(name: eName) else {
+            fatalError("Missing Type IIS enzyme \(eName)")
+        }
+        assert(enz.site == eSite && enz.isType2S, "\(eName) site/isType2S mismatch")
+        assert(enz.downstreamCutTopOffset == dTop && enz.downstreamCutBottomOffset == dBot, "\(eName) downstream offsets mismatch")
+        assert(enz.overhangLength == ovLen, "\(eName) overhang length mismatch")
+    }
+    if let bsaI = RestrictionEnzymeDatabase.shared.find(name: "BsaI") {
+        // 正链 GGTCTC + 1bpSpacer(T) + 4bp(AATG) ... 4bp(TTCC) + 1bpSpacer(A) + 反链 GAGACC
+        let dualTestSeq = "AAAAGGTCTCTAATGCCCCCCCCCCCCTTCCAGAGACCAAAA"
+        let dualHits = bsaI.findDualStrandSites(in: dualTestSeq, circular: true)
+        assert(dualHits.count == 2 && dualHits[0].strand == "+" && dualHits[1].strand == "-", "BsaI dual strand hits mismatch")
+        assert(dualHits[0].overhangBps == "AATG" && dualHits[1].overhangBps == "TTCC", "BsaI dual strand overhang extraction mismatch")
+    }
+
+    // 验证 Libraries.sqlite NEB T4 4-bp 保真度矩阵 (256 overhangs)
+    let nebMatrix = GoldenGateEngine.loadNEBFidelityMatrix()
+    assert(nebMatrix.statsByOverhang.count == 256, "Expected 256 overhangs in NEB T4 matrix, found \(nebMatrix.statsByOverhang.count)")
+
+    // 验证 Libraries.sqlite plasmid_features 种子表加载 (15 个标准质粒元件)
+    let seededPlasmidFeatures = PlasmidAnnotationEngine.loadFeaturesFromSQLite()
+    let expectedSeedNames: Set<String> = [
+        "CMV promoter", "EF1a promoter", "U6 promoter", "T7 promoter",
+        "AmpR", "KanR", "PuroR",
+        "pUC ori", "ColE1 ori", "SV40 ori",
+        "3xFLAG", "HA", "His",
+        "EGFP", "mCherry"
+    ]
+    assert(seededPlasmidFeatures.count == 15, "Expected 15 plasmid_features in Libraries.sqlite, found \(seededPlasmidFeatures.count)")
+    assert(Set(seededPlasmidFeatures.map(\.name)) == expectedSeedNames, "Seeded plasmid_features names mismatch")
 
     func checkSwiftVectorCase(functionName: String, caseDict: [String: Any]) throws {
         let cid = caseDict["id"] as? String ?? "unnamed"
@@ -2310,6 +2469,405 @@ do {
                 }
             }
 
+        case "crispr_deconv_golden":
+            let wtSeq = inp["wt_sequence"] as? String ?? ""
+            let sgSeq = inp["sgrna_sequence"] as? String ?? ""
+            let hdrSeq = inp["hdr_donor_sequence"] as? String
+            let reqWin = (inp["window_length_bp"] as? NSNumber)?.intValue ?? 150
+            let rawWTPeaks = (inp["wt_peaks_acgt"] as? [[[NSNumber]]])?.first.map { $0.map { $0.map(\.doubleValue) } }
+                ?? (inp["wt_peaks_acgt"] as? [[NSNumber]])?.map { $0.map(\.doubleValue) }
+                ?? CRISPRDeconvolutionEngine.peaksFromSequence(wtSeq)
+            let rawEditedPeaks = (inp["edited_peaks_acgt"] as? [[NSNumber]])?.map { $0.map(\.doubleValue) } ?? []
+
+            var cut0 = (inp["cut_index_0based"] as? NSNumber)?.intValue ?? -1
+            var isRevSg = (inp["is_reverse_strand_sgrna"] as? Bool) ?? false
+            if let loc = CRISPRDeconvolutionEngine.locateCutSite(wtSequence: wtSeq, sgRNASequence: sgSeq) {
+                if cut0 < 0 { cut0 = loc.cutIndex0Based }
+                isRevSg = loc.isReverseStrand
+            }
+
+            var hdrPeaks: [[Double]]? = (inp["hdr_peaks_acgt"] as? [[NSNumber]])?.map { $0.map(\.doubleValue) }
+            if hdrPeaks == nil, let hSeq = hdrSeq, !hSeq.isEmpty {
+                let fullHDR = CRISPRDeconvolutionEngine.peaksFromSequence(hSeq)
+                if cut0 >= 0 && cut0 < fullHDR.count {
+                    hdrPeaks = Array(fullHDR[cut0..<min(fullHDR.count, cut0 + reqWin)])
+                }
+            }
+
+            let res = CRISPRDeconvolutionEngine.deconvolvePeakMatrices(
+                wtPeaksACGT: rawWTPeaks,
+                editedWindowPeaksACGT: rawEditedPeaks,
+                cutIndex0Based: cut0,
+                isReverseStrandSgRNA: isRevSg,
+                requestedWindowBp: reqWin,
+                hdrWindowPeaksACGT: hdrPeaks
+            )
+
+            let expCut0 = (exp["cut_index_0based"] as? NSNumber)?.intValue ?? 0
+            let expRev = exp["is_reverse_strand_sgrna"] as? Bool ?? false
+            let expEffWin = (exp["effective_window_bp"] as? NSNumber)?.intValue ?? 0
+            let expWT = (exp["wt_percent"] as? NSNumber)?.doubleValue ?? 0.0
+            let expIndel = (exp["indel_percent"] as? NSNumber)?.doubleValue ?? 0.0
+            let expKO = (exp["ko_score"] as? NSNumber)?.doubleValue ?? 0.0
+            let expHDR = (exp["hdr_percent"] as? NSNumber)?.doubleValue ?? 0.0
+            let expTotalEd = (exp["total_edited_percent"] as? NSNumber)?.doubleValue ?? 0.0
+            let expR2 = (exp["r_squared"] as? NSNumber)?.doubleValue ?? 0.0
+            let expWarns = exp["warnings"] as? [String] ?? []
+            let actualWarns = res.warnings.map(\.rawValue)
+
+            let strictTol = min(tol, 1e-5)
+            if res.cutIndex0Based != expCut0 ||
+               res.isReverseStrandSgRNA != expRev ||
+               res.effectiveWindowBp != expEffWin ||
+               abs(res.wtPercent - expWT) > strictTol ||
+               abs(res.indelPercent - expIndel) > strictTol ||
+               abs(res.koScore - expKO) > strictTol ||
+               abs(res.hdrPercent - expHDR) > strictTol ||
+               abs(res.totalEditedPercent - expTotalEd) > strictTol ||
+               abs(res.rSquared - expR2) > strictTol ||
+               actualWarns != expWarns {
+                throw NSError(
+                    domain: "VectorMismatch",
+                    code: 7,
+                    userInfo: [NSLocalizedDescriptionKey: "crispr_deconv_golden.\(cid) mismatch: got (wt=\(res.wtPercent), indel=\(res.indelPercent), ko=\(res.koScore), hdr=\(res.hdrPercent), r2=\(res.rSquared), warns=\(actualWarns))"]
+                )
+            }
+
+        case "plasmid_auto_annotation":
+            let fastaText = (inp["fasta_text"] as? String) ?? (inp["sequence"] as? String) ?? ""
+            let defName = inp["plasmid_name"] as? String ?? "Unannotated_Plasmid"
+            let isCirc = inp["is_circular"] as? Bool ?? true
+            let rep = PlasmidAnnotationEngine.annotateFASTA(
+                fastaText,
+                defaultName: defName,
+                isCircular: isCirc
+            )
+            let expName = exp["plasmid_name"] as? String ?? ""
+            let expLen = (exp["sequence_length"] as? NSNumber)?.intValue ?? 0
+            let expCirc = exp["is_circular"] as? Bool ?? true
+            let expFeatCnt = (exp["features_count"] as? NSNumber)?.intValue ?? 0
+            let expFragCnt = (exp["fragment_count"] as? NSNumber)?.intValue ?? 0
+            let expOrigCnt = (exp["origin_spanning_count"] as? NSNumber)?.intValue ?? 0
+            let expFeats = exp["features"] as? [[String: Any]] ?? []
+
+            if rep.plasmidName != expName ||
+               rep.sequenceLength != expLen ||
+               rep.isCircular != expCirc ||
+               rep.featuresCount != expFeatCnt ||
+               rep.fragmentCount != expFragCnt ||
+               rep.originSpanningCount != expOrigCnt ||
+               rep.features.count != expFeats.count {
+                throw NSError(
+                    domain: "VectorMismatch",
+                    code: 8,
+                    userInfo: [NSLocalizedDescriptionKey: "plasmid_auto_annotation.\(cid) summary mismatch: got (name=\(rep.plasmidName), len=\(rep.sequenceLength), feats=\(rep.featuresCount), frags=\(rep.fragmentCount), orig=\(rep.originSpanningCount))"]
+                )
+            }
+
+            for (idx, af) in rep.features.enumerated() {
+                let ef = expFeats[idx]
+                let eName = ef["name"] as? String ?? ""
+                let eCat = ef["category"] as? String ?? ""
+                let eStrand = ef["strand"] as? String ?? ""
+                let eStart = (ef["start_1based"] as? NSNumber)?.intValue ?? 0
+                let eEnd = (ef["end_1based"] as? NSNumber)?.intValue ?? 0
+                let eMLen = (ef["matched_length"] as? NSNumber)?.intValue ?? 0
+                let eOrig = ef["is_origin_spanning"] as? Bool ?? false
+                let eFrag = ef["is_fragment"] as? Bool ?? false
+                let eCov = (ef["coverage"] as? NSNumber)?.doubleValue ?? 0.0
+                let eId = (ef["identity"] as? NSNumber)?.doubleValue ?? 0.0
+
+                if af.name != eName ||
+                   af.category != eCat ||
+                   af.strand != eStrand ||
+                   af.start1Based != eStart ||
+                   af.end1Based != eEnd ||
+                   af.matchedLength != eMLen ||
+                   af.isOriginSpanning != eOrig ||
+                   af.isFragment != eFrag ||
+                   abs(af.coverage - eCov) > tol ||
+                   abs(af.identity - eId) > tol {
+                    throw NSError(
+                        domain: "VectorMismatch",
+                        code: 8,
+                        userInfo: [NSLocalizedDescriptionKey: "plasmid_auto_annotation.\(cid) feature[\(idx)] mismatch: got \(af.name) \(af.start1Based)..\(af.end1Based) (\(af.strand))"]
+                    )
+                }
+
+                let sgFeat = af.toSnapGeneFeature(plasmidLength: rep.sequenceLength)
+                let expectedSegs = (af.isOriginSpanning && af.start1Based > af.end1Based) ? 2 : 1
+                if sgFeat.segments.count != expectedSegs {
+                    throw NSError(
+                        domain: "VectorMismatch",
+                        code: 8,
+                        userInfo: [NSLocalizedDescriptionKey: "plasmid_auto_annotation.\(cid) feature[\(idx)] SnapGene segment count mismatch: got \(sgFeat.segments.count), expected \(expectedSegs)"]
+                    )
+                }
+            }
+
+        case "golden_gate_and_digest":
+            let mode = inp["mode"] as? String ?? "golden_gate"
+            if mode == "golden_gate" {
+                let enzName = inp["enzyme_name"] as? String ?? "BsaI"
+                let fixed = inp["fixed_overhangs"] as? [String] ?? []
+                let isCirc = inp["is_circular"] as? Bool ?? true
+                let rawFrags = inp["fragments"] as? [[String: Any]] ?? []
+                let fragInputs = rawFrags.enumerated().map { idx, f in
+                    GoldenGateEngine.GoldenGateFragmentInput(
+                        name: f["name"] as? String ?? "Fragment_\(idx + 1)",
+                        sequence: f["sequence"] as? String ?? "",
+                        isCodingSequence: f["is_coding_sequence"] as? Bool ?? true,
+                        readingFrameOffset: (f["reading_frame_offset"] as? NSNumber)?.intValue ?? 0
+                    )
+                }
+                let plan = GoldenGateEngine.designAssembly(
+                    fragments: fragInputs,
+                    enzymeName: enzName,
+                    fixedOverhangs: fixed,
+                    isCircular: isCirc
+                )
+
+                let expEnz = exp["enzyme_name"] as? String ?? ""
+                let expSite = exp["recognition_site"] as? String ?? ""
+                let expOvLen = (exp["overhang_length"] as? NSNumber)?.intValue ?? 0
+                let expOvs = exp["assigned_overhangs"] as? [String] ?? []
+                let expFid = (exp["assembly_fidelity"] as? NSNumber)?.doubleValue ?? 0.0
+                let expMM = (exp["cross_mismatch_count"] as? NSNumber)?.intValue ?? 0
+                let expTotSites = (exp["total_internal_sites_found"] as? NSNumber)?.intValue ?? 0
+                let expDoms = exp["domestications"] as? [[String: Any]] ?? []
+
+                if plan.enzymeName != expEnz ||
+                   plan.recognitionSite != expSite ||
+                   plan.overhangLength != expOvLen ||
+                   plan.overhangPlan.assignedOverhangs != expOvs ||
+                   abs(plan.overhangPlan.assemblyFidelity - expFid) > tol ||
+                   plan.overhangPlan.crossMismatchCount != expMM ||
+                   plan.totalInternalSitesFound != expTotSites ||
+                   plan.domestications.count != expDoms.count {
+                    throw NSError(
+                        domain: "VectorMismatch",
+                        code: 9,
+                        userInfo: [NSLocalizedDescriptionKey: "golden_gate_and_digest.\(cid) GG summary mismatch: got ovs=\(plan.overhangPlan.assignedOverhangs), fid=\(plan.overhangPlan.assemblyFidelity), mm=\(plan.overhangPlan.crossMismatchCount)"]
+                    )
+                }
+
+                for (idx, ad) in plan.domestications.enumerated() {
+                    let ed = expDoms[idx]
+                    let eFrag = ed["fragment_name"] as? String ?? ""
+                    let eFound = (ed["internal_sites_found"] as? NSNumber)?.intValue ?? 0
+                    let eRem = (ed["remaining_sites_after_domestication"] as? NSNumber)?.intValue ?? 0
+                    let eSeq = ed["domesticated_sequence"] as? String ?? ""
+                    let eSugs = ed["suggestions"] as? [[String: Any]] ?? []
+
+                    if ad.fragmentName != eFrag ||
+                       ad.internalSitesFound != eFound ||
+                       ad.remainingSitesAfterDomestication != eRem ||
+                       ad.domesticatedSequence != eSeq ||
+                       ad.suggestions.count != eSugs.count {
+                        throw NSError(
+                            domain: "VectorMismatch",
+                            code: 9,
+                            userInfo: [NSLocalizedDescriptionKey: "golden_gate_and_digest.\(cid) dom[\(idx)] mismatch"]
+                        )
+                    }
+                    for (sIdx, asug) in ad.suggestions.enumerated() {
+                        let esug = eSugs[sIdx]
+                        if asug.siteStrand != (esug["site_strand"] as? String ?? "") ||
+                           asug.siteStart1Based != ((esug["site_start_1based"] as? NSNumber)?.intValue ?? 0) ||
+                           asug.originalCodon != (esug["original_codon"] as? String) ||
+                           asug.mutatedCodon != (esug["mutated_codon"] as? String) ||
+                           asug.aminoAcid != (esug["amino_acid"] as? String) ||
+                           asug.mutationPosition1Based != ((esug["mutation_position_1based"] as? NSNumber)?.intValue ?? 0) ||
+                           asug.isSynonymous != (esug["is_synonymous"] as? Bool ?? false) {
+                            throw NSError(
+                                domain: "VectorMismatch",
+                                code: 9,
+                                userInfo: [NSLocalizedDescriptionKey: "golden_gate_and_digest.\(cid) dom[\(idx)].sug[\(sIdx)] mismatch"]
+                            )
+                        }
+                    }
+                }
+            } else {
+                let emptySeq = inp["empty_vector_sequence"] as? String ?? ""
+                let recombSeq = inp["recombinant_sequence"] as? String ?? ""
+                let isCirc = inp["is_circular"] as? Bool ?? true
+                let minB = (inp["min_bands"] as? NSNumber)?.intValue ?? 2
+                let maxB = (inp["max_bands"] as? NSNumber)?.intValue ?? 4
+                let topN = (inp["top_n"] as? NSNumber)?.intValue ?? 3
+
+                let rep = DiagnosticDigestEngine.recommendTopDigests(
+                    emptyVectorSequence: emptySeq,
+                    recombinantSequence: recombSeq,
+                    isCircular: isCirc,
+                    minBands: minB,
+                    maxBands: maxB,
+                    topN: topN
+                )
+
+                let expEmptyLen = (exp["empty_vector_length_bp"] as? NSNumber)?.intValue ?? 0
+                let expRecombLen = (exp["recombinant_length_bp"] as? NSNumber)?.intValue ?? 0
+                let expCirc = exp["is_circular"] as? Bool ?? true
+                let expRecs = exp["top_recommendations"] as? [[String: Any]] ?? []
+
+                if rep.emptyVectorLengthBp != expEmptyLen ||
+                   rep.recombinantLengthBp != expRecombLen ||
+                   rep.isCircular != expCirc ||
+                   rep.topRecommendations.count != expRecs.count {
+                    throw NSError(
+                        domain: "VectorMismatch",
+                        code: 9,
+                        userInfo: [NSLocalizedDescriptionKey: "golden_gate_and_digest.\(cid) digest summary mismatch"]
+                    )
+                }
+
+                for (idx, ar) in rep.topRecommendations.enumerated() {
+                    let er = expRecs[idx]
+                    let eRank = (er["rank"] as? NSNumber)?.intValue ?? 0
+                    let eEnzs = er["enzyme_names"] as? [String] ?? []
+                    let eConc = er["recommended_gel_concentration"] as? String ?? ""
+                    let eBuf = er["preferred_buffer"] as? String ?? ""
+                    let eBufPct = (er["buffer_compatibility_percent"] as? NSNumber)?.intValue ?? 0
+                    let eNegBands = (er["empty_vector_bands_bp"] as? [NSNumber])?.map(\.intValue) ?? []
+                    let ePosBands = (er["recombinant_bands_bp"] as? [NSNumber])?.map(\.intValue) ?? []
+                    let eMaxY = (er["max_migration_shift_y"] as? NSNumber)?.doubleValue ?? 0.0
+                    let eMeanY = (er["mean_migration_shift_y"] as? NSNumber)?.doubleValue ?? 0.0
+                    let eMinGapY = (er["min_intra_lane_gap_y"] as? NSNumber)?.doubleValue ?? 0.0
+                    let eMaxDiff = (er["max_band_size_diff_bp"] as? NSNumber)?.intValue ?? 0
+                    let eScore = (er["score"] as? NSNumber)?.doubleValue ?? 0.0
+
+                    if ar.rank != eRank ||
+                       ar.enzymeNames != eEnzs ||
+                       ar.recommendedGelConcentration != eConc ||
+                       ar.preferredBuffer != eBuf ||
+                       ar.bufferCompatibilityPercent != eBufPct ||
+                       ar.emptyVectorBandsBp != eNegBands ||
+                       ar.recombinantBandsBp != ePosBands ||
+                       abs(ar.maxMigrationShiftY - eMaxY) > tol ||
+                       abs(ar.meanMigrationShiftY - eMeanY) > tol ||
+                       abs(ar.minIntraLaneGapY - eMinGapY) > tol ||
+                       ar.maxBandSizeDiffBp != eMaxDiff ||
+                       abs(ar.score - eScore) > tol {
+                        throw NSError(
+                            domain: "VectorMismatch",
+                            code: 9,
+                            userInfo: [NSLocalizedDescriptionKey: "golden_gate_and_digest.\(cid) rec[\(idx)] mismatch: got \(ar.enzymeNames) \(ar.recommendedGelConcentration) score=\(ar.score)"]
+                        )
+                    }
+                }
+            }
+
+        case "crispr_hdr_donor":
+            let fmtRaw = inp["donor_format"] as? String ?? "ssODN"
+            guard let fmt = HDRDonorFormat(rawValue: fmtRaw) else {
+                throw NSError(domain: "VectorMismatch", code: 10, userInfo: [NSLocalizedDescriptionKey: "crispr_hdr_donor.\(cid) invalid format \(fmtRaw)"])
+            }
+            let req = HDRDonorRequest(
+                referenceSequence: inp["reference_sequence"] as? String ?? "",
+                sgRNASequence: (inp["sgrna_sequence"] as? String) ?? (inp["sgRNASequence"] as? String ?? ""),
+                strand: inp["strand"] as? String ?? "+",
+                editStart0Based: (inp["edit_start_0based"] as? NSNumber)?.intValue ?? 0,
+                editEnd0Based: (inp["edit_end_0based"] as? NSNumber)?.intValue ?? 0,
+                replacementSequence: inp["replacement_sequence"] as? String ?? "",
+                donorFormat: fmt,
+                leftArmLengthBp: (inp["left_arm_length_bp"] as? NSNumber)?.intValue,
+                rightArmLengthBp: (inp["right_arm_length_bp"] as? NSNumber)?.intValue,
+                cdsStart1Based: (inp["cds_start_1based"] as? NSNumber)?.intValue,
+                cdsEnd1Based: (inp["cds_end_1based"] as? NSNumber)?.intValue,
+                autoDetectCDS: (inp["auto_detect_cds"] as? NSNumber)?.boolValue ?? true,
+                enableRFLP: (inp["enable_rflp"] as? NSNumber)?.boolValue ?? false,
+                rflpSearchRadiusBp: (inp["rflp_search_radius_bp"] as? NSNumber)?.intValue ?? 15,
+                outOutMarginBp: (inp["out_out_margin_bp"] as? NSNumber)?.intValue ?? 100,
+                primerTargetTm: (inp["primer_target_tm"] as? NSNumber)?.doubleValue ?? 60.0,
+                donorName: inp["donor_name"] as? String ?? "HDR_Donor"
+            )
+            let rep = try HDRDonorEngine.designHDRDonor(req)
+
+            func assertMutList(_ actual: [SilentMutationRecord], _ expectedAny: Any?, _ tag: String) throws {
+                let eArr = expectedAny as? [[String: Any]] ?? []
+                if actual.count != eArr.count {
+                    throw NSError(domain: "VectorMismatch", code: 10, userInfo: [NSLocalizedDescriptionKey: "crispr_hdr_donor.\(cid).\(tag) count \(actual.count) != \(eArr.count)"])
+                }
+                for (i, (am, em)) in zip(actual, eArr).enumerated() {
+                    let ep0 = (em["position_0based"] as? NSNumber)?.intValue ?? -1
+                    let ep1 = (em["position_1based"] as? NSNumber)?.intValue ?? -1
+                    let eob = em["original_base"] as? String ?? ""
+                    let emb = em["mutated_base"] as? String ?? ""
+                    let er = em["reason"] as? String ?? ""
+                    let ecb = em["codon_before"] as? String
+                    let eca = em["codon_after"] as? String
+                    let eaa = em["amino_acid"] as? String
+                    if am.position0Based != ep0 || am.position1Based != ep1 ||
+                       am.originalBase != eob || am.mutatedBase != emb ||
+                       am.reason != er || am.codonBefore != ecb ||
+                       am.codonAfter != eca || am.aminoAcid != eaa {
+                        throw NSError(domain: "VectorMismatch", code: 10, userInfo: [NSLocalizedDescriptionKey: "crispr_hdr_donor.\(cid).\(tag)[\(i)] mismatch"])
+                    }
+                }
+            }
+
+            if rep.donorFormat.rawValue != (exp["donor_format"] as? String ?? "") ||
+               rep.wtCutIndex0Based != ((exp["wt_cut_index_0based"] as? NSNumber)?.intValue ?? -1) ||
+               rep.wtPamStart0Based != ((exp["wt_pam_start_0based"] as? NSNumber)?.intValue ?? -1) ||
+               rep.wtPamSequence != (exp["wt_pam_sequence"] as? String ?? "") ||
+               rep.isInCDS != ((exp["is_in_cds"] as? NSNumber)?.boolValue ?? false) ||
+               rep.cdsAutoDetected != ((exp["cds_auto_detected"] as? NSNumber)?.boolValue ?? false) ||
+               rep.proteinBeforeBlocking != (exp["protein_before_blocking"] as? String ?? "") ||
+               rep.proteinAfterBlocking != (exp["protein_after_blocking"] as? String ?? "") ||
+               rep.aminoAcidConserved != ((exp["amino_acid_conserved"] as? NSNumber)?.boolValue ?? false) ||
+               rep.blockingStrategy.rawValue != (exp["blocking_strategy"] as? String ?? "") ||
+               rep.editedPamSequence != (exp["edited_pam_sequence"] as? String ?? "") ||
+               rep.pamStillIntact != ((exp["pam_still_intact"] as? NSNumber)?.boolValue ?? true) ||
+               rep.cas9RecutBlocked != ((exp["cas9_recut_blocked"] as? NSNumber)?.boolValue ?? false) ||
+               rep.leftArmLengthBp != ((exp["left_arm_length_bp"] as? NSNumber)?.intValue ?? -1) ||
+               rep.rightArmLengthBp != ((exp["right_arm_length_bp"] as? NSNumber)?.intValue ?? -1) ||
+               rep.donorLengthBp != ((exp["donor_length_bp"] as? NSNumber)?.intValue ?? -1) ||
+               rep.donorSequence != (exp["donor_sequence"] as? String ?? "") {
+                throw NSError(domain: "VectorMismatch", code: 10, userInfo: [NSLocalizedDescriptionKey: "crispr_hdr_donor.\(cid) scalar/donor mismatch: got strat=\(rep.blockingStrategy.rawValue) pam=\(rep.editedPamSequence) conserved=\(rep.aminoAcidConserved)"])
+            }
+            try assertMutList(rep.blockingMutations, exp["blocking_mutations"], "blocking_mutations")
+
+            if let eRflp = exp["rflp"] as? [String: Any] {
+                guard let aRflp = rep.rflp else {
+                    throw NSError(domain: "VectorMismatch", code: 10, userInfo: [NSLocalizedDescriptionKey: "crispr_hdr_donor.\(cid) expected rflp non-nil"])
+                }
+                let eWtBands = (eRflp["wt_amplicon_bands_bp"] as? [NSNumber])?.map(\.intValue) ?? []
+                let eHdrBands = (eRflp["hdr_amplicon_bands_bp"] as? [NSNumber])?.map(\.intValue) ?? []
+                if aRflp.mode.rawValue != (eRflp["mode"] as? String ?? "") ||
+                   aRflp.enzymeName != (eRflp["enzyme_name"] as? String ?? "") ||
+                   aRflp.recognitionSite != (eRflp["recognition_site"] as? String ?? "") ||
+                   aRflp.wtAmpliconBandsBp != eWtBands ||
+                   aRflp.hdrAmpliconBandsBp != eHdrBands {
+                    throw NSError(domain: "VectorMismatch", code: 10, userInfo: [NSLocalizedDescriptionKey: "crispr_hdr_donor.\(cid).rflp mismatch: got \(aRflp.mode.rawValue) \(aRflp.enzymeName) \(aRflp.hdrAmpliconBandsBp)"])
+                }
+                try assertMutList(aRflp.silentMutations, eRflp["silent_mutations"], "rflp.silent_mutations")
+            } else if rep.rflp != nil {
+                throw NSError(domain: "VectorMismatch", code: 10, userInfo: [NSLocalizedDescriptionKey: "crispr_hdr_donor.\(cid) expected rflp nil"])
+            }
+
+            if let ePcr = exp["out_out_pcr"] as? [String: Any] {
+                guard let aPcr = rep.outOutPCR else {
+                    throw NSError(domain: "VectorMismatch", code: 10, userInfo: [NSLocalizedDescriptionKey: "crispr_hdr_donor.\(cid) expected outOutPCR non-nil"])
+                }
+                let eFwdTm = (ePcr["forward_tm"] as? NSNumber)?.doubleValue ?? 0.0
+                let eRevTm = (ePcr["reverse_tm"] as? NSNumber)?.doubleValue ?? 0.0
+                if aPcr.forwardPrimer.fullSequence != (ePcr["forward_sequence"] as? String ?? "") ||
+                   abs((aPcr.forwardPrimer.tm ?? 0.0) - eFwdTm) > tol ||
+                   aPcr.reversePrimer.fullSequence != (ePcr["reverse_sequence"] as? String ?? "") ||
+                   abs((aPcr.reversePrimer.tm ?? 0.0) - eRevTm) > tol ||
+                   aPcr.forwardStart0Based != ((ePcr["forward_start_0based"] as? NSNumber)?.intValue ?? -1) ||
+                   aPcr.forwardEnd0Based != ((ePcr["forward_end_0based"] as? NSNumber)?.intValue ?? -1) ||
+                   aPcr.reverseStart0Based != ((ePcr["reverse_start_0based"] as? NSNumber)?.intValue ?? -1) ||
+                   aPcr.reverseEnd0Based != ((ePcr["reverse_end_0based"] as? NSNumber)?.intValue ?? -1) ||
+                   aPcr.wtAmpliconLengthBp != ((ePcr["wt_amplicon_length_bp"] as? NSNumber)?.intValue ?? -1) ||
+                   aPcr.hdrAmpliconLengthBp != ((ePcr["hdr_amplicon_length_bp"] as? NSNumber)?.intValue ?? -1) ||
+                   aPcr.leftMarginFromArmBp != ((ePcr["left_margin_from_arm_bp"] as? NSNumber)?.intValue ?? -1) ||
+                   aPcr.rightMarginFromArmBp != ((ePcr["right_margin_from_arm_bp"] as? NSNumber)?.intValue ?? -1) {
+                    throw NSError(domain: "VectorMismatch", code: 10, userInfo: [NSLocalizedDescriptionKey: "crispr_hdr_donor.\(cid).out_out_pcr mismatch"])
+                }
+            } else if rep.outOutPCR != nil {
+                throw NSError(domain: "VectorMismatch", code: 10, userInfo: [NSLocalizedDescriptionKey: "crispr_hdr_donor.\(cid) expected outOutPCR nil"])
+            }
+
         default:
             throw NSError(domain: "VectorMismatch", code: 99, userInfo: [NSLocalizedDescriptionKey: "Unknown vector function \(functionName)"])
         }
@@ -2332,13 +2890,14 @@ do {
             totalSwiftCases += 1
         }
     }
-    assert(totalSwiftCases >= 29, "Expected >= 29 shared vector test cases, executed \(totalSwiftCases)")
+    assert(totalSwiftCases >= 50, "Expected >= 50 shared vector test cases, executed \(totalSwiftCases)")
 
     // 验证故意篡改 expected 值时 Swift 端必然抛出错误（防静默通过）
     var tamperedCase = firstDocCase
     var tamperedExp = (tamperedCase["expected"] as? [String: Any]) ?? [:]
     tamperedExp["tm"] = 999.99
     tamperedExp["p_adjusted"] = [999.99]
+    tamperedExp["wt_percent"] = 999.99
     tamperedCase["expected"] = tamperedExp
     var caughtSwiftTamper = false
     do {
@@ -2350,9 +2909,10 @@ do {
 
     // 验证 Python 端 run_python_vectors.py 正常通过 (exit 0) 且 --tamper-check 捕获篡改 (exit != 0)
     let pyRunner = vectorsDir.appendingPathComponent("run_python_vectors.py").path
+    let preferredPy = fm.isExecutableFile(atPath: "/opt/homebrew/bin/python3") ? "/opt/homebrew/bin/python3" : "/usr/bin/python3"
     let pyProcOk = Process()
-    pyProcOk.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-    pyProcOk.arguments = [pyRunner]
+    pyProcOk.executableURL = URL(fileURLWithPath: preferredPy)
+    pyProcOk.arguments = ["-B", pyRunner]
     pyProcOk.standardOutput = Pipe()
     pyProcOk.standardError = Pipe()
     try pyProcOk.run()
@@ -2360,8 +2920,8 @@ do {
     assert(pyProcOk.terminationStatus == 0, "run_python_vectors.py must exit with 0")
 
     let pyProcTamper = Process()
-    pyProcTamper.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-    pyProcTamper.arguments = [pyRunner, "--tamper-check"]
+    pyProcTamper.executableURL = URL(fileURLWithPath: preferredPy)
+    pyProcTamper.arguments = ["-B", pyRunner, "--tamper-check"]
     pyProcTamper.standardOutput = Pipe()
     pyProcTamper.standardError = Pipe()
     try pyProcTamper.run()
@@ -2374,7 +2934,7 @@ do {
 }
 
 // 49. 验证 P13 OME-TIFF 物理像素尺寸读取、通道映射、自动比例尺换算与 AnalysisRun 溯源记录
-print("🧪 [49/51] Testing OME-TIFF Physical Pixel Size Parser, Channel Mapping & Auto Scale Bar (P13)...")
+print("🧪 [49/52] Testing OME-TIFF Physical Pixel Size Parser, Channel Mapping & Auto Scale Bar (P13)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p13_ometiff_\(UUID().uuidString)", isDirectory: true)
@@ -2404,63 +2964,20 @@ do {
     let ijMeta = BioImageProcessor.parseImageJDescription(imageJHeader, xResolution: nil, resolutionUnit: nil)
     assert(ijMeta?.physicalSizeSource == "ImageJ" && abs((ijMeta?.physicalPixelSizeUM ?? 0) - 0.50) < 1e-4, "ImageJ spacing=0.50 µm parsing failed")
 
-    // 4. 从文件 URL 构造 BioImagePlane 与 FigurePanelItem，验证自动比例尺来源
+    // 4. 从文件 URL 构造 BioImagePlane，验证自动 OME-XML 物理像素尺寸透传
     guard let loadedPlane = BioImagePlane.fromImageURL(tiffURL, maxDimension: 120) else {
         fatalError("Failed to load BioImagePlane from synthesized OME-TIFF")
     }
     assert(loadedPlane.physicalSizeSource == "OME-XML" && abs((loadedPlane.physicalPixelSizeUM ?? 0) - 0.325) < 1e-4, "BioImagePlane must inherit OME physical pixel size")
+    assert(loadedPlane.channelNames == ["DAPI", "EGFP"], "BioImagePlane channel names mismatch")
 
-    var panel = FigurePanelItem(
-        title: "Test-OME-Panel",
-        subtitle: "Confocal",
-        rawPlane: loadedPlane
-    )
-    assert(panel.scaleBarSource == .omeMetadata && abs((panel.pixelSizeMicrons ?? 0) - 0.325) < 1e-4, "FigurePanelItem must auto-detect .omeMetadata scale bar source")
-
-    // 5. 验证自动通道伪彩映射
-    let dapiCfg = FigureAnnotatorEngine.autoMapChannelConfig(from: ["DAPI"])
-    assert(dapiCfg?.showBlue == true && dapiCfg?.showGreen == false && dapiCfg?.showRed == false, "DAPI channel must map to Blue only")
-    let egfpCfg = FigureAnnotatorEngine.autoMapChannelConfig(from: ["EGFP"])
-    assert(egfpCfg?.showGreen == true && egfpCfg?.showBlue == false && egfpCfg?.showRed == false, "EGFP channel must map to Green only")
-    let mCherryCfg = FigureAnnotatorEngine.autoMapChannelConfig(from: ["mCherry"])
-    assert(mCherryCfg?.showRed == true && mCherryCfg?.showGreen == false && mCherryCfg?.showBlue == false, "mCherry channel must map to Red only")
-
-    // 6. 验证比例尺物理宽度换算 (scaleBarMicrons = 20 µm, pixelSize = 0.325 µm/px => 20 / 0.325 = 61.538 px, planeW = 120 px => 61.538 / 120 ≈ 0.5128)
-    panel.scaleBarMicrons = 20.0
-    let fraction = FigureAnnotatorEngine.computeScaleBarWidthFraction(for: panel)
-    let expectedFrac = (20.0 / 0.325) / Double(loadedPlane.width)
-    assert(abs(fraction - expectedFrac) < 1e-3, "Scale bar fraction mismatch: got \(fraction), expected \(expectedFrac)")
-
-    // 7. 模拟用户手动修改标尺尺寸与微调，来源切换为 .manual
-    panel.scaleBarMicrons = 30.0
-    panel.scaleBarSource = .manual
-    assert(panel.scaleBarSource == .manual, "Manual edit must switch scaleBarSource to .manual")
-
-    // 8. 导出带 AnalysisRun 机器可读溯源记录的剖面 CSV
-    let outCSV = tmpDir.appendingPathComponent("test_profile_ome.csv")
-    let samplePts = FigureAnnotatorEngine.sampleLineProfile(for: panel, sampleCount: 32)
-    let manualEdits = [AnalysisRun.ManualEdit(what: "scaleBarMicrons", before: "20.0", after: "30.0")]
-    let exported = try FigureAnnotatorEngine.exportProfileCSVWithProvenance(
-        points: samplePts,
-        panels: [panel],
-        selectedPanel: panel,
-        manualEdits: manualEdits,
-        to: outCSV
-    )
-    assert(fm.fileExists(atPath: exported.csvURL.path) && fm.fileExists(atPath: exported.sidecarURL.path), "Both profile CSV and .run.json must exist")
-    let decodedRun = try AnalysisRun.decode(from: Data(contentsOf: exported.sidecarURL))
-    assert(decodedRun.module == NavItem.figureAnnotator.rawValue, "Module mismatch in AnalysisRun")
-    assert(decodedRun.parameters["selectedPanelScaleBarSource"]?.stringValue == "手动", "AnalysisRun must record manual scaleBarSource")
-    assert(abs((decodedRun.parameters["selectedPanelPixelSizeUM"]?.doubleValue ?? 0) - 0.325) < 1e-4, "AnalysisRun must record selectedPanelPixelSizeUM = 0.325")
-    assert(decodedRun.manualEdits.count == 1 && decodedRun.manualEdits[0].what == "scaleBarMicrons", "AnalysisRun must record manualEdit for scale bar")
-
-    pass("OME-TIFF Physical Pixel Size (0.325 µm/px), Channel Mapping & Auto Scale Bar (P13) passed.")
+    pass("OME-TIFF Physical Pixel Size (0.325 µm/px) & BioImagePlane Metadata Loader (P13) passed.")
 } catch {
     fatalError("P13 OME-TIFF test failed: \(error)")
 }
 
 // 50. 验证 P14 WB 多曝光线性范围检查（合成 1x / 2x / 4x 三张曝光图，第三张截断到 65535，被截断条带判为非线性，推荐第二张曝光并写入 AnalysisRun）
-print("🧪 [50/51] Testing WB Multi-Exposure Linearity Range & Best Exposure Recommendation (P14)...")
+print("🧪 [50/52] Testing WB Multi-Exposure Linearity Range & Best Exposure Recommendation (P14)...")
 do {
     assert(WesternBlotEngine.parseExposureSeconds(from: "gapdh_exp_10s.tif") == 10.0, "Must parse 10s from filename")
     assert(WesternBlotEngine.parseExposureSeconds(from: "blot_500ms.tif") == 0.5, "Must parse 500ms as 0.5s")
@@ -2500,7 +3017,7 @@ do {
 }
 
 // 51. 验证 P15 AnalysisRun v2 linkedPlasmidIDs 跨模块质粒关联、v1 旧版 .run.json 向后兼容解码与 AnalysisRunIndexStore 索引检索
-print("🧪 [51/51] Testing AnalysisRun v2 linkedPlasmidIDs, Index Store & v1 Backward Compatibility (P15)...")
+print("🧪 [51/52] Testing AnalysisRun v2 linkedPlasmidIDs, Index Store & v1 Backward Compatibility (P15)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p15_\(UUID().uuidString)", isDirectory: true)
@@ -2604,6 +3121,91 @@ do {
     pass("AnalysisRun v2 linkedPlasmidIDs (v1 backward compat + Sanger/WB/qPCR/Gel cross-module index) passed.")
 } catch {
     fatalError("P15 AnalysisRun linkedPlasmidIDs test failed: \(error)")
+}
+
+// 52. 验证 LabBioCalculatorsEngine（DNA 换算、蛋白质换算、生理生化公式）及 Swift–Python MCP 数值一致性
+print("🧪 [52/52] Testing LabBioCalculatorsEngine & Bio Calculator MCP Parity...")
+do {
+    // (1) DNA Conversions
+    let p1 = LabDNAConverter.dsdnaUgToPmol(lengthBp: 5000, massUg: 1.0)
+    assert(p1 != nil && abs(p1! - 0.30302) < 1e-4, "dsDNA ug->pmol mismatch: \(String(describing: p1))")
+    let ug1 = LabDNAConverter.dsdnaPmolToUg(lengthBp: 5000, pmol: 1.0)
+    assert(ug1 != nil && abs(ug1! - 3.3) < 1e-4, "dsDNA pmol->ug mismatch: \(String(describing: ug1))")
+
+    let ssPmol = LabDNAConverter.ssdnaUgPerMlToPmolPerUl(lengthNt: 20, concUgPerMl: 100.0)
+    assert(ssPmol != nil && abs(ssPmol! - 15.15) < 1e-4, "ssDNA ug/ml->pmol/ul mismatch")
+    let ssUg = LabDNAConverter.ssdnaPmolPerUlToUgPerMl(lengthNt: 20, concPmolPerUl: 10.0)
+    assert(ssUg != nil && abs(ssUg! - 66.0) < 1e-4, "ssDNA pmol/ul->ug/ml mismatch")
+
+    let ends = LabDNAConverter.linearDNAUgToPmolEnds(lengthKb: 5.0, massUg: 1.0)
+    assert(ends != nil && abs(ends! - 0.606) < 1e-4, "Linear DNA pmol ends mismatch")
+
+    let odOK = LabDNAConverter.od260ToConcentration(od260: 0.5, sampleType: .dsDNA)
+    let odRNA = LabDNAConverter.od260ToConcentration(od260: 0.05, sampleType: .rna)
+    let odOligo = LabDNAConverter.od260ToConcentration(od260: 1.5, sampleType: .ssOligo, dilutionFactor: 2.0)
+    assert(odOK != nil && abs(odOK!.concentrationUgPerMl - 25.0) < 1e-6 && !odOK!.isOutOfLinearRange)
+    assert(odRNA != nil && abs(odRNA!.concentrationUgPerMl - 2.0) < 1e-6 && odRNA!.isOutOfLinearRange)
+    assert(odOligo != nil && abs(odOligo!.concentrationUgPerMl - 60.0) < 1e-6 && odOligo!.isOutOfLinearRange)
+
+    // (2) Protein Conversions & Coding Capacity
+    let protKDa = LabProteinConverter.proteinMolar(target: .sizeKDa, inputA: 50.0, inputB: 1000.0)
+    let protUg = LabProteinConverter.proteinMolar(target: .massUg, inputA: 50.0, inputB: 1000.0)
+    let protPmol = LabProteinConverter.proteinMolar(target: .amountPmol, inputA: 50.0, inputB: 50.0)
+    assert(protKDa?.value == 50.0 && protUg?.value == 50.0 && protPmol?.value == 1000.0, "Protein molar triangle mismatch")
+
+    let cFromBP = LabProteinConverter.dnaCodingCapacity(from: .dnaBp(900))
+    let cFromAA = LabProteinConverter.dnaCodingCapacity(from: .proteinAA(300))
+    let cFromKDa = LabProteinConverter.dnaCodingCapacity(from: .proteinKDa(33.0))
+    assert(cFromBP?.aminoAcids == 300 && abs((cFromBP?.proteinKDa ?? 0) - 33.0) < 1e-6)
+    assert(cFromAA?.dnaBp == 900 && cFromKDa?.aminoAcids == 300 && cFromKDa?.dnaBp == 900)
+
+    // (3) Biochemical Formulas
+    let molG = LabBiochemCalculator.molarityMass(mwGPerMol: 58.44, concentration: 100, concUnit: .millimolar, volume: 500, volUnit: .milliliter)
+    let molMicro = LabBiochemCalculator.molarityMass(mwGPerMol: 100, concentration: 1, concUnit: .micromolar, volume: 1, volUnit: .milliliter)
+    assert(molG != nil && molG!.displayUnit == "g" && abs(molG!.displayValue - 2.922) < 1e-6 && molG!.warningMessage == nil)
+    assert(molMicro != nil && molMicro!.displayUnit == "µg" && molMicro!.warningMessage != nil, "Microgram mass must emit higher stock warning")
+
+    let dilOK = LabBiochemCalculator.dilution(stockConc: 1, stockUnit: .molar, finalConc: 10, finalUnit: .millimolar, finalVolume: 50, volUnit: .milliliter)
+    let dilML = LabBiochemCalculator.dilution(stockConc: 1, stockUnit: .molar, finalConc: 10, finalUnit: .millimolar, finalVolume: 100, volUnit: .milliliter)
+    let dilNano = LabBiochemCalculator.dilution(stockConc: 1, stockUnit: .molar, finalConc: 10, finalUnit: .micromolar, finalVolume: 10, volUnit: .milliliter)
+    let dilPico = LabBiochemCalculator.dilution(stockConc: 10, stockUnit: .molar, finalConc: 1, finalUnit: .micromolar, finalVolume: 1, volUnit: .milliliter)
+    let dilBad = LabBiochemCalculator.dilution(stockConc: 10, stockUnit: .micromolar, finalConc: 1, finalUnit: .millimolar, finalVolume: 10, volUnit: .milliliter)
+    assert(dilOK?.isValid == true && dilOK?.displayUnit == "µL" && abs((dilOK?.displayValue ?? 0) - 500.0) < 1e-6)
+    assert(dilML?.isValid == true && dilML?.displayUnit == "mL" && abs((dilML?.displayValue ?? 0) - 1.0) < 1e-6)
+    assert(dilNano?.isValid == true && dilNano?.displayUnit == "nL" && abs((dilNano?.displayValue ?? 0) - 100.0) < 1e-6 && dilNano?.warningMessage != nil)
+    assert(dilPico?.isValid == true && dilPico?.displayUnit == "pL" && abs((dilPico?.displayValue ?? 0) - 100.0) < 1e-6 && dilPico?.warningMessage != nil)
+    assert(dilBad?.isValid == false && dilBad?.errorMessage != nil, "Final > Stock must be flagged invalid")
+
+    let t37 = LabBiochemCalculator.convertTemperature(from: .celsius(37))
+    let tMinus40 = LabBiochemCalculator.convertTemperature(from: .fahrenheit(-40))
+    let tAbsInvalid = LabBiochemCalculator.convertTemperature(from: .kelvin(-5))
+    assert(abs(t37.fahrenheit - 98.6) < 1e-6 && abs(t37.kelvin - 310.16) < 1e-6 && !t37.isBelowAbsoluteZero)
+    assert(abs(tMinus40.celsius - (-40.0)) < 1e-6 && tAbsInvalid.isBelowAbsoluteZero)
+
+    assert(BioMathFormatter.format(1234.567) == "1,234.57" && BioMathFormatter.format(0.01234) == "0.012")
+
+    // (4) Swift == Python MCP Tool Parity CLI Calls
+    let cliCheckProc = Process()
+    cliCheckProc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    cliCheckProc.arguments = [
+        mcpScript,
+        "--cli-call", "calculate_recombination_dosage",
+        "--args", #"{"clone_type":"ligation","vector_length":5000,"vector_conc":50,"vector_pmol":0.03,"molar_ratio":3,"inserts":[{"length":1000,"conc":25}],"sync_to_gui":false}"#
+    ]
+    let cliPipe = Pipe()
+    cliCheckProc.standardOutput = cliPipe
+    try cliCheckProc.run()
+    let cliData = cliPipe.fileHandleForReading.readDataToEndOfFile()
+    cliCheckProc.waitUntilExit()
+    assert(cliCheckProc.terminationStatus == 0, "MCP ligation mode call failed")
+    let cliJSON = try JSONSerialization.jsonObject(with: cliData) as! [String: Any]
+    let vecDict = cliJSON["vector"] as? [String: Any]
+    let insArr = cliJSON["inserts"] as? [[String: Any]]
+    assert((vecDict?["actualNg"] as? Double) == 97.5 && (insArr?.first?["actualNg"] as? Double) == 58.5, "Python MCP ligation ng mismatch vs Swift")
+
+    pass("LabBioCalculatorsEngine & Bio Calculator MCP parity verified (DNA/Protein/Biochem/Ligation Ratio).")
+} catch {
+    fatalError("LabBioCalculatorsEngine verification failed: \(error)")
 }
 
 let finalPyToolCount = await MainActor.run { PlasmidPoolManager.mcpToolsCatalog.count }

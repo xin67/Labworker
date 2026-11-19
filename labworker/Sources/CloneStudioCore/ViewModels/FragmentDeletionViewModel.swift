@@ -320,6 +320,25 @@ extension FragmentDeletionViewModel {
         primers = []
         designResult = nil
     }
+
+    /// 估算或返回当前设定的待删除区间长度 (bp)，供反向 PCR 模拟电泳实时预览使用
+    public var estimatedDeletionLengthBp: Int {
+        if let res = designResult, res.deletedLength > 0 {
+            return res.deletedLength
+        }
+        let cleanPlasmidLen = BioSequence.clean(plasmidSeq).count
+        guard cleanPlasmidLen >= 100 else { return 0 }
+        if selectionMode == .bySequence {
+            let delClean = BioSequence.clean(targetDelSeq)
+            return delClean.count >= 10 && delClean.count < cleanPlasmidLen ? delClean.count : 0
+        }
+        if let s = Int(delStartText.trimmingCharacters(in: .whitespacesAndNewlines)),
+           let e = Int(delEndText.trimmingCharacters(in: .whitespacesAndNewlines)),
+           s >= 1, e <= cleanPlasmidLen, s <= e {
+            return e - s + 1
+        }
+        return 0
+    }
     
     public func renamePrimerPair(pairIndex: Int = 0, prefix rawPrefix: String) {
         let pfx = PrimerItem.extractPairPrefix(from: rawPrefix)

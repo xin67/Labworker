@@ -437,6 +437,7 @@ public struct PlasmidPoolView: View {
                             let calcVM = WorkspaceSessionManager.shared.calculatorVM
                             calcVM.vectorName = item.name
                             calcVM.vectorLengthKb = String(format: "%.2f", Double(item.dnaInfo.length) / 1000.0)
+                            WorkspaceSessionManager.shared.bioCalculatorVM.selectedCategory = .cloningAndLigation
                             AppState.shared.selectedNav = .dnaCalculator
                             AppState.shared.showToast("已将载体 \(item.name) (\(item.dnaInfo.length) bp) 送入用量计算器")
                         }

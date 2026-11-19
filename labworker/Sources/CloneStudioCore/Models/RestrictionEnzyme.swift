@@ -81,6 +81,74 @@ public struct ConstructCutsite: Identifiable, Sendable, Equatable {
     }
 }
 
+/// Type IIS 内切酶外切规范 (识别序列 + 识别区下游裂解偏移 + 粘性末端长度)
+public struct TypeIISEnzymeSpec: Sendable, Equatable, Codable {
+    public let name: String
+    public let recognitionSite: String
+    public let reverseComplementSite: String
+    /// 识别序列 3' 端下游正链裂解偏移 (bp)
+    public let downstreamCutTop: Int
+    /// 识别序列 3' 端下游互补链裂解偏移 (bp)
+    public let downstreamCutBottom: Int
+    /// 产生的粘性末端长度 (bp)
+    public let overhangLength: Int
+    /// 引物 5' 端默认保护碱基
+    public let defaultProtective5Prime: String
+
+    public init(
+        name: String,
+        recognitionSite: String,
+        reverseComplementSite: String,
+        downstreamCutTop: Int,
+        downstreamCutBottom: Int,
+        overhangLength: Int,
+        defaultProtective5Prime: String = "GCA"
+    ) {
+        self.name = name
+        self.recognitionSite = recognitionSite
+        self.reverseComplementSite = reverseComplementSite
+        self.downstreamCutTop = downstreamCutTop
+        self.downstreamCutBottom = downstreamCutBottom
+        self.overhangLength = overhangLength
+        self.defaultProtective5Prime = defaultProtective5Prime
+    }
+}
+
+/// 限制性内切酶双链精确扫描结果（含非回文 Type IIS 正/反链外切坐标与跨零点标记）
+public struct DualStrandCutSite: Sendable, Equatable, Codable {
+    public let enzymeName: String
+    public let recognitionSite: String
+    public let strand: String
+    public let recognitionStart0Based: Int
+    public let recognitionEnd0Based: Int
+    public let topSnip0Based: Int
+    public let bottomSnip0Based: Int
+    public let overhangBps: String
+    public let isOriginSpanning: Bool
+
+    public init(
+        enzymeName: String,
+        recognitionSite: String,
+        strand: String,
+        recognitionStart0Based: Int,
+        recognitionEnd0Based: Int,
+        topSnip0Based: Int,
+        bottomSnip0Based: Int,
+        overhangBps: String,
+        isOriginSpanning: Bool
+    ) {
+        self.enzymeName = enzymeName
+        self.recognitionSite = recognitionSite
+        self.strand = strand
+        self.recognitionStart0Based = recognitionStart0Based
+        self.recognitionEnd0Based = recognitionEnd0Based
+        self.topSnip0Based = topSnip0Based
+        self.bottomSnip0Based = bottomSnip0Based
+        self.overhangBps = overhangBps
+        self.isOriginSpanning = isOriginSpanning
+    }
+}
+
 /// 预设限制性内切酶组
 public struct EnzymePresetGroup: Identifiable, Sendable, Equatable {
     public var id: String { name }
@@ -138,6 +206,79 @@ public struct RestrictionEnzyme: Identifiable, Hashable, Codable, Sendable {
     public var isType2S: Bool {
         let s = snipOffsets
         return s.top > site.count || s.bottom > site.count || s.top < 0 || s.bottom < 0
+    }
+
+    /// 粘性末端长度 (bp)
+    public var overhangLength: Int {
+        let s = snipOffsets
+        return abs(s.bottom - s.top)
+    }
+
+    /// 识别序列的反向互补序列
+    public var reverseComplementSite: String {
+        BioSequence.reverseComplement(site)
+    }
+
+    /// 识别序列是否回文对称
+    public var isPalindromic: Bool {
+        isPureLiteralSite && site == reverseComplementSite
+    }
+
+    /// 若为 Type IIS 外切酶，返回其识别序列 3' 下游正链外切偏移 (bp)
+    public var downstreamCutTopOffset: Int? {
+        guard isType2S else { return nil }
+        return snipOffsets.top - site.count
+    }
+
+    /// 若为 Type IIS 外切酶，返回其识别序列 3' 下游互补链外切偏移 (bp)
+    public var downstreamCutBottomOffset: Int? {
+        guard isType2S else { return nil }
+        return snipOffsets.bottom - site.count
+    }
+
+    /// Type IIS 常用组装酶规范表 (BsaI / BsmBI / BbsI / SapI)
+    public static let typeIISCatalog: [String: TypeIISEnzymeSpec] = [
+        "bsai": TypeIISEnzymeSpec(
+            name: "BsaI",
+            recognitionSite: "GGTCTC",
+            reverseComplementSite: "GAGACC",
+            downstreamCutTop: 1,
+            downstreamCutBottom: 5,
+            overhangLength: 4,
+            defaultProtective5Prime: "GCA"
+        ),
+        "bsmbi": TypeIISEnzymeSpec(
+            name: "BsmBI",
+            recognitionSite: "CGTCTC",
+            reverseComplementSite: "GAGACG",
+            downstreamCutTop: 1,
+            downstreamCutBottom: 5,
+            overhangLength: 4,
+            defaultProtective5Prime: "GCA"
+        ),
+        "bbsi": TypeIISEnzymeSpec(
+            name: "BbsI",
+            recognitionSite: "GAAGAC",
+            reverseComplementSite: "GTCTTC",
+            downstreamCutTop: 2,
+            downstreamCutBottom: 6,
+            overhangLength: 4,
+            defaultProtective5Prime: "GCA"
+        ),
+        "sapi": TypeIISEnzymeSpec(
+            name: "SapI",
+            recognitionSite: "GCTCTTC",
+            reverseComplementSite: "GAAGAGC",
+            downstreamCutTop: 1,
+            downstreamCutBottom: 4,
+            overhangLength: 3,
+            defaultProtective5Prime: "GCA"
+        )
+    ]
+
+    /// 获取对应的 Type IIS 标准外切规格
+    public var typeIISSpec: TypeIISEnzymeSpec? {
+        Self.typeIISCatalog[name.lowercased()]
     }
     
     /// 推荐视觉配色 Hex (还原 CloneCanvas 酶切色彩层级)
@@ -308,6 +449,103 @@ public struct RestrictionEnzyme: Identifiable, Hashable, Codable, Sendable {
     /// 查找在指定序列中的所有位点索引 (0-based)
     public func findSites(in sequence: String) -> [Int] {
         findSitesInCleaned(BioSequence.clean(sequence))
+    }
+
+    /// 双链精确扫描切点（支持非回文 Type IIS 正/反链外切偏移坐标及环形质粒跨零点匹配）
+    public func findDualStrandSites(in sequence: String, circular: Bool = true) -> [DualStrandCutSite] {
+        let cleanSeq = BioSequence.clean(sequence)
+        let seqLen = cleanSeq.count
+        let siteLen = site.count
+        guard seqLen > 0, siteLen > 0, siteLen <= seqLen else { return [] }
+
+        let chars = Array(cleanSeq)
+        let searchSeq = circular ? (cleanSeq + cleanSeq) : cleanSeq
+        let snips = snipOffsets
+        var results: [DualStrandCutSite] = []
+
+        func extractOverhang(rawStart: Int, rawEnd: Int) -> String {
+            let len = rawEnd - rawStart
+            guard len > 0, len <= 12 else { return "" }
+            var out = ""
+            out.reserveCapacity(len)
+            for pos in rawStart..<rawEnd {
+                if circular {
+                    let wrapped = ((pos % seqLen) + seqLen) % seqLen
+                    out.append(chars[wrapped])
+                } else if pos >= 0 && pos < seqLen {
+                    out.append(chars[pos])
+                }
+            }
+            return out
+        }
+
+        // 正向链扫描
+        let fwdPattern = RestrictionEnzyme(name: name, site: site)
+        for recStart0 in fwdPattern.findSitesInCleaned(searchSeq) {
+            if circular && recStart0 >= seqLen { continue }
+            let rawTop = recStart0 + snips.top
+            let rawBot = recStart0 + snips.bottom
+            if !circular && (rawTop < 0 || rawBot < 0 || rawTop > seqLen || rawBot > seqLen) {
+                continue
+            }
+            let topSnip = circular ? ((rawTop % seqLen) + seqLen) % seqLen : rawTop
+            let botSnip = circular ? ((rawBot % seqLen) + seqLen) % seqLen : rawBot
+            let ovh = extractOverhang(rawStart: min(rawTop, rawBot), rawEnd: max(rawTop, rawBot))
+            let recEnd0 = (recStart0 + siteLen - 1) % seqLen
+            let spans = circular && (recStart0 + siteLen > seqLen || max(rawTop, rawBot) > seqLen || min(rawTop, rawBot) < 0)
+            results.append(
+                DualStrandCutSite(
+                    enzymeName: name,
+                    recognitionSite: site,
+                    strand: "+",
+                    recognitionStart0Based: recStart0,
+                    recognitionEnd0Based: recEnd0,
+                    topSnip0Based: topSnip,
+                    bottomSnip0Based: botSnip,
+                    overhangBps: ovh,
+                    isOriginSpanning: spans
+                )
+            )
+        }
+
+        // 若非回文序列，追加反向互补链扫描
+        if !isPalindromic {
+            let rcSite = reverseComplementSite
+            let revPattern = RestrictionEnzyme(name: name, site: rcSite)
+            for recStart0 in revPattern.findSitesInCleaned(searchSeq) {
+                if circular && recStart0 >= seqLen { continue }
+                let rawTop = recStart0 + siteLen - snips.bottom
+                let rawBot = recStart0 + siteLen - snips.top
+                if !circular && (rawTop < 0 || rawBot < 0 || rawTop > seqLen || rawBot > seqLen) {
+                    continue
+                }
+                let topSnip = circular ? ((rawTop % seqLen) + seqLen) % seqLen : rawTop
+                let botSnip = circular ? ((rawBot % seqLen) + seqLen) % seqLen : rawBot
+                let ovh = extractOverhang(rawStart: min(rawTop, rawBot), rawEnd: max(rawTop, rawBot))
+                let recEnd0 = (recStart0 + siteLen - 1) % seqLen
+                let spans = circular && (recStart0 + siteLen > seqLen || max(rawTop, rawBot) > seqLen || min(rawTop, rawBot) < 0)
+                results.append(
+                    DualStrandCutSite(
+                        enzymeName: name,
+                        recognitionSite: rcSite,
+                        strand: "-",
+                        recognitionStart0Based: recStart0,
+                        recognitionEnd0Based: recEnd0,
+                        topSnip0Based: topSnip,
+                        bottomSnip0Based: botSnip,
+                        overhangBps: ovh,
+                        isOriginSpanning: spans
+                    )
+                )
+            }
+        }
+
+        return results.sorted {
+            if $0.recognitionStart0Based != $1.recognitionStart0Based {
+                return $0.recognitionStart0Based < $1.recognitionStart0Based
+            }
+            return $0.strand < $1.strand
+        }
     }
 }
 
@@ -519,6 +757,8 @@ public final class RestrictionEnzymeDatabase: @unchecked Sendable {
         "bsai": NEBBufferCompatibility(r1_1: 50, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
         "bbsi": NEBBufferCompatibility(r1_1: 10, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
         "bsmbi": NEBBufferCompatibility(r1_1: 50, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "r3.1", heatInactivation: true),
+        "sapi": NEBBufferCompatibility(r1_1: 50, r2_1: 75, r3_1: 10, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
+        "bspqi": NEBBufferCompatibility(r1_1: 50, r2_1: 50, r3_1: 100, cutSmart: 100, preferredBuffer: "r3.1", heatInactivation: true),
         "noti": NEBBufferCompatibility(r1_1: 10, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
         "xbai": NEBBufferCompatibility(r1_1: 25, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true),
         "psti": NEBBufferCompatibility(r1_1: 75, r2_1: 100, r3_1: 100, cutSmart: 100, preferredBuffer: "r3.1", heatInactivation: true),

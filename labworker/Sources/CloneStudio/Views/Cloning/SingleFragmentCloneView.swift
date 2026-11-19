@@ -80,6 +80,14 @@ public struct SingleFragmentCloneView: View {
                 .action(title: "算用量", icon: "function", tint: .purple, help: "将载体与插入长度送入用量计算") {
                     vm.sendLengthsToCalculator(navigate: true)
                 },
+                .action(title: "电泳模拟", icon: "chart.bar.doc.horizontal", tint: .cyan, help: "在独立窗口放大检视单片段同源重组 PCR 模拟凝胶电泳") {
+                    GelSimulationWindowPresenter.shared.openWindow(
+                        title: "单片段同源重组 PCR 模拟电泳",
+                        accentTint: .cyan,
+                        compareLaneTitle: "显示混合共泳道对照",
+                        buildSimulation: singleGelSimulation
+                    )
+                },
                 .action(title: "示例", icon: "sparkles", help: "载入标准单片段重组示例", action: loadSampleData),
                 .action(id: "clear_single", title: "", icon: "trash", tint: .red, help: "清空当前克隆配置", action: vm.clear)
             ]
@@ -274,6 +282,14 @@ public struct SingleFragmentCloneView: View {
                                 }
                             }
                         }
+
+                        // 6. 质粒片段同源重组扩增凝胶电泳片段模拟
+                        HomologousPCRGelSectionCard(
+                            title: "同源重组 PCR 凝胶电泳模拟",
+                            accentTint: .cyan,
+                            compareLaneTitle: "显示混合共泳道对照",
+                            buildSimulation: singleGelSimulation
+                        )
                     }
                 } right: {
                     if let pData = previewData {
@@ -469,12 +485,14 @@ public struct SingleFragmentCloneView: View {
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
-                    Spacer()
+                        .fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 4)
                     targetRangeBadge(delLen: delLen)
+                        .fixedSize(horizontal: true, vertical: false)
                     closeVectorButton
                 }
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.text.magnifyingglass")
                             .foregroundColor(.blue)
@@ -482,10 +500,13 @@ public struct SingleFragmentCloneView: View {
                             .font(.system(size: 12, weight: .bold))
                             .lineLimit(1)
                             .truncationMode(.middle)
+                            .frame(minWidth: 0, alignment: .leading)
                         Text("(\(vec.length) bp · \(vec.featuresCount) 特征)")
                             .font(.system(size: 10.5))
                             .foregroundColor(.secondary)
-                        Spacer()
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 4)
                         closeVectorButton
                     }
                     targetRangeBadge(delLen: delLen)
@@ -756,12 +777,14 @@ public struct SingleFragmentCloneView: View {
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
-                    Spacer()
+                        .fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 4)
                     donorExtractionBadge(cleanInsertLen: cleanInsertLen)
+                        .fixedSize(horizontal: true, vertical: false)
                     closeDonorButton
                 }
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.triangle.pull")
                             .foregroundColor(.green)
@@ -769,10 +792,13 @@ public struct SingleFragmentCloneView: View {
                             .font(.system(size: 12, weight: .bold))
                             .lineLimit(1)
                             .truncationMode(.middle)
+                            .frame(minWidth: 0, alignment: .leading)
                         Text("(\(ins.length) bp · \(ins.featuresCount) 特征)")
                             .font(.system(size: 10.5))
                             .foregroundColor(.secondary)
-                        Spacer()
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 4)
                         closeDonorButton
                     }
                     donorExtractionBadge(cleanInsertLen: cleanInsertLen)
@@ -1055,6 +1081,8 @@ public struct SingleFragmentCloneView: View {
             
             StudioSectionClearButton(label: "一键清除载体", action: vm.clearVectorSection)
         }
+        .fixedSize(horizontal: true, vertical: false)
+        .layoutPriority(2)
     }
     
     private func donorExtractionBadge(cleanInsertLen: Int) -> some View {
@@ -1088,6 +1116,8 @@ public struct SingleFragmentCloneView: View {
             
             StudioSectionClearButton(label: "一键清除供体", action: vm.clearInsertSection)
         }
+        .fixedSize(horizontal: true, vertical: false)
+        .layoutPriority(2)
     }
     
     // MARK: - 特征分类选择器 (自适应排版，杜绝文字挤压与重叠)
@@ -1525,5 +1555,30 @@ public struct SingleFragmentCloneView: View {
     
     private func selectDNAFile(completion: @escaping (URL) -> Void) {
         FinderFileDropHelper.selectDNAFile(completion: completion)
+    }
+
+    private func singleGelSimulation(
+        concOverride: AgaroseGelConcentration?,
+        ladderOverride: String?,
+        includeMixLane: Bool
+    ) -> HomologousPCRGelSimulationResult {
+        let hasFullVector = vm.vectorDNAInfo != nil || vm.rawVectorLengthBp >= 300
+        return HomologousPCRGelSimulator.simulateSingleFragment(
+            rawVectorLengthBp: hasFullVector ? vm.rawVectorLengthBp : 0,
+            effectiveVectorBackboneLengthBp: hasFullVector ? vm.effectiveVectorBackboneLengthBp : 0,
+            deletedVectorBp: hasFullVector ? vm.deletedVectorBp : 0,
+            linearizationMode: vm.mode,
+            cleanInsertCoreLengthBp: vm.cleanInsertLengthBp,
+            extra5LengthBp: BioSequence.clean(vm.extra5Bases).count,
+            extra3LengthBp: BioSequence.clean(vm.extra3Bases).count,
+            homologyLength: vm.homologyLength,
+            insertGeneName: vm.insertGeneName,
+            includeVectorPCRPrimers: vm.includeVectorPCRPrimers,
+            primers: vm.primers,
+            omittedShortVectorBp: hasFullVector ? 0 : vm.effectiveVectorBackboneLengthBp,
+            concentrationOverride: concOverride,
+            ladderIDOverride: ladderOverride,
+            includeMixControlLane: includeMixLane
+        )
     }
 }

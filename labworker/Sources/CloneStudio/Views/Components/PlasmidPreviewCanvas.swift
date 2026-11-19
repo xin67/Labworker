@@ -1,5 +1,8 @@
 import SwiftUI
 import CloneStudioCore
+#if canImport(AppKit)
+import AppKit
+#endif
 
 // MARK: - 1. 质粒图谱数据模型 (PlasmidMapModel)
 
@@ -1298,6 +1301,50 @@ extension Color {
             opacity: Double(a) / 255
         )
     }
+
+    /// 自动校正过浅（如浅绿 #ccffcc / 浅黄 #ffff99）或过深颜色，确保文字与图例在浅色/深色模式下均清晰可读
+    func studioLegibleAccent(isDark: Bool) -> Color {
+        #if canImport(AppKit)
+        guard let rgb = NSColor(self).usingColorSpace(.sRGB) else { return self }
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        rgb.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        if isDark {
+            let adjSat = s > 0.08 ? max(Double(s), 0.55) : Double(s)
+            let adjBri = max(Double(b), 0.72)
+            return Color(hue: Double(h), saturation: adjSat, brightness: adjBri, opacity: Double(a))
+        } else {
+            let adjSat = s > 0.06 ? max(Double(s), 0.72) : Double(s)
+            let adjBri = min(Double(b), 0.52)
+            return Color(hue: Double(h), saturation: adjSat, brightness: adjBri, opacity: Double(a))
+        }
+        #else
+        return self
+        #endif
+    }
+
+    func studioStepCapsuleFill() -> Color {
+        #if canImport(AppKit)
+        guard let rgb = NSColor(self).usingColorSpace(.sRGB) else { return self }
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        rgb.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        return Color(hue: Double(h), saturation: Double(max(s, 0.65)), brightness: Double(min(b, 0.66)), opacity: 1.0)
+        #else
+        return self
+        #endif
+    }
+
+    /// 针对填充在色块内部（如环状图谱特征弧 / 线性分布块）的文字颜色：浅粉彩底色返回深灰字，饱和深色返回纯白字
+    func studioContrastingTextOnFill() -> Color {
+        #if canImport(AppKit)
+        guard let rgb = NSColor(self).usingColorSpace(.sRGB) else { return .white }
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        rgb.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let luminance = 0.2126 * Double(r) + 0.7152 * Double(g) + 0.0722 * Double(b)
+        return luminance > 0.56 ? Color(red: 0.11, green: 0.14, blue: 0.18) : .white
+        #else
+        return .white
+        #endif
+    }
 }
 
 private final class CutsiteMemoBox {
@@ -1350,7 +1397,7 @@ public struct PlasmidPreviewPanel: View {
     @State private var selectedFeatureID: UUID? = nil
     @State private var selectedRangeBp: ClosedRange<Int>? = nil
     @State private var showEnzymeInspector: Bool = false
-    @State private var isSplitWorkbenchWide: Bool = true
+    @State private var isSplitWorkbenchWide: Bool = false
     private let cutsiteMemo = CutsiteMemoBox()
     
     public init(
@@ -1480,9 +1527,10 @@ public struct PlasmidPreviewPanel: View {
                 case .linear:
                     linearConstructView
                 case .lineage:
-                    HistoryTreeView()
+                    HistoryTreeView(fillsAvailableHeight: isStandaloneWindow)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: isStandaloneWindow ? .infinity : nil, alignment: .topLeading)
             
             // 底栏：极简元件胶囊与旋转滑块
             HStack(spacing: 6) {
@@ -1495,12 +1543,13 @@ public struct PlasmidPreviewPanel: View {
                         HStack(spacing: 4) {
                             ForEach(data.features) { feat in
                                 let isSel = (selectedFeatureID == feat.id)
+                                let legibleCol = feat.color.studioLegibleAccent(isDark: isDark)
                                 Button(action: {
                                     selectFeature(feat)
                                 }) {
                                     HStack(spacing: 4) {
                                         Circle()
-                                            .fill(isSel ? Color.white : feat.color)
+                                            .fill(isSel ? Color.white : legibleCol)
                                             .frame(width: 5, height: 5)
                                         Text(feat.name)
                                             .font(.system(size: 10, weight: isSel ? .semibold : .medium))
@@ -1512,7 +1561,7 @@ public struct PlasmidPreviewPanel: View {
                                     .studioOptionalForeground(isSel ? nil : .primary)
                                 }
                                 .studioGlassButton(
-                                    tint: isSel ? feat.color : nil,
+                                    tint: isSel ? legibleCol : nil,
                                     isProminent: isSel,
                                     isSelected: isSel,
                                     controlSize: .small
@@ -1534,9 +1583,10 @@ public struct PlasmidPreviewPanel: View {
             if let selID = selectedFeatureID,
                let feat = data.features.first(where: { $0.id == selID }),
                !feat.sequenceSnippet.isEmpty {
+                let legibleCol = feat.color.studioLegibleAccent(isDark: isDark)
                 Text("\(feat.name): 5'- \(feat.sequenceSnippet) -3'")
                     .font(.system(size: 10.5, design: .monospaced))
-                    .foregroundColor(feat.color)
+                    .foregroundColor(legibleCol)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
@@ -1544,19 +1594,35 @@ public struct PlasmidPreviewPanel: View {
                     .padding(.vertical, 4)
                     .background(
                         Capsule(style: .continuous)
-                            .fill(feat.color.opacity(0.08))
+                            .fill(legibleCol.opacity(0.10))
                     )
             }
         }
-        .padding(isStandaloneWindow ? 14 : 12)
+        .padding(.horizontal, isStandaloneWindow ? 16 : 12)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, maxHeight: isStandaloneWindow ? .infinity : nil, alignment: .topLeading)
         .background {
-            if !isStandaloneWindow {
-                RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
-                    .fill(StudioPalette.cardBg(isLight: !isDark))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
-                            .stroke(StudioPalette.cardBorder(isLight: !isDark), lineWidth: 1)
-                    )
+            ZStack {
+                Color.clear
+                    .onGeometryChange(for: Int.self) { proxy in
+                        Int(proxy.size.width.rounded())
+                    } action: { width in
+                        guard width > 80 else { return }
+                        if isSplitWorkbenchWide && width < 660 {
+                            isSplitWorkbenchWide = false
+                        } else if !isSplitWorkbenchWide && width >= 690 {
+                            isSplitWorkbenchWide = true
+                        }
+                    }
+
+                if !isStandaloneWindow {
+                    RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
+                        .fill(StudioPalette.cardBg(isLight: !isDark))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
+                                .stroke(StudioPalette.cardBorder(isLight: !isDark), lineWidth: 1)
+                        )
+                }
             }
         }
     }
@@ -1593,41 +1659,32 @@ public struct PlasmidPreviewPanel: View {
         }
     }
     
-    // MARK: - 精细同屏双视工作台 (响应式监听容器宽度，单次实例化重型画布)
+    // MARK: - 精细同屏双视工作台 (基于容器真实宽度自适应切换并排或上下堆叠)
     private var splitWorkbenchView: some View {
         Group {
             if isStandaloneWindow || appState.isPreviewExpanded || isSplitWorkbenchWide {
                 // 宽屏 / 全宽精细同屏模式：左 Circular Map + 右 Sequence Map 1:1 并排联动
                 HStack(alignment: .top, spacing: 8) {
                     circularPlasmidView
-                        .frame(minWidth: 310, idealWidth: 420, maxWidth: .infinity)
+                        .frame(minWidth: 0, idealWidth: 420, maxWidth: .infinity)
                     
                     sequenceMapView
-                        .frame(minWidth: 340, idealWidth: 500, maxWidth: .infinity)
+                        .frame(minWidth: 0, idealWidth: 500, maxWidth: .infinity)
                 }
             } else {
                 // 紧凑双栏/窄屏自动回退：上下流式堆叠，保证零挤压、零截断
                 VStack(alignment: .leading, spacing: 8) {
                     circularPlasmidView
                         .frame(maxWidth: .infinity)
+                        .frame(height: 390)
                     
                     sequenceMapView
                         .frame(maxWidth: .infinity)
+                        .frame(minHeight: 380)
                 }
             }
         }
-        .frame(maxWidth: .infinity)
-        .onGeometryChange(for: Int.self) { proxy in
-            Int(proxy.size.width.rounded())
-        } action: { width in
-            guard width > 100 else { return }
-            // 32pt 迟滞死区，避免滚动条显隐或侧栏微调引起同屏工作台闪烁振荡
-            if isSplitWorkbenchWide && width < 642 {
-                isSplitWorkbenchWide = false
-            } else if !isSplitWorkbenchWide && width > 674 {
-                isSplitWorkbenchWide = true
-            }
-        }
+        .frame(maxWidth: .infinity, maxHeight: isStandaloneWindow ? .infinity : nil, alignment: .topLeading)
     }
     
     private var popoutWindowButton: some View {
@@ -1707,57 +1764,99 @@ public struct PlasmidPreviewPanel: View {
         .environment(\.colorScheme, isDark ? .dark : .light)
     }
     
+    private func circularRingMinDim(for size: CGSize) -> CGFloat {
+        // 为左右半区外圈引出酶切标签预留安全水平边界，避免 HaeIII (28) 等标签贴边裁切
+        let safeW = max(140.0, size.width - 124.0) / 0.74
+        let safeH = max(170.0, size.height - 20.0) / 0.86
+        return min(size.width, size.height, min(safeW, safeH)) * zoomScale
+    }
+
+    @ViewBuilder
+    private func circularToolControls(compactCamera: Bool) -> some View {
+        GlassEffectContainer(spacing: 5) {
+            HStack(spacing: 5) {
+                circularToolbarBtn(icon: "cursorarrow", isActive: toolMode == .select, tooltip: "Select Mode") {
+                    toolMode = .select
+                }
+                circularToolbarBtn(icon: "hand.draw", isActive: toolMode == .pan, tooltip: "Pan Canvas") {
+                    toolMode = .pan
+                }
+                circularToolbarBtn(icon: "arrow.triangle.2.circlepath", isActive: toolMode == .rotate, tooltip: "Rotate +30°") {
+                    toolMode = .rotate
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        rotationDegrees = (rotationDegrees + 30).truncatingRemainder(dividingBy: 360)
+                    }
+                }
+                circularToolbarBtn(icon: "plus.magnifyingglass", isActive: false, tooltip: "Zoom In") {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        zoomScale = min(2.0, zoomScale + 0.18)
+                    }
+                }
+                circularToolbarBtn(icon: "minus.magnifyingglass", isActive: false, tooltip: "Zoom Out") {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        zoomScale = max(0.70, zoomScale - 0.18)
+                    }
+                }
+                circularToolbarBtn(icon: "arrow.counterclockwise", isActive: false, tooltip: "Reset View") {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        zoomScale = 1.0
+                        panOffset = .zero
+                        rotationDegrees = 0
+                    }
+                }
+                Button(action: {
+                    appState.showToast("已将「\(data.constructTitle)」环形图谱快照复制至剪贴板")
+                }) {
+                    if compactCamera {
+                        Image(systemName: "camera")
+                            .font(.system(size: 10.5, weight: .semibold))
+                    } else {
+                        Label("PNG", systemImage: "camera")
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                }
+                .studioGlassButton(isCircle: compactCamera, controlSize: .regular)
+                .help("导出高分辨率 PNG 图谱")
+            }
+        }
+    }
+
     private var circularTopToolbar: some View {
         let headerBg = StudioPalette.trackBg(isLight: !isDark)
         let titleCol: Color = .primary
-        return HStack(spacing: 6) {
-            Text("Circular Plasmid Map")
-                .font(.system(size: 11.5, weight: .bold))
-                .foregroundStyle(titleCol)
-                .lineLimit(1)
-            
-            Spacer(minLength: 4)
-            
-            GlassEffectContainer(spacing: 5) {
-                HStack(spacing: 5) {
-                    circularToolbarBtn(icon: "cursorarrow", isActive: toolMode == .select, tooltip: "Select Mode") {
-                        toolMode = .select
-                    }
-                    circularToolbarBtn(icon: "hand.draw", isActive: toolMode == .pan, tooltip: "Pan Canvas") {
-                        toolMode = .pan
-                    }
-                    circularToolbarBtn(icon: "arrow.triangle.2.circlepath", isActive: toolMode == .rotate, tooltip: "Rotate +30°") {
-                        toolMode = .rotate
-                        withAnimation(.easeInOut(duration: 0.18)) {
-                            rotationDegrees = (rotationDegrees + 30).truncatingRemainder(dividingBy: 360)
-                        }
-                    }
-                    circularToolbarBtn(icon: "plus.magnifyingglass", isActive: false, tooltip: "Zoom In") {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            zoomScale = min(2.0, zoomScale + 0.18)
-                        }
-                    }
-                    circularToolbarBtn(icon: "minus.magnifyingglass", isActive: false, tooltip: "Zoom Out") {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            zoomScale = max(0.70, zoomScale - 0.18)
-                        }
-                    }
-                    circularToolbarBtn(icon: "arrow.counterclockwise", isActive: false, tooltip: "Reset View") {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            zoomScale = 1.0
-                            panOffset = .zero
-                            rotationDegrees = 0
-                        }
-                    }
-                    Button(action: {
-                        appState.showToast("已将「\(data.constructTitle)」环形图谱快照复制至剪贴板")
-                    }) {
-                        Label("PNG", systemImage: "camera")
-                            .font(.system(size: 10.5, weight: .semibold))
-                    }
-                    .studioGlassButton(controlSize: .regular)
-                    .help("导出高分辨率 PNG 图谱")
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                Text("Circular Plasmid Map")
+                    .font(.system(size: 11.5, weight: .bold))
+                    .foregroundStyle(titleCol)
+                    .fixedSize(horizontal: true, vertical: false)
+
+                Spacer(minLength: 4)
+
+                circularToolControls(compactCamera: false)
+            }
+
+            HStack(spacing: 6) {
+                Text("Circular Map")
+                    .font(.system(size: 11.5, weight: .bold))
+                    .foregroundStyle(titleCol)
+                    .fixedSize(horizontal: true, vertical: false)
+
+                Spacer(minLength: 4)
+
+                circularToolControls(compactCamera: true)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text("Circular Plasmid Map")
+                        .font(.system(size: 11.5, weight: .bold))
+                        .foregroundStyle(titleCol)
+                        .fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 0)
                 }
+                circularToolControls(compactCamera: false)
             }
         }
         .padding(.horizontal, 10)
@@ -1769,21 +1868,32 @@ public struct PlasmidPreviewPanel: View {
         let titleCol = isDark ? Color.cyan : Color(red: 0.02, green: 0.45, blue: 0.78)
         let bpCol = isDark ? Color.white.opacity(0.88) : Color(red: 0.10, green: 0.14, blue: 0.22)
         let subCol = isDark ? Color.white.opacity(0.45) : Color(red: 0.40, green: 0.46, blue: 0.56)
-        return VStack(spacing: 1) {
-            Text(data.constructTitle)
-                .font(.system(size: 11.5, weight: .bold))
-                .foregroundColor(titleCol)
-                .lineLimit(1)
-            Text("\(data.totalLengthBp) bps")
-                .font(.system(size: 10.5, weight: .semibold))
-                .monospacedDigit()
-                .foregroundColor(bpCol)
-            Text("circular")
-                .font(.system(size: 8.5))
-                .foregroundColor(subCol)
+        return GeometryReader { geo in
+            let ringDim = circularRingMinDim(for: geo.size)
+            let innerDiameter = max(70.0, (ringDim * 0.195 - 16.0) * 1.64)
+            let hubMaxWidth = min(innerDiameter, max(70.0, geo.size.width * 0.42))
+            VStack(spacing: 1) {
+                Text(data.constructTitle)
+                    .font(.system(size: 10.5, weight: .bold))
+                    .foregroundColor(titleCol)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .minimumScaleFactor(0.82)
+                Text("\(data.totalLengthBp) bps")
+                    .font(.system(size: 10, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundColor(bpCol)
+                Text("circular")
+                    .font(.system(size: 8.5))
+                    .foregroundColor(subCol)
+            }
+            .frame(maxWidth: hubMaxWidth)
+            .position(
+                x: geo.size.width / 2.0 + panOffset.width,
+                y: geo.size.height / 2.0 + panOffset.height
+            )
         }
-        .offset(x: panOffset.width, y: panOffset.height)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .allowsHitTesting(false)
     }
     
@@ -1812,7 +1922,7 @@ public struct PlasmidPreviewPanel: View {
         let cy = size.height / 2.0 + panOffset.height
         let center = CGPoint(x: cx, y: cy)
         let centerCartesian = CartesianPoint(x: Double(cx), y: Double(cy))
-        let minDim = min(size.width, size.height) * zoomScale
+        let minDim = circularRingMinDim(for: size)
         
         let gridCol = isDark ? Color.white.opacity(0.03) : Color.black.opacity(0.04)
         let rulerRingCol = isDark ? Color.white.opacity(0.16) : Color.black.opacity(0.18)
@@ -1930,8 +2040,13 @@ public struct PlasmidPreviewPanel: View {
             
             let isSelected = (selectedFeatureID == feat.id)
             let arcPath = buildOVEDirectedArcPath(center: center, geo: arcGeo, rInner: CGFloat(rIn), rOuter: CGFloat(rOut))
-            context.fill(arcPath, with: .color(feat.color.opacity(isSelected ? 1.0 : 0.88)))
-            context.stroke(arcPath, with: .color(isSelected ? .white : Color.white.opacity(0.85)), lineWidth: isSelected ? 2.0 : 0.9)
+            let legibleStroke = feat.color.studioLegibleAccent(isDark: isDark)
+            context.fill(arcPath, with: .color(feat.color.opacity(isSelected ? 1.0 : 0.90)))
+            context.stroke(
+                arcPath,
+                with: .color(isSelected ? legibleStroke : legibleStroke.opacity(isDark ? 0.55 : 0.45)),
+                lineWidth: isSelected ? 2.0 : 0.9
+            )
             
             let rMid = CGFloat((rIn + rOut) / 2.0)
             let midPt = CGPoint(
@@ -1943,7 +2058,7 @@ public struct PlasmidPreviewPanel: View {
                 let fResolved = context.resolve(
                     Text(feat.name)
                         .font(.system(size: 8.5, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(feat.color.studioContrastingTextOnFill())
                 )
                 context.draw(fResolved, at: midPt, anchor: .center)
             }
@@ -2053,35 +2168,54 @@ public struct PlasmidPreviewPanel: View {
         )
         
         for lbl in relaxedLabels {
-            let col = colorMap[lbl.id] ?? .white
+            let rawCol = colorMap[lbl.id] ?? .white
+            let col = rawCol.studioLegibleAccent(isDark: isDark)
             let stubRadius = lbl.radius + 7.0
             let stubPt = CircularGeometry.polarToCartesian(
                 radius: stubRadius,
                 angleRadians: lbl.anchorAngle,
                 center: centerCartesian
             )
-            
-            var leader = Path()
-            leader.move(to: CGPoint(x: lbl.innerPoint.x, y: lbl.innerPoint.y))
-            leader.addLine(to: CGPoint(x: stubPt.x, y: stubPt.y))
-            leader.addLine(to: CGPoint(x: lbl.outerPoint.x, y: lbl.outerPoint.y))
-            
-            let shelfLen: Double = lbl.isLeftHalf ? -10.0 : 10.0
-            leader.addLine(to: CGPoint(x: lbl.outerPoint.x + shelfLen, y: lbl.outerPoint.y))
-            
-            context.stroke(
-                leader,
-                with: .color(col.opacity(0.65)),
-                style: StrokeStyle(lineWidth: 0.9)
-            )
-            
+
             let resolvedText = context.resolve(
                 Text(lbl.text)
                     .font(.system(size: 8.5, weight: lbl.priority >= 16 ? .bold : .medium))
                     .foregroundColor(col.opacity(0.95))
             )
+            let textW = Double(resolvedText.measure(in: CGSize(width: 220, height: 32)).width)
+            let shelfLen: Double = lbl.isLeftHalf ? -10.0 : 10.0
+            let rawShelfEndX = lbl.outerPoint.x + shelfLen
+            let safeShelfEndX: Double = {
+                if lbl.isLeftHalf {
+                    let minAllowedX = 6.0 + textW + 3.0
+                    return max(rawShelfEndX, min(lbl.outerPoint.x, minAllowedX))
+                } else {
+                    let maxAllowedX = Double(size.width) - 6.0 - textW - 3.0
+                    return min(rawShelfEndX, max(lbl.outerPoint.x, maxAllowedX))
+                }
+            }()
+
+            let textX: Double = {
+                if lbl.isLeftHalf {
+                    return max(6.0 + textW, safeShelfEndX - 3.0)
+                } else {
+                    return min(max(6.0, Double(size.width) - 6.0 - textW), safeShelfEndX + 3.0)
+                }
+            }()
+
+            var leader = Path()
+            leader.move(to: CGPoint(x: lbl.innerPoint.x, y: lbl.innerPoint.y))
+            leader.addLine(to: CGPoint(x: stubPt.x, y: stubPt.y))
+            leader.addLine(to: CGPoint(x: lbl.outerPoint.x, y: lbl.outerPoint.y))
+            leader.addLine(to: CGPoint(x: safeShelfEndX, y: lbl.outerPoint.y))
+
+            context.stroke(
+                leader,
+                with: .color(col.opacity(0.70)),
+                style: StrokeStyle(lineWidth: 0.9)
+            )
+
             let anchor: UnitPoint = lbl.isLeftHalf ? .trailing : .leading
-            let textX = lbl.outerPoint.x + shelfLen + (lbl.isLeftHalf ? -3.5 : 3.5)
             context.draw(resolvedText, at: CGPoint(x: textX, y: lbl.outerPoint.y), anchor: anchor)
         }
     }
@@ -2091,7 +2225,7 @@ public struct PlasmidPreviewPanel: View {
         let cardBg = StudioPalette.cardBg(isLight: !isDark).opacity(0.94)
         let cardStroke = StudioPalette.cardBorder(isLight: !isDark)
         let titleCol: Color = .primary
-        let itemCol: Color = .secondary
+        let itemCol = isDark ? Color.white.opacity(0.88) : Color(red: 0.14, green: 0.18, blue: 0.24)
         
         return VStack(alignment: .leading, spacing: 4) {
             Button(action: {
@@ -2115,16 +2249,17 @@ public struct PlasmidPreviewPanel: View {
                 VStack(alignment: .leading, spacing: 2.5) {
                     ForEach(data.features.prefix(6)) { feat in
                         let isSel = (selectedFeatureID == feat.id)
+                        let legibleFeatCol = feat.color.studioLegibleAccent(isDark: isDark)
                         Button(action: {
                             selectFeature(feat)
                         }) {
                             HStack(spacing: 4) {
                                 RoundedRectangle(cornerRadius: 1.5)
-                                    .fill(feat.color)
+                                    .fill(legibleFeatCol)
                                     .frame(width: 6, height: 6)
                                 Text("[\(feat.featureType)]")
                                     .font(.system(size: 8.0, weight: .bold))
-                                    .foregroundColor(feat.color)
+                                    .foregroundColor(legibleFeatCol)
                                 Text(feat.name)
                                     .font(.system(size: 8.5, weight: isSel ? .bold : .medium))
                                     .foregroundColor(isSel ? .cyan : itemCol)
@@ -2143,7 +2278,7 @@ public struct PlasmidPreviewPanel: View {
             }
         }
         .padding(7)
-        .frame(width: 146)
+        .frame(width: 138)
         .background(
             RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                 .fill(cardBg)
@@ -2176,53 +2311,186 @@ public struct PlasmidPreviewPanel: View {
         .help(tooltip)
     }
     
-    // MARK: - 线性重组组装图
+    // MARK: - 线性重组组装图 & 线性坐标概览
     private var linearConstructView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
-                    ForEach(Array(data.linearSummarySteps.enumerated()), id: \.offset) { idx, step in
-                        HStack(spacing: 4) {
-                            Text(step.0)
-                                .font(.system(size: 11, weight: .bold))
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: 10) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 5) {
+                        ForEach(Array(data.linearSummarySteps.enumerated()), id: \.offset) { idx, step in
+                            HStack(spacing: 5) {
+                                HStack(spacing: 5) {
+                                    Text(step.0)
+                                        .font(.system(size: 11, weight: .bold))
+                                    if !step.1.isEmpty {
+                                        Text(step.1)
+                                            .font(.system(size: 10.5, weight: .medium))
+                                            .monospacedDigit()
+                                            .opacity(0.92)
+                                    }
+                                }
                                 .foregroundColor(.white)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
-                                .background(Capsule(style: .continuous).fill(step.2))
-                            
-                            if idx < data.linearSummarySteps.count - 1 {
-                                Image(systemName: "link")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(.secondary)
+                                .background(Capsule(style: .continuous).fill(step.2.studioStepCapsuleFill()))
+
+                                if idx < data.linearSummarySteps.count - 1 {
+                                    Image(systemName: "link")
+                                        .font(.system(size: 9))
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                     }
+                    .padding(.vertical, 2)
                 }
-                .padding(.vertical, 4)
-            }
-            
-            // 引物列表
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(data.primers) { p in
-                    HStack(spacing: 6) {
-                        Text(p.isForward ? "F" : "R")
-                            .font(.system(size: 9.5, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(p.color)
-                            .clipShape(Capsule(style: .continuous))
-                        Text(p.name).font(.system(size: 11, weight: .semibold)).frame(width: 80, alignment: .leading)
-                        Text(p.sequence).font(.system(size: 10, design: .monospaced)).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
-                        Spacer()
-                        Text(p.tmText).font(.system(size: 10)).monospacedDigit().foregroundColor(.orange)
+
+                linearConstructTrackCard
+
+                if !data.primers.isEmpty {
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack {
+                            Text("绑定引物列表 (\(data.primers.count))")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("5' → 3' 方向 · 青底正向 F / 橙底反向 R")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+
+                        ForEach(data.primers) { p in
+                            HStack(spacing: 8) {
+                                Text(p.isForward ? "F" : "R")
+                                    .font(.system(size: 9.5, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 20, height: 18)
+                                    .background(p.isForward ? Color.blue : Color.orange)
+                                    .clipShape(Capsule(style: .continuous))
+                                Text(p.name)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .frame(minWidth: 115, maxWidth: 175, alignment: .leading)
+                                Text(p.sequence)
+                                    .font(.system(size: 10.5, design: .monospaced))
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .textSelection(.enabled)
+                                Spacer(minLength: 6)
+                                Text(p.tmText)
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .monospacedDigit()
+                                    .foregroundColor(.orange)
+                                    .fixedSize()
+                            }
+                            .studioInnerBox(paddingH: 10, paddingV: 6)
+                        }
                     }
-                    .studioInnerBox(paddingH: 8, paddingV: 5)
                 }
             }
+            .padding(6)
         }
-        .padding(8)
-        .frame(minHeight: 240, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: isStandaloneWindow ? .infinity : nil, alignment: .topLeading)
+    }
+
+    private var linearConstructTrackCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("线性特征与引物分布图 (0 – \(data.totalLengthBp) bp)")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("\(data.features.count) 元件 · \(data.primers.count) 引物")
+                    .font(.system(size: 10))
+                    .monospacedDigit()
+                    .foregroundColor(.secondary)
+            }
+
+            Canvas { context, size in
+                let padX: CGFloat = 14
+                let trackW = max(40, size.width - padX * 2)
+                let barY: CGFloat = 40
+                let axisCol = isDark ? Color.white.opacity(0.28) : Color.black.opacity(0.26)
+                let tickTextCol = isDark ? Color.white.opacity(0.55) : Color.black.opacity(0.55)
+
+                // 主骨架线与 0/25/50/75/100% 刻度
+                var axis = Path()
+                axis.move(to: CGPoint(x: padX, y: barY))
+                axis.addLine(to: CGPoint(x: padX + trackW, y: barY))
+                context.stroke(axis, with: .color(axisCol), lineWidth: 1.5)
+
+                for frac in [0.0, 0.25, 0.50, 0.75, 1.0] {
+                    let x = padX + trackW * CGFloat(frac)
+                    var t = Path()
+                    t.move(to: CGPoint(x: x, y: barY - 4))
+                    t.addLine(to: CGPoint(x: x, y: barY + 4))
+                    context.stroke(t, with: .color(axisCol), lineWidth: 1.0)
+
+                    let bp = frac == 0.0 ? 1 : Int((Double(data.totalLengthBp) * frac).rounded())
+                    let lbl = context.resolve(
+                        Text("\(bp)")
+                            .font(.system(size: 8.5, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundColor(tickTextCol)
+                    )
+                    let anc: UnitPoint = frac == 0.0 ? .topLeading : (frac == 1.0 ? .topTrailing : .top)
+                    context.draw(lbl, at: CGPoint(x: x, y: barY + 8), anchor: anc)
+                }
+
+                // 功能元件块
+                var lastLabelRightX: CGFloat = -100
+                for feat in data.features {
+                    let sR = max(0.0, min(1.0, feat.startRatio))
+                    let eR = max(0.0, min(1.0, feat.endRatio))
+                    let x1 = padX + trackW * CGFloat(sR)
+                    let x2 = padX + trackW * CGFloat(eR >= sR ? eR : 1.0)
+                    let w = max(3.0, x2 - x1)
+                    let rect = CGRect(x: x1, y: barY - 6, width: w, height: 12)
+                    context.fill(Path(roundedRect: rect, cornerRadius: 2.5), with: .color(feat.color.opacity(0.90)))
+                    context.stroke(Path(roundedRect: rect, cornerRadius: 2.5), with: .color(feat.color.studioLegibleAccent(isDark: isDark).opacity(0.7)), lineWidth: 0.7)
+
+                    if w >= 42 && x1 > lastLabelRightX + 4 {
+                        let txt = context.resolve(
+                            Text(feat.name)
+                                .font(.system(size: 8.5, weight: .bold))
+                                .foregroundColor(feat.color.studioContrastingTextOnFill())
+                        )
+                        let tw = txt.measure(in: CGSize(width: w - 4, height: 14)).width
+                        if tw <= w - 4 {
+                            context.draw(txt, at: CGPoint(x: x1 + w / 2, y: barY), anchor: .center)
+                            lastLabelRightX = x2
+                        }
+                    }
+                }
+
+                // 引物箭头指示（正向 F 在上方青蓝轨道，反向 R 在下方橙色轨道）
+                for p in data.primers {
+                    let sR = max(0.0, min(1.0, p.startRatio))
+                    let eR = max(0.0, min(1.0, p.endRatio))
+                    let px1 = padX + trackW * CGFloat(min(sR, eR))
+                    let px2 = padX + trackW * CGFloat(max(sR, eR))
+                    let py: CGFloat = p.isForward ? (barY - 14) : (barY + 24)
+                    let pCol: Color = p.isForward ? .blue : .orange
+                    var arrow = Path()
+                    let xStart = px1
+                    let xEnd = max(px1 + 14, px2)
+                    arrow.move(to: CGPoint(x: xStart, y: py))
+                    arrow.addLine(to: CGPoint(x: xEnd, y: py))
+                    let headX = p.isForward ? xEnd : xStart
+                    let dir: CGFloat = p.isForward ? -4.5 : 4.5
+                    arrow.move(to: CGPoint(x: headX + dir, y: py - 3))
+                    arrow.addLine(to: CGPoint(x: headX, y: py))
+                    arrow.addLine(to: CGPoint(x: headX + dir, y: py + 3))
+                    context.stroke(arrow, with: .color(pCol), lineWidth: 1.6)
+                }
+            }
+            .frame(height: 76)
+        }
+        .studioInnerBox(paddingH: 10, paddingV: 8)
     }
     
     private func buildOVEDirectedArcPath(
@@ -2337,7 +2605,7 @@ private struct StandalonePlasmidPreviewWindowView: View {
             onMutateCodon: onMutateCodon,
             isStandaloneWindow: true
         )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .frame(minWidth: 780, minHeight: 540)
         .background(StudioPalette.workspaceBg(isLight: !isDark))
         .ignoresSafeArea(.container, edges: .top)

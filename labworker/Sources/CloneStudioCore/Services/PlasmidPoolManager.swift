@@ -395,6 +395,8 @@ public struct MCPExternalCommandSyncPayload: Codable, Sendable {
     public var calculatorInsertLengthsKb: [String]?
     public var calculatorInsertConcs: [String]?
     public var calculatorInsertCustomNgs: [String]?
+    public var calculatorLigationPmol: String?
+    public var calculatorLigationRatio: Int?
     
     enum CodingKeys: String, CodingKey {
         case schemaVersion = "schema_version"
@@ -426,6 +428,8 @@ public struct MCPExternalCommandSyncPayload: Codable, Sendable {
         case calculatorInsertLengthsKb
         case calculatorInsertConcs
         case calculatorInsertCustomNgs
+        case calculatorLigationPmol
+        case calculatorLigationRatio
     }
 }
 
@@ -879,7 +883,10 @@ public final class PlasmidPoolManager: ObservableObject {
         MCPToolDescriptor(name: "design_mutagenesis_primers", category: "分子克隆与质粒", summary: "氨基酸定点突变 (如 S42A/K15R) 引物设计与野生型位点核对"),
         MCPToolDescriptor(name: "design_fragment_deletion_primers", category: "分子克隆与质粒", summary: "质粒结构域敲除/片段删除反向 PCR 桥接引物设计"),
         MCPToolDescriptor(name: "verify_sanger_sequencing", category: "分子克隆与质粒", summary: "解析 Sanger 测序 (.ab1/.seq) 四色峰图并与参考质粒比对，自动检出 SNP、Indel 与杂合双峰"),
-        MCPToolDescriptor(name: "calculate_recombination_dosage", category: "定量与体系计算", summary: "计算 20 μL 同源重组体系中载体与各插入片段最佳 ng 与移液体积"),
+        MCPToolDescriptor(name: "calculate_recombination_dosage", category: "定量与体系计算", summary: "计算 20 μL 同源重组体系或经典 0.03 pmol 摩尔比 (1:1–1:5) 中载体与插入片段最佳 ng 与移液体积"),
+        MCPToolDescriptor(name: "convert_nucleic_acid_units", category: "定量与体系计算", summary: "dsDNA (μg⇄pmol)、ssDNA (μg/mL⇄pmol/μL)、Linear DNA 末端摩尔及 OD260 核酸定量互算"),
+        MCPToolDescriptor(name: "convert_protein_and_coding", category: "定量与体系计算", summary: "蛋白质大小/质量/摩尔数 (kDa⇄μg⇄pmol) 三角互算及 DNA 编码容量 (bp⇄aa⇄kDa) 联动推算"),
+        MCPToolDescriptor(name: "calculate_solution_and_temperature", category: "定量与体系计算", summary: "摩尔浓度溶液溶质质量配制、C1V1=C2V2 稀释体积及 °F/°C/K 温标换算"),
         MCPToolDescriptor(name: "design_sgrna_primers", category: "基因编辑与靶点", summary: "CRISPR/Cas9 NGG 靶点扫描评分与 lentiCRISPRv2/pX459 退火引物生成"),
         MCPToolDescriptor(name: "design_shrna_primers", category: "基因编辑与靶点", summary: "21nt RNAi 靶点热力学筛选与 pLKO.1 (AgeI/EcoRI) 发夹引物设计"),
         MCPToolDescriptor(name: "manage_primer_cart_and_export", category: "合成订购与导出", summary: "查看引物订购池并一键导出擎科引物合成 Excel 订购表"),
@@ -887,7 +894,10 @@ public final class PlasmidPoolManager: ObservableObject {
         MCPToolDescriptor(name: "analyze_western_blot", category: "电泳与图像定量", summary: "Western Blot 目的条带与内参 IOD 归一化、均值/SD 汇总与双组检验"),
         MCPToolDescriptor(name: "analyze_qpcr_ddct", category: "定量与体系计算", summary: "qPCR 2^(-ΔΔCt) 相对表达量计算与复孔高 SD 异常质控告警"),
         MCPToolDescriptor(name: "design_plate_layout", category: "定量与体系计算", summary: "96/384 孔微孔板防边缘效应自动排布与生物学重复孔位分配"),
-        MCPToolDescriptor(name: "analyze_phylogenetic_tree", category: "定量与体系计算", summary: "Newick (.nwk) 系统发育树解析、分类单元提取与总枝长统计")
+        MCPToolDescriptor(name: "deconvolute_crispr_sanger", category: "基因编辑与靶点", summary: "CRISPR 编辑池 Sanger 四色峰图 NNLS 解卷积定量（Indel%、KO Score、HDR% 与 R²）"),
+        MCPToolDescriptor(name: "auto_annotate_sequence", category: "分子克隆与质粒", summary: "基于 Libraries.sqlite 的本地离线质粒 FASTA 自动注释，支持跨零点匹配与残留片段标注"),
+        MCPToolDescriptor(name: "design_golden_gate_assembly", category: "分子克隆与质粒", summary: "Type IIS (BsaI/BsmBI/BbsI/SapI) 2–6 片段零错配接头分配与编码区同义 Domestication"),
+        MCPToolDescriptor(name: "design_hdr_donor", category: "基因编辑与靶点", summary: "CRISPR Knock-in HDR 同源供体 (ssODN/dsDNA)、PAM/Seed 同义阻断突变、可选 RFLP 与 Out-Out PCR 引物设计")
     ]
     
     /// 生成标准 MCP 客户端 JSON 配置 (兼容 Claude Desktop / Cursor / Windsurf / Cline / Gemini)
@@ -1182,6 +1192,12 @@ public final class PlasmidPoolManager: ObservableObject {
             if let iLens = payload.calculatorInsertLengthsKb { vm.insertLengths = iLens }
             if let iConcs = payload.calculatorInsertConcs { vm.insertConcs = iConcs }
             if let iNgs = payload.calculatorInsertCustomNgs { vm.insertCustomNgs = iNgs }
+            if let ligPmol = payload.calculatorLigationPmol { vm.ligationVectorPmol = ligPmol }
+            if let ligRatio = payload.calculatorLigationRatio,
+               let ratioEnum = DNAMolarCalculator.LigationMolarRatio(rawValue: ligRatio) {
+                vm.ligationMolarRatio = ratioEnum
+            }
+            session.bioCalculatorVM.selectedCategory = .cloningAndLigation
             AppState.shared.selectedNav = .dnaCalculator
             
         case "sgRNADesign":

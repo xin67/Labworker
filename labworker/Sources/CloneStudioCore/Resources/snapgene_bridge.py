@@ -631,7 +631,8 @@ def extract_primers(blocks, dna_seq: str = "", is_circular: bool = True):
                     seen_keys = set()
                     for bs in p.findall("BindingSite"):
                         loc = bs.attrib.get("location", "")
-                        strand = bs.attrib.get("boundStrand", "0")
+                        raw_strand = (bs.attrib.get("boundStrand") or bs.attrib.get("strand") or "0").strip().lower()
+                        strand = "1" if raw_strand in {"1", "-", "-1", "reverse", "rev", "true"} else "0"
                         hyb_loc = loc
                         for comp in bs.findall("Component"):
                             if "hybridizedRange" in comp.attrib:

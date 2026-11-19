@@ -171,7 +171,7 @@ struct CloneStudioApp: App {
         .defaultSize(width: 1180, height: 780)
         .commands {
             CommandGroup(after: .newItem) {
-                Button("从 Finder 智能打开实验文件 (.dna / .tif / .pdb / .nwk / .csv)...") {
+                Button("从 Finder 智能打开实验文件 (.dna / .tif / .pdb / .csv)...") {
                     Self.presentOpenDNAFilesPanel()
                 }
                 .keyboardShortcut("o", modifiers: [.command])
@@ -240,19 +240,17 @@ struct CloneStudioApp: App {
                     Button("凝胶分子量回归") { AppState.shared.selectedNav = .gelFigure }
                         .keyboardShortcut("g", modifiers: [.command, .shift])
                     Button("菌落计数器 (CFU)") { AppState.shared.selectedNav = .colonyCounter }
-                    Button("科研多图拼版") { AppState.shared.selectedNav = .figureAnnotator }
                 }
                 
                 Divider()
                 
-                Section("定量、进化与蛋白") {
+                Section("定量与蛋白工具") {
                     Button("微孔板布局设计") { AppState.shared.selectedNav = .plateDesigner }
                     Button("qPCR 荧光定量") { AppState.shared.selectedNav = .qpcrAnalysis }
                         .keyboardShortcut("q", modifiers: [.command, .shift])
-                    Button("系统发育树") { AppState.shared.selectedNav = .phylogeneticTree }
                     Button("蛋白质工作台 (3D/理化)") { AppState.shared.selectedNav = .proteinWorkbench }
                         .keyboardShortcut("b", modifiers: [.command, .shift])
-                    Button("DNA 摩尔/体系计算器") { AppState.shared.selectedNav = .dnaCalculator }
+                    Button("生物计算器 (用量与换算)") { AppState.shared.selectedNav = .dnaCalculator }
                         .keyboardShortcut("8", modifiers: [.command])
                     Button("序列与 Tm 工具") { AppState.shared.selectedNav = .sequenceTools }
                         .keyboardShortcut("9", modifiers: [.command])

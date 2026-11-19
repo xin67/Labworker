@@ -127,9 +127,6 @@ package_app_bundle() {
                 <string>txt</string>
                 <string>pdb</string>
                 <string>cif</string>
-                <string>nwk</string>
-                <string>newick</string>
-                <string>tree</string>
                 <string>csv</string>
                 <string>tsv</string>
                 <string>tif</string>

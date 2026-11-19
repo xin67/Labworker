@@ -1,0 +1,388 @@
+{
+  "function": "crispr_hdr_donor",
+  "cases": [
+    {
+      "id": "hdr_01_ssodn_60nt_pam_synonymous_and_outout",
+      "input": {
+        "reference_sequence": "ACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAATGGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACAGCGCTATCCACTACGAGTTCCCGGCTGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACTAAGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGAC",
+        "sgrna_sequence": "CGCTATCCACTACGAGTTCC",
+        "strand": "+",
+        "edit_start_0based": 259,
+        "edit_end_0based": 260,
+        "replacement_sequence": "A",
+        "donor_format": "ssODN",
+        "auto_detect_cds": true,
+        "enable_rflp": false,
+        "out_out_margin_bp": 40,
+        "primer_target_tm": 60.0,
+        "donor_name": "HDR_Case1_ssODN"
+      },
+      "expected": {
+        "donor_format": "ssODN",
+        "wt_cut_index_0based": 262,
+        "wt_pam_start_0based": 265,
+        "wt_pam_sequence": "CGG",
+        "is_in_cds": true,
+        "cds_auto_detected": true,
+        "protein_before_blocking": "MAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNSAIHYEFPAAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVN*",
+        "protein_after_blocking": "MAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNSAIHYEFPAAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVN*",
+        "amino_acid_conserved": true,
+        "blocking_strategy": "pam_synonymous",
+        "blocking_mutations": [
+          {
+            "position_0based": 266,
+            "position_1based": 267,
+            "original_base": "G",
+            "mutated_base": "C",
+            "reason": "pam_block",
+            "codon_before": "CCG",
+            "codon_after": "CCC",
+            "amino_acid": "P"
+          }
+        ],
+        "edited_pam_sequence": "CCG",
+        "pam_still_intact": false,
+        "cas9_recut_blocked": true,
+        "left_arm_length_bp": 60,
+        "right_arm_length_bp": 60,
+        "donor_length_bp": 121,
+        "donor_sequence": "TCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACAGCGCTATCCACTACGAGTTCCCCGCTGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCAT",
+        "rflp": null,
+        "out_out_pcr": {
+          "forward_sequence": "AATGGCTGCCCAGGAGCT",
+          "forward_tm": 60.1,
+          "reverse_sequence": "TACGTACTTAGTTCACGGTGATGAACAGC",
+          "reverse_tm": 61.7,
+          "forward_start_0based": 119,
+          "forward_end_0based": 137,
+          "reverse_start_0based": 371,
+          "reverse_end_0based": 400,
+          "wt_amplicon_length_bp": 281,
+          "hdr_amplicon_length_bp": 281,
+          "left_margin_from_arm_bp": 62,
+          "right_margin_from_arm_bp": 51
+        }
+      },
+      "tolerance": 1e-05,
+      "note": "ssODN (60 nt 左右同源臂) CDS 自动识别、+ 链 CGG PAM 同义破除与同源臂外侧 Out-Out PCR 分型引物"
+    },
+    {
+      "id": "hdr_02_ssodn_trp_pam_seed_fallback",
+      "input": {
+        "reference_sequence": "ACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAATGGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACAGCGCTATCCACTACGAGTTCTGGGCCGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACTAAGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGAC",
+        "sgrna_sequence": "GCGCTATCCACTACGAGTTC",
+        "strand": "+",
+        "edit_start_0based": 259,
+        "edit_end_0based": 260,
+        "replacement_sequence": "C",
+        "donor_format": "ssODN",
+        "auto_detect_cds": true,
+        "enable_rflp": false,
+        "out_out_margin_bp": 40,
+        "primer_target_tm": 60.0,
+        "donor_name": "HDR_Case2_TrpFallback"
+      },
+      "expected": {
+        "donor_format": "ssODN",
+        "wt_cut_index_0based": 261,
+        "wt_pam_start_0based": 264,
+        "wt_pam_sequence": "TGG",
+        "is_in_cds": true,
+        "cds_auto_detected": true,
+        "protein_before_blocking": "MAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNSAIHYAFWAAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVN*",
+        "protein_after_blocking": "MAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNSAIHYAFWAAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVN*",
+        "amino_acid_conserved": true,
+        "blocking_strategy": "seed_synonymous_fallback",
+        "blocking_mutations": [
+          {
+            "position_0based": 263,
+            "position_1based": 264,
+            "original_base": "C",
+            "mutated_base": "T",
+            "reason": "seed_block",
+            "codon_before": "TTC",
+            "codon_after": "TTT",
+            "amino_acid": "F"
+          },
+          {
+            "position_0based": 260,
+            "position_1based": 261,
+            "original_base": "G",
+            "mutated_base": "C",
+            "reason": "seed_block",
+            "codon_before": "GCG",
+            "codon_after": "GCC",
+            "amino_acid": "A"
+          }
+        ],
+        "edited_pam_sequence": "TGG",
+        "pam_still_intact": true,
+        "cas9_recut_blocked": true,
+        "left_arm_length_bp": 60,
+        "right_arm_length_bp": 60,
+        "donor_length_bp": 121,
+        "donor_sequence": "TCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACAGCGCTATCCACTACGCCTTTTGGGCCGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCAT",
+        "rflp": null,
+        "out_out_pcr": {
+          "forward_sequence": "AATGGCTGCCCAGGAGCT",
+          "forward_tm": 60.1,
+          "reverse_sequence": "TACGTACTTAGTTCACGGTGATGAACAGC",
+          "reverse_tm": 61.7,
+          "forward_start_0based": 119,
+          "forward_end_0based": 137,
+          "reverse_start_0based": 371,
+          "reverse_end_0based": 400,
+          "wt_amplicon_length_bp": 281,
+          "hdr_amplicon_length_bp": 281,
+          "left_margin_from_arm_bp": 62,
+          "right_margin_from_arm_bp": 51
+        }
+      },
+      "tolerance": 1e-05,
+      "note": "不可同义破除的 TGG (Trp) PAM 自动回退至近 PAM 8-nt Seed 区同义突变阻断二次切割，氨基酸 100% 守恒"
+    },
+    {
+      "id": "hdr_03_dsdna_600bp_knockin_tag_and_outout",
+      "input": {
+        "reference_sequence": "ACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAATGGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACATGGCTATCCACTACGAGTTCCGGGCTGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACTAAGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGAC",
+        "sgrna_sequence": "TGGCTATCCACTACGAGTTC",
+        "strand": "+",
+        "edit_start_0based": 831,
+        "edit_end_0based": 831,
+        "replacement_sequence": "GACTACAAAGACGATGACGACAAG",
+        "donor_format": "dsDNAPlasmid",
+        "auto_detect_cds": true,
+        "enable_rflp": false,
+        "out_out_margin_bp": 60,
+        "primer_target_tm": 60.0,
+        "donor_name": "HDR_Case3_FLAG_dsDNA"
+      },
+      "expected": {
+        "donor_format": "dsDNAPlasmid",
+        "wt_cut_index_0based": 831,
+        "wt_pam_start_0based": 834,
+        "wt_pam_sequence": "CGG",
+        "is_in_cds": true,
+        "cds_auto_detected": true,
+        "protein_before_blocking": "MAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNMAIHYEDYKDDDDKFRAAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVN*",
+        "protein_after_blocking": "MAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNMAIHYEDYKDDDDKFRAAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVN*",
+        "amino_acid_conserved": true,
+        "blocking_strategy": "pam_synonymous",
+        "blocking_mutations": [
+          {
+            "position_0based": 860,
+            "position_1based": 861,
+            "original_base": "G",
+            "mutated_base": "C",
+            "reason": "pam_block",
+            "codon_before": "CGG",
+            "codon_after": "CGC",
+            "amino_acid": "R"
+          }
+        ],
+        "edited_pam_sequence": "CGC",
+        "pam_still_intact": false,
+        "cas9_recut_blocked": true,
+        "left_arm_length_bp": 600,
+        "right_arm_length_bp": 600,
+        "donor_length_bp": 1224,
+        "donor_sequence": "ATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACATGGCTATCCACTACGAGGACTACAAAGACGATGACGACAAGTTCCGCGCTGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATC",
+        "rflp": null,
+        "out_out_pcr": {
+          "forward_sequence": "TAGCTAACTGACGTAGCTAATGGCTGC",
+          "forward_tm": 61.7,
+          "reverse_sequence": "CAGTGTCAACATCGCAGTCAGTACG",
+          "reverse_tm": 61.4,
+          "forward_start_0based": 131,
+          "forward_end_0based": 158,
+          "reverse_start_0based": 1506,
+          "reverse_end_0based": 1531,
+          "wt_amplicon_length_bp": 1400,
+          "hdr_amplicon_length_bp": 1424,
+          "left_margin_from_arm_bp": 73,
+          "right_margin_from_arm_bp": 75
+        }
+      },
+      "tolerance": 1e-05,
+      "note": "dsDNA 质粒型 Donor（600 bp 左右同源臂）框内 Knock-in 24 bp FLAG 标签及长距 Out-Out 鉴定引物 (+24 bp)"
+    },
+    {
+      "id": "hdr_04_rflp_silent_site_creation_and_digest",
+      "input": {
+        "reference_sequence": "ACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAATGGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACAGCGCTATCCACTACGAGTTCCCGGCTGAGTTCGCCGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACTAAGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGAC",
+        "sgrna_sequence": "CGCTATCCACTACGAGTTCC",
+        "strand": "+",
+        "edit_start_0based": 259,
+        "edit_end_0based": 260,
+        "replacement_sequence": "A",
+        "donor_format": "ssODN",
+        "auto_detect_cds": true,
+        "enable_rflp": true,
+        "rflp_search_radius_bp": 18,
+        "out_out_margin_bp": 40,
+        "primer_target_tm": 60.0,
+        "donor_name": "HDR_Case4_RFLP_Create"
+      },
+      "expected": {
+        "donor_format": "ssODN",
+        "wt_cut_index_0based": 262,
+        "wt_pam_start_0based": 265,
+        "wt_pam_sequence": "CGG",
+        "is_in_cds": true,
+        "cds_auto_detected": true,
+        "protein_before_blocking": "MAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNSAIHYEFPAEFAAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVN*",
+        "protein_after_blocking": "MAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNSAIHYEFPAEFAAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVN*",
+        "amino_acid_conserved": true,
+        "blocking_strategy": "pam_synonymous",
+        "blocking_mutations": [
+          {
+            "position_0based": 266,
+            "position_1based": 267,
+            "original_base": "G",
+            "mutated_base": "C",
+            "reason": "pam_block",
+            "codon_before": "CCG",
+            "codon_after": "CCC",
+            "amino_acid": "P"
+          }
+        ],
+        "edited_pam_sequence": "CCG",
+        "pam_still_intact": false,
+        "cas9_recut_blocked": true,
+        "left_arm_length_bp": 60,
+        "right_arm_length_bp": 60,
+        "donor_length_bp": 121,
+        "donor_sequence": "TCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACAGCGCTATCCACTACGAATTCCCCGCTGAGTTCGCCGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGA",
+        "rflp": {
+          "mode": "created",
+          "enzyme_name": "EcoRI",
+          "recognition_site": "GAATTC",
+          "wt_amplicon_bands_bp": [
+            281
+          ],
+          "hdr_amplicon_bands_bp": [
+            141,
+            140
+          ],
+          "silent_mutations": [
+            {
+              "position_0based": 260,
+              "position_1based": 261,
+              "original_base": "G",
+              "mutated_base": "A",
+              "reason": "rflp_create",
+              "codon_before": "GAG",
+              "codon_after": "GAA",
+              "amino_acid": "E"
+            }
+          ]
+        },
+        "out_out_pcr": {
+          "forward_sequence": "AATGGCTGCCCAGGAGCT",
+          "forward_tm": 60.1,
+          "reverse_sequence": "AGTTCACGGTGATGAACAGCTCC",
+          "reverse_tm": 60.6,
+          "forward_start_0based": 119,
+          "forward_end_0based": 137,
+          "reverse_start_0based": 377,
+          "reverse_end_0based": 400,
+          "wt_amplicon_length_bp": 281,
+          "hdr_amplicon_length_bp": 281,
+          "left_margin_from_arm_bp": 62,
+          "right_margin_from_arm_bp": 57
+        }
+      },
+      "tolerance": 1e-05,
+      "note": "CDS 内通过同义替换 GAG->GAA 凭空构建 EcoRI (GAATTC) RFLP 鉴定位点，预测 WT 未切 vs HDR 双条带"
+    },
+    {
+      "id": "hdr_05_reverse_strand_ccn_pam_and_rflp_destroy",
+      "input": {
+        "reference_sequence": "ACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAACTGACGTAGCTAGCTAACTGACGTAGCTAATGGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCCCAGATCCACTACGAGTTCGGATCCGCCGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACTAAGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGACGTACGTACTGACTGCGATGTTGACACTGAC",
+        "sgrna_sequence": "ATCCGAACTCGTAGTGGATC",
+        "strand": "-",
+        "edit_start_0based": 252,
+        "edit_end_0based": 253,
+        "replacement_sequence": "T",
+        "donor_format": "ssODN",
+        "auto_detect_cds": true,
+        "enable_rflp": true,
+        "rflp_search_radius_bp": 18,
+        "out_out_margin_bp": 40,
+        "primer_target_tm": 60.0,
+        "donor_name": "HDR_Case5_RevCCN_Destroy"
+      },
+      "expected": {
+        "donor_format": "ssODN",
+        "wt_cut_index_0based": 251,
+        "wt_pam_start_0based": 245,
+        "wt_pam_sequence": "CCA",
+        "is_in_cds": true,
+        "cds_auto_detected": true,
+        "protein_before_blocking": "MAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAQIYYEFGSAAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVN*",
+        "protein_after_blocking": "MAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVNAQIYYEFGSAAAQELFITVNAAQELFITVNAAQELFITVNAAQELFITVN*",
+        "amino_acid_conserved": true,
+        "blocking_strategy": "pam_synonymous",
+        "blocking_mutations": [
+          {
+            "position_0based": 245,
+            "position_1based": 246,
+            "original_base": "C",
+            "mutated_base": "T",
+            "reason": "pam_block",
+            "codon_before": "GCC",
+            "codon_after": "GCT",
+            "amino_acid": "A"
+          }
+        ],
+        "edited_pam_sequence": "TCA",
+        "pam_still_intact": false,
+        "cas9_recut_blocked": true,
+        "left_arm_length_bp": 60,
+        "right_arm_length_bp": 60,
+        "donor_length_bp": 121,
+        "donor_sequence": "GAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTCAGATCTACTACGAGTTCGGCTCCGCCGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGG",
+        "rflp": {
+          "mode": "destroyed",
+          "enzyme_name": "BamHI",
+          "recognition_site": "GGATCC",
+          "wt_amplicon_bands_bp": [
+            153,
+            128
+          ],
+          "hdr_amplicon_bands_bp": [
+            281
+          ],
+          "silent_mutations": [
+            {
+              "position_0based": 266,
+              "position_1based": 267,
+              "original_base": "A",
+              "mutated_base": "C",
+              "reason": "rflp_destroy",
+              "codon_before": "GGA",
+              "codon_after": "GGC",
+              "amino_acid": "G"
+            }
+          ]
+        },
+        "out_out_pcr": {
+          "forward_sequence": "CGTAGCTAATGGCTGCCCAGG",
+          "forward_tm": 61.2,
+          "reverse_sequence": "GTTCACGGTGATGAACAGCTCCT",
+          "reverse_tm": 60.6,
+          "forward_start_0based": 112,
+          "forward_end_0based": 133,
+          "reverse_start_0based": 370,
+          "reverse_end_0based": 393,
+          "wt_amplicon_length_bp": 281,
+          "hdr_amplicon_length_bp": 281,
+          "left_margin_from_arm_bp": 59,
+          "right_margin_from_arm_bp": 57
+        }
+      },
+      "tolerance": 1e-05,
+      "note": "负链 sgRNA (CCN PAM) 跨密码子同义破坏 GCC->GCT 并同义消除邻近 BamHI (GGATCC) 内源 RFLP 位点"
+    }
+  ]
+}

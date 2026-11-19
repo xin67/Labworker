@@ -233,7 +233,7 @@ public struct ContentView: View {
                             Image(systemName: "folder.fill.badge.plus")
                                 .font(.system(size: 15, weight: .bold))
                                 .foregroundColor(.white)
-                            Text("松开智能导入 (.dna / .ab1 / .tif / .pdb / .nwk / .csv / .fasta) 直达对应工作台")
+                            Text("松开智能导入 (.dna / .ab1 / .tif / .pdb / .csv / .fasta) 直达对应工作台")
                                 .font(.system(size: 13.5, weight: .semibold))
                                 .foregroundColor(.white)
                         }
@@ -316,13 +316,11 @@ public struct ContentView: View {
                     sidebarRow(item: .westernBlot, tint: .indigo)
                     sidebarRow(item: .gelFigure, tint: .cyan)
                     sidebarRow(item: .colonyCounter, tint: .orange)
-                    sidebarRow(item: .figureAnnotator, tint: .pink)
                 }
 
                 sidebarCollapsibleSection(.benchTools) {
                     sidebarRow(item: .plateDesigner, tint: .blue)
                     sidebarRow(item: .qpcrAnalysis, tint: .teal)
-                    sidebarRow(item: .phylogeneticTree, tint: .green)
                     sidebarRow(item: .proteinWorkbench, tint: .blue)
                     sidebarRow(item: .dnaCalculator, tint: .purple)
                     sidebarRow(item: .sequenceTools, tint: .mint)
@@ -414,7 +412,7 @@ public struct ContentView: View {
                         isCircle: true,
                         controlSize: .large
                     )
-                    .help("导入实验文件 (.dna / .ab1 / .tif / .pdb / .nwk / .csv / .fasta)")
+                    .help("导入实验文件 (.dna / .ab1 / .tif / .pdb / .csv / .fasta)")
                 }
             }
             .padding(.horizontal, 12)
@@ -565,16 +563,12 @@ public struct ContentView: View {
             PlateDesignerView()
         case .qpcrAnalysis:
             QPCRAnalysisView()
-        case .phylogeneticTree:
-            PhylogeneticTreeView()
         case .colonyCounter:
             ColonyCounterView()
         case .westernBlot:
             WesternBlotView()
         case .gelFigure:
             GelFigureEditorView()
-        case .figureAnnotator:
-            FigureAnnotatorView()
         case .proteinWorkbench:
             ProteinWorkbenchView()
         case .orderCenter:

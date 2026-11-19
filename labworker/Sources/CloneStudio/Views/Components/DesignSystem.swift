@@ -836,11 +836,13 @@ public struct StudioActionPillButton: View {
                     Text(title)
                         .font(.system(size: 12, weight: isProminent ? .semibold : .medium))
                         .lineLimit(1)
+                        .fixedSize(horizontal: !fillWidth, vertical: false)
                 }
             }
             .studioOptionalForeground(fgColor)
             .frame(maxWidth: fillWidth ? .infinity : nil)
         }
+        .fixedSize(horizontal: !fillWidth, vertical: false)
         .studioGlassButton(
             tint: tint,
             isProminent: isProminent,
@@ -914,10 +916,12 @@ public struct StudioCompactPillButton: View {
                         .font(.system(size: 11, weight: isActiveHighlight ? .semibold : .medium))
                         .monospacedDigit()
                         .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
             }
             .studioOptionalForeground(fgColor)
         }
+        .fixedSize(horizontal: true, vertical: false)
         .studioGlassButton(
             tint: tint,
             isProminent: isProminent,
@@ -2884,7 +2888,7 @@ public enum FinderFileDropHelper {
         onSelected: @escaping (URL) -> Void
     ) {
         let panel = NSOpenPanel()
-        panel.title = "从 Finder 选择实验文件 (.dna / .ab1 / .tif / .pdb / .nwk / .csv / .fasta)"
+        panel.title = "从 Finder 选择实验文件 (.dna / .ab1 / .tif / .pdb / .csv / .fasta)"
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -2893,7 +2897,7 @@ public enum FinderFileDropHelper {
             types.append(dnaType)
         }
         if allowSequenceTextFiles {
-            for ext in ["ab1", "abi", "fa", "fasta", "gb", "gbk", "seq", "txt", "pdb", "cif", "ent", "nwk", "newick", "tree", "tre", "csv", "tsv", "tif", "tiff"] {
+            for ext in ["ab1", "abi", "fa", "fasta", "gb", "gbk", "seq", "txt", "pdb", "cif", "ent", "csv", "tsv", "tif", "tiff"] {
                 if let t = UTType(filenameExtension: ext) {
                     types.append(t)
                 }
@@ -2974,7 +2978,7 @@ public enum FinderFileDropHelper {
         }
     }
     
-    /// 通用文本文件保存面板（统一收口各实验台 CSV / TSV / SVG / Newick 导出逻辑，支持导出后回调 URL 以写出 .run.json 溯源伴随文件）
+    /// 通用文本文件保存面板（统一收口各实验台 CSV / TSV / SVG 导出逻辑，支持导出后回调 URL 以写出 .run.json 溯源伴随文件）
     @MainActor
     public static func saveTextToFile(
         content: String,
