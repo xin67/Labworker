@@ -1492,7 +1492,7 @@ do {
     grepProc.executableURL = URL(fileURLWithPath: "/usr/bin/grep")
     grepProc.currentDirectoryURL = projRoot
     let forbiddenPrefix = "/Users/" + NSUserName()
-    grepProc.arguments = ["-rn", forbiddenPrefix, "Sources", "Tests"]
+    grepProc.arguments = ["-rnI", "--exclude-dir=__pycache__", forbiddenPrefix, "Sources", "Tests"]
     let grepPipe = Pipe()
     grepProc.standardOutput = grepPipe
     try grepProc.run()
@@ -1605,7 +1605,7 @@ do {
     grepProc.executableURL = URL(fileURLWithPath: "/usr/bin/grep")
     grepProc.currentDirectoryURL = projRoot
     let legacyPhrase = "优质" + "推荐"
-    grepProc.arguments = ["-rn", legacyPhrase, "Sources", "Tests"]
+    grepProc.arguments = ["-rnI", "--exclude-dir=__pycache__", legacyPhrase, "Sources", "Tests"]
     let grepPipe = Pipe()
     grepProc.standardOutput = grepPipe
     try grepProc.run()
