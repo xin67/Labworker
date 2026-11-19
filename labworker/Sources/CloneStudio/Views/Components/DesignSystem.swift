@@ -55,10 +55,13 @@ public enum StudioPalette {
 
 // MARK: - 00B. macOS 27 原生 Liquid Glass 与 HDR 高动态范围光学辅助
 public enum StudioGlassSupport {
+    /// HDR 整体增益：0 = 完全 SDR，1 = 旧版强度。默认 0.30，一处调节全局生效
+    public static let hdrGain: Double = 0.30
+
     /// 支持 HDR 扩展动态范围的颜色暴露调节（开启 HDR 高光时提升高光余量，关闭时回归标准 SDR）
     public static func hdrColor(_ base: Color, exposure: Double = 0.28, appState: AppState) -> Color {
-        guard appState.enableAmbientGlassGlow else { return base }
-        return base.exposureAdjust(exposure)
+        guard appState.enableAmbientGlassGlow, exposure > 0.001 else { return base }
+        return base.exposureAdjust(exposure * hdrGain)
     }
 
     /// 针对亮色/暗色工作区卡片优化的 HDR 玻璃高光描边（确保纯白/纯黑静卡上玻璃轮廓依然锐利通透）
@@ -77,12 +80,12 @@ public enum StudioGlassSupport {
             if let tint, selected && !prominent {
                 return hdrColor(tint, exposure: 0.36, appState: appState).opacity(isLight ? 0.52 : 0.62)
             }
-            return hdrColor(.white, exposure: 0.45, appState: appState).opacity(isLight ? 0.52 : 0.38)
+            return hdrColor(.white, exposure: 0.45, appState: appState).opacity(isLight ? 0.44 : 0.32)
         }
         if let tint {
-            return hdrColor(tint, exposure: 0.25, appState: appState).opacity(isLight ? 0.24 : 0.36)
+            return tint.opacity(isLight ? 0.24 : 0.36)
         }
-        return hdrColor(.white, exposure: 0.35, appState: appState).opacity(isLight ? 0.72 : 0.26)
+        return Color.white.opacity(isLight ? 0.55 : 0.22)
     }
 
     /// 构建遵循连续 Liquid Glass 强度 (`effectiveLiquidGlassStrength` 0.0~1.0)、系统设置同步及 HDR 浸染规则的原生 SwiftUI `Glass`
@@ -150,10 +153,10 @@ public enum StudioGlassSupport {
         if disabled {
             configured = .regular
         } else if prominent || selected {
-            let promBoost = 0.80 + s * 0.12
+            let promBoost = 0.72 + s * 0.08
             configured = .regular.tint(
                 hdrColor(resolvedTint, exposure: 0.38, appState: appState)
-                    .opacity(isLight ? min(0.92, promBoost + 0.04) : min(0.88, promBoost))
+                    .opacity(isLight ? min(0.80, promBoost + 0.04) : min(0.76, promBoost))
             )
         } else {
             // 非高亮的次级按钮保持通透中性玻璃底面，避免背景色与前景文字/图标同色淹没
@@ -163,7 +166,7 @@ public enum StudioGlassSupport {
     }
 
     public static func dynamicRange(for appState: AppState) -> Image.DynamicRange {
-        appState.enableAmbientGlassGlow ? .high : .standard
+        appState.enableAmbientGlassGlow ? .constrainedHigh : .standard
     }
 }
 
@@ -796,6 +799,7 @@ public struct StudioActionPillButton: View {
     public var icon: String? = nil
     public var tint: Color? = nil
     public var isProminent: Bool = false
+    public var compact: Bool = false
     public var fillWidth: Bool = false
     public var isDisabled: Bool = false
     public var help: String? = nil
@@ -806,6 +810,7 @@ public struct StudioActionPillButton: View {
         icon: String? = nil,
         tint: Color? = nil,
         isProminent: Bool = false,
+        compact: Bool = false,
         fillWidth: Bool = false,
         isDisabled: Bool = false,
         help: String? = nil,
@@ -815,6 +820,7 @@ public struct StudioActionPillButton: View {
         self.icon = icon
         self.tint = tint
         self.isProminent = isProminent
+        self.compact = compact
         self.fillWidth = fillWidth
         self.isDisabled = isDisabled
         self.help = help
@@ -827,14 +833,14 @@ public struct StudioActionPillButton: View {
             ? .secondary.opacity(0.60)
             : (isProminent ? nil : (tint ?? .primary))
         let btn = Button(action: action) {
-            HStack(spacing: isIconOnly ? 0 : 5) {
+            HStack(spacing: isIconOnly ? 0 : (compact ? 4 : 5)) {
                 if let icon = icon, !icon.isEmpty {
                     Image(systemName: icon)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: compact ? 10.5 : 12, weight: .semibold))
                 }
                 if !title.isEmpty {
                     Text(title)
-                        .font(.system(size: 12, weight: isProminent ? .semibold : .medium))
+                        .font(.system(size: compact ? 11 : 12, weight: isProminent ? .semibold : .medium))
                         .lineLimit(1)
                         .fixedSize(horizontal: !fillWidth, vertical: false)
                 }
@@ -848,7 +854,7 @@ public struct StudioActionPillButton: View {
             isProminent: isProminent,
             isDisabled: isDisabled,
             isCircle: isIconOnly,
-            controlSize: .large,
+            controlSize: compact ? .regular : .large,
             fillWidth: fillWidth
         )
         
@@ -982,6 +988,7 @@ public struct StudioMenuPillButton<MenuContent: View>: View {
                         .font(.system(size: compact ? 11 : 12, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.middle)
+                        .frame(maxWidth: 220, alignment: .leading)
                 }
             }
             .foregroundStyle(isDisabled ? .secondary.opacity(0.60) : (tint ?? .primary))
@@ -2373,6 +2380,7 @@ public struct StudioFlowLayout: Layout {
         var currentY: CGFloat = 0
         var rowHeight: CGFloat = 0
         var maxRowWidth: CGFloat = 0
+        var rowStartIndex: Int = 0
         
         for subview in subviews {
             let idealSize = subview.sizeThatFits(.unspecified)
@@ -2382,6 +2390,10 @@ public struct StudioFlowLayout: Layout {
                 : idealSize
             
             if currentX > 0 && (currentX + itemSize.width > effectiveMaxW + 0.5) {
+                for idx in rowStartIndex..<frames.count {
+                    frames[idx].origin.y = currentY + (rowHeight - frames[idx].height) * 0.5
+                }
+                rowStartIndex = frames.count
                 maxRowWidth = max(maxRowWidth, currentX - horizontalSpacing)
                 currentX = 0
                 currentY += rowHeight + verticalSpacing
@@ -2393,6 +2405,10 @@ public struct StudioFlowLayout: Layout {
             
             currentX += rect.width + horizontalSpacing
             rowHeight = max(rowHeight, rect.height)
+        }
+        
+        for idx in rowStartIndex..<frames.count {
+            frames[idx].origin.y = currentY + (rowHeight - frames[idx].height) * 0.5
         }
         
         maxRowWidth = max(maxRowWidth, max(0, currentX - horizontalSpacing))

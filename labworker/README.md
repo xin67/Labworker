@@ -24,6 +24,8 @@
    - **严禁在 3D/图像画布上堆叠遮挡浮层**：控制开关与滑块必须放在画布外侧的 `StudioFlowLayout` 流式工具栏中，窗口缩窄时自动换行。
    - **主工作区与表单行自适应**：分栏视图统一使用 `StudioResponsiveSplitLayout` 或 `AdaptiveTwoColumnWorkspace`（宽屏左右分栏、窄屏自动改为上下堆叠）；长表单行使用 `ViewThatFits(in: .horizontal)` 在窄窗下自动切换为上下两行。
    - **次要编辑器默认收起**：大块序列/PDB 文本编辑框与环境滑块默认收起在按需展开的抽屉中，保持首屏极简清爽。
+   - **同行控件统一尺寸分档与极简文案**：同一控件行必须使用同一高度档位——L 档 28pt（`StudioActionPillButton`、`StudioMenuPicker(compact: false)`、`.controlSize(.large)` 输入框）或 S 档 24pt（`StudioCompactPillButton`、`StudioActionPillButton(compact: true)`、`StudioMenuPicker(compact: true)`）；`StudioFlowLayout` 负责每行内部不同高度徽章/按钮的垂直居中对齐；`StudioMenuPillButton` 标题默认约束 `maxWidth: 220` 配合居中省略防窄窗撑破；优先以短标题 + 图标 + `.help` 悬停提示 + 图例徽章替代大段说明文字，禁止在可缩放图像画布中写死最小像素宽度（如 `max(260, ...)`）。
+   - **Liquid Glass 受限 HDR 与定量图像 SDR 隔离**：全应用玻璃控件通过 `StudioGlassSupport.dynamicRange(for:)` 统一采用 `.constrainedHigh` 并由 `StudioGlassSupport.hdrGain`（默认 `0.30`）集中控制曝光增益，静止非高亮按钮描边严禁叠加 HDR 曝光以避免默认态过亮；科学定量图像/电泳胶图画布须显式施加 `.allowedDynamicRange(.standard)` 锁定 SDR，保证亮度与色彩不受 HDR 动态高光开关影响。
 3. **单一职责与文件准入清单 (`ARCHITECTURE.md`)**：
    - 跨视图复用的 UI 组件统一收口在 `Sources/CloneStudio/Views/Components/DesignSystem.swift`。
    - 任何新增或删除源码文件必须同步更新 `ARCHITECTURE.md`。

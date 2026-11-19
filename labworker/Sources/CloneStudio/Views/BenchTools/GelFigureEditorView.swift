@@ -36,6 +36,26 @@ public struct GelFigureEditorView: View {
     
     private static let singleCutOption = "__none__"
     
+    private enum GelUI {
+        static let section: CGFloat = 12
+        static let row: CGFloat     = 8
+        static let chip: CGFloat    = 6
+    }
+    
+    private static func shortName(_ text: String, maxLength: Int = 18) -> String {
+        guard text.count > maxLength, maxLength >= 6 else { return text }
+        let headCount = (maxLength - 1) / 2
+        let tailCount = maxLength - 1 - headCount
+        return "\(text.prefix(headCount))…\(text.suffix(tailCount))"
+    }
+    
+    private var selectedPlasmidHelp: String {
+        if let item = plasmidPool.items.first(where: { $0.id == selectedPlasmidID }) {
+            return "待酶切质粒：\(item.name) (\(item.dnaInfo.length) bp)"
+        }
+        return "待酶切质粒：示例质粒 (pETDuet-Demo)"
+    }
+    
     private var activeLadder: GelMarkerLadderPreset {
         GelMarkerLadderPreset.builtinPresets.first { $0.id == selectedLadderID }
             ?? GelMarkerLadderPreset.builtinPresets[0]
@@ -92,10 +112,10 @@ public struct GelFigureEditorView: View {
     
     private var plasmidPickerOptions: [StudioMenuPickerOption<String>] {
         var opts = plasmidPool.items.map { item in
-            StudioMenuPickerOption(value: item.id, title: "\(item.name) (\(item.dnaInfo.length) bp)")
+            StudioMenuPickerOption(value: item.id, title: Self.shortName(item.name, maxLength: 18))
         }
         if opts.isEmpty {
-            opts.append(StudioMenuPickerOption(value: "__demo__", title: "示例质粒 (pETDuet-Demo)"))
+            opts.append(StudioMenuPickerOption(value: "__demo__", title: "pETDuet-Demo"))
         }
         return opts
     }
@@ -105,7 +125,7 @@ public struct GelFigureEditorView: View {
     }
     
     private var enzyme2Options: [StudioMenuPickerOption<String>] {
-        [StudioMenuPickerOption(value: Self.singleCutOption, title: "无 (单酶切)")]
+        [StudioMenuPickerOption(value: Self.singleCutOption, title: "无")]
             + commonDigestEnzymes.map { StudioMenuPickerOption(value: $0, title: $0) }
     }
     
@@ -122,7 +142,7 @@ public struct GelFigureEditorView: View {
                 .action(title: "导出", icon: "square.and.arrow.up", help: "导出条带分子量回归 CSV", action: exportGelCSV)
             ]
         ) {
-            StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.42) {
+            StudioResponsiveSplitLayout(breakpoint: 860, spacing: GelUI.section, leftRatio: 0.42) {
                 leftColumn
                 rightColumn
             }
@@ -146,47 +166,49 @@ public struct GelFigureEditorView: View {
         .onChange(of: appState.defaultGelLadderID) { _, newLadder in
             selectedLadderID = newLadder
         }
+        .onChange(of: selectedLadderID) { _, _ in
+            let res = GelAnalysisEngine.recalibrateLanes(lanes: lanes, ladder: activeLadder)
+            lanes = res.lanes
+            calibrationFit = res.fit
+        }
         .onChange(of: plasmidPool.items.count) { _, _ in
             syncSelectedPlasmidID()
         }
     }
     
-    // MARK: - 左栏：Marker 标准曲线拟合 + 多模块虚拟电泳预测与条带明细
+    // MARK: - 左栏：Marker 标准曲线 + 预测泳道配置 + 泳道条带明细
     private var leftColumn: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: GelUI.section) {
             ladderCalibrationCard
-            virtualPredictionAndLanesCard
+            virtualPredictionCard
+            lanesDetailCard
         }
     }
     
     private var ladderCalibrationCard: some View {
-        StudioCard(title: "Marker 标准品选择与对数迁移率回归曲线") {
-            VStack(alignment: .leading, spacing: 10) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("选择 DNA / 蛋白质 Marker 标准品：")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                    
-                    StudioMenuPicker(
-                        selection: $selectedLadderID,
-                        options: ladderPickerOptions,
-                        icon: "ruler",
-                        tint: .blue,
-                        help: "切换 DNA 或蛋白质标准品并同步重算所有实测及预测条带位置"
-                    )
-                    .onChange(of: selectedLadderID) { _, _ in
-                        let res = GelAnalysisEngine.recalibrateLanes(lanes: lanes, ladder: activeLadder)
-                        lanes = res.lanes
-                        calibrationFit = res.fit
-                    }
-                }
-                
+        StudioCard(
+            title: "Marker 标准曲线",
+            headerTrailing: {
+                StudioMenuPicker(
+                    selection: $selectedLadderID,
+                    options: ladderPickerOptions,
+                    icon: "ruler",
+                    tint: .blue,
+                    help: "\(activeLadder.name) — 切换 DNA / 蛋白质 Marker 并重算所有条带"
+                )
+            }
+        ) {
+            VStack(alignment: .leading, spacing: GelUI.row) {
                 if let fit = calibrationFit {
-                    StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                        StudioMetricBadge(label: "拟合优度 R²", value: String(format: "%.4f", fit.r2), color: fit.r2 >= 0.98 ? .green : .orange)
-                        StudioMetricBadge(label: "斜率 Slope", value: String(format: "%.3f", fit.slope), color: .blue)
-                        StudioMetricBadge(label: "截距 Intercept", value: String(format: "%.2f", fit.intercept), color: .teal)
-                        StudioMetricBadge(label: "校准点数", value: "\(fit.n)", color: .secondary)
+                    StudioFlowLayout(horizontalSpacing: GelUI.chip, verticalSpacing: GelUI.chip) {
+                        StudioMetricBadge(label: "R²", value: String(format: "%.4f", fit.r2), color: fit.r2 >= 0.98 ? .green : .orange)
+                            .help("标准曲线拟合优度 R²")
+                        StudioMetricBadge(label: "斜率", value: String(format: "%.3f", fit.slope), color: .blue)
+                            .help("对数迁移率回归斜率 (Slope)")
+                        StudioMetricBadge(label: "截距", value: String(format: "%.2f", fit.intercept), color: .teal)
+                            .help("对数迁移率回归截距 (Intercept)")
+                        StudioMetricBadge(label: "点数", value: "\(fit.n)", color: .secondary)
+                            .help("参与拟合的 Marker 校准点数")
                     }
                     
                     Chart {
@@ -213,22 +235,22 @@ public struct GelFigureEditorView: View {
                     }
                     .chartXAxisLabel("Normalized Migration Distance (Y)")
                     .chartYAxisLabel("log10(\(activeLadder.kind.unit))")
-                    .frame(height: 150)
+                    .frame(minHeight: 120, idealHeight: 150, maxHeight: 180)
                 }
             }
         }
     }
     
-    private var virtualPredictionAndLanesCard: some View {
+    private var virtualPredictionCard: some View {
         StudioCard(
-            title: "多模块虚拟电泳预测 & 泳道条带明细",
+            title: "预测泳道",
             headerTrailing: {
                 if virtualLaneCount > 0 {
-                    StudioCompactPillButton(
-                        title: "清空预测道 (\(virtualLaneCount))",
+                    StudioActionPillButton(
+                        title: "\(virtualLaneCount)",
                         icon: "trash",
                         tint: .red,
-                        help: "移除胶图上所有虚拟预测泳道，仅保留实测泳道"
+                        help: "清空全部 \(virtualLaneCount) 条虚拟预测泳道"
                     ) {
                         lanes.removeAll(where: \.isVirtualDigestLane)
                         lanes = GelAnalysisEngine.layoutVirtualLanes(lanes)
@@ -238,23 +260,30 @@ public struct GelFigureEditorView: View {
                 }
             }
         ) {
-            VStack(alignment: .leading, spacing: 10) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("选择预测来源（绿点表示该模块已有实验数据，可叠加多条预测泳道同胶对比）：")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: GelUI.section) {
+                VStack(alignment: .leading, spacing: GelUI.chip) {
+                    Text("来源")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
                     
-                    StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
+                    StudioFlowLayout(horizontalSpacing: GelUI.chip, verticalSpacing: GelUI.chip) {
                         ForEach(GelVirtualPredictionSource.allCases) { src in
                             let isReady = hasActiveData(for: src)
+                            let helpText: String = {
+                                if src == .customSizes {
+                                    return "手动输入条带分子量并叠加虚拟预测泳道"
+                                }
+                                return isReady
+                                    ? "\(src.title)（绿点表示该模块已有可用数据，可叠加多条预测泳道同胶对比）"
+                                    : "\(src.title)（尚未载入数据，可用示范数据预览）"
+                            }()
                             StudioCompactPillButton(
                                 title: src.title,
                                 icon: src.icon,
                                 dotColor: (src == .customSizes || !isReady) ? nil : .green,
                                 tint: predictionSource == src ? .teal : nil,
                                 isSelected: predictionSource == src,
-                                help: isReady ? "\(src.title)（已有可用数据）" : "\(src.title)（尚未载入数据，可用示范数据预览）"
+                                help: helpText
                             ) {
                                 predictionSource = src
                             }
@@ -263,107 +292,115 @@ public struct GelFigureEditorView: View {
                 }
                 
                 activeSourceControlPanel
-                
-                Divider()
-                
-                ScrollView(.vertical, showsIndicators: true) {
-                    VStack(spacing: 6) {
-                        ForEach(Array(lanes.enumerated()), id: \.element.id) { idx, lane in
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack(spacing: 8) {
-                                    Text("L\(lane.index)")
-                                        .font(.system(size: 12, weight: .bold))
-                                        .monospacedDigit()
-                                        .foregroundColor(lane.isLadderLane ? .orange : (lane.isVirtualDigestLane ? .cyan : .blue))
-                                    
-                                    TextField("泳道名称", text: $lanes[idx].name)
-                                        .textFieldStyle(.roundedBorder)
-                                        .font(.system(size: 12))
-                                    
-                                    if lane.isVirtualDigestLane {
-                                        Button(action: {
-                                            lanes.remove(at: idx)
-                                            lanes = GelAnalysisEngine.layoutVirtualLanes(lanes)
-                                        }) {
-                                            Image(systemName: "trash")
-                                                .font(.system(size: 11))
-                                                .foregroundColor(.red)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .help("删除此虚拟预测泳道")
-                                    }
-                                }
+            }
+        }
+    }
+    
+    private var lanesDetailCard: some View {
+        StudioCard(title: "泳道明细") {
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(spacing: GelUI.chip) {
+                    ForEach($lanes) { $lane in
+                        VStack(alignment: .leading, spacing: GelUI.chip) {
+                            HStack(alignment: .center, spacing: GelUI.row) {
+                                Text("L\(lane.index)")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .monospacedDigit()
+                                    .foregroundColor(lane.isLadderLane ? .orange : (lane.isVirtualDigestLane ? .cyan : .blue))
+                                    .frame(minWidth: 26, alignment: .leading)
                                 
-                                StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
-                                    ForEach(lane.bands) { band in
-                                        let valStr = band.estimatedSize.map {
-                                            activeLadder.kind == .dna ? String(format: "%.0f bp", $0) : String(format: "%.1f kDa", $0)
-                                        } ?? "—"
-                                        StudioMetricBadge(
-                                            label: lane.isLadderLane ? "Std" : (band.isVirtualDigestBand ? "Pred" : "Band"),
-                                            value: valStr,
-                                            color: lane.isLadderLane ? .orange : (band.isVirtualDigestBand ? .cyan : .teal)
-                                        )
+                                TextField("泳道名称", text: $lane.name)
+                                    .textFieldStyle(.roundedBorder)
+                                    .controlSize(.small)
+                                    .font(.system(size: 12))
+                                
+                                if lane.isVirtualDigestLane {
+                                    StudioCompactPillButton(
+                                        title: "",
+                                        icon: "trash",
+                                        tint: .red,
+                                        help: "删除此虚拟预测泳道"
+                                    ) {
+                                        let laneID = lane.id
+                                        if let removeIdx = lanes.firstIndex(where: { $0.id == laneID }) {
+                                            lanes.remove(at: removeIdx)
+                                            lanes = GelAnalysisEngine.layoutVirtualLanes(lanes)
+                                        }
                                     }
+                                } else {
+                                    Color.clear
+                                        .frame(width: 24, height: 24)
+                                        .accessibilityHidden(true)
                                 }
                             }
-                            .studioInnerBox(tint: lane.isVirtualDigestLane ? .cyan : nil, paddingH: 8, paddingV: 8)
+                            
+                            StudioFlowLayout(horizontalSpacing: GelUI.chip, verticalSpacing: 4) {
+                                ForEach(lane.bands) { band in
+                                    let valStr = band.estimatedSize.map {
+                                        activeLadder.kind == .dna ? String(format: "%.0f bp", $0) : String(format: "%.1f kDa", $0)
+                                    } ?? "—"
+                                    StudioMetricBadge(
+                                        label: lane.isLadderLane ? "Std" : (band.isVirtualDigestBand ? "Pred" : "Band"),
+                                        value: valStr,
+                                        color: lane.isLadderLane ? .orange : (band.isVirtualDigestBand ? .cyan : .teal)
+                                    )
+                                }
+                            }
                         }
+                        .studioInnerBox(tint: lane.isVirtualDigestLane ? .cyan : nil, paddingH: 8, paddingV: 8)
                     }
                 }
-                .frame(minHeight: 200, maxHeight: 320)
             }
+            .frame(minHeight: 120, maxHeight: 300)
         }
     }
     
     @ViewBuilder
     private var activeSourceControlPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: GelUI.row) {
             switch predictionSource {
             case .plasmidDigest:
-                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+                StudioFlowLayout(horizontalSpacing: GelUI.row, verticalSpacing: GelUI.row) {
                     StudioMenuPicker(
                         selection: $selectedPlasmidID,
                         options: plasmidPickerOptions,
-                        prefix: "质粒",
                         icon: "circle.circle",
                         tint: .blue,
-                        compact: true,
-                        help: "选择要进行理论限制性酶切预测的质粒"
+                        help: selectedPlasmidHelp
                     )
                     
                     StudioMenuPicker(
                         selection: $selectedEnzyme1,
                         options: enzyme1Options,
-                        prefix: "酶 1",
+                        prefix: "酶1",
                         tint: .teal,
-                        compact: true,
-                        help: "选择第一种限制性内切酶"
+                        help: "第一种限制性内切酶"
                     )
                     
                     StudioMenuPicker(
                         selection: $selectedEnzyme2,
                         options: enzyme2Options,
-                        prefix: "酶 2",
+                        prefix: "酶2",
                         tint: .teal,
-                        compact: true,
-                        help: "选择第二种限制性内切酶（选“无”则为单酶切）"
+                        help: "第二种限制性内切酶（选“无”为单酶切）"
                     )
-                }
-                
-                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+                    
                     StudioActionPillButton(
-                        title: "叠加酶切预测道",
+                        title: "叠加",
                         icon: "plus.viewfinder",
                         tint: .teal,
                         isProminent: true,
-                        help: "按当前选中的质粒与内切酶叠加理论酶切条带"
+                        help: "按当前质粒与内切酶叠加理论酶切预测道"
                     ) {
                         injectVirtualDigestLaneFromPool()
                     }
                     
                     if plasmidPool.items.isEmpty {
-                        StudioCompactPillButton(title: "前往质粒池", icon: "arrow.up.right.square") {
+                        StudioActionPillButton(
+                            title: "",
+                            icon: "arrow.up.right.square",
+                            help: "前往质粒池导入质粒"
+                        ) {
                             appState.selectedNav = .plasmidPool
                         }
                     }
@@ -428,7 +465,7 @@ public struct GelFigureEditorView: View {
                 customSizesPredictionPanel
             }
         }
-        .studioInnerBox(tint: .teal, paddingH: 10, paddingV: 9)
+        .studioInnerBox(tint: .teal, paddingH: 10, paddingV: 10)
     }
     
     private func cloningModulePredictionPanel(
@@ -440,51 +477,65 @@ public struct GelFigureEditorView: View {
         onPredictLive: @escaping () -> Void,
         onPredictDemo: @escaping () -> Void
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: GelUI.row) {
             if hasData {
-                StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 5) {
+                StudioFlowLayout(horizontalSpacing: GelUI.chip, verticalSpacing: GelUI.chip) {
                     ForEach(Array(badges.enumerated()), id: \.offset) { _, b in
                         StudioMetricBadge(label: b.label, value: b.value, color: b.color)
                     }
                 }
                 
-                if supportsMixedControl {
-                    Toggle("同时叠加混合共泳道对照", isOn: $includeMixedControlLane)
-                        .toggleStyle(.checkbox)
-                        .font(.system(size: 11.5))
-                }
-                
-                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+                StudioFlowLayout(horizontalSpacing: GelUI.row, verticalSpacing: GelUI.row) {
                     StudioActionPillButton(
-                        title: "叠加\(moduleName)预测道",
+                        title: "叠加",
                         icon: "plus.viewfinder",
                         tint: .teal,
                         isProminent: true,
-                        help: "将「\(moduleName)」当前配置的理论扩增/酶切条带映射到胶图"
-                    ) {
-                        onPredictLive()
+                        help: "将「\(moduleName)」当前配置的理论条带映射到胶图",
+                        action: onPredictLive
+                    )
+                    
+                    if supportsMixedControl {
+                        StudioActionPillButton(
+                            title: "混合对照",
+                            icon: "square.on.square",
+                            tint: .teal,
+                            isProminent: includeMixedControlLane,
+                            help: includeMixedControlLane ? "已开启：同时叠加混合共泳道对照（点击关闭）" : "同时叠加混合共泳道对照"
+                        ) {
+                            includeMixedControlLane.toggle()
+                        }
                     }
                     
-                    StudioCompactPillButton(title: "前往模块", icon: "arrow.up.right.square") {
+                    StudioActionPillButton(
+                        title: "",
+                        icon: "arrow.up.right.square",
+                        help: "前往\(moduleName)模块"
+                    ) {
                         appState.selectedNav = targetNav
                     }
                 }
             } else {
-                Text("「\(moduleName)」当前尚未载入质粒或输入序列。可前往该模块配置，或直接用示范参数生成虚拟预测泳道。")
-                    .font(.system(size: 11.5))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Label("暂无数据", systemImage: "tray")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .help("「\(moduleName)」尚未载入质粒或输入序列，可前往配置或直接用示范参数预测")
                 
-                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+                StudioFlowLayout(horizontalSpacing: GelUI.row, verticalSpacing: GelUI.row) {
                     StudioActionPillButton(
-                        title: "用示范数据预测",
+                        title: "示范预测",
                         icon: "sparkles",
                         tint: .teal,
                         isProminent: true,
+                        help: "使用示范参数生成「\(moduleName)」虚拟预测泳道",
                         action: onPredictDemo
                     )
                     
-                    StudioCompactPillButton(title: "前往\(moduleName)", icon: "arrow.up.right.square") {
+                    StudioActionPillButton(
+                        title: "",
+                        icon: "arrow.up.right.square",
+                        help: "前往\(moduleName)模块"
+                    ) {
                         appState.selectedNav = targetNav
                     }
                 }
@@ -495,76 +546,81 @@ public struct GelFigureEditorView: View {
     private var customSizesPredictionPanel: some View {
         let unit = activeLadder.kind.unit
         let parsed = GelAnalysisEngine.parseCustomBandSizes(customBandSizesText)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: GelUI.row) {
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) {
+                HStack(spacing: GelUI.row) {
                     TextField("泳道名", text: $customLaneName)
                         .textFieldStyle(.roundedBorder)
+                        .controlSize(.large)
                         .font(.system(size: 12))
-                        .frame(minWidth: 96, maxWidth: 140)
+                        .frame(minWidth: 88, idealWidth: 120, maxWidth: 160)
                     
-                    TextField("输入条带大小（逗号或空格分隔，单位 \(unit)）", text: $customBandSizesText)
+                    TextField("条带大小 (\(unit)，逗号/空格分隔)", text: $customBandSizesText)
                         .textFieldStyle(.roundedBorder)
+                        .controlSize(.large)
                         .font(.system(size: 12))
                         .monospacedDigit()
+                        .frame(minWidth: 150, maxWidth: .infinity)
                 }
                 
-                VStack(alignment: .leading, spacing: 6) {
-                    TextField("泳道名称", text: $customLaneName)
+                VStack(alignment: .leading, spacing: GelUI.chip) {
+                    TextField("泳道名", text: $customLaneName)
                         .textFieldStyle(.roundedBorder)
+                        .controlSize(.large)
                         .font(.system(size: 12))
                     
-                    TextField("条带大小（逗号/空格分隔，单位 \(unit)）", text: $customBandSizesText)
+                    TextField("条带大小 (\(unit)，逗号/空格分隔)", text: $customBandSizesText)
                         .textFieldStyle(.roundedBorder)
+                        .controlSize(.large)
                         .font(.system(size: 12))
                         .monospacedDigit()
                 }
             }
             
-            StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 5) {
+            StudioFlowLayout(horizontalSpacing: GelUI.chip, verticalSpacing: GelUI.chip) {
                 if activeLadder.kind == .dna {
-                    StudioCompactPillButton(title: "PCR 1500/750 bp") {
+                    StudioCompactPillButton(title: "PCR 1500/750", help: "填入 PCR 预期：1500, 750 bp") {
                         customLaneName = "PCR-预期"
                         customBandSizesText = "1500, 750"
                     }
-                    StudioCompactPillButton(title: "双酶切 4200/1200 bp") {
+                    StudioCompactPillButton(title: "酶切 4200/1200", help: "填入双酶切预期：4200, 1200 bp") {
                         customLaneName = "双酶切-预期"
                         customBandSizesText = "4200, 1200"
                     }
-                    StudioCompactPillButton(title: "三带 3000/1000/500") {
+                    StudioCompactPillButton(title: "三带", help: "填入三带对照：3000, 1000, 500 bp") {
                         customLaneName = "三带对照"
                         customBandSizesText = "3000, 1000, 500"
                     }
                 } else {
-                    StudioCompactPillButton(title: "单带 55 kDa") {
+                    StudioCompactPillButton(title: "单带 55", help: "填入单带预期：55 kDa") {
                         customLaneName = "Target-55kDa"
                         customBandSizesText = "55"
                     }
-                    StudioCompactPillButton(title: "双带 70/37 kDa") {
+                    StudioCompactPillButton(title: "双带 70/37", help: "填入双带预期：70, 37 kDa") {
                         customLaneName = "Cleavage-预期"
                         customBandSizesText = "70, 37"
                     }
-                    StudioCompactPillButton(title: "多聚体 140/70/35") {
+                    StudioCompactPillButton(title: "多聚体", help: "填入多聚体预期：140, 70, 35 kDa") {
                         customLaneName = "Oligomer-预期"
                         customBandSizesText = "140, 70, 35"
                     }
                 }
             }
             
-            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+            StudioFlowLayout(horizontalSpacing: GelUI.row, verticalSpacing: GelUI.row) {
                 StudioActionPillButton(
-                    title: "叠加自定义预测道",
+                    title: "叠加",
                     icon: "plus.viewfinder",
                     tint: .teal,
                     isProminent: true,
                     isDisabled: parsed.isEmpty,
-                    help: "将输入的条带分子量按当前 Marker 标准曲线映射到胶图"
-                ) {
-                    injectCustomSizesLane()
-                }
+                    help: "将输入的条带分子量按当前 Marker 标准曲线映射到胶图",
+                    action: injectCustomSizesLane
+                )
                 
                 if !parsed.isEmpty {
-                    StudioMetricBadge(label: "已解析", value: "\(parsed.count) 条带 (\(unit))", color: .cyan)
+                    StudioMetricBadge(label: "", value: "\(parsed.count) 条带 · \(unit)", color: .cyan)
+                        .help("已解析 \(parsed.count) 条自定义条带，单位 \(unit)")
                 }
             }
         }
@@ -633,24 +689,45 @@ public struct GelFigureEditorView: View {
     // MARK: - 右栏：响应式凝胶电泳拼图与分子量标尺画布
     private var rightColumn: some View {
         StudioCard(
-            title: "出版级电泳标注画布 (\(lanes.count) 个泳道 · 单位 \(activeLadder.kind.unit))",
+            title: "胶图",
             headerTrailing: {
-                StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
-                    Toggle("显示左侧 Marker 标尺", isOn: $showLadderRuler)
-                        .toggleStyle(.checkbox)
-                        .font(.system(size: 12))
+                StudioFlowLayout(horizontalSpacing: GelUI.row, verticalSpacing: GelUI.chip) {
+                    StudioMetricBadge(
+                        label: "",
+                        value: "\(lanes.count) 泳道 · \(activeLadder.kind.unit)",
+                        color: .cyan
+                    )
+                    .help("共 \(lanes.count) 个泳道，分子量单位 \(activeLadder.kind.unit)")
                     
-                    Toggle("显示条带推算分子量", isOn: $showBandSizeOverlay)
-                        .toggleStyle(.checkbox)
-                        .font(.system(size: 12))
+                    StudioActionPillButton(
+                        title: "标尺",
+                        icon: "ruler",
+                        tint: .orange,
+                        isProminent: showLadderRuler,
+                        help: showLadderRuler ? "隐藏左侧 Marker 标尺" : "显示左侧 Marker 标尺"
+                    ) {
+                        showLadderRuler.toggle()
+                    }
+                    
+                    StudioActionPillButton(
+                        title: "分子量",
+                        icon: "textformat.123",
+                        tint: .cyan,
+                        isProminent: showBandSizeOverlay,
+                        help: showBandSizeOverlay ? "隐藏条带推算分子量" : "显示条带推算分子量"
+                    ) {
+                        showBandSizeOverlay.toggle()
+                    }
                 }
             }
         ) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: GelUI.row) {
                 GeometryReader { geo in
                     let aspect = CGFloat(plane.width) / CGFloat(max(1, plane.height))
-                    let drawW = max(260, min(geo.size.width - 16, geo.size.height * aspect))
-                    let drawH = drawW / max(0.2, aspect)
+                    let availW = max(1, geo.size.width - 16)
+                    let availH = max(1, geo.size.height - 16)
+                    let drawW = max(1, min(availW, availH * aspect))
+                    let drawH = max(1, drawW / max(0.2, aspect))
                     
                     ZStack {
                         if let nsImg = plane.toNSImage() {
@@ -723,18 +800,23 @@ public struct GelFigureEditorView: View {
                         }
                         .frame(width: drawW, height: drawH)
                     }
+                    .allowedDynamicRange(.standard)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
                 .frame(minHeight: 360, maxHeight: 520)
                 .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                         .fill(Color.black.opacity(0.22))
                 )
                 
-                Text("提示：橙色标尺为 Marker 标准品校准带，绿色实线为实测样品条带及回归推算分子量，青色虚线泳道为来自质粒酶切、单/多片段克隆、入门克隆、片段删除、定点突变或自定义条带的理论预测对照带。")
-                    .font(.system(size: 11.5))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                StudioFlowLayout(horizontalSpacing: GelUI.chip, verticalSpacing: GelUI.chip) {
+                    StudioMetricBadge(label: "", value: "Marker", color: .orange)
+                        .help("橙色标尺：Marker 标准品校准带")
+                    StudioMetricBadge(label: "", value: "实测", color: .green)
+                        .help("绿色实线：实测样品条带及回归推算分子量")
+                    StudioMetricBadge(label: "", value: "预测", color: .cyan)
+                        .help("青色虚线：理论预测对照带（酶切/克隆模块/自定义）")
+                }
             }
         }
     }
