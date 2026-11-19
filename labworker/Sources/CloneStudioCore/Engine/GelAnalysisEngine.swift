@@ -152,7 +152,43 @@ public struct GelLadderCalibrationFit: Sendable {
     }
 }
 
-// MARK: - 2. 凝胶电泳泳道识别、标准曲线回归与质粒虚拟酶切联动引擎
+public enum GelVirtualPredictionSource: String, CaseIterable, Identifiable, Codable, Sendable {
+    case plasmidDigest = "plasmidDigest"
+    case singleFragment = "singleFragment"
+    case multiFragment = "multiFragment"
+    case entryClone = "entryClone"
+    case fragmentDeletion = "fragmentDeletion"
+    case mutagenesis = "mutagenesis"
+    case customSizes = "customSizes"
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .plasmidDigest:    return "质粒酶切"
+        case .singleFragment:   return "单片段克隆"
+        case .multiFragment:    return "多片段组装"
+        case .entryClone:       return "入门克隆"
+        case .fragmentDeletion: return "片段删除"
+        case .mutagenesis:      return "定点突变"
+        case .customSizes:      return "自定义条带"
+        }
+    }
+
+    public var icon: String {
+        switch self {
+        case .plasmidDigest:    return "scissors"
+        case .singleFragment:   return "link"
+        case .multiFragment:    return "square.stack.3d.up"
+        case .entryClone:       return "arrow.right.doc.on.clipboard"
+        case .fragmentDeletion: return "scissors.badge.ellipsis"
+        case .mutagenesis:      return "wand.and.stars"
+        case .customSizes:      return "slider.horizontal.3"
+        }
+    }
+}
+
+// MARK: - 2. 凝胶电泳泳道识别、标准曲线回归与多模块虚拟电泳联动引擎
 
 public enum GelAnalysisEngine {
     
@@ -234,7 +270,7 @@ public enum GelAnalysisEngine {
         return calibrated
     }
     
-    /// 根据 Marker 泳道的条带迁移位置执行最小二乘对数分子量拟合，并自动推算所有样品泳道条带大小
+    /// 根据 Marker 泳道的条带迁移位置执行最小二乘对数分子量拟合，自动推算所有实测条带大小并同步重算所有虚拟预测条带的迁移位置
     public static func recalibrateLanes(
         lanes: [GelLaneItem],
         ladder: GelMarkerLadderPreset
@@ -271,7 +307,10 @@ public enum GelAnalysisEngine {
         
         for lIdx in updated.indices {
             for bIdx in updated[lIdx].bands.indices {
-                if let known = updated[lIdx].bands[bIdx].knownSize {
+                if updated[lIdx].bands[bIdx].isVirtualDigestBand, let known = updated[lIdx].bands[bIdx].knownSize {
+                    updated[lIdx].bands[bIdx].yFraction = fit.yPosition(forSize: known)
+                    updated[lIdx].bands[bIdx].estimatedSize = known
+                } else if let known = updated[lIdx].bands[bIdx].knownSize {
                     updated[lIdx].bands[bIdx].estimatedSize = known
                 } else {
                     let est = fit.size(atY: updated[lIdx].bands[bIdx].yFraction)
@@ -280,6 +319,36 @@ public enum GelAnalysisEngine {
             }
         }
         return (updated, fit)
+    }
+
+    /// 对所有泳道重新编号，并为多条虚拟预测泳道分配不重叠的横向坐标与带宽
+    public static func layoutVirtualLanes(_ lanes: [GelLaneItem]) -> [GelLaneItem] {
+        var updated = lanes
+        for idx in updated.indices {
+            updated[idx].index = idx + 1
+        }
+        let virtualIndices = updated.indices.filter { updated[$0].isVirtualDigestLane }
+        guard !virtualIndices.isEmpty else { return updated }
+
+        if virtualIndices.count == 1 {
+            let vIdx = virtualIndices[0]
+            updated[vIdx].centerX = 0.92
+            updated[vIdx].widthFrac = 0.08
+            return updated
+        }
+
+        let count = virtualIndices.count
+        let rightBound = 0.95
+        let desiredSpan = Double(count - 1) * 0.09
+        let leftBound = max(0.54, rightBound - min(0.41, desiredSpan))
+        let step = (rightBound - leftBound) / Double(max(1, count - 1))
+        let widthFrac = min(0.075, max(0.042, step * 0.72))
+
+        for (offset, laneIdx) in virtualIndices.enumerated() {
+            updated[laneIdx].centerX = leftBound + Double(offset) * step
+            updated[laneIdx].widthFrac = widthFrac
+        }
+        return updated
     }
     
     /// 从质粒序列与指定限制性内切酶直接模拟计算理论酶切片段大小，并映射为虚拟电泳参照泳道
@@ -338,13 +407,141 @@ public enum GelAnalysisEngine {
         let enzTitle = enzymeNames.joined(separator: "+")
         return GelLaneItem(
             index: laneIndex,
-            name: "虚拟对照:\(plasmidName)(\(enzTitle))",
+            name: "酶切:\(plasmidName)(\(enzTitle))",
             isLadderLane: false,
             isVirtualDigestLane: true,
             centerX: 0.92,
             widthFrac: 0.08,
             bands: bands
         )
+    }
+
+    /// 将同源重组/片段删除/入门克隆模拟结果映射为凝胶画布上的虚拟预测泳道
+    public static func buildVirtualLanesFromSimulation(
+        _ simulation: HomologousPCRGelSimulationResult,
+        sourceTag: String,
+        fit: GelLadderCalibrationFit?,
+        startingLaneIndex: Int,
+        includeMixedControl: Bool = false
+    ) -> [GelLaneItem] {
+        let candidateLanes = simulation.lanes.filter { simLane in
+            !simLane.isMarker
+                && (includeMixedControl || !simLane.isMixedControl)
+                && !simLane.bands.isEmpty
+        }
+        var results: [GelLaneItem] = []
+        for (offset, simLane) in candidateLanes.enumerated() {
+            let mappedBands: [GelBandItem] = simLane.bands
+                .filter { $0.sizeBp > 0 }
+                .sorted { $0.sizeBp > $1.sizeBp }
+                .map { simBand in
+                    let sizeD = Double(simBand.sizeBp)
+                    let yPos = fit?.yPosition(forSize: sizeD) ?? simBand.yFraction
+                    return GelBandItem(
+                        yFraction: yPos,
+                        prominence: max(0.65, simBand.relativeBrightness),
+                        knownSize: sizeD,
+                        estimatedSize: sizeD,
+                        isVirtualDigestBand: true
+                    )
+                }
+            guard !mappedBands.isEmpty else { continue }
+            let cleanTag = sourceTag.trimmingCharacters(in: .whitespacesAndNewlines)
+            let laneTitle = cleanTag.isEmpty ? simLane.shortLabel : "\(cleanTag):\(simLane.shortLabel)"
+            results.append(
+                GelLaneItem(
+                    index: startingLaneIndex + offset,
+                    name: laneTitle,
+                    isLadderLane: false,
+                    isVirtualDigestLane: true,
+                    centerX: 0.92,
+                    widthFrac: 0.08,
+                    bands: mappedBands
+                )
+            )
+        }
+        return results
+    }
+
+    /// 构造定点突变全质粒反向 PCR 扩增产物虚拟预测泳道
+    public static func buildMutagenesisVirtualLane(
+        plasmidName: String,
+        parentalLengthBp: Int,
+        mutatedLengthBp: Int,
+        homologyLength: Int = 18,
+        mutationLabel: String = "",
+        fit: GelLadderCalibrationFit?,
+        laneIndex: Int
+    ) -> GelLaneItem {
+        let baseLen = mutatedLengthBp > 0 ? mutatedLengthBp : max(100, parentalLengthBp)
+        let ampliconBp = Double(baseLen + max(0, homologyLength))
+        var sizes: [Double] = [ampliconBp]
+        if parentalLengthBp > 0 && abs(parentalLengthBp - baseLen) >= 50 {
+            sizes.append(Double(parentalLengthBp))
+        }
+        sizes.sort(by: >)
+        let suffix = mutationLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let laneName = suffix.isEmpty ? "突变:\(plasmidName)" : "突变:\(suffix)"
+        return buildCustomVirtualLane(
+            laneName: laneName,
+            sizes: sizes,
+            fit: fit,
+            laneIndex: laneIndex
+        )
+    }
+
+    /// 按用户自定义分子量/片段长度数组生成虚拟预测泳道（同时支持 DNA bp 与 SDS-PAGE 蛋白质 kDa）
+    public static func buildCustomVirtualLane(
+        laneName: String,
+        sizes: [Double],
+        fit: GelLadderCalibrationFit?,
+        laneIndex: Int
+    ) -> GelLaneItem {
+        let sortedSizes = sizes.filter { $0 > 0 }.sorted(by: >)
+        let bands: [GelBandItem] = sortedSizes.map { sz in
+            let yPos = fit?.yPosition(forSize: sz) ?? min(0.88, max(0.12, 0.85 - log10(max(1.0, sz)) * 0.16))
+            return GelBandItem(
+                yFraction: yPos,
+                prominence: 0.9,
+                knownSize: sz,
+                estimatedSize: sz,
+                isVirtualDigestBand: true
+            )
+        }
+        let title = laneName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return GelLaneItem(
+            index: laneIndex,
+            name: title.isEmpty ? "自定义预测" : title,
+            isLadderLane: false,
+            isVirtualDigestLane: true,
+            centerX: 0.92,
+            widthFrac: 0.08,
+            bands: bands
+        )
+    }
+
+    /// 解析用户输入的条带大小文本（支持逗号/空格/分号分隔，自动识别 kb 与 kDa 单位后缀）
+    public static func parseCustomBandSizes(_ rawText: String) -> [Double] {
+        let separators = CharacterSet(charactersIn: ",，;；\n\t ")
+        let tokens = rawText
+            .components(separatedBy: separators)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        var values: [Double] = []
+        for token in tokens {
+            let lower = token.lowercased()
+            if lower.hasSuffix("kb"), let num = Double(lower.dropLast(2)), num > 0 {
+                values.append(num * 1000.0)
+            } else if lower.hasSuffix("bp"), let num = Double(lower.dropLast(2)), num > 0 {
+                values.append(num)
+            } else if lower.hasSuffix("kda"), let num = Double(lower.dropLast(3)), num > 0 {
+                values.append(num)
+            } else if let num = Double(lower), num > 0 {
+                values.append(num)
+            }
+        }
+        return values.sorted(by: >)
     }
     
     public static func exportGelBandsCSV(lanes: [GelLaneItem], unit: String) -> String {
@@ -360,13 +557,14 @@ public enum GelAnalysisEngine {
         return lines.joined(separator: "\n")
     }
 
-    /// 构造凝胶电泳分子量回归与质粒虚拟酶切对比的 AnalysisRun v2 溯源记录
+    /// 构造凝胶电泳分子量回归与多模块虚拟电泳对比的 AnalysisRun v2 溯源记录
     public static func buildGelAnalysisRun(
         lanes: [GelLaneItem],
         ladder: GelMarkerLadderPreset,
         fit: GelLadderCalibrationFit?,
         sourceImageURL: URL? = nil,
         virtualDigestEnzymes: [String] = [],
+        virtualPredictionSources: [String] = [],
         manualEdits: [AnalysisRun.ManualEdit] = [],
         outputs: [String] = [],
         exportDirectoryURL: URL? = nil,
@@ -395,6 +593,9 @@ public enum GelAnalysisEngine {
         if !virtualDigestEnzymes.isEmpty {
             paramsDict["virtualDigestEnzymes"] = .array(virtualDigestEnzymes.map { .string($0) })
         }
+        if !virtualPredictionSources.isEmpty {
+            paramsDict["virtualPredictionSources"] = .array(virtualPredictionSources.map { .string($0) })
+        }
 
         return AnalysisRun(
             schemaVersion: 2,
@@ -417,6 +618,7 @@ public enum GelAnalysisEngine {
         fit: GelLadderCalibrationFit?,
         sourceImageURL: URL? = nil,
         virtualDigestEnzymes: [String] = [],
+        virtualPredictionSources: [String] = [],
         manualEdits: [AnalysisRun.ManualEdit] = [],
         linkedPlasmidIDs: [String] = [],
         to outputCSVURL: URL,
@@ -431,6 +633,7 @@ public enum GelAnalysisEngine {
             fit: fit,
             sourceImageURL: sourceImageURL,
             virtualDigestEnzymes: virtualDigestEnzymes,
+            virtualPredictionSources: virtualPredictionSources,
             manualEdits: manualEdits,
             outputs: [outputCSVURL.lastPathComponent],
             exportDirectoryURL: outputCSVURL.deletingLastPathComponent(),

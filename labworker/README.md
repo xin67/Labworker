@@ -73,7 +73,7 @@
 | 模块枚举 (`NavItem`) | 界面名称 | 核心源码文件 | 核心算法与业务功能说明 | 支持快导格式 |
 | :--- | :--- | :--- | :--- | :--- |
 | `.westernBlot` | **WB 灰度定量** | `Views/BenchTools/WesternBlotView.swift`<br>`Engine/WesternBlotEngine.swift`<br>`Models/AnalysisRun.swift`<br>`python/wbquant/` | 深度整合 `WBStudio` 原生 16-bit TIFF 无损解析与 Swift 原生双引擎：支持同批次化学发光图与明场 Marker 自动配对、Active Strip 膜条定位、一维 Rolling-ball 滚球背景扣除、高斯加权四边收紧框、可拖拽微调泳道框、内参（GAPDH/ACTB）归一化、过曝像素红色遮罩与自动剔除、双组 Welch's t 检验及带 `AnalysisRun`（`<basename>.run.json` + SHA256 指纹）的 CSV/离线 HTML 报告导出。 | `.tif`, `.tiff` (16-bit), `.png`, `.jpg` |
-| `.gelFigure` | **凝胶分子量** | `Views/BenchTools/GelFigureEditorView.swift`<br>`Engine/GelAnalysisEngine.swift`<br>`Models/AnalysisRun.swift` | 琼脂糖/SDS-PAGE 电泳胶图泳道自动寻峰与 $\log_{10}(\text{MW}) = a \cdot y + b$ 最小二乘标准曲线拟合，支持未知条带分子量插值测算、质粒双酶切虚拟电泳对照叠加及 `AnalysisRun` v2 (`.run.json` + 质粒关联索引) 溯源导出。 | `.tif`, `.tiff`, `.png`, `.jpg` |
+| `.gelFigure` | **凝胶分子量** | `Views/BenchTools/GelFigureEditorView.swift`<br>`Engine/GelAnalysisEngine.swift`<br>`Models/AnalysisRun.swift` | 琼脂糖/SDS-PAGE 电泳胶图泳道自动寻峰与 $\log_{10}(\text{MW}) = a \cdot y + b$ 最小二乘标准曲线拟合，支持未知条带分子量插值测算、联动质粒酶切/单多片段克隆/入门克隆/片段删除/定点突变/自定义条带的多泳道虚拟电泳预测叠加（Marker 切换自动同步重算位置）及 `AnalysisRun` v2 (`.run.json` + 质粒关联索引) 溯源导出。 | `.tif`, `.tiff`, `.png`, `.jpg` |
 
 ### 3.4 定量与蛋白工具 (`SidebarSectionKind.benchTools`)
 

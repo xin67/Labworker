@@ -167,7 +167,7 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .westernBlot:
             return "原生 16-bit TIFF 无损灰度密度定量引擎，采用一维滚球背景扣除、高斯峰分离与内参归一化，自动执行 Welch t 检验并生成出版级显著性柱状图。"
         case .gelFigure:
-            return "电泳胶图泳道自动识别与 Log10(MW) 标准曲线回归计算，支持条带分子量插值估算、泳道标签注释与高分辨率图像导出。"
+            return "电泳胶图泳道自动识别与 Log10(MW) 标准曲线回归计算，支持联动质粒酶切、单/多片段克隆、入门克隆、片段删除、定点突变与自定义条带叠加多泳道虚拟电泳预测对照，以及高分辨率标注导出。"
         case .plateDesigner:
             return "96 孔 / 384 孔微孔板实验排布设计器，支持边缘效应规避 (Edge Avoidance)、梯度稀释序列生成、生物学重复分组与 CSV 机器表导出。"
         case .qpcrAnalysis:

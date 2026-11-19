@@ -736,12 +736,54 @@ do {
         fit: gelAuto.fit,
         laneIndex: gelAuto.lanes.count + 1
     )
+    let simForGel = HomologousPCRGelSimulator.simulateSingleFragment(
+        rawVectorLengthBp: 5400,
+        effectiveVectorBackboneLengthBp: 4800,
+        deletedVectorBp: 600,
+        linearizationMode: .double,
+        cleanInsertCoreLengthBp: 1200,
+        homologyLength: 18,
+        insertGeneName: "EGFP"
+    )
+    let simVirtualLanes = GelAnalysisEngine.buildVirtualLanesFromSimulation(
+        simForGel,
+        sourceTag: "单片段",
+        fit: gelAuto.fit,
+        startingLaneIndex: gelAuto.lanes.count + 2
+    )
+    assert(simVirtualLanes.count == 2, "Single-fragment simulation must map 2 non-mixed virtual lanes, got \(simVirtualLanes.count)")
+    let mutLane = GelAnalysisEngine.buildMutagenesisVirtualLane(
+        plasmidName: "pCMV-Demo",
+        parentalLengthBp: 5200,
+        mutatedLengthBp: 5200,
+        homologyLength: 18,
+        mutationLabel: "R175H",
+        fit: gelAuto.fit,
+        laneIndex: gelAuto.lanes.count + 4
+    )
+    let parsedCustom = GelAnalysisEngine.parseCustomBandSizes("1.5kb, 750bp, 500")
+    assert(parsedCustom == [1500.0, 750.0, 500.0], "parseCustomBandSizes mismatch: \(parsedCustom)")
+    let customLane = GelAnalysisEngine.buildCustomVirtualLane(
+        laneName: "自定义对照",
+        sizes: parsedCustom,
+        fit: gelAuto.fit,
+        laneIndex: gelAuto.lanes.count + 5
+    )
+    let laidOutLanes = GelAnalysisEngine.layoutVirtualLanes(gelAuto.lanes + [vLane] + simVirtualLanes + [mutLane, customLane])
+    let vCenters = laidOutLanes.filter(\.isVirtualDigestLane).map(\.centerX)
+    assert(vCenters.count == 5 && Set(vCenters).count == 5, "5 virtual lanes must receive 5 distinct non-overlapping centerX coordinates")
+    let yBeforeRecal = laidOutLanes.last?.bands.first?.yFraction ?? 0.0
+    let recalDL5000 = GelAnalysisEngine.recalibrateLanes(lanes: laidOutLanes, ladder: GelMarkerLadderPreset.builtinPresets[1])
+    let yAfterRecal = recalDL5000.lanes.last?.bands.first?.yFraction ?? 0.0
+    assert(abs(yAfterRecal - yBeforeRecal) > 1e-3, "Switching Marker ladder must recalculate virtual band yFraction")
+
     let gelCSVURL = tmpDir.appendingPathComponent("gel_bands.csv")
     let exportedGel = try GelAnalysisEngine.exportGelBandsCSVWithProvenance(
-        lanes: gelAuto.lanes + [vLane],
+        lanes: laidOutLanes,
         ladder: GelMarkerLadderPreset.builtinPresets[0],
         fit: gelAuto.fit,
         virtualDigestEnzymes: ["BamHI", "EcoRI"],
+        virtualPredictionSources: ["plasmidDigest", "singleFragment", "mutagenesis", "customSizes"],
         to: gelCSVURL
     )
     assert(fm.fileExists(atPath: exportedGel.csvURL.path) && fm.fileExists(atPath: exportedGel.sidecarURL.path), "Gel CSV and .run.json sidecar must exist")
@@ -749,10 +791,15 @@ do {
     assert(decodedGelRun.schemaVersion == 2 && decodedGelRun.module == NavItem.gelFigure.rawValue, "Gel AnalysisRun schemaVersion/module mismatch")
     assert(decodedGelRun.parameters["ladderID"]?.stringValue == GelMarkerLadderPreset.builtinPresets[0].id, "Gel AnalysisRun must record ladderID")
     assert((decodedGelRun.parameters["fitR2"]?.doubleValue ?? 0) > 0.95, "Gel AnalysisRun must record fitR2")
+    if case let .array(srcArr) = decodedGelRun.parameters["virtualPredictionSources"] {
+        assert(srcArr.count == 4, "Gel AnalysisRun must record 4 virtualPredictionSources, got \(srcArr.count)")
+    } else {
+        fatalError("Gel AnalysisRun missing virtualPredictionSources array")
+    }
 } catch {
     fatalError("Gel provenance export test failed: \(error)")
 }
-pass("WesternBlotEngine & GelAnalysisEngine passed (6 lanes quantified, Gel R² = \(String(format: "%.4f", gelAuto.fit?.r2 ?? 0))).")
+pass("WesternBlotEngine & GelAnalysisEngine passed (6 lanes quantified, Gel R² = \(String(format: "%.4f", gelAuto.fit?.r2 ?? 0)), 5 multi-module virtual lanes verified).")
 
 // 27. 验证同源重组 PCR 扩增凝胶电泳片段模拟引擎 (HomologousPCRGelSimulator)
 print("🧪 [27/52] Testing HomologousPCRGelSimulator (Agarose Sieving Physics, Auto Ladder & Amplicon Sizes)...")
