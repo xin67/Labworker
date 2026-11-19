@@ -38,7 +38,6 @@ public enum NavItem: String, CaseIterable, Identifiable {
     case chopchopCompare = "chopchopCompare"
     case westernBlot = "westernBlot"
     case gelFigure = "gelFigure"
-    case colonyCounter = "colonyCounter"
     case plateDesigner = "plateDesigner"
     case qpcrAnalysis = "qpcrAnalysis"
     case proteinWorkbench = "proteinWorkbench"
@@ -55,7 +54,7 @@ public enum NavItem: String, CaseIterable, Identifiable {
             return .cloning
         case .sgRNADesign, .shRNADesign, .chopchopCompare:
             return .targeting
-        case .westernBlot, .gelFigure, .colonyCounter:
+        case .westernBlot, .gelFigure:
             return .bioImaging
         case .plateDesigner, .qpcrAnalysis, .proteinWorkbench, .dnaCalculator, .sequenceTools:
             return .benchTools
@@ -78,7 +77,6 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .chopchopCompare:  return "靶点对比"
         case .westernBlot:      return "WB 灰度定量"
         case .gelFigure:        return "凝胶分子量"
-        case .colonyCounter:    return "菌落计数器"
         case .plateDesigner:    return "微孔板设计"
         case .qpcrAnalysis:     return "qPCR 定量"
         case .proteinWorkbench: return "蛋白质工作台"
@@ -103,7 +101,6 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .chopchopCompare:  return "globe.badge.chevron.backward"
         case .westernBlot:      return "slider.horizontal.below.rectangle"
         case .gelFigure:        return "chart.bar.doc.horizontal.fill"
-        case .colonyCounter:    return "circle.hexagongrid.fill"
         case .plateDesigner:    return "square.grid.3x3.fill"
         case .qpcrAnalysis:     return "chart.bar.xaxis"
         case .proteinWorkbench: return "atom"
@@ -129,7 +126,6 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .chopchopCompare:  return "靶点对比 chopchop compare 在线检索"
         case .westernBlot:      return "wb 灰度定量 western blot densitometry 条带 内参 显影 tif"
         case .gelFigure:        return "凝胶分子量 gel electrophoresis figure marker ladder 电泳 胶图"
-        case .colonyCounter:    return "菌落计数器 colony counter cfu 蓝白斑 平板 涂板"
         case .plateDesigner:    return "微孔板设计 plate layout well 96孔板 384孔板 排布 样品"
         case .qpcrAnalysis:     return "qpcr 定量 ct ddct 标准曲线 荧光定量 表达量 csv"
         case .proteinWorkbench: return "蛋白质工作台 protein workbench structure pdb plddt ramachandran 等电点 疏水 折叠"
@@ -172,8 +168,6 @@ public enum NavItem: String, CaseIterable, Identifiable {
             return "原生 16-bit TIFF 无损灰度密度定量引擎，采用一维滚球背景扣除、高斯峰分离与内参归一化，自动执行 Welch t 检验并生成出版级显著性柱状图。"
         case .gelFigure:
             return "电泳胶图泳道自动识别与 Log10(MW) 标准曲线回归计算，支持条带分子量插值估算、泳道标签注释与高分辨率图像导出。"
-        case .colonyCounter:
-            return "基于 Otsu 自适应阈值、连通域分割与 HSV 色彩空间识别平板菌落，支持蓝白斑筛选自动分类计数与 Garwood 泊松 95% 置信区间统计。"
         case .plateDesigner:
             return "96 孔 / 384 孔微孔板实验排布设计器，支持边缘效应规避 (Edge Avoidance)、梯度稀释序列生成、生物学重复分组与 CSV 机器表导出。"
         case .qpcrAnalysis:
@@ -200,7 +194,7 @@ public enum NavItem: String, CaseIterable, Identifiable {
             return ".ab1 / .abi (ABIF 四色峰图) / .seq / .fasta"
         case .sgRNADesign, .shRNADesign, .chopchopCompare, .sequenceTools:
             return ".fa / .fasta / .dna / 纯文本序列"
-        case .westernBlot, .gelFigure, .colonyCounter:
+        case .westernBlot, .gelFigure:
             return ".tif / .tiff (原生16-bit) / .png / .jpg"
         case .plateDesigner, .qpcrAnalysis, .orderCenter:
             return ".csv / .tsv / .xlsx 制表文本"
@@ -226,7 +220,6 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .chopchopCompare:  return "本地设计的候选靶点会自动置顶并在检索表中以星标高亮。"
         case .westernBlot:      return "支持主条带与内参双行联动定量，可手动微调泳道框与基线，并导出带显著性星号的离线 HTML 报告。"
         case .gelFigure:        return "选择预设 Marker (如 DL2000 / 1kb Ladder) 后点击标准带即可拟合 R² 并自动测算未知条带大小。"
-        case .colonyCounter:    return "开启蓝白斑模式后可自动区分 X-gal 显色菌落与白色阳性克隆并计算转化效率。"
         case .plateDesigner:    return "开启「避开最外圈孔」可显著降低 96 孔板边缘蒸发带来的 ELISA / 细胞活性定量偏差。"
         case .qpcrAnalysis:     return "支持直接粘贴仪器导出的 Well / Gene / Sample / Ct 表格，自动剔除或警示 SD > 0.30 的异常复孔。"
         case .proteinWorkbench: return "导入含共晶配体的 PDB 时会自动启用「共晶配体 + LIGSITE 共识融合盒」，一键复制 AutoDock Vina 配置。"

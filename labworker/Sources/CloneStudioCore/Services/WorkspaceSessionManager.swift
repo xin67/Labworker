@@ -636,7 +636,7 @@ public final class WorkspaceSessionManager: ObservableObject {
         if let firstImg = imageURLs.first {
             AppState.shared.pendingFinderOpenedFileURL = firstImg
             let currentNav = AppState.shared.selectedNav
-            if ![NavItem.westernBlot, .gelFigure, .colonyCounter].contains(currentNav) {
+            if ![NavItem.westernBlot, .gelFigure].contains(currentNav) {
                 AppState.shared.selectedNav = .westernBlot
             }
             AppState.shared.showToast("已从 Finder 载入图像 \(firstImg.lastPathComponent) 至「\(AppState.shared.selectedNav.title)」")

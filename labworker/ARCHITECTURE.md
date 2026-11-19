@@ -11,10 +11,10 @@
 
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
-| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、6 张内置公开示例实机界面截图、Mermaid 架构工作流、20 模块速览、MCP 配置与 `v20261115` DMG 下载及源码构建说明 |
+| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、5 张内置公开示例实机界面截图、Mermaid 架构工作流、19 模块速览、MCP 配置与 `v20261115` DMG 下载及源码构建说明 |
 | `../docs/images/*.png` | GitHub 根目录 `README.md` 引用的实机高分界面截图集（`01-single-clone-map.png` 至 `06-qpcr-analysis.png`，仅使用公开示例数据，零隐私脱敏留档） |
 | `../.github/workflows/ci.yml` | GitHub Actions `macos-14` 自动化 CI 门禁：在每次 `push`/`pull_request` 执行 Python 跨语言测试向量、防篡改校验及 `check_doc_counts.sh` 全量回归 |
-| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、20 模块算法速查、UI 响应式规范与 MCP 20261115 协议指南 |
+| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、19 模块算法速查、UI 响应式规范与 MCP 20261115 协议指南 |
 | `labworker/HANDOVER.md` | AI 项目架构交接与维护规范手册：包含目录拓扑、Single Source of Truth 门禁契约、双端 (Swift + Python MCP) 同步机制、跨语言测试向量与编码红线 |
 | `labworker/Package.swift` | SwiftPM 工程定义（Swift 6.4 / 最低支持 `macOS 27.0`），包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |
@@ -59,12 +59,11 @@
 | `Views/Tools/SequenceToolsView.swift` | 序列反向互补、GC 含量与 SantaLucia 近邻热力学 Tm 计算工具视图 |
 | `Views/BenchTools/PlateDesignerView.swift` | 微孔板（6～384 孔）可视化点选涂刷、随机种子排布与 CSV/qPCR 导出视图 |
 | `Views/BenchTools/QPCRAnalysisView.swift` | qPCR $\Delta\Delta C_t$ 相对定量、标准曲线拟合、反应孔 QC 质控与 `Swift Charts` 显著性柱状图/热图视图 |
-| `Views/BenchTools/ColonyCounterView.swift` | 菌落计数器与蓝白斑筛选视图（900 px 高清采样、分水岭粘连拆分开关、`minArea=4` 微小菌落支持、X-gal 色相分类、点选修正与 Garwood 95% 泊松区间 CFU 换算） |
 | `Views/BenchTools/WesternBlotView.swift` | Western Blot 16-bit 自动圈定、明场 Marker 混叠、Rolling-ball 背景扣除、可拖拽条带框、1D 峰剖面与内参归一化统计视图 |
 | `Views/BenchTools/GelFigureEditorView.swift` | 凝胶电泳分子量回归拟合、Marker 标准品标尺与质粒双酶切虚拟电泳对照叠加视图 |
 | `Views/BenchTools/ProteinWorkbenchView.swift` | 极简声明式窗口响应式蛋白质工作台：三维 Cα 骨架与 Vina 对接盒视窗、SPICE 五维指标、对齐 `DockFlowLab` 的 LIGSITE 共识融合盒与经验启发式 (`empirical_heuristic`) 突变 ΔΔG 扫描视图 |
 | `Views/Order/OrderExportView.swift` | 商业引物合成与测序订单（擎科/生工等）一键导出中心及引物批量写入 `.dna` 工具 |
-| `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观（仿 macOS 27 系统设置 Liquid Glass 实时预览与强度滑块、多色/系统主题色阵与跟随系统设置按钮、HDR 动态高光及双引擎协同调度模式）② 侧边栏定制 ③ MCP 智能体服务 (23 工具) ④ 20 模块全局功能说明书 |
+| `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观（仿 macOS 27 系统设置 Liquid Glass 实时预览与强度滑块、多色/系统主题色阵与跟随系统设置按钮、HDR 动态高光及双引擎协同调度模式）② 侧边栏定制 ③ MCP 智能体服务 (23 工具) ④ 19 模块全局功能说明书 |
 
 ## 三、 核心算法与业务服务层 (`labworker/Sources/CloneStudioCore/`)
 
@@ -102,8 +101,7 @@
 - `Engine/LabBioCalculatorsEngine.swift`：生物科研全能换算内核（dsDNA/ssDNA/Linear DNA/OD260 核酸定量、蛋白质摩尔互算与 DNA 编码容量、摩尔溶液配制、$C_1V_1=C_2V_2$ 稀释度与 °F/°C/K 温标转换及自适应精度格式化）。
 - `Engine/PlateLayoutEngine.swift`：微孔板确定性随机排布（Mulberry32）、正交连通冲突核验、CSV/TSV 样品解析导出及全局微孔板共享状态中心 `PlateLayoutStore`。
 - `Engine/QPCRAnalysisEngine.swift`：qPCR $\Delta\Delta C_t$ 相对定量、多内参几何平均、标准曲线最小二乘回归、反应孔 QC 质控与 Welch's t-test 显著性检验引擎。
-- `Engine/BioImageProcessor.swift`：生物图像底层处理引擎（RGBA/灰度平面提取、高斯滤波、Otsu 大津法分割、积分图自适应局部均值二值化、形态学开闭运算、Felzenszwalb 精确欧氏距离变换 EDT、拓扑持久性选峰与色彩边界感知 Meyer 分水岭粘连拆分、Marching Squares 亚像素周长圆度评估、HSV 色相统计、一维灰度投影峰值检测及高仿真实验示范图生成器）。
-- `Engine/ColonyCounterEngine.swift`：皿内琼脂局部背景平场估计与双滞后阈值菌落分割（微小与模糊低对比度菌落保留 + 分水岭粘连拆分）、X-gal 蓝白斑 HSV 色相判别、Garwood 精确泊松 95% 置信区间、CFU/mL 滴度计算及 `AnalysisRun` v2 (`.run.json`) 溯源导出引擎。
+- `Engine/BioImageProcessor.swift`：生物图像底层处理引擎（RGBA/灰度平面提取、高斯滤波、Otsu 大津法分割、积分图自适应局部均值二值化、形态学开闭运算、一维灰度投影峰值检测、OME-TIFF 物理像素尺寸解析及 WB/凝胶实验示范图生成器）。
 - `Engine/WesternBlotEngine.swift`：融合 `WBStudio` 的 16-bit 无损读取、显影增强、同批次曝光配对、有效膜条定位（Active Strip ROI）、Rolling-ball 背景扣除、高斯加权剖面四边收紧框、内参归一化与分组 Welch's t 检验双引擎。
 - `Engine/GelAnalysisEngine.swift`：凝胶电泳泳道/条带寻峰、Marker 对数分子量回归拟合（$\log_{10}(\text{size}) = a\cdot y + b$）、质粒酶切虚拟电泳对照生成及 `AnalysisRun` v2 (`.run.json` + 质粒关联索引) 溯源导出引擎。
 - `Engine/HomologousPCRGelSimulator.swift`：质粒片段同源重组 PCR 扩增琼脂糖凝胶电泳模拟引擎（`0.8%–2.0%` 孔径筛分迁移模型、单片段/多片段/片段删除/入门克隆扩增子推演、自动 DNA Marker 匹配与条带共迁移分辨率告警）。

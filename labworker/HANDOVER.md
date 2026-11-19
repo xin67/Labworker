@@ -27,9 +27,9 @@
 
 自动化门禁脚本 `labworker/Scripts/check_doc_counts.sh` 强制校验以下核心契约指标。**除非你同步更新了代码、测试和 `README.md` / `ARCHITECTURE.md` 中的声明，否则严禁让这些计数发生漂移**：
 
-1. **自动化验证测试数 (`tests=51`)**：`Tests/CloneStudioVerify/main.swift` 共包含 `[1/52]` ~ `[52/52]` 个编号检查节（当可选桌面 `.dna` 示例文件存在时 51+ 项执行，无桌面外部私有文件时跳过 3 项本地路径测试、执行并输出 **51** 项 `✅` 通过记录），运行结束输出 `COUNTS tests=51 tools=23 modules=20`。
+1. **自动化验证测试数 (`tests=50`)**：`Tests/CloneStudioVerify/main.swift` 执行并输出 **50** 项 `✅` 通过记录（无桌面外部私有文件时跳过 3 项本地路径测试），运行结束输出 `COUNTS tests=50 tools=23 modules=19`。
 2. **MCP 全栈工具数 (`tools=23`)**：Python 端 `Sources/CloneStudioCore/Resources/clonestudio_mcp_server.py`（`--count-tools` 验证）与 Swift 端 `PlasmidPoolManager.mcpToolsCatalog` 严格保持 **23** 个工具 1:1 对齐。
-3. **UI 导航模块总数 (`modules=20`)**：`Sources/CloneStudioCore/ViewModels/AppState.swift` 中的 `NavItem` 枚举共 **20** 个模块（5 大侧边栏分类下的 **19** 个科研业务模块 + **1** 个固定常驻 `.settings` 系统设置模块）。
+3. **UI 导航模块总数 (`modules=19`)**：`Sources/CloneStudioCore/ViewModels/AppState.swift` 中的 `NavItem` 枚举共 **19** 个模块（5 大侧边栏分类下的 **18** 个科研业务模块 + **1** 个固定常驻 `.settings` 系统设置模块）。
 4. **跨语言共享测试向量 (`10 files, 50 cases`)**：`Tests/vectors/*.json` 共 **10** 个 JSON 标准测试向量文件、**50** 个跨语言测试用例，由 Swift (`Test 48`) 与 Python (`Tests/vectors/run_python_vectors.py`) 双向对齐校验；`run_python_vectors.py --tamper-check` 验证篡改任一期望值必须触发非零退出码（exit code 2）。
 
 ---
@@ -45,7 +45,7 @@
     ├── Package.swift                           # macOS 27+，3 Targets: CloneStudioCore, CloneStudio, CloneStudioVerify
     ├── README.md / ARCHITECTURE.md / HANDOVER.md
     ├── Scripts/
-    │   ├── check_doc_counts.sh                 # 【核心门禁】校验 51 测试 + 23 MCP 工具 + 20 UI 模块 + 文档一致性
+    │   ├── check_doc_counts.sh                 # 【核心门禁】校验 50 测试 + 23 MCP 工具 + 19 UI 模块 + 文档一致性
     │   ├── build_app.sh                        # Release 编译并签名 labworker/Labworker.app
     │   ├── generate_icon.py                    # 亮/暗色 AppIcon 与状态栏模板图标生成
     │   └── build_libraries_db.py               # 离线全基因组 sgRNA/shRNA 靶点 SQLite 编译脚本
@@ -68,7 +68,7 @@
         │   │                                   # CHOPCHOPResult, ConstructHistory, PlateLayoutModels, OrderFormProfile,
         │   │                                   # CloneStudioIconProvider, AnalysisRun (Schema v2 + AnalysisRunIndexStore)
         │   ├── Geometry/                       # SequenceRowLayout, CircularOVELayout, CircularGeometry
-        │   ├── Engine/                         # 21 个核心算法引擎 (见下文清单)
+        │   ├── Engine/                         # 20 个核心算法引擎 (见下文清单)
         │   ├── Services/                       # WorkspaceSessionManager, PlasmidPoolManager, SnapGeneService,
         │   │                                   # ExcelOrderExporter, GenomicLibraryService, CHOPCHOPService,
         │   │                                   # CloneOnlineAPIClient, CloneStudioResourceLocator
@@ -91,7 +91,7 @@
 
 ---
 
-## 4. 20 个 UI 导航模块 (`NavItem`) 与核心引擎对照表（含固定常驻 `.settings`，共 20 项）
+## 4. 19 个 UI 导航模块 (`NavItem`) 与核心引擎对照表（含固定常驻 `.settings`，共 19 项）
 
 定义于 `Sources/CloneStudioCore/ViewModels/AppState.swift` 的 `NavItem` 与 `SidebarSectionKind`：
 
@@ -109,7 +109,6 @@
 | 基因编辑与靶点 | `.chopchopCompare` | 靶点对比 | `Views/Compare/CHOPCHOPWebView.swift` | `Services/CHOPCHOPService.swift`, `ViewModels/CHOPCHOPCompareViewModel.swift` |
 | 电泳与图像定量 | `.westernBlot` | WB 灰度定量 | `Views/BenchTools/WesternBlotView.swift` | `Engine/WesternBlotEngine.swift`, `Models/AnalysisRun.swift` |
 | 电泳与图像定量 | `.gelFigure` | 凝胶分子量 | `Views/BenchTools/GelFigureEditorView.swift` | `Engine/GelAnalysisEngine.swift`, `Models/AnalysisRun.swift` |
-| 电泳与图像定量 | `.colonyCounter` | 菌落计数器 | `Views/BenchTools/ColonyCounterView.swift` | `Engine/ColonyCounterEngine.swift`, `Engine/BioImageProcessor.swift`, `Models/AnalysisRun.swift` |
 | 定量与蛋白工具 | `.plateDesigner` | 微孔板设计 | `Views/BenchTools/PlateDesignerView.swift` | `Engine/PlateLayoutEngine.swift`, `Models/PlateLayoutModels.swift` |
 | 定量与蛋白工具 | `.qpcrAnalysis` | qPCR 定量 | `Views/BenchTools/QPCRAnalysisView.swift` | `Engine/QPCRAnalysisEngine.swift`, `Models/AnalysisRun.swift` |
 | 定量与蛋白工具 | `.proteinWorkbench` | 蛋白质工作台 | `Views/BenchTools/ProteinWorkbenchView.swift` | `Engine/ProteinBiophysicsEngine.swift` |
@@ -158,7 +157,7 @@
    - CRISPR/shRNA 评分明确标记 `score_type = "sequence_heuristic"` 与 `off_target_checked = false`，提示需使用 CHOPCHOP/Cas-OFFinder 核验全基因组脱靶。
    - 点突变稳定性初筛明确标记 `model_type = "empirical_heuristic"` / `ddg_model_type = "empirical_heuristic"`（基于疏水性/位阻/脯氨酸经验项初筛，非 FoldX / Rosetta 全原子能量模型）。
 3. **全链路可复现溯源 (`AnalysisRun` Schema v2)**：
-   - 导出数据时伴生写入 `<basename>.run.json`（含输入文件 CryptoKit `SHA-256` 指纹、算法参数、`manualEdits` 手动编辑、`exclusions` 剔除记录与 `linkedPlasmidIDs` 关联质粒 ID）并注册至 `AnalysisRunIndexStore`，覆盖 **测序验证 (`SangerAlignmentEngine` / `SangerBatchEngine`)、WB 灰度定量 (`WesternBlotEngine`)、qPCR (`QPCRAnalysisEngine`)、菌落计数器 (`ColonyCounterEngine`)、凝胶分子量 (`GelAnalysisEngine`)** 五大定量分析工作台。
+   - 导出数据时伴生写入 `<basename>.run.json`（含输入文件 CryptoKit `SHA-256` 指纹、算法参数、`manualEdits` 手动编辑、`exclusions` 剔除记录与 `linkedPlasmidIDs` 关联质粒 ID）并注册至 `AnalysisRunIndexStore`，覆盖 **测序验证 (`SangerAlignmentEngine` / `SangerBatchEngine`)、WB 灰度定量 (`WesternBlotEngine`)、qPCR (`QPCRAnalysisEngine`)、凝胶分子量 (`GelAnalysisEngine`)** 四大定量分析工作台。
 4. **`Accelerate` (`vDSP`) 图像 SIMD 加速**：
    - `BioImageProcessor`（`gaussianBlur`、`columnProfile`、`rowProfile`）与 `WesternBlotEngine`（`grayscaleMorphStep1D`、`computeGaussianWeightedLaneProfile`、`detectLanesNative` 列均值）使用 Apple `Accelerate/vDSP` 向量化计算，严格保持原有边缘夹紧（clamp）与浮点数值语义。
 
@@ -173,7 +172,7 @@
 /usr/bin/python3 Tests/vectors/run_python_vectors.py
 /usr/bin/python3 Tests/vectors/run_python_vectors.py --tamper-check; echo "tamper_exit=$?"
 
-# 2. Swift 编译 + 51 项回归测试 + 文档数字单一真值门禁
+# 2. Swift 编译 + 50 项回归测试 + 文档数字单一真值门禁
 bash Scripts/check_doc_counts.sh
 
 # 3. Release 编译 (0 warnings) 并重新打包签名 Labworker.app，生成可分发 .dmg

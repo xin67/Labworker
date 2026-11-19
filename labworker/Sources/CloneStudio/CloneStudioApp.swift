@@ -239,7 +239,6 @@ struct CloneStudioApp: App {
                         .keyboardShortcut("w", modifiers: [.command, .shift])
                     Button("凝胶分子量回归") { AppState.shared.selectedNav = .gelFigure }
                         .keyboardShortcut("g", modifiers: [.command, .shift])
-                    Button("菌落计数器 (CFU)") { AppState.shared.selectedNav = .colonyCounter }
                 }
                 
                 Divider()

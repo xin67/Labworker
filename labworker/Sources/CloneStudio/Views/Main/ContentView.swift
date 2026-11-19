@@ -315,7 +315,6 @@ public struct ContentView: View {
                 sidebarCollapsibleSection(.bioImaging) {
                     sidebarRow(item: .westernBlot, tint: .indigo)
                     sidebarRow(item: .gelFigure, tint: .cyan)
-                    sidebarRow(item: .colonyCounter, tint: .orange)
                 }
 
                 sidebarCollapsibleSection(.benchTools) {
@@ -563,8 +562,6 @@ public struct ContentView: View {
             PlateDesignerView()
         case .qpcrAnalysis:
             QPCRAnalysisView()
-        case .colonyCounter:
-            ColonyCounterView()
         case .westernBlot:
             WesternBlotView()
         case .gelFigure:

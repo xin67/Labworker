@@ -710,156 +710,6 @@ assert(!qpcrReport.sampleResults.isEmpty, "qPCR relative quantification must pro
 assert(qpcrReport.sampleResults.contains { $0.sample.hasPrefix("TP53-OE") && $0.fold > 2.0 }, "TP53-OE fold change must be > 2.0")
 pass("Phase 1 Bench Engines passed (Plate 96-well auto layout & qPCR ΔΔCt verified).")
 
-// 25. 验证 Phase 2 生物图像底层引擎与菌落计数器 (BioImageProcessor + ColonyCounterEngine)
-print("🧪 [25/52] Testing BioImageProcessor & ColonyCounterEngine (Illumination Flattening, Watershed Splitting, Blue-White HSV & Garwood Poisson CI)...")
-let demoPlatePlane = BioImageProcessor.generateDemoColonyPlatePlane(width: 320, height: 320)
-let colonyParams = ColonySegmentationParams(dilutionFactor: 100, platedVolumeMl: 0.1)
-let colonySeg = ColonyCounterEngine.segmentPlate(plane: demoPlatePlane, params: colonyParams)
-assert(colonySeg.markers.count >= 38, "Demo agar plate 320x320 must detect >= 38 colonies, got \(colonySeg.markers.count)")
-let colonySummary = ColonyCounterEngine.summarize(
-    markers: colonySeg.markers,
-    otsu: colonySeg.otsu,
-    appliedThreshold: colonySeg.appliedThreshold,
-    params: colonyParams
-)
-assert(colonySummary.blueCount > 20 && colonySummary.whiteCount > 12, "Blue-white screening must classify both blue and white colonies, got B=\(colonySummary.blueCount) W=\(colonySummary.whiteCount)")
-assert(colonySummary.poissonLow < Double(colonySummary.includedCount) && colonySummary.poissonHigh > Double(colonySummary.includedCount), "Garwood 95% Poisson CI must bracket includedCount")
-
-// 验证微小菌落、不均光照、粘连团块（含蓝白交界与 2x2 白斑）、椭圆形防过分割及全噪空白对照
-do {
-    func buildColonyStressPlate(
-        width: Int = 360,
-        height: Int = 360,
-        noiseSigma: Double,
-        bgTilt: Double = 0.0,
-        seed: UInt32 = 123456,
-        colonies: [(x: Double, y: Double, rx: Double, ry: Double, isBlue: Bool, contrast: Double)]
-    ) -> BioImagePlane {
-        var rgba = [UInt8](repeating: 0, count: width * height * 4)
-        var gray = [Float](repeating: 0, count: width * height)
-        var rng = Mulberry32Generator(seed: seed)
-        let cx = Double(width) / 2.0, cy = Double(height) / 2.0, dishR = Double(min(width, height)) * 0.45
-        for y in 0..<height {
-            for x in 0..<width {
-                let idx = y * width + x
-                let dCenter = hypot(Double(x) - cx, Double(y) - cy)
-                var r: Double, g: Double, b: Double
-                if dCenter > dishR {
-                    r = 45; g = 48; b = 56
-                } else if dCenter > dishR - 4.0 {
-                    r = 180; g = 184; b = 192
-                } else {
-                    let tilt = bgTilt * ((Double(x) / Double(width) - 0.5) * 0.7 + (Double(y) / Double(height) - 0.5) * 0.5)
-                    r = 224 + tilt; g = 220 + tilt; b = 206 + tilt
-                    for col in colonies {
-                        if hypot((Double(x) - col.x) / col.rx, (Double(y) - col.y) / col.ry) <= 1.0 {
-                            let c = col.contrast
-                            if col.isBlue { r -= c * 1.3; g -= c * 0.9; b -= c * 0.25 }
-                            else { r -= c * 0.95; g -= c * 0.98; b -= c * 1.05 }
-                            break
-                        }
-                    }
-                    if noiseSigma > 0 {
-                        let u1 = max(1e-6, rng.nextDouble())
-                        let u2 = rng.nextDouble()
-                        let n = sqrt(-2.0 * log(u1)) * cos(2.0 * .pi * u2) * noiseSigma
-                        r += n; g += n; b += n
-                    }
-                }
-                let ru = UInt8(min(255, max(0, Int(round(r)))))
-                let gu = UInt8(min(255, max(0, Int(round(g)))))
-                let bu = UInt8(min(255, max(0, Int(round(b)))))
-                rgba[idx * 4] = ru; rgba[idx * 4 + 1] = gu; rgba[idx * 4 + 2] = bu; rgba[idx * 4 + 3] = 255
-                gray[idx] = 0.299 * Float(ru) + 0.587 * Float(gu) + 0.114 * Float(bu)
-            }
-        }
-        return BioImagePlane(width: width, height: height, gray: gray, rgba: rgba)
-    }
-
-    // 1) 微小低对比度 + 强斜坡光照
-    var tinyGrid: [(Double, Double, Double, Double, Bool, Double)] = []
-    for gy in 0..<4 {
-        for gx in 0..<4 {
-            tinyGrid.append((
-                105.0 + Double(gx) * 50.0,
-                105.0 + Double(gy) * 50.0,
-                1.6 + Double((gx + gy) % 3) * 0.45,
-                1.6 + Double((gx + gy) % 3) * 0.45,
-                (gx + gy) % 2 == 0,
-                28.0 + Double((gx * 3 + gy) % 4) * 16.0
-            ))
-        }
-    }
-    let tinySeg = ColonyCounterEngine.segmentPlate(
-        plane: buildColonyStressPlate(noiseSigma: 1.5, bgTilt: 48.0, colonies: tinyGrid),
-        params: ColonySegmentationParams()
-    )
-    assert(tinySeg.markers.count == 16, "Uneven-illumination tiny colony plate must detect 16/16, got \(tinySeg.markers.count)")
-
-    // 2) 含噪微小粘连对 + 2x2 白斑团块 + 蓝白异色贴合
-    let touchingCols: [(Double, Double, Double, Double, Bool, Double)] = [
-        (110, 140, 2.4, 2.4, true, 110), (113.8, 140, 2.4, 2.4, true, 110),
-        (220, 200, 4.5, 4.5, false, 95), (227.8, 200, 4.5, 4.5, false, 95),
-        (220, 207.8, 4.5, 4.5, false, 95), (227.8, 207.8, 4.5, 4.5, false, 95),
-        (140, 240, 5.5, 5.5, true, 105), (150.0, 240, 5.5, 5.5, false, 85)
-    ]
-    let touchSeg = ColonyCounterEngine.segmentPlate(
-        plane: buildColonyStressPlate(noiseSigma: 1.5, colonies: touchingCols),
-        params: ColonySegmentationParams()
-    )
-    assert(touchSeg.markers.count == 8, "Touching tiny pair + 2x2 cluster + blue/white pair must split to 8/8, got \(touchSeg.markers.count)")
-
-    // 3) 单个椭圆菌落 (1.44:1) 防过分割 & 空白高噪培养皿零误报
-    let ovalSeg = ColonyCounterEngine.segmentPlate(
-        plane: buildColonyStressPlate(noiseSigma: 2.0, colonies: [
-            (130, 150, 7.2, 5.0, true, 100),
-            (225, 205, 5.0, 7.2, false, 95)
-        ]),
-        params: ColonySegmentationParams()
-    )
-    assert(ovalSeg.markers.count == 2, "Single elliptical colonies must not over-split, got \(ovalSeg.markers.count)")
-
-    let blankSeg = ColonyCounterEngine.segmentPlate(
-        plane: buildColonyStressPlate(noiseSigma: 2.5, bgTilt: 30.0, colonies: []),
-        params: ColonySegmentationParams()
-    )
-    assert(blankSeg.markers.isEmpty, "Blank noisy uneven plate must yield 0 false positives, got \(blankSeg.markers.count)")
-
-    // 4) ColonySegmentationParams 向后兼容旧 JSON 解码
-    let legacyJSON = Data("{\"minArea\":12,\"maxArea\":5000,\"minCircularity\":0.35,\"thresholdOffset\":0}".utf8)
-    let decodedLegacy = try JSONDecoder().decode(ColonySegmentationParams.self, from: legacyJSON)
-    assert(decodedLegacy.splitTouchingColonies == true && decodedLegacy.minArea == 12, "Legacy ColonySegmentationParams must default splitTouchingColonies to true")
-} catch {
-    fatalError("Colony stress/compat test failed: \(error)")
-}
-
-do {
-    let fm = FileManager.default
-    let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_colony_prov_\(UUID().uuidString)", isDirectory: true)
-    try fm.createDirectory(at: tmpDir, withIntermediateDirectories: true)
-    defer { try? fm.removeItem(at: tmpDir) }
-    var editedMarkers = colonySeg.markers
-    editedMarkers[0].included = false
-    editedMarkers.append(ColonyMarkerItem(id: 999, x: 100.0, y: 120.0, area: 85.0, radius: 5.2, included: true, isManual: true, colonyClass: .white))
-    let csvURL = tmpDir.appendingPathComponent("colony_report.csv")
-    let exportedColony = try ColonyCounterEngine.exportMarkersCSVWithProvenance(
-        markers: editedMarkers,
-        otsu: colonySeg.otsu,
-        appliedThreshold: colonySeg.appliedThreshold,
-        params: colonyParams,
-        planeWidth: demoPlatePlane.width,
-        planeHeight: demoPlatePlane.height,
-        to: csvURL
-    )
-    assert(fm.fileExists(atPath: exportedColony.csvURL.path) && fm.fileExists(atPath: exportedColony.sidecarURL.path), "Colony CSV and .run.json sidecar must exist")
-    let decodedColonyRun = try AnalysisRun.decode(from: Data(contentsOf: exportedColony.sidecarURL))
-    assert(decodedColonyRun.schemaVersion == 2 && decodedColonyRun.module == NavItem.colonyCounter.rawValue, "Colony AnalysisRun schemaVersion/module mismatch")
-    assert(decodedColonyRun.manualEdits.contains { $0.what == "manual_add_marker:#999" }, "Colony AnalysisRun must record manual marker addition")
-    assert(decodedColonyRun.exclusions.contains { $0.itemID == "marker:#\(editedMarkers[0].id)" }, "Colony AnalysisRun must record excluded colony marker")
-} catch {
-    fatalError("Colony provenance export test failed: \(error)")
-}
-pass("BioImageProcessor & ColonyCounterEngine passed (Detected \(colonySummary.includedCount) colonies: Blue=\(colonySummary.blueCount), White=\(colonySummary.whiteCount)).")
 
 // 26. 验证 Western Blot 灰度积分定量与凝胶电泳分子量回归引擎 (WesternBlotEngine + GelAnalysisEngine)
 print("🧪 [26/52] Testing WesternBlotEngine & GelAnalysisEngine (Background subtraction, Normalization & Log10 MW Regression)...")
@@ -1117,15 +967,16 @@ assert(pdbLigReport.healthCard.metalIons.contains("ZN"), "Must detect ZN metal i
 assert(pdbLigReport.dockingBox.sourceTitle.contains("共识融合盒"), "Co-crystal ligand overlapping pocket (>=35%) must trigger Consensus Box")
 pass("DockFlowLab-aligned LIGSITE P-S-P Pocket, Vina Box (\(pdbLigReport.dockingBox.sourceTitle)) & PDB Health Card passed.")
 
-// 32. 验证侧边栏自定义显隐控制、系统设置常驻防呆保护与 20 模块（19 个业务模块 + 系统设置）全局功能说明书完整性
+// 32. 验证侧边栏自定义显隐控制、系统设置常驻防呆保护与 19 模块（18 个业务模块 + 系统设置）全局功能说明书完整性
 print("🧪 [32/52] Testing Sidebar Visibility Customization & Global Feature Manual...")
 for nav in NavItem.allCases {
     assert(!nav.summaryDescription.isEmpty && !nav.supportedFormats.isEmpty && !nav.workflowTip.isEmpty, "NavItem \(nav.rawValue) must provide complete manual metadata")
 }
 let totalModulesCount = NavItem.allCases.count
 let businessModulesCount = NavItem.allCases.filter { $0.canBeHiddenInSidebar }.count
-assert(totalModulesCount == 20 && businessModulesCount == 19, "Expected 20 total modules (19 business modules + .settings), got \(totalModulesCount)")
+assert(totalModulesCount == 19 && businessModulesCount == 18, "Expected 19 total modules (18 business modules + .settings), got \(totalModulesCount)")
 assert(!NavItem.allCases.map(\.rawValue).contains("figureAnnotator"), "figureAnnotator must be completely removed")
+assert(!NavItem.allCases.map(\.rawValue).contains("colonyCounter"), "colonyCounter must be completely removed")
 assert(!NavItem.settings.canBeHiddenInSidebar, ".settings must never be allowed to hide in sidebar")
 AppState.shared.setNavItemVisible(.settings, visible: false)
 assert(AppState.shared.isNavItemVisible(.settings), ".settings must remain visible even if setNavItemVisible(false) is called")
@@ -1331,7 +1182,7 @@ do {
     let pyToolCount = Int((String(data: countData, encoding: .utf8) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
     let swiftCatalogCount = await MainActor.run { PlasmidPoolManager.mcpToolsCatalog.count }
     assert(pyToolCount == 23 && pyToolCount == swiftCatalogCount, "Python MCP_TOOLS count (\(pyToolCount)) must match Swift mcpToolsCatalog count (\(swiftCatalogCount))")
-    assert(NavItem.allCases.count == 20, "NavItem.allCases.count must be 20")
+    assert(NavItem.allCases.count == 19, "NavItem.allCases.count must be 19")
     let beforePassCount = passedTests.count
     pass("Single Source of Truth for Counts passed (MCP tools=\(pyToolCount), modules=\(NavItem.allCases.count), dynamic pass registry verified).")
     assert(passedTests.count == beforePassCount + 1, "pass() must dynamically increment passedTests.count")

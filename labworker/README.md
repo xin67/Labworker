@@ -14,7 +14,7 @@
   - `export_order.py`：灌装导出擎科（Tsingke）、生工（Sangon）商业引物合成与测序 Excel 订单。
   - `clonestudio_mcp_server.py`：**Labworker MCP Server 20261115**（JSON-RPC 2.0 协议，暴露 23 个全栈实验工具，算法与 Swift 核心引擎 100% 统一并支持实时同步回写 GUI 画布）。
   - `python/wbquant/`：16-bit TIFF 化学发光与明场 Marker 科学图像处理包（支持 CLI 与 PySide6 高级查看器）。
-- **自动化回归测试 (`Tests/CloneStudioVerify/main.swift`)**：内置 **51 项端到端自动化验证测试**，覆盖全部核心算法、生物科研全能计算与换算引擎、引物二级结构热力学质检、Sanger `.ab1` 二进制峰图与质粒比对、Swift-Python 跨引擎共享测试向量（`Tests/vectors/*.json`）一致性、真实质粒与 16-bit WB 样本、UI 偏好状态机、多曝光线性检查及跨模块 `AnalysisRun` 质粒溯源；
+- **自动化回归测试 (`Tests/CloneStudioVerify/main.swift`)**：内置 **50 项端到端自动化验证测试**，覆盖全部核心算法、生物科研全能计算与换算引擎、引物二级结构热力学质检、Sanger `.ab1` 二进制峰图与质粒比对、Swift-Python 跨引擎共享测试向量（`Tests/vectors/*.json`）一致性、真实质粒与 16-bit WB 样本、UI 偏好状态机、多曝光线性检查及跨模块 `AnalysisRun` 质粒溯源；
 
 ## 2. AI 协作与工程治理铁律（修改代码前必读）
 
@@ -33,7 +33,7 @@
    # 0. 校验测试数、MCP 工具数与模块数单一真值来源，并运行 Python 共享测试向量
    bash Scripts/check_doc_counts.sh && /usr/bin/python3 Tests/vectors/run_python_vectors.py
 
-   # 1. 编译并运行全部 51 项自动化验证测试
+   # 1. 编译并运行全部 50 项自动化验证测试
    swift build --disable-sandbox && swift run --disable-sandbox CloneStudioVerify
 
    # 2. 更新构建并签名 labworker/Labworker.app（及打包 Labworker-20261115.dmg）
@@ -44,7 +44,7 @@
    git add <修改文件> && git commit -m "清晰的中文提交说明"
    ```
 
-## 3. 五大侧边栏分组与 20 个功能模块全景说明
+## 3. 五大侧边栏分组与 19 个功能模块全景说明
 
 侧边栏定义位于 `Sources/CloneStudioCore/ViewModels/AppState.swift` 的 `SidebarSectionKind` 与 `NavItem` 枚举中，支持顶部关键词实时检索、分类折叠以及在 **“系统设置 → 侧边栏定制”** 中按需隐藏任意非常驻模块（`系统设置` 固定常驻不可隐藏）。
 
@@ -74,7 +74,6 @@
 | :--- | :--- | :--- | :--- | :--- |
 | `.westernBlot` | **WB 灰度定量** | `Views/BenchTools/WesternBlotView.swift`<br>`Engine/WesternBlotEngine.swift`<br>`Models/AnalysisRun.swift`<br>`python/wbquant/` | 深度整合 `WBStudio` 原生 16-bit TIFF 无损解析与 Swift 原生双引擎：支持同批次化学发光图与明场 Marker 自动配对、Active Strip 膜条定位、一维 Rolling-ball 滚球背景扣除、高斯加权四边收紧框、可拖拽微调泳道框、内参（GAPDH/ACTB）归一化、过曝像素红色遮罩与自动剔除、双组 Welch's t 检验及带 `AnalysisRun`（`<basename>.run.json` + SHA256 指纹）的 CSV/离线 HTML 报告导出。 | `.tif`, `.tiff` (16-bit), `.png`, `.jpg` |
 | `.gelFigure` | **凝胶分子量** | `Views/BenchTools/GelFigureEditorView.swift`<br>`Engine/GelAnalysisEngine.swift`<br>`Models/AnalysisRun.swift` | 琼脂糖/SDS-PAGE 电泳胶图泳道自动寻峰与 $\log_{10}(\text{MW}) = a \cdot y + b$ 最小二乘标准曲线拟合，支持未知条带分子量插值测算、质粒双酶切虚拟电泳对照叠加及 `AnalysisRun` v2 (`.run.json` + 质粒关联索引) 溯源导出。 | `.tif`, `.tiff`, `.png`, `.jpg` |
-| `.colonyCounter` | **菌落计数器** | `Views/BenchTools/ColonyCounterView.swift`<br>`Engine/ColonyCounterEngine.swift`<br>`Models/AnalysisRun.swift` | 基于 Otsu 大津法自适应阈值、形态学开闭运算与 8 邻域连通域分割识别平板菌落；支持 X-gal 蓝白斑 HSV 色相自动分类、手动点选增删修正、Garwood 精确泊松 95% 置信区间 CFU/mL 换算及 `AnalysisRun` v2 (`.run.json`) 溯源导出。 | `.tif`, `.tiff`, `.png`, `.jpg` |
 
 ### 3.4 定量与蛋白工具 (`SidebarSectionKind.benchTools`)
 
@@ -91,7 +90,7 @@
 | 模块枚举 (`NavItem`) | 界面名称 | 核心源码文件 | 核心算法与业务功能说明 |
 | :--- | :--- | :--- | :--- |
 | `.orderCenter` | **订购中心** | `Views/Order/OrderExportView.swift`<br>`Services/ExcelOrderExporter.swift` | 汇总各模块加入订购池的引物与测序样品，支持成对重命名、批量写回 `.dna` 质粒文件，并一键导出符合擎科（Tsingke）、生工（Sangon）官方模板格式的 `.xlsx` 订购表。 |
-| `.settings` | **系统设置** | `Views/Settings/SettingsView.swift`<br>`ViewModels/AppState.swift` | **四段式极简响应式设置中心**：<br>① **参数与外观**：浅色/深色/跟随系统主题、画布底色、强调色、状态栏图标开关，以及分子克隆、WB/微孔板/qPCR、蛋白质工作台与订购人档案默认参数。<br>② **侧边栏定制**：提供 3 个一键预设（显示全部 / 仅分子克隆与基因编辑 / 仅图像定量与蛋白工具）及 5 大分类自适应开关矩阵。<br>③ **MCP 服务**：集中管理 `labworker-mcp` 20261115，支持一键注入 Claude Desktop / Cursor / Windsurf、复制标准 JSON、查看跨进程同步记录与 23 项工具清单。<br>④ **全局说明书**：支持按名称/算法/文件格式实时检索全部 20 个模块的功能定位、支持格式与实操提示，并提供 `直达功能` 与 `恢复显示` 按钮。 |
+| `.settings` | **系统设置** | `Views/Settings/SettingsView.swift`<br>`ViewModels/AppState.swift` | **四段式极简响应式设置中心**：<br>① **参数与外观**：浅色/深色/跟随系统主题、画布底色、强调色、状态栏图标开关，以及分子克隆、WB/微孔板/qPCR、蛋白质工作台与订购人档案默认参数。<br>② **侧边栏定制**：提供 3 个一键预设（显示全部 / 仅分子克隆与基因编辑 / 仅图像定量与蛋白工具）及 5 大分类自适应开关矩阵。<br>③ **MCP 服务**：集中管理 `labworker-mcp` 20261115，支持一键注入 Claude Desktop / Cursor / Windsurf、复制标准 JSON、查看跨进程同步记录与 23 项工具清单。<br>④ **全局说明书**：支持按名称/算法/文件格式实时检索全部 19 个模块的功能定位、支持格式与实操提示，并提供 `直达功能` 与 `恢复显示` 按钮。 |
 
 ## 4. Finder 多格式智能快导与状态栏极简工作台
 
@@ -99,7 +98,7 @@
    - 点击侧边栏顶部的 `快导` 按钮或直接将文件拖入主窗口，系统会根据扩展名自动路由并载入对应工作台：
      - `.ab1` / `.abi` → 自动切换至 **测序验证** 并解析四色荧光毛细管电泳峰图与参考质粒比对；
      - `.dna` → 导入质粒池并同步至当前分子克隆模块；
-     - `.tif` / `.tiff` / `.png` / `.jpg` → 自动切换至 **WB 灰度定量**（或当前所处的凝胶/菌落图像模块）并载入图像；
+     - `.tif` / `.tiff` / `.png` / `.jpg` → 自动切换至 **WB 灰度定量**（或当前所处的凝胶图像模块）并载入图像；
      - `.pdb` / `.cif` / `.ent` → 自动切换至 **蛋白质工作台** 并解析三维结构、LIGSITE 口袋与 Vina 对接盒；
      - `.csv` / `.tsv` → 自动切换至 **qPCR 定量** 或 **微孔板设计**；
      - `.fa` / `.fasta` / `.seq` → 自动识别核酸或氨基酸序列并路由至对应模块。
