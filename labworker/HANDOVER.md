@@ -1,4 +1,4 @@
-# Labworker 20261115 (CloneStudio) — AI 项目交接与架构指南 (`HANDOVER.md`)
+# Labworker 20261120 (CloneStudio) — AI 项目交接与架构指南 (`HANDOVER.md`)
 
 > **文档定位**：本文档专为接手本项目的 AI 编程助手（Claude / Cursor / Windsurf / Antigravity / Codex 等）编写，汇总目录拓扑、单一事实来源（Single Source of Truth）契约、双端（Swift + Python MCP）同步规范、已落地的科学严谨性与性能保障，以及后续演进约束。
 > **核心铁律**：在修改任何算法、UI 模块或 MCP 工具后，**必须**运行 `cd labworker && bash Scripts/check_doc_counts.sh && /usr/bin/python3 Tests/vectors/run_python_vectors.py --tamper-check` 并确保回归闭环通过，严禁破坏现有科学计算精度、跨语言一致性与脱敏红线。
@@ -7,7 +7,7 @@
 
 ## 1. 项目概览与环境信息
 
-- **项目名称**：Labworker 20261115（SwiftPM Package / Target 名称：`CloneStudio`、`CloneStudioCore`、`CloneStudioVerify`）
+- **项目名称**：Labworker 20261120（SwiftPM Package / Target 名称：`CloneStudio`、`CloneStudioCore`、`CloneStudioVerify`）
 - **形态与定位**：macOS 原生干湿实验与生物信息学一体化科研桌面工作台（Wet-Lab & Bioinformatics Native Workbench）
 - **目录结构**：
   - 仓库根目录：`<repo-root>/`（包含 `.gitignore`、`.github/workflows/ci.yml`、`ARCHITECTURE.md` 及 `labworker/`）
@@ -119,9 +119,9 @@
 
 ---
 
-## 5. MCP Server 20261115 协议与 23 个工具清单
+## 5. MCP Server 20261120 协议与 23 个工具清单
 
-服务端：`Sources/CloneStudioCore/Resources/clonestudio_mcp_server.py`（`labworker-mcp` 20261115，纯 Python 标准库 JSON-RPC 2.0 stdio，**23** 个工具与 Swift `PlasmidPoolManager.mcpToolsCatalog` 严格对齐）：
+服务端：`Sources/CloneStudioCore/Resources/clonestudio_mcp_server.py`（`labworker-mcp` 20261120，纯 Python 标准库 JSON-RPC 2.0 stdio，**23** 个工具与 Swift `PlasmidPoolManager.mcpToolsCatalog` 严格对齐）：
 
 1. `list_plasmid_pool`
 2. `inspect_plasmid`

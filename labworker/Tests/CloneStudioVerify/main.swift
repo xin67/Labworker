@@ -800,7 +800,7 @@ if let appSup = FileManager.default.urls(for: .applicationSupportDirectory, in: 
     try? FileManager.default.removeItem(at: appSup.appendingPathComponent("CloneStudio/plasmid_pool.json"))
 }
 
-// 验证 Labworker MCP Server 20261115 JSON-RPC 2.0 协议与全部实验工具 (23 Tools)
+// 验证 Labworker MCP Server 20261120 JSON-RPC 2.0 协议与全部实验工具 (23 Tools)
 let mcpRpcProc = Process()
 mcpRpcProc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
 mcpRpcProc.arguments = [mcpScript]
@@ -823,7 +823,7 @@ try? rpcInPipe.fileHandleForWriting.close()
 let rpcOutData = rpcOutPipe.fileHandleForReading.readDataToEndOfFile()
 mcpRpcProc.waitUntilExit()
 let rpcOutStr = String(data: rpcOutData, encoding: .utf8) ?? ""
-assert(rpcOutStr.contains("labworker-mcp") && rpcOutStr.contains("20261115"), "MCP Server must identify as labworker-mcp 20261115")
+assert(rpcOutStr.contains("labworker-mcp") && rpcOutStr.contains("20261120"), "MCP Server must identify as labworker-mcp 20261120")
 assert(rpcOutStr.contains("analyze_protein_and_docking_box") && rpcOutStr.contains("analyze_western_blot") && rpcOutStr.contains("analyze_qpcr_ddct") && rpcOutStr.contains("design_plate_layout") && rpcOutStr.contains("verify_sanger_sequencing") && rpcOutStr.contains("convert_nucleic_acid_units") && rpcOutStr.contains("convert_protein_and_coding") && rpcOutStr.contains("calculate_solution_and_temperature") && rpcOutStr.contains("deconvolute_crispr_sanger") && rpcOutStr.contains("auto_annotate_sequence") && rpcOutStr.contains("design_golden_gate_assembly") && rpcOutStr.contains("design_hdr_donor"), "MCP Server must expose all 23 full-stack tools")
 assert(!rpcOutStr.contains("analyze_phylogenetic_tree"), "Removed phylogenetic tree tool must not appear in MCP tool list")
 assert(rpcOutStr.contains("vina_config") && rpcOutStr.contains("mean_fold") && rpcOutStr.contains("0.3 pmol") && rpcOutStr.contains("49.5 mL"), "MCP Server bio calculation tools must return verified outputs")
@@ -847,7 +847,7 @@ strandProbe.waitUntilExit()
 let strandOut = String(data: strandPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 assert(strandProbe.terminationStatus == 0 && strandOut.contains("STRAND_OK"), "snapgene_bridge extract_primers must parse strand='1' as reverse strand")
 
-pass("StatusBarIcon toggle, PlasmidPoolManager (\(poolCount) plasmids), SnapGene reverse-primer strand='1' & Labworker MCP Server 20261115 (23 tools) passed.")
+pass("StatusBarIcon toggle, PlasmidPoolManager (\(poolCount) plasmids), SnapGene reverse-primer strand='1' & Labworker MCP Server 20261120 (23 tools) passed.")
 
 // 24. 验证 Phase 1 实验台工具引擎 (PlateLayoutEngine + QPCRAnalysisEngine)
 print("🧪 [24/52] Testing Phase 1 Bench Engines (PlateLayoutEngine & QPCRAnalysisEngine)...")

@@ -7300,7 +7300,7 @@ def handle_jsonrpc_request(req: dict) -> dict:
                 },
                 "serverInfo": {
                     "name": "labworker-mcp",
-                    "version": "20261115"
+                    "version": "20261120"
                 }
             }
         }

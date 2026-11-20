@@ -7,13 +7,13 @@
 **专为分子生物学与湿实验科研打造的原生 macOS 全栈工作台**  
 *分子克隆引物设计 · 环形质粒与双链图谱 · Sanger 四色峰图 · 16-bit WB / 凝胶 / qPCR 定量 · 三维蛋白口袋与 AI MCP 协同*
 
-[![Version](https://img.shields.io/badge/Release-v20261115-0A84FF?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/xin67/Labworker/releases/tag/v20261115)
-[![macOS](https://img.shields.io/badge/macOS-27.0%2B%20Liquid%20Glass-1D1D1F?style=for-the-badge)](https://github.com/xin67/Labworker/releases/tag/v20261115)
+[![Version](https://img.shields.io/badge/Release-v20261120-0A84FF?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/xin67/Labworker/releases/tag/v20261120)
+[![macOS](https://img.shields.io/badge/macOS-27.0%2B%20Liquid%20Glass-1D1D1F?style=for-the-badge)](https://github.com/xin67/Labworker/releases/tag/v20261120)
 [![Swift](https://img.shields.io/badge/Swift-6.4%20%7C%20Zero%203rd--Party%20Deps-F05138?style=for-the-badge&logo=swift&logoColor=white)](#-架构设计与协同工作流)
 [![MCP](https://img.shields.io/badge/MCP%20Tools-23%20Ready-30D158?style=for-the-badge)](#-ai-智能体协同)
 [![License](https://img.shields.io/badge/License-MIT-8E8E93?style=for-the-badge)](LICENSE)
 
-[⬇️ 下载最新版 DMG (`v20261115`)](https://github.com/xin67/Labworker/releases/tag/v20261115) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 18 个功能模块](#-18-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 源码构建](#-安装与源码构建)
+[⬇️ 下载最新版 DMG (`v20261120`)](https://github.com/xin67/Labworker/releases/tag/v20261120) &nbsp;·&nbsp; [🆕 v20261120 最新进展](#-v20261120-最新进展) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 18 个功能模块](#-18-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 源码构建](#-安装与源码构建)
 
 <br/>
 
@@ -34,9 +34,19 @@
 
 ---
 
+## 🆕 v20261120 最新进展
+
+- **🧬 分子克隆与高阶基因编辑引擎**：新增 **Golden Gate 组装**（Type IIS 酶 `BsaI / BsmBI / BbsI / SapI` 2–6 片段零错配接头分配与同义 Domestication）、**诊断性酶切模拟**、基于 `Libraries.sqlite` 的**离线质粒自动注释**、**HDR 同源修复供体设计**（ssODN/dsDNA、PAM/Seed 同义阻断突变与 Out-Out PCR 引物）以及全克隆模块通用的**同源重组 PCR 虚拟电泳预测**。
+- **🔬 CRISPR Sanger 峰图反卷积**：在 Sanger 测序模块集成 **NNLS 非负最小二乘峰图解卷积**，直接从混池 `.ab1` 峰图定量 `Indel%`、`KO Score`、`HDR%` 与拟合优度 $R^2$。
+- **🌐 靶点设计内嵌多源在线共识**：将在线比对直接嵌入 `sgRNA 设计` 与 `shRNA 设计` 视图——sgRNA 支持 **VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源共识评分（含 `mm39` 与 501 bp 窗口修复）；shRNA 集成 **Broad GPP Public Portal** 官方 TRC 克隆核验。
+- **🧪 凝胶定量与全能生物计算器**：`凝胶分子量` 升级支持质粒酶切 / 单多片段克隆 / 入门克隆 / 片段删除 / 定点突变 / 自定义条带多模式虚拟电泳对照；新增**全能生物计算器**覆盖重组摩尔比配液、核酸/蛋白互算及 $C_1V_1=C_2V_2$ 溶液配制。
+- **🪟 Liquid Glass 交互与工程精简**：移除冗余菌落计数器与独立靶点对比页签（收口为 **5 大分类 · 18 个全栈模块**），修复电泳画布横向溢出与默认态 HDR 过亮，全局统一居左紧凑主操作栏与条件性图谱按钮；内置 **23 项 MCP 工具** 与 **50 项自动化回归测试**（含 10 组跨语言黄金测试向量）。
+
+---
+
 ## 📸 实机界面与核心能力展示
 
-以下全部截图均采集自 **`Labworker v20261115`（macOS 实机浅色 Liquid Glass 主题）** 运行内置公开示范数据的真实界面：
+以下全部截图采集自 **macOS 实机浅色 Liquid Glass 主题** 运行内置公开示范数据的真实界面（摄于 `v20261115`，`v20261120` 在此基础上进一步优化了居左紧凑操作栏、内嵌在线靶点对比与多模块虚拟电泳）：
 
 <table>
   <tr>
@@ -180,7 +190,7 @@ flowchart LR
 
 ### 方式 A：直接安装发布版 DMG（推荐）
 
-1. 前往 [**GitHub Releases (`v20261115`)**](https://github.com/xin67/Labworker/releases/tag/v20261115) 下载 `Labworker-20261115.dmg`。
+1. 前往 [**GitHub Releases (`v20261120`)**](https://github.com/xin67/Labworker/releases/tag/v20261120) 下载 `Labworker-20261120.dmg`。
 2. 双击打开 DMG 镜像，将 `Labworker.app` 拖入 `/Applications` 文件夹。
 3. 要求系统环境：**`macOS 27.0` 及以上**。
 
@@ -196,7 +206,7 @@ bash Scripts/check_doc_counts.sh
 # 2. Release 编译并打包 Labworker.app（自动完成 Ad-hoc 签名校验）
 bash Scripts/build_app.sh
 
-# 3. 打包标准可分发 DMG 镜像（输出 Labworker-20261115.dmg 并校验 SHA-256）
+# 3. 打包标准可分发 DMG 镜像（输出 Labworker-20261120.dmg 并校验 SHA-256）
 bash Scripts/package_dmg.sh
 ```
 

@@ -3079,7 +3079,7 @@ public enum FinderFileDropHelper {
     ) -> String {
         let nowStr = ISO8601DateFormatter().string(from: Date())
         let rawVer = AnalysisRun.resolveAppVersion()
-        let reportAppVersion = (rawVer == "dev") ? "20261115" : rawVer
+        let reportAppVersion = (rawVer == "dev") ? "20261120" : rawVer
         let metricsHTML = metrics.map { item in
             """
             <div class="metric-card">

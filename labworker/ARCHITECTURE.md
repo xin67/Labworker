@@ -11,15 +11,15 @@
 
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
-| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、5 张内置公开示例实机界面截图、Mermaid 架构工作流、18 模块速览、MCP 配置与 `v20261115` DMG 下载及源码构建说明 |
+| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、5 张内置公开示例实机界面截图、Mermaid 架构工作流、18 模块速览、MCP 配置与 `v20261120` DMG 下载及源码构建说明 |
 | `../docs/images/*.png` | GitHub 根目录 `README.md` 引用的实机高分界面截图集（`01-single-clone-map.png` 至 `06-qpcr-analysis.png`，仅使用公开示例数据，零隐私脱敏留档） |
 | `../.github/workflows/ci.yml` | GitHub Actions `macos-14` 自动化 CI 门禁：在每次 `push`/`pull_request` 执行 Python 跨语言测试向量、防篡改校验及 `check_doc_counts.sh` 全量回归 |
-| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、18 模块算法速查、UI 响应式规范与 MCP 20261115 协议指南 |
+| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、18 模块算法速查、UI 响应式规范与 MCP 20261120 协议指南 |
 | `labworker/HANDOVER.md` | AI 项目架构交接与维护规范手册：包含目录拓扑、Single Source of Truth 门禁契约、双端 (Swift + Python MCP) 同步机制、跨语言测试向量与编码红线 |
 | `labworker/Package.swift` | SwiftPM 工程定义（Swift 6.4 / 最低支持 `macOS 27.0`），包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |
 | `labworker/Labworker.app` | 每次原子步骤完成后由 `labworker/Scripts/build_app.sh` 自动构建并签名的最新可执行 macOS 应用包 |
-| `labworker/Scripts/build_app.sh` | Release 编译、组装 `labworker/Labworker.app` 应用包、写入 `Info.plist`（版本 `20261115`、`LSMinimumSystemVersion = 27.0`）并执行 Apple Ad-hoc 签名校验 |
+| `labworker/Scripts/build_app.sh` | Release 编译、组装 `labworker/Labworker.app` 应用包、写入 `Info.plist`（版本 `20261120`、`LSMinimumSystemVersion = 27.0`）并执行 Apple Ad-hoc 签名校验 |
 | `labworker/Scripts/package_dmg.sh` | 基于 `Labworker.app` 读取版本号生成 `Labworker-<version>.dmg`（含 `/Applications` 快捷方式、`ditto` 无损拷贝、UDZO 压缩与 `hdiutil verify` + SHA-256 校验） |
 | `labworker/Scripts/check_doc_counts.sh` | 自动提取 `CloneStudioVerify` 测试数、`MCP_TOOLS` 工具数与 `NavItem` 模块数真值，校验证书/文档数字一致性，并自动核验 `Sources/`、`Scripts/`、`python/`、`Tests/` 下全量文件均已在 `ARCHITECTURE.md` 登记 |
 | `labworker/Scripts/generate_icon.py` | 遵循 Apple HIG 生成浅色/深色应用图标（`.icns`/`.png`）与 macOS 状态栏模板图标 |
@@ -129,7 +129,7 @@
 ### 3.6 打包资源 (`Resources/`)
 - 图标资源：`AppIcon.icns`、`AppIcon_Light.icns`、`AppIcon_Dark.icns`、`AppIcon_1024.png`、`AppIcon_Light_1024.png`、`AppIcon_Dark_1024.png`、`StatusBarIcon.png`、`StatusBarIcon@2x.png`。
 - 数据库与配置：`Libraries.sqlite`（离线基因组 `sgrna`/`shrna` 靶点库、标准质粒元件 `plasmid_features` 特征库及 `neb_t4_overhang_stats`/`neb_t4_ligase_fidelity` 连接保真度矩阵）、`select.json`。
-- Python 桥接脚本：`snapgene_bridge.py`、`export_order.py`、`chopchop_query.py`、`clonestudio_mcp_server.py`（MCP 20261115 标准协议服务端，暴露 23 项工具含 `deconvolute_crispr_sanger`、`auto_annotate_sequence`、`design_golden_gate_assembly`、`design_hdr_donor` 四大高阶复合引擎，带严格 Pydantic / TypedDict 与 JSON `inputSchema`/`outputSchema` 校验）。
+- Python 桥接脚本：`snapgene_bridge.py`、`export_order.py`、`chopchop_query.py`、`clonestudio_mcp_server.py`（MCP 20261120 标准协议服务端，暴露 23 项工具含 `deconvolute_crispr_sanger`、`auto_annotate_sequence`、`design_golden_gate_assembly`、`design_hdr_donor` 四大高阶复合引擎，带严格 Pydantic / TypedDict 与 JSON `inputSchema`/`outputSchema` 校验）。
 - 商业订购表母版：`擎科引物合成订购表.xlsx`、`擎科测序订购表专属电子订单.xlsx`、`生工DNA测序订购表.xlsx`、`DNA测序订购表_V9(1).xlsx`。
 
 ## 四、 命令行自检与测试 (`labworker/Tests/`)
