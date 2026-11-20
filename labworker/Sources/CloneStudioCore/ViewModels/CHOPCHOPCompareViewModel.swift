@@ -5,6 +5,43 @@ import Combine
 
 @MainActor
 public final class CHOPCHOPCompareViewModel: ObservableObject {
+    public enum SourceFilter: String, CaseIterable, Identifiable, Sendable {
+        case all = "全部"
+        case consensus = "多源共识"
+        case vbcScore = "VBC"
+        case ucscCrispor = "CRISPOR"
+        case chopchop = "CHOPCHOP"
+        
+        public var id: String { rawValue }
+    }
+    
+    public enum SourceQueryState: Equatable, Sendable {
+        case idle
+        case loading(String)
+        case loaded(Int)
+        case failed(String)
+        
+        public var isLoading: Bool {
+            if case .loading = self { return true }
+            return false
+        }
+        
+        public var isFailed: Bool {
+            if case .failed = self { return true }
+            return false
+        }
+        
+        public var errorMessage: String? {
+            if case .failed(let msg) = self { return msg }
+            return nil
+        }
+        
+        public var loadedCount: Int? {
+            if case .loaded(let cnt) = self { return cnt }
+            return nil
+        }
+    }
+    
     @Published public var gene: String = ""
     @Published public var species: TargetSpecies = .human
     @Published public var isLoading: Bool = false
@@ -14,17 +51,26 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
     @Published public var errorMessage: String? = nil
     @Published public var showErrorAlert: Bool = false
     
+    // 多数据源并发检索与共识状态（VBC-Score + UCSC CRISPOR + CHOPCHOP）
+    @Published public var enabledSources: Set<TargetCompareSource> = [.vbcScore, .ucscCrispor, .chopchop]
+    @Published public var activeSourceFilter: SourceFilter = .all
+    @Published public var sourceStates: [TargetCompareSource: SourceQueryState] = [:]
+    @Published public var lastCHOPCHOPJobId: String? = nil
+    @Published public var lastUCSCSpan: String? = nil
+    
     // 本地 sgRNA / shRNA 序列高亮对比状态
     @Published public var manualCompareInput: String = ""
     @Published public var showOnlyLocalMatches: Bool = false
     @Published public var pinLocalMatchesFirst: Bool = true
     @Published public var matchMap: [Int: CHOPCHOPLocalMatchResult] = [:]
     
-    // 排序模式（默认采用「智能综合推荐」，解决高综合分靶点因单个远端错配沉底的问题）
+    // 排序模式（保留原有 rawValue 并扩展多源共识 / VBC-Score 排序）
     @Published public var sortMode: CHOPCHOPSortMode = .smartRecommend
     
     public enum CHOPCHOPSortMode: String, CaseIterable, Identifiable {
         case smartRecommend = "智能推荐 (本地命中+零核心脱靶+高分优先)"
+        case consensusFirst = "多源共识优先 (跨站重合+高分)"
+        case vbcScoreDesc = "VBC-Score 敲除分 (降序)"
         case combinedScoreDesc = "全维综合评分 (从高到低)"
         case efficiencyDesc = "Doench 切割效率分 (降序)"
         case rankAsc = "CHOPCHOP 原始排名 (#Rank 严苛脱靶序)"
@@ -35,19 +81,28 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         public var ruleExplanation: String {
             switch self {
             case .smartRecommend:
-                return "优先置顶「本地已选 SG/SH 命中序列」；其余靶点在保证核心特异性 (MM0=0, MM1=0) 前提下，按「全维综合评分 (45%脱靶+35%效率+20%序列)」从高到低排列。"
+                return "优先置顶「本地已选 SG/SH 命中序列」；其余靶点在保证核心特异性前提下，按融合了多源共识加分的全维综合评分从高到低排列。"
+            case .consensusFirst:
+                return "优先展示同时被 3 个或 2 个在线网站命中的高共识 sgRNA，再按全维综合评分降序排列。"
+            case .vbcScoreDesc:
+                return "按 VBC-Score 敲除效能综合分（整合活性、inDelphi 移码率与 Bioscore 蛋白保守度）从高到低排列。"
             case .combinedScoreDesc:
-                return "严格按「全维综合评分 (0～100分)」从高到低排列，综合衡量全基因组脱靶数 (45%)、Doench 2016 切割效率 (35%) 与本地序列热力学规则 (20%)。"
+                return "严格按全维综合评分（特异性 45% + 效率 35% + 本地序列规则 20% + 多源共识加分）从高到低排列。"
             case .efficiencyDesc:
-                return "按 CHOPCHOP 官方 Doench 2016 切割效率分从高到低排列（注意检查右侧脱靶数 MM0/MM1 是否为 0）。"
+                return "按在线切割效率分（Doench 2016 / CRISPOR 百分位 / VBC 活性）从高到低排列。"
             case .rankAsc:
-                return "CHOPCHOP 原始字典序排名：严格按 MM0 → MM1 → MM2 → MM3 从少到多排，同为 0/0/0/0 时才按效率分排序（因此有 1 个 MM2/MM3 的高分靶点会排在下面）。"
+                return "按 CHOPCHOP 原始排名（MM0 → MM1 → MM2 → MM3 从少到多）排列。"
             case .offTargetAsc:
-                return "按全基因组错配位点数 MM0 → MM1 → MM2 → MM3 由少到多排列。"
+                return "按全基因组脱靶错配数（MM0-3 / VBC VeryLikely / MIT 特异性）从最安全到次优排列。"
             }
         }
     }
     
+    private var rawCHOPCHOPTargets: [CHOPCHOPTarget] = []
+    private var rawVBCTargets: [CHOPCHOPTarget] = []
+    private var rawCRISPORTargets: [CHOPCHOPTarget] = []
+    private var activeQueryToken = UUID()
+    private var activeQueryTasks: [TargetCompareSource: Task<Void, Never>] = [:]
     private var cancellables = Set<AnyCancellable>()
     
     public init() {
@@ -170,7 +225,53 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         return targets.first { $0.matchAgainstLocalTargets(singlePool) != nil }
     }
     
-    /// 执行 Python 后台查询 CHOPCHOP
+    public var consensusTargetsCount: Int {
+        targets.filter(\.isMultiSourceConsensus).count
+    }
+    
+    public func targetCount(for source: TargetCompareSource) -> Int {
+        targets.filter { $0.sources.contains(source) }.count
+    }
+    
+    /// 切换参与并发比对的在线数据源（至少保留 1 个数据源）
+    public func toggleSource(_ source: TargetCompareSource) {
+        if enabledSources.contains(source) {
+            guard enabledSources.count > 1 else {
+                AppState.shared.showToast("至少保留一个在线靶点数据源")
+                return
+            }
+            enabledSources.remove(source)
+            activeQueryTasks[source]?.cancel()
+            activeQueryTasks[source] = nil
+            sourceStates[source] = .idle
+            switch source {
+            case .chopchop: rawCHOPCHOPTargets = []
+            case .vbcScore: rawVBCTargets = []
+            case .ucscCrispor: rawCRISPORTargets = []
+            }
+            if activeSourceFilter == .vbcScore && source == .vbcScore
+                || activeSourceFilter == .ucscCrispor && source == .ucscCrispor
+                || activeSourceFilter == .chopchop && source == .chopchop {
+                activeSourceFilter = .all
+            }
+            if !rawCHOPCHOPTargets.isEmpty || !rawVBCTargets.isEmpty || !rawCRISPORTargets.isEmpty {
+                mergeAndPublishResults(isInitialBatch: false)
+            } else if !targets.isEmpty {
+                targets = []
+                selectedTargetIDs = []
+                matchMap = [:]
+            }
+            refreshLoadingSummary()
+        } else {
+            enabledSources.insert(source)
+            let clean = gene.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !clean.isEmpty && !targets.isEmpty {
+                retrySource(source, forceRefresh: false)
+            }
+        }
+    }
+    
+    /// 并发查询所选在线数据源并按 20bp Spacer 实时合并
     public func fetchTargets(forceRefresh: Bool = false) {
         let clean = gene.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else {
@@ -178,64 +279,235 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
             showErrorAlert = true
             return
         }
+        if enabledSources.isEmpty {
+            enabledSources = [.vbcScore, .ucscCrispor]
+        }
         
-        isLoading = true
-        progressMessage = forceRefresh
-            ? "正在忽略缓存向 CHOPCHOP 云端重新提交任务..."
-            : "正在建立高速通道并查询 CHOPCHOP 全基因组靶点..."
+        cancelAllActiveTasks()
+        let token = UUID()
+        activeQueryToken = token
+        
+        rawCHOPCHOPTargets = []
+        rawVBCTargets = []
+        rawCRISPORTargets = []
+        targets = []
+        selectedTargetIDs = []
+        matchMap = [:]
+        lastCHOPCHOPJobId = nil
+        lastUCSCSpan = nil
+        activeSourceFilter = .all
         errorMessage = nil
         
-        Task { [weak self] in
+        for src in TargetCompareSource.allCases {
+            if enabledSources.contains(src) {
+                sourceStates[src] = .loading("正在连接 \(src.rawValue)...")
+            } else {
+                sourceStates[src] = .idle
+            }
+        }
+        isLoading = true
+        refreshLoadingSummary()
+        
+        for src in TargetCompareSource.allCases where enabledSources.contains(src) {
+            launchSourceTask(src, gene: clean, species: species, forceRefresh: forceRefresh, token: token, notifyCompletion: true)
+        }
+    }
+    
+    /// 单独重试或补查某一个数据源（不影响已返回的其余数据源结果）
+    public func retrySource(_ source: TargetCompareSource, forceRefresh: Bool = true) {
+        let clean = gene.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        enabledSources.insert(source)
+        activeQueryTasks[source]?.cancel()
+        let token = activeQueryToken
+        sourceStates[source] = .loading("正在重新查询 \(source.rawValue)...")
+        isLoading = true
+        refreshLoadingSummary()
+        launchSourceTask(source, gene: clean, species: species, forceRefresh: forceRefresh, token: token, notifyCompletion: false)
+    }
+    
+    private func launchSourceTask(
+        _ source: TargetCompareSource,
+        gene clean: String,
+        species targetSpecies: TargetSpecies,
+        forceRefresh: Bool,
+        token: UUID,
+        notifyCompletion: Bool
+    ) {
+        let task = Task { [weak self] in
             guard let self else { return }
             do {
-                let results = try await CHOPCHOPService.shared.queryTargets(
-                    gene: clean,
-                    species: species,
-                    timeout: 55,
-                    forceRefresh: forceRefresh,
-                    progressHandler: { [weak self] msg in
-                        self?.progressMessage = msg
+                switch source {
+                case .vbcScore:
+                    let list = try await CHOPCHOPService.shared.queryVBCScoreTargets(
+                        gene: clean,
+                        species: targetSpecies,
+                        forceRefresh: forceRefresh
+                    )
+                    guard self.activeQueryToken == token, !Task.isCancelled else { return }
+                    self.rawVBCTargets = list
+                    self.sourceStates[.vbcScore] = .loaded(list.count)
+                    self.mergeAndPublishResults(isInitialBatch: self.targets.isEmpty)
+                    
+                case .ucscCrispor:
+                    let res = try await CHOPCHOPService.shared.queryUCSCCrisporTargets(
+                        gene: clean,
+                        species: targetSpecies,
+                        forceRefresh: forceRefresh
+                    )
+                    guard self.activeQueryToken == token, !Task.isCancelled else { return }
+                    self.lastUCSCSpan = res.genomicSpan
+                    self.rawCRISPORTargets = res.targets
+                    self.sourceStates[.ucscCrispor] = .loaded(res.targets.count)
+                    self.mergeAndPublishResults(isInitialBatch: self.targets.isEmpty)
+                    
+                case .chopchop:
+                    let res = try await CHOPCHOPService.shared.queryCHOPCHOPWithMetadata(
+                        gene: clean,
+                        species: targetSpecies,
+                        timeout: 75,
+                        forceRefresh: forceRefresh,
+                        progressHandler: { [weak self] msg in
+                            guard let self, self.activeQueryToken == token else { return }
+                            self.sourceStates[.chopchop] = .loading(msg)
+                            self.refreshLoadingSummary()
+                        }
+                    )
+                    guard self.activeQueryToken == token, !Task.isCancelled else { return }
+                    if let jid = res.jobId, !jid.isEmpty {
+                        self.lastCHOPCHOPJobId = jid
                     }
-                )
-                
-                self.targets = results
-                self.recomputeLocalMatches()
-                
-                // 默认优先勾选本地命中的靶点，若无则勾选综合推荐前 5 条
-                let primaryHits = self.sortedTargets.filter { self.matchMap[$0.id]?.isPrimaryUserSelection == true }
-                if !primaryHits.isEmpty {
-                    self.selectedTargetIDs = Set(primaryHits.map { $0.id })
-                } else {
-                    let topIDs = self.sortedTargets.prefix(5).map { $0.id }
-                    self.selectedTargetIDs = Set(topIDs)
-                }
-                
-                self.isLoading = false
-                self.progressMessage = ""
-                
-                let hitCount = self.totalMatchedTargetsCount
-                if hitCount > 0 {
-                    AppState.shared.showToast("获取 \(results.count) 条 CHOPCHOP 靶点，其中 \(hitCount) 条与本地 SG/SH 序列重合！")
-                } else {
-                    AppState.shared.showToast("成功获取 \(results.count) 条 CHOPCHOP 全基因组预测靶点！")
+                    self.rawCHOPCHOPTargets = res.targets
+                    self.sourceStates[.chopchop] = .loaded(res.targets.count)
+                    self.mergeAndPublishResults(isInitialBatch: self.targets.isEmpty)
                 }
             } catch {
-                self.isLoading = false
-                self.progressMessage = ""
-                self.errorMessage = error.localizedDescription
-                self.showErrorAlert = true
-                AppState.shared.showToast("查询失败: \(error.localizedDescription)")
+                guard self.activeQueryToken == token, !Task.isCancelled else { return }
+                self.sourceStates[source] = .failed(error.localizedDescription)
             }
+            
+            guard self.activeQueryToken == token, !Task.isCancelled else { return }
+            self.activeQueryTasks[source] = nil
+            self.finalizeBatchIfAllFinished(token: token, singleSourceCompleted: notifyCompletion ? nil : source)
+        }
+        activeQueryTasks[source] = task
+    }
+    
+    private func cancelAllActiveTasks() {
+        for task in activeQueryTasks.values {
+            task.cancel()
+        }
+        activeQueryTasks.removeAll()
+    }
+    
+    private func mergeAndPublishResults(isInitialBatch: Bool) {
+        let prevSelectedSpacers = Set(
+            targets.filter { selectedTargetIDs.contains($0.id) }.map { $0.spacer.uppercased() }
+        )
+        let merged = CHOPCHOPTarget.mergeTargets(
+            chopchop: rawCHOPCHOPTargets,
+            vbc: rawVBCTargets,
+            crispor: rawCRISPORTargets
+        )
+        self.targets = merged
+        self.recomputeLocalMatches()
+        
+        if !prevSelectedSpacers.isEmpty && !isInitialBatch {
+            let kept = Set(merged.filter { prevSelectedSpacers.contains($0.spacer.uppercased()) }.map(\.id))
+            if !kept.isEmpty {
+                self.selectedTargetIDs = kept
+                return
+            }
+        }
+        
+        let primaryHits = self.sortedTargets.filter { self.matchMap[$0.id]?.isPrimaryUserSelection == true }
+        if !primaryHits.isEmpty {
+            self.selectedTargetIDs = Set(primaryHits.map(\.id))
+        } else {
+            self.selectedTargetIDs = Set(self.sortedTargets.prefix(5).map(\.id))
+        }
+    }
+    
+    private func refreshLoadingSummary() {
+        let loadingPairs = TargetCompareSource.allCases.compactMap { src -> (TargetCompareSource, String)? in
+            guard enabledSources.contains(src), case .loading(let msg) = sourceStates[src] else { return nil }
+            return (src, msg)
+        }
+        isLoading = !loadingPairs.isEmpty
+        if loadingPairs.count == 1, let only = loadingPairs.first {
+            progressMessage = "[\(only.0.shortTitle)] \(only.1)"
+        } else if !loadingPairs.isEmpty {
+            let names = loadingPairs.map(\.0.shortTitle).joined(separator: " / ")
+            progressMessage = "正在并发检索 \(names)..."
+        } else {
+            progressMessage = ""
+        }
+    }
+    
+    private func finalizeBatchIfAllFinished(token: UUID, singleSourceCompleted: TargetCompareSource?) {
+        guard activeQueryToken == token else { return }
+        refreshLoadingSummary()
+        guard !isLoading else { return }
+        
+        let failedList = TargetCompareSource.allCases.compactMap { src -> (TargetCompareSource, String)? in
+            guard enabledSources.contains(src), case .failed(let msg) = sourceStates[src] else { return nil }
+            return (src, msg)
+        }
+        let succeededSources = TargetCompareSource.allCases.filter { src in
+            enabledSources.contains(src) && (sourceStates[src]?.loadedCount != nil)
+        }
+        
+        if let single = singleSourceCompleted {
+            if let err = sourceStates[single]?.errorMessage {
+                AppState.shared.showToast("\(single.rawValue) 重试失败: \(err)")
+            } else {
+                AppState.shared.showToast("\(single.rawValue) 已补全并合并，当前共 \(targets.count) 条靶点")
+            }
+            return
+        }
+        
+        if targets.isEmpty {
+            if !failedList.isEmpty {
+                let joined = failedList.map { "[\($0.0.rawValue)] \($0.1)" }.joined(separator: "\n")
+                self.errorMessage = joined
+                self.showErrorAlert = true
+                AppState.shared.showToast("在线靶点检索失败")
+            } else {
+                AppState.shared.showToast("未检索到基因「\(gene)」的候选靶点")
+            }
+            return
+        }
+        
+        let hitCount = totalMatchedTargetsCount
+        let consensus = consensusTargetsCount
+        if !failedList.isEmpty {
+            let okNames = succeededSources.map(\.shortTitle).joined(separator: "+")
+            let failNames = failedList.map(\.0.shortTitle).joined(separator: "/")
+            AppState.shared.showToast("\(okNames) 已返回 \(targets.count) 条靶点；\(failNames) 暂未就绪")
+        } else if hitCount > 0 {
+            AppState.shared.showToast("共 \(targets.count) 条靶点（多源共识 \(consensus) 条，本地重合 \(hitCount) 条）")
+        } else {
+            AppState.shared.showToast("共获取 \(targets.count) 条候选靶点（多源共识 \(consensus) 条）")
         }
     }
     
     /// 排序与筛选后的结果列表
     public var sortedTargets: [CHOPCHOPTarget] {
-        let baseList: [CHOPCHOPTarget]
+        var baseList = targets
         if showOnlyLocalMatches {
-            baseList = targets.filter { matchMap[$0.id] != nil }
-        } else {
-            baseList = targets
+            baseList = baseList.filter { matchMap[$0.id] != nil }
+        }
+        switch activeSourceFilter {
+        case .all:
+            break
+        case .consensus:
+            baseList = baseList.filter(\.isMultiSourceConsensus)
+        case .vbcScore:
+            baseList = baseList.filter { $0.sources.contains(.vbcScore) }
+        case .ucscCrispor:
+            baseList = baseList.filter { $0.sources.contains(.ucscCrispor) }
+        case .chopchop:
+            baseList = baseList.filter { $0.sources.contains(.chopchop) }
         }
         
         return baseList.sorted { a, b in
@@ -252,17 +524,37 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
             
             switch sortMode {
             case .smartRecommend:
-                // 优先保证无严重脱靶 (MM0 == 0 && MM1 == 0) 且无 TTTT 终止
                 let safeA = a.isHighlySpecific && !a.combinedScore.hasFatalIssue
                 let safeB = b.isHighlySpecific && !b.combinedScore.hasFatalIssue
                 if safeA != safeB { return safeA && !safeB }
                 if a.combinedScore.score != b.combinedScore.score {
                     return a.combinedScore.score > b.combinedScore.score
                 }
+                if a.sources.count != b.sources.count {
+                    return a.sources.count > b.sources.count
+                }
                 if a.efficiency != b.efficiency {
                     return a.efficiency > b.efficiency
                 }
                 return a.rank < b.rank
+                
+            case .consensusFirst:
+                if a.sources.count != b.sources.count {
+                    return a.sources.count > b.sources.count
+                }
+                if a.combinedScore.score != b.combinedScore.score {
+                    return a.combinedScore.score > b.combinedScore.score
+                }
+                return a.efficiency > b.efficiency
+                
+            case .vbcScoreDesc:
+                let vA = a.vbcScore ?? -1
+                let vB = b.vbcScore ?? -1
+                if vA != vB { return vA > vB }
+                if a.combinedScore.score != b.combinedScore.score {
+                    return a.combinedScore.score > b.combinedScore.score
+                }
+                return a.efficiency > b.efficiency
                 
             case .combinedScoreDesc:
                 if a.combinedScore.score != b.combinedScore.score {
@@ -277,13 +569,21 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
                 return a.rank < b.rank
                 
             case .rankAsc:
-                return a.rank < b.rank
+                let rA = a.chopchopRank ?? a.rank
+                let rB = b.chopchopRank ?? b.rank
+                return rA < rB
                 
             case .offTargetAsc:
                 if a.mm0 != b.mm0 { return a.mm0 < b.mm0 }
                 if a.mm1 != b.mm1 { return a.mm1 < b.mm1 }
                 if a.mm2 != b.mm2 { return a.mm2 < b.mm2 }
                 if a.mm3 != b.mm3 { return a.mm3 < b.mm3 }
+                let vlA = a.vbcVeryLikelyOT ?? 0
+                let vlB = b.vbcVeryLikelyOT ?? 0
+                if vlA != vlB { return vlA < vlB }
+                let mA = a.mitSpecificity ?? 0
+                let mB = b.mitSpecificity ?? 0
+                if mA != mB { return mA > mB }
                 return a.efficiency > b.efficiency
             }
         }
@@ -358,15 +658,43 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         AppState.shared.showToast("已将 \(selected.count) 个靶点 (\(primers.count) 条引物) 加入订购单！")
     }
     
-    /// 在默认外部浏览器中打开原始网页
+    /// 在默认外部浏览器中打开 CHOPCHOP 网页（若有 jobId 则直达结果页）
     public func openInSafari() {
-        CHOPCHOPService.shared.openInDefaultBrowser(gene: gene, species: species)
+        CHOPCHOPService.shared.openInDefaultBrowser(
+            source: .chopchop,
+            gene: gene,
+            species: species,
+            chopchopJobId: lastCHOPCHOPJobId,
+            ucscSpan: lastUCSCSpan
+        )
     }
     
-    /// 一键清空当前 CHOPCHOP 查询结果与状态
+    /// 在默认外部浏览器中打开指定数据源的官网或结果页
+    public func openSourceInSafari(_ source: TargetCompareSource) {
+        CHOPCHOPService.shared.openInDefaultBrowser(
+            source: source,
+            gene: gene,
+            species: species,
+            chopchopJobId: lastCHOPCHOPJobId,
+            ucscSpan: lastUCSCSpan
+        )
+    }
+    
+    /// 一键清空当前查询结果与多源状态
     public func clear() {
+        cancelAllActiveTasks()
+        activeQueryToken = UUID()
         gene = ""
+        isLoading = false
+        progressMessage = ""
         targets = []
+        rawCHOPCHOPTargets = []
+        rawVBCTargets = []
+        rawCRISPORTargets = []
+        sourceStates = [:]
+        lastCHOPCHOPJobId = nil
+        lastUCSCSpan = nil
+        activeSourceFilter = .all
         selectedTargetIDs = []
         matchMap = [:]
         manualCompareInput = ""

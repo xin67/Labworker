@@ -68,7 +68,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | `.sgRNADesign` | **sgRNA 设计** | `Views/CRISPR/SgRNADesignView.swift`<br>`Engine/CRISPRDesigner.swift`<br>`Services/GenomicLibraryService.swift` | 支持从离线 `Libraries.sqlite`（标注参考基因组 `hg38` / `mm39`）高速检索或从给定序列全长扫描 PAM 位点（NGG / TTTV），综合 GC%、二级结构、Poly-T 终止信号与位置权重计算 **序列启发式评分**（`score_type = sequence_heuristic`，明确提示未含全基因组脱靶搜索并提供一键跳转 CHOPCHOP 靶点对比），生成 `lentiCRISPRv2` (BsmBI) 或 `pX459` (BbsI) 退火 Oligo。 | `.fa`, `.fasta`, `.dna` |
 | `.shRNADesign` | **shRNA 设计** | `Views/RNAi/ShRNADesignView.swift`<br>`Engine/ShRNADesigner.swift` | 基于 21nt 靶点热力学不对称性（5' 反义链解旋自由能差）与 RISC 装载偏好筛选高活性 RNAi 靶点，自动生成 `pLKO.1` (AgeI / EcoRI) 正义与反义发夹引物。 | `.fa`, `.fasta`, `.dna` |
-| `.chopchopCompare` | **靶点对比** | `Views/Compare/CHOPCHOPWebView.swift`<br>`Services/CHOPCHOPService.swift` | 内置 CHOPCHOP 靶点评分对比工作台，将本地已选的 sgRNA / shRNA 候选靶点自动置顶并与脱靶/效率分布交叉比对。 | `.fa`, `.fasta`, `.dna` |
+| `.chopchopCompare` | **靶点对比** | `Views/Compare/CHOPCHOPWebView.swift`<br>`Services/CHOPCHOPService.swift` | 内置三源靶点对比工作台（CHOPCHOP + VBC-Score + UCSC CRISPOR 并发检索与 20bp 共识合并），支持 `hg38` 与 `mm39`/`mm10`，并将本地已选 sgRNA / shRNA 候选靶点自动置顶交叉比对。 | `.fa`, `.fasta`, `.dna` |
 
 ### 3.3 电泳与图像定量 (`SidebarSectionKind.bioImaging`)
 

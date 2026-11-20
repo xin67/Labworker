@@ -206,6 +206,23 @@ let chopURLMouse = CHOPCHOPService.shared.makeWebURL(gene: "Trp53", species: .mo
 assert(chopURLMouse.absoluteString.contains("target=Trp53"))
 assert(chopURLMouse.absoluteString.contains("organism=mm39"))
 
+assert(TargetSpecies.human.chopchopAPIGenome == "hg38")
+assert(TargetSpecies.human.vbcGenome == "hg38")
+assert(TargetSpecies.human.ucscGenome == "hg38")
+assert(TargetSpecies.mouse.chopchopAPIGenome == "Mus_musculus_GRCm39")
+assert(TargetSpecies.mouse.vbcGenome == "mm10")
+assert(TargetSpecies.mouse.ucscGenome == "mm39")
+
+let chopJobURL = CHOPCHOPService.shared.makeWebURL(gene: "TP53", species: .human, jobId: "test-job-123")
+assert(chopJobURL.absoluteString.contains("/results/test-job-123"))
+
+let vbcWebURL = CHOPCHOPService.shared.makeVBCWebURL()
+assert(vbcWebURL.absoluteString == "https://www.vbc-score.org/")
+
+let crisporWebURL = CHOPCHOPService.shared.makeCRISPORWebURL(species: .human, genomicSpan: "chr17:7668421-7687490")
+assert(crisporWebURL.absoluteString.contains("org=hg38"))
+assert(crisporWebURL.absoluteString.contains("chr17") && crisporWebURL.absoluteString.contains("7668421-7687490"))
+
 if ProcessInfo.processInfo.environment["CLONESTUDIO_ONLINE_TEST"] == "1" {
     do {
         let chopTargets = try await CHOPCHOPService.shared.queryTargets(gene: "TP53", species: .human, timeout: 10)
@@ -557,6 +574,112 @@ await MainActor.run {
     assert(session.chopchopVM.gene == "TP53" && session.chopchopVM.targets.count == 2, "Switching sidebar navigation must preserve CHOPCHOP query results")
     session.chopchopVM.clear()
 }
+
+// 验证三源靶点共识合并与 Codable 往返一致性
+let sharedSpacer = "GGCAGCGATTGCAGTTCACG"
+let chopSeed = CHOPCHOPTarget(
+    rank: 1,
+    targetSequence: sharedSpacer + "AGG",
+    spacer: sharedSpacer,
+    pam: "AGG",
+    genomicLocation: "chr17:7675056",
+    strand: "+",
+    gcContent: 60.0,
+    selfComplementarity: 0,
+    mm0: 0,
+    mm1: 0,
+    mm2: 1,
+    mm3: 2,
+    efficiency: 60.0
+)
+let vbcMatch = CHOPCHOPTarget(
+    rank: 1,
+    targetSequence: sharedSpacer + "AGG",
+    spacer: sharedSpacer,
+    pam: "AGG",
+    genomicLocation: "chr17:7675056 (Exon 4)",
+    strand: "+",
+    gcContent: 60.0,
+    selfComplementarity: 0,
+    mm0: 0,
+    mm1: 0,
+    mm2: 0,
+    mm3: 0,
+    efficiency: 90.0,
+    sources: [.vbcScore],
+    hasCHOPCHOPOffTargets: false,
+    vbcScore: 0.86,
+    vbcActivity: 0.90,
+    vbcFrameshift: 0.85,
+    vbcBioscore: 0.88,
+    vbcAutoPick: 1,
+    vbcVeryLikelyOT: 0,
+    vbcLikelyOT: 0,
+    vbcOT90: 0,
+    vbcExon: "Exon 4"
+)
+let crisporMatch = CHOPCHOPTarget(
+    rank: 1,
+    targetSequence: sharedSpacer + "AGG",
+    spacer: sharedSpacer,
+    pam: "AGG",
+    genomicLocation: "chr17:7675056",
+    strand: "+",
+    gcContent: 60.0,
+    selfComplementarity: 0,
+    mm0: 0,
+    mm1: 0,
+    mm2: 0,
+    mm3: 0,
+    efficiency: 90.0,
+    sources: [.ucscCrispor],
+    hasCHOPCHOPOffTargets: false,
+    mitSpecificity: 95,
+    crisporDoenchPerc: 90.0,
+    crisporScanScore: 78.0,
+    crisporOutOfFrame: 80.0
+)
+let vbcOnly = CHOPCHOPTarget(
+    rank: 2,
+    targetSequence: "TGGAGCTGAAGCTCGATCACTGG",
+    spacer: "TGGAGCTGAAGCTCGATCAC",
+    pam: "TGG",
+    genomicLocation: "chr17:7674200 (Exon 5)",
+    strand: "-",
+    gcContent: 55.0,
+    selfComplementarity: 0,
+    mm0: 0,
+    mm1: 0,
+    mm2: 0,
+    mm3: 0,
+    efficiency: 72.0,
+    sources: [.vbcScore],
+    hasCHOPCHOPOffTargets: false,
+    vbcScore: 0.74,
+    vbcActivity: 0.72
+)
+
+let mergedMulti = CHOPCHOPTarget.mergeTargets(
+    chopchop: [chopSeed],
+    vbc: [vbcMatch, vbcOnly],
+    crispor: [crisporMatch]
+)
+assert(mergedMulti.count == 2, "3 sources with shared 20bp spacer should merge into 2 unique targets")
+assert(Set(mergedMulti.map(\.rank)) == Set([1, 2]), "Merged targets should have unique sequential ranks 1..N")
+let consensusItem = mergedMulti.first { $0.spacer == sharedSpacer }!
+assert(consensusItem.sources.count == 3, "Consensus item must record all 3 sources")
+assert(consensusItem.isMultiSourceConsensus, "Consensus item must flag isMultiSourceConsensus")
+assert(consensusItem.vbcScore == 0.86 && consensusItem.mitSpecificity == 95 && consensusItem.hasCHOPCHOPOffTargets)
+assert(consensusItem.combinedScore.score > chopSeed.combinedScore.score, "3-source high-confidence consensus should score higher than moderate single-source CHOPCHOP seed")
+
+let encodedMerged = try JSONEncoder().encode(mergedMulti)
+let decodedMerged = try JSONDecoder().decode([CHOPCHOPTarget].self, from: encodedMerged)
+let decodedConsensus = decodedMerged.first { $0.spacer == sharedSpacer }!
+assert(decodedConsensus.sources == consensusItem.sources)
+assert(decodedConsensus.vbcScore == consensusItem.vbcScore)
+assert(decodedConsensus.mitSpecificity == consensusItem.mitSpecificity)
+assert(decodedConsensus.isMultiSourceConsensus)
+
 pass("CHOPCHOP combinedScore, Local SG/SH 3-tier matching & cross-tab persistence passed (Score: \(chopTarget1.combinedScore.score) vs \(chopTargetLowEff.combinedScore.score)).")
 
 // 23. 验证状态栏图标显隐开关、PlasmidPoolManager 质粒池解析入库与 CloneStudio MCP Server 一键设计引物

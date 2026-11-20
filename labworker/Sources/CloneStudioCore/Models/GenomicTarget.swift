@@ -29,6 +29,30 @@ public enum TargetSpecies: String, CaseIterable, Identifiable, Codable, Sendable
         }
     }
     
+    /// CHOPCHOP 服务端 POST 请求实际接受的基因组 ID（其网页已停用 mm39，改用 Mus_musculus_GRCm39）
+    public var chopchopAPIGenome: String {
+        switch self {
+        case .human: return "hg38"
+        case .mouse: return "Mus_musculus_GRCm39"
+        }
+    }
+    
+    /// VBC-Score API 基因组 ID（人源 hg38，鼠源 mm10）
+    public var vbcGenome: String {
+        switch self {
+        case .human: return "hg38"
+        case .mouse: return "mm10"
+        }
+    }
+    
+    /// UCSC Genome Browser / CRISPOR 基因组 ID（人源 hg38，鼠源 mm39）
+    public var ucscGenome: String {
+        switch self {
+        case .human: return "hg38"
+        case .mouse: return "mm39"
+        }
+    }
+    
     public var themeColor: Color {
         switch self {
         case .human: return .blue

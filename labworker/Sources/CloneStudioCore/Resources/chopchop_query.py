@@ -11,6 +11,8 @@ CHOPCHOP 在线靶点与全基因组脱靶预测后台高速异步调用脚本
 
 import sys
 import os
+import re
+import html
 import argparse
 import json
 import time
@@ -23,6 +25,21 @@ import urllib.error
 def eprint(*args, **kwargs):
     """输出状态日志到 stderr，供 Swift Process 实时捕获进度"""
     print(*args, file=sys.stderr, flush=True)
+
+
+def extract_html_error(html_text):
+    """从 CHOPCHOP 返回的 HTML 页面中提取可读错误信息"""
+    if not html_text:
+        return ""
+    m_danger = re.search(r'<p[^>]*class="[^"]*border-danger[^"]*"[^>]*>(.*?)</p>', html_text, re.S | re.I)
+    if m_danger:
+        raw = re.sub(r"<[^>]+>", " ", m_danger.group(1))
+        return re.sub(r"\s+", " ", html.unescape(raw)).strip()
+    m_h2 = re.search(r"<h2[^>]*>(.*?)</h2>", html_text, re.S | re.I)
+    if m_h2:
+        raw = re.sub(r"<[^>]+>", " ", m_h2.group(1))
+        return re.sub(r"\s+", " ", html.unescape(raw)).strip()
+    return ""
 
 
 def get_cache_paths(clean_gene, genome, target_region, custom_cache_dir=None):
@@ -49,11 +66,12 @@ def get_cache_paths(clean_gene, genome, target_region, custom_cache_dir=None):
     return paths
 
 
-def query_chopchop(gene, genome="hg38", target_region="CODING", timeout=60, cache_dir=None, force_refresh=False):
+def query_chopchop(gene, genome="hg38", target_region="CODING", timeout=75, cache_dir=None, force_refresh=False):
     clean_gene = gene.strip()
     if not clean_gene:
         return {"status": "error", "message": "目标基因名称不能为空"}
 
+    chopchop_genome = "Mus_musculus_GRCm39" if genome.lower() == "mm39" else genome
     cache_paths = get_cache_paths(clean_gene, genome, target_region, cache_dir)
 
     # 1. 检查本地缓存（除非用户点击了强制刷新）
@@ -74,17 +92,18 @@ def query_chopchop(gene, genome="hg38", target_region="CODING", timeout=60, cach
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
-    eprint(f"PROGRESS: 正在向 CHOPCHOP 提交「{clean_gene}」({genome}) 极速检索请求...")
+    eprint(f"PROGRESS: 正在向 CHOPCHOP 提交「{clean_gene}」({chopchop_genome}) 极速检索请求...")
 
-    # 仅保留核心计算参数，剔除耗时的 -J / -BED / -GenBank / -repairPredictions
+    # 仅保留核心计算参数，剔除耗时的 -J / -BED / -GenBank / -repairPredictions，并显式对齐网页默认参数
     payload = {
         "opts": [
-            "-G", genome,
+            "-G", chopchop_genome,
             "-filterGCmin", "10",
             "-filterGCmax", "90",
             "-t", target_region,
-            "-n", "",
+            "-n", "N",
             "-R", "4",
+            "-p", "0",
             "-T", "1",
             "-g", "20",
             "-scoringMethod", "DOENCH_2016",
@@ -114,14 +133,27 @@ def query_chopchop(gene, genome="hg38", target_region="CODING", timeout=60, cach
         conn = http.client.HTTPSConnection("chopchop.cbu.uib.no", timeout=20, context=ctx)
         conn.request("POST", "/", body=json.dumps(payload).encode("utf-8"), headers=headers)
         resp = conn.getresponse()
-        raw_body = resp.read().decode("utf-8")
-        if resp.status == 200:
+        raw_body = resp.read().decode("utf-8", errors="replace")
+        if resp.status != 200 or raw_body.lstrip().startswith("<"):
+            err_text = extract_html_error(raw_body)
+            if "2 active jobs" in err_text.lower():
+                return {"status": "error", "message": "CHOPCHOP 限制单 IP 最多 2 个并发任务，请等待队列完成后重试（VBC-Score / CRISPOR 不受此限制）"}
+            detail = err_text if err_text else f"HTTP {resp.status}"
+            return {"status": "error", "message": f"CHOPCHOP 服务器返回错误 (HTTP {resp.status}): {detail}"}
+        try:
             submit_res = json.loads(raw_body)
-            job_id = submit_res.get("jobId")
-        else:
-            return {"status": "error", "message": f"CHOPCHOP 服务器返回状态码 {resp.status}"}
+        except Exception:
+            return {"status": "error", "message": "CHOPCHOP 返回了非 JSON 响应，请检查基因名或稍后重试"}
+        job_id = submit_res.get("jobId")
     except Exception as e:
         return {"status": "error", "message": f"连接 CHOPCHOP 服务器失败: {str(e)}"}
+    finally:
+        if job_id is None and conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            conn = None
 
     if not job_id:
         return {"status": "error", "message": "未能获取 CHOPCHOP 任务排队 ID，请检查基因名是否正确"}
@@ -129,6 +161,7 @@ def query_chopchop(gene, genome="hg38", target_region="CODING", timeout=60, cach
     eprint(f"PROGRESS: 任务已提交 (ID: {job_id[:8]}...)，正在高速轮询全基因组比对结果...")
 
     tsv_path = f"/results/{job_id}/results.tsv"
+    status_path = f"/results/{job_id}/"
     start_time = time.time()
     tsv_content = None
     poll_idx = 0
@@ -151,10 +184,40 @@ def query_chopchop(gene, genome="hg38", target_region="CODING", timeout=60, cach
             tsv_resp = conn.getresponse()
             body_bytes = tsv_resp.read()
             if tsv_resp.status == 200 and body_bytes:
-                tsv_content = body_bytes.decode("utf-8")
-                break
-            elif tsv_resp.status == 404:
-                continue
+                decoded = body_bytes.decode("utf-8", errors="replace")
+                if not decoded.lstrip().startswith("<"):
+                    tsv_content = decoded
+                    break
+            elif tsv_resp.status == 404 and poll_idx % 3 == 0:
+                try:
+                    conn.request("GET", status_path, headers={
+                        "User-Agent": headers["User-Agent"],
+                        "Connection": "keep-alive"
+                    })
+                    st_resp = conn.getresponse()
+                    st_bytes = st_resp.read()
+                    st_html = st_bytes.decode("utf-8", errors="replace")
+                    if re.search(r"Error status:|border-danger", st_html, re.I):
+                        err_text = extract_html_error(st_html) or f"HTTP {st_resp.status}"
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
+                        conn = None
+                        if "2 active jobs" in err_text.lower():
+                            return {"status": "error", "message": "CHOPCHOP 限制单 IP 最多 2 个并发任务，请等待队列完成后重试（VBC-Score / CRISPOR 不受此限制）"}
+                        return {"status": "error", "message": f"CHOPCHOP 任务失败: {err_text}"}
+                    m_pos = re.search(r"Position:\s*(\d+)", st_html)
+                    if m_pos:
+                        eprint(f"PROGRESS: CHOPCHOP 服务器排队中（当前第 {m_pos.group(1)} 位，已等待 {elapsed:.1f}s）...")
+                except Exception:
+                    try:
+                        if conn:
+                            conn.close()
+                    except Exception:
+                        pass
+                    conn = None
+                    continue
         except Exception:
             try:
                 if conn:
@@ -244,7 +307,7 @@ def main():
     parser.add_argument("--gene", required=True, help="Target gene symbol (e.g. TP53)")
     parser.add_argument("--genome", default="hg38", help="Genome assembly (e.g. hg38 or mm39)")
     parser.add_argument("--target", default="CODING", help="Target region (CODING, WHOLE, etc.)")
-    parser.add_argument("--timeout", type=int, default=50, help="Timeout in seconds")
+    parser.add_argument("--timeout", type=int, default=75, help="Timeout in seconds")
     parser.add_argument("--cache-dir", default=None, help="Cache directory")
     parser.add_argument("--force-refresh", action="store_true", help="Ignore local cache and re-query CHOPCHOP")
 

@@ -53,7 +53,7 @@
 | `Views/Pool/PlasmidPoolView.swift` | 本地质粒池纯粹管理视图（支持拖入 `.dna` 批量建库、特征/酶切位点检视与构建谱系树） |
 | `Views/CRISPR/SgRNADesignView.swift` | CRISPR sgRNA 离线文库检索与引物设计视图 |
 | `Views/RNAi/ShRNADesignView.swift` | shRNA 发夹结构离线文库检索与引物设计视图 |
-| `Views/Compare/CHOPCHOPWebView.swift` | CHOPCHOP 在线靶点检索与本地已选靶点置顶对比视图 |
+| `Views/Compare/CHOPCHOPWebView.swift` | 多源在线靶点对比视图（CHOPCHOP + VBC-Score + UCSC CRISPOR 三源并发检索与本地已选靶点置顶对比） |
 | `Views/Calculator/RestructureCalculatorView.swift` | 生物计算器工作台（含克隆与经典 0.03 pmol 摩尔比配液、DNA 换算、蛋白质换算与生理生化公式四大分页外壳） |
 | `Views/Calculator/LabBioCalculatorsView.swift` | DNA 换算（dsDNA / ssDNA / Linear / OD260）、蛋白质换算（摩尔互算 / DNA 编码容量）与生理生化公式（摩尔配制 / C1V1=C2V2 稀释 / 温度转换）视图及原生矢量公式卡 |
 | `Views/Tools/SequenceToolsView.swift` | 序列反向互补、GC 含量与 SantaLucia 近邻热力学 Tm 计算工具视图 |
@@ -75,7 +75,7 @@
 - `ViewModels/FragmentDeletionViewModel.swift`：质粒大片段删除/敲除 (`FragmentDeletionViewModel`，四模式删除边界定位与谱系记录) 状态机。
 - `ViewModels/BenchCalculatorViewModels.swift`：克隆体系用量 (`CalculatorViewModel`)、生物科研换算工作台 (`BioCalculatorSuiteViewModel`) 与序列/SantaLucia $T_m$ 工具 (`SequenceToolViewModel`) 状态机。
 - `ViewModels/SgRNADesignViewModel.swift` & `ShRNADesignViewModel.swift`：CRISPR sgRNA 与 RNAi shRNA 检索及引物生成 ViewModel。
-- `ViewModels/CHOPCHOPCompareViewModel.swift`：CHOPCHOP 在线查询与本地靶点匹配比对 ViewModel。
+- `ViewModels/CHOPCHOPCompareViewModel.swift`：三源靶点对比（VBC-Score / UCSC CRISPOR / CHOPCHOP）并发查询、分源过滤与本地靶点匹配 ViewModel。
 - `ViewModels/OrderExportViewModel.swift`：商业合成与测序订购单导出 ViewModel。
 
 ### 3.2 纯数学几何与排版引擎 (`Geometry/`)
@@ -113,7 +113,7 @@
 - `Models/RestrictionEnzyme.swift`：限制性内切酶数据库、Type IIS (`BsaI` / `BsmBI` / `BbsI` / `SapI`) 外切规范与双链切点扫描器及 NEB/常用酶预设组。
 - `Models/ConstructHistory.swift`：质粒构建谱系树节点与特征偏移模型。
 - `Models/CloneStudioIconProvider.swift`：动态深浅色应用图标渲染器与右上角状态栏弹窗视图 `CloneStudioStatusBarPopoverView`。
-- `Models/GenomicTarget.swift`、`TargetScore.swift`、`CHOPCHOPResult.swift`、`OrderFormProfile.swift`：靶点、评分与订购人档案数据模型。
+- `Models/GenomicTarget.swift`、`TargetScore.swift`、`CHOPCHOPResult.swift`、`OrderFormProfile.swift`：多源基因组靶点（`hg38` / `mm39` / `mm10` / `Mus_musculus_GRCm39`）、三源共识合并模型与评分数据模型。
 - `Models/PlateLayoutModels.swift`：6～384 孔板几何规格、孔位分配模型、排布规则与科研分组调色板定义。
 - `Models/AnalysisRun.swift`：科学分析可复现溯源记录模型（`schemaVersion = 2`、`AnyCodableValue`、CryptoKit `SHA256` 文件指纹、`ManualEdit` 手动编辑记录、`Exclusion` 剔除记录、`linkedPlasmidIDs` 关联质粒 ID 列表与 `.run.json` 伴随文件写入器 + `AnalysisRunIndexStore` 跨模块索引）。
 
@@ -123,7 +123,7 @@
 - `Services/SnapGeneService.swift`：调用 `snapgene_bridge.py` 解析 `.dna` 质粒特征/引物、注入引物及生成重组质粒 `.dna` 文件。
 - `Services/ExcelOrderExporter.swift`：调用 `export_order.py` 将引物池与测序样品灌装导出为擎科/生工标准 `.xlsx` 订购表。
 - `Services/GenomicLibraryService.swift`：基于 SQLite3 高速检索 `Libraries.sqlite` 中的人源（hg38）/鼠源（mm39）sgRNA 与 shRNA 靶点。
-- `Services/CHOPCHOPService.swift` & `CloneOnlineAPIClient.swift`：CHOPCHOP 靶点检索服务与在线克隆引物设计客户端。
+- `Services/CHOPCHOPService.swift` & `CloneOnlineAPIClient.swift`：三源靶点并发检索服务（CHOPCHOP Python 桥接 + VBC-Score REST + UCSC CRISPOR REST）与在线克隆引物设计客户端。
 - `Services/CloneStudioResourceLocator.swift`：兼容 `.app` Bundle 与 SwiftPM 命令行模式的资源路径定位器。
 
 ### 3.6 打包资源 (`Resources/`)
