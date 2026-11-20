@@ -184,4 +184,4 @@ bash Scripts/package_dmg.sh --skip-build
 > - 严禁在 `Sources/`、`Tests/` 或公开文档中硬编码任何本地用户路径（如个人 home 目录）、真实实验室质粒私有名称或私人联系方式。
 > - 新增、删除或拆分的任何 `.swift` 源码文件，必须在 `labworker/ARCHITECTURE.md` 中同步登记。
 > - 修改任何跨语言核心科学计算（Tm、反向互补、引物 ΔG、蛋白 pI/ΔΔG、qPCR $\Delta\Delta C_t$/Welch CI、Holm 校正）时，必须同步更新 `Tests/vectors/*.json`、`clonestudio_mcp_server.py` 与 `CloneStudioCore`。
-> - UI 控件须遵守同排同档高度（L 档 28pt / S 档 24pt）、玻璃交互默认受限 HDR（`StudioGlassSupport.dynamicRange` `.constrainedHigh` + `hdrGain`，静止描边禁加曝光）以及科学定量图像画布显式 `.allowedDynamicRange(.standard)` 锁定 SDR 的规范（详见 `labworker/README.md` 第 2 节）。
+> - UI 控件须遵守同排同档高度（L 档 28pt / S 档 24pt）、玻璃交互默认受限 HDR（`StudioGlassSupport.dynamicRange` `.constrainedHigh` + `hdrGain`，静止描边禁加曝光）、科学定量图像画布显式 `.allowedDynamicRange(.standard)` 锁定 SDR、工作台主操作栏采用 `StudioActionBar` 居左紧凑排布（禁用全宽长条主按钮）、顶栏 `.plasmidToggle`「图谱」按钮未生成图谱时自动隐藏以及嵌入式 `Canvas` 禁止硬设固定宽度锁死窗口缩放（详见 `labworker/README.md` 第 2 节）。

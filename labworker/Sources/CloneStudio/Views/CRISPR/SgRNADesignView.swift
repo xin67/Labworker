@@ -195,22 +195,20 @@ public struct SgRNADesignView: View {
                         }
                     }
                     
-                    // 3. 主操作栏（设计引物 + 一键入池）
-                    HStack(spacing: 10) {
+                    // 3. 居左紧凑主操作栏（设计引物 + 次级入池）
+                    StudioActionBar {
                         StudioPrimaryActionButton(
                             title: activeSelectionCount > 0 ? "设计 sgRNA 引物 (\(activeSelectionCount))" : "设计 sgRNA 引物",
                             icon: "sparkles",
                             tint: .cyan,
-                            fillWidth: true,
                             action: vm.generatePrimers
                         )
                         
                         if !vm.generatedPrimers.isEmpty {
-                            StudioPrimaryActionButton(
+                            StudioActionPillButton(
                                 title: "加入引物池 (\(vm.generatedPrimers.count))",
                                 icon: "cart.badge.plus",
                                 tint: .green,
-                                fillWidth: true,
                                 action: vm.addAllToCart
                             )
                         }

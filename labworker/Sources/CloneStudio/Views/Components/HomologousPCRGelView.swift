@@ -517,7 +517,7 @@ private struct AgaroseSimulatedSlabCanvas: View {
     @Binding var selectedBandID: String?
 
     @ObservedObject private var appState = AppState.shared
-    @State private var containerWidth: CGFloat = 520
+    @State private var containerWidth: CGFloat = 0
 
     private let gutterWidth: CGFloat = 46
     private let rightPad: CGFloat = 12
@@ -525,12 +525,14 @@ private struct AgaroseSimulatedSlabCanvas: View {
 
     var body: some View {
         let laneCount = max(1, result.lanes.count)
-        let minLaneWidth: CGFloat = containerWidth < 460 ? 48 : 62
-        let usableWidth = max(240, containerWidth - gutterWidth - rightPad)
-        let perLaneWidth = max(minLaneWidth, usableWidth / CGFloat(laneCount))
-        let totalContentWidth = gutterWidth + rightPad + perLaneWidth * CGFloat(laneCount)
-        let needsHorizontalScroll = totalContentWidth > containerWidth + 2
-        let laneHeaderFontSize: CGFloat = perLaneWidth < 56 ? 10 : 11
+        let effectiveContainerW = containerWidth > 20 ? containerWidth : 480
+        let minLaneWidth: CGFloat = effectiveContainerW < 460 ? 48 : 62
+        let minContentWidth = gutterWidth + rightPad + minLaneWidth * CGFloat(laneCount)
+        let needsHorizontalScroll = containerWidth > 20 && (minContentWidth > containerWidth + 2)
+        let activePerLaneWidth = needsHorizontalScroll
+            ? minLaneWidth
+            : max(1, (effectiveContainerW - gutterWidth - rightPad) / CGFloat(laneCount))
+        let laneHeaderFontSize: CGFloat = activePerLaneWidth < 56 ? 10 : 11
 
         let plateView = VStack(spacing: 0) {
             // 顶部泳道标题栏
@@ -548,11 +550,12 @@ private struct AgaroseSimulatedSlabCanvas: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                             .truncationMode(.tail)
-                            .frame(width: perLaneWidth, height: headerHeight)
+                            .frame(maxWidth: .infinity, minHeight: headerHeight, maxHeight: headerHeight)
                     }
                 }
                 .padding(.trailing, rightPad)
             }
+            .frame(maxWidth: .infinity)
             .background(Color(red: 0.085, green: 0.105, blue: 0.145))
 
             Divider()
@@ -564,6 +567,7 @@ private struct AgaroseSimulatedSlabCanvas: View {
                     let gelTop: CGFloat = 12
                     let gelBottom: CGFloat = max(gelTop + 40, size.height - 22)
                     let gelSpan = gelBottom - gelTop
+                    let livePerLaneWidth = max(1, (size.width - gutterWidth - rightPad) / CGFloat(laneCount))
 
                     // 1. 胶板暗色 UV 透射渐变底面
                     let bgRect = CGRect(origin: .zero, size: size)
@@ -627,9 +631,9 @@ private struct AgaroseSimulatedSlabCanvas: View {
 
                     // 4. 逐泳道绘制点样孔、泳道分隔线与荧光 DNA 条带
                     for (laneIdx, lane) in result.lanes.enumerated() {
-                        let laneMinX = gutterWidth + CGFloat(laneIdx) * perLaneWidth
-                        let laneCenterX = laneMinX + perLaneWidth * 0.5
-                        let bandW = min(perLaneWidth * 0.64, 52)
+                        let laneMinX = gutterWidth + CGFloat(laneIdx) * livePerLaneWidth
+                        let laneCenterX = laneMinX + livePerLaneWidth * 0.5
+                        let bandW = min(livePerLaneWidth * 0.64, 52)
                         let bandX = laneCenterX - bandW * 0.5
 
                         // 泳道轻分隔线
@@ -747,11 +751,12 @@ private struct AgaroseSimulatedSlabCanvas: View {
                         }
                     }
                 }
-                .frame(width: totalContentWidth, height: plateHeight)
+                .frame(minWidth: 0, maxWidth: .infinity)
+                .frame(height: plateHeight)
                 .background(Color(red: 0.055, green: 0.072, blue: 0.102))
                 .contentShape(Rectangle())
                 .onTapGesture { loc in
-                    handleTap(at: loc, perLaneWidth: perLaneWidth, sizeHeight: plateHeight)
+                    handleTap(at: loc, perLaneWidth: activePerLaneWidth, sizeHeight: plateHeight)
                 }
             }
         }
@@ -767,12 +772,24 @@ private struct AgaroseSimulatedSlabCanvas: View {
                 )
         )
 
-        Group {
+        VStack(alignment: .leading, spacing: 0) {
+            Color.clear
+                .frame(height: 0)
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.width
+                } action: { w in
+                    if w > 10 && abs(containerWidth - w) > 1 {
+                        containerWidth = w
+                    }
+                }
+
             if needsHorizontalScroll {
                 VStack(alignment: .leading, spacing: 4) {
                     ScrollView(.horizontal, showsIndicators: true) {
                         plateView
+                            .frame(width: minContentWidth)
                     }
+                    .frame(minWidth: 0, maxWidth: .infinity)
                     Text("← 左右滑动查看全部 \(laneCount) 条泳道 →")
                         .font(.system(size: 10.5))
                         .foregroundColor(.secondary)
@@ -780,16 +797,10 @@ private struct AgaroseSimulatedSlabCanvas: View {
                 }
             } else {
                 plateView
-                    .frame(maxWidth: .infinity)
+                    .frame(minWidth: 0, maxWidth: .infinity)
             }
         }
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.size.width
-        } action: { w in
-            if w > 10 && abs(containerWidth - w) > 1 {
-                containerWidth = w
-            }
-        }
+        .frame(minWidth: 0, maxWidth: .infinity)
     }
 
     private func handleTap(at loc: CGPoint, perLaneWidth: CGFloat, sizeHeight: CGFloat) {

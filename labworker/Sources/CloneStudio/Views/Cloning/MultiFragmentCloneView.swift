@@ -473,35 +473,32 @@ public struct MultiFragmentCloneView: View {
                             }
                         }
                         
-                        // 4. 参考图2对称全宽主操作栏
-                        HStack(spacing: 10) {
+                        // 4. 居左紧凑主操作栏（Plan A）
+                        StudioActionBar {
                             StudioPrimaryActionButton(
                                 title: "设计多片段引物",
                                 icon: "sparkles",
                                 tint: .green,
-                                isLoading: vm.isDesigning,
-                                fillWidth: true
+                                isLoading: vm.isDesigning
                             ) {
                                 Task { await vm.design() }
                             }
                             
                             if vm.vectorDNAInfo != nil && !vm.primers.isEmpty {
-                                StudioPrimaryActionButton(
+                                StudioActionPillButton(
                                     title: "导出重组质粒 .dna",
                                     icon: "bolt.fill",
-                                    tint: .purple,
-                                    fillWidth: true
+                                    tint: .purple
                                 ) {
                                     Task { await vm.generateRecombinantDNAAndOpen() }
                                 }
                             }
                             
                             if !vm.primers.isEmpty {
-                                StudioPrimaryActionButton(
+                                StudioActionPillButton(
                                     title: "加入引物池",
                                     icon: "cart.badge.plus",
                                     tint: .teal,
-                                    fillWidth: true,
                                     action: vm.addAllToCart
                                 )
                             }

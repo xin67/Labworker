@@ -160,25 +160,23 @@ public struct EntryCloneView: View {
                             }
                         }
                         
-                        // 图2风格对称全宽主操作按钮行
-                        HStack(spacing: 10) {
+                        // 居左紧凑主操作栏（Plan A）
+                        StudioActionBar(statusText: vm.cleanLength < 50 ? "输入 ≥ 50 bp 插入序列后可设计" : nil) {
                             StudioPrimaryActionButton(
                                 title: "设计入门克隆引物",
                                 icon: "sparkles",
                                 tint: .blue,
                                 isLoading: vm.isDesigning,
-                                isDisabled: vm.cleanLength < 50,
-                                fillWidth: true
+                                isDisabled: vm.cleanLength < 50
                             ) {
                                 Task { await vm.design() }
                             }
                             
                             if vm.primerF != nil || vm.primerR != nil {
-                                StudioPrimaryActionButton(
+                                StudioActionPillButton(
                                     title: "加入引物池",
                                     icon: "cart.badge.plus",
                                     tint: .green,
-                                    fillWidth: true,
                                     action: vm.addAllToCart
                                 )
                             }

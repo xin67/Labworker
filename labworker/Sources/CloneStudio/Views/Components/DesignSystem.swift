@@ -1343,26 +1343,36 @@ public struct StudioOverflowToolbar: View {
         return item.isIconOnlyAction ? 28 : item.fallbackWidth
     }
     
-    private func totalWidth(for count: Int) -> CGFloat {
+    /// 过滤当前不可用的条件性工具项（如尚未生成/载入质粒图谱时自动隐藏「图谱」切换按钮）
+    private var activeItems: [StudioToolbarItem] {
+        items.filter { item in
+            if case let .plasmidToggle(_, isAvailable) = item.payload {
+                return isAvailable
+            }
+            return true
+        }
+    }
+
+    private func totalWidth(for count: Int, in list: [StudioToolbarItem]) -> CGFloat {
         guard count > 0 else { return 0 }
         var total: CGFloat = 0
         for idx in 0..<count {
-            let item = items[idx]
+            let item = list[idx]
             total += widthOf(item)
             if idx > 0 {
-                total += joinsGroup(items[idx - 1], item) ? 1.0 : 8.0
+                total += joinsGroup(list[idx - 1], item) ? 1.0 : 8.0
             }
         }
         return total
     }
     
-    private var visibleCount: Int {
-        guard !items.isEmpty, availableWidth > 1 else { return 0 }
-        if totalWidth(for: items.count) <= availableWidth + 0.5 {
-            return items.count
+    private func visibleCount(for list: [StudioToolbarItem]) -> Int {
+        guard !list.isEmpty, availableWidth > 1 else { return 0 }
+        if totalWidth(for: list.count, in: list) <= availableWidth + 0.5 {
+            return list.count
         }
-        for count in stride(from: items.count - 1, through: 1, by: -1) {
-            if totalWidth(for: count) + 38.0 <= availableWidth + 0.5 {
+        for count in stride(from: list.count - 1, through: 1, by: -1) {
+            if totalWidth(for: count, in: list) + 38.0 <= availableWidth + 0.5 {
                 return count
             }
         }
@@ -1383,9 +1393,10 @@ public struct StudioOverflowToolbar: View {
     }
     
     public var body: some View {
-        let visCount = visibleCount
-        let visibleSlice = items.prefix(visCount)
-        let overflowSlice = items.dropFirst(visCount)
+        let list = activeItems
+        let visCount = visibleCount(for: list)
+        let visibleSlice = list.prefix(visCount)
+        let overflowSlice = list.dropFirst(visCount)
         let runs = buildRuns(for: visibleSlice)
         
         Color.clear
@@ -1399,7 +1410,7 @@ public struct StudioOverflowToolbar: View {
                 }
             }
             .background {
-                measurementOverlay
+                measurementOverlay(for: list)
             }
             .overlay(alignment: .trailing) {
                 GlassEffectContainer(spacing: 8) {
@@ -1419,9 +1430,9 @@ public struct StudioOverflowToolbar: View {
     }
     
     @ViewBuilder
-    private var measurementOverlay: some View {
+    private func measurementOverlay(for list: [StudioToolbarItem]) -> some View {
         HStack(spacing: 4) {
-            ForEach(items) { item in
+            ForEach(list) { item in
                 intrinsicItemView(item)
                     .fixedSize(horizontal: true, vertical: false)
                     .onGeometryChange(for: CGFloat.self) { proxy in
@@ -2660,6 +2671,7 @@ public struct StudioPrimaryActionButton: View {
     public var isLoading: Bool = false
     public var isDisabled: Bool = false
     public var fillWidth: Bool = false
+    public var minWidth: CGFloat? = 148
     public let action: () -> Void
     
     public init(
@@ -2669,6 +2681,7 @@ public struct StudioPrimaryActionButton: View {
         isLoading: Bool = false,
         isDisabled: Bool = false,
         fillWidth: Bool = false,
+        minWidth: CGFloat? = 148,
         action: @escaping () -> Void
     ) {
         self.title = title
@@ -2677,6 +2690,7 @@ public struct StudioPrimaryActionButton: View {
         self.isLoading = isLoading
         self.isDisabled = isDisabled
         self.fillWidth = fillWidth
+        self.minWidth = minWidth
         self.action = action
     }
     
@@ -2694,9 +2708,12 @@ public struct StudioPrimaryActionButton: View {
                 }
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
             }
-            .frame(maxWidth: fillWidth ? .infinity : nil)
+            .padding(.horizontal, fillWidth ? 0 : 6)
+            .frame(minWidth: fillWidth ? nil : minWidth, maxWidth: fillWidth ? .infinity : nil)
         }
+        .fixedSize(horizontal: !fillWidth, vertical: false)
         .studioGlassButton(
             tint: tint,
             isProminent: true,
@@ -2704,6 +2721,35 @@ public struct StudioPrimaryActionButton: View {
             controlSize: .large,
             fillWidth: fillWidth
         )
+        .opacity(inactive ? 0.65 : 1.0)
+    }
+}
+
+/// 全局工作台居左紧凑主操作栏（Plan A：主按钮内容自适应宽度 + 次级中性玻璃按钮并排，窄屏自动折行，禁止全宽长条横幅）
+public struct StudioActionBar<Content: View>: View {
+    public let statusText: String?
+    public let content: Content
+    
+    public init(
+        statusText: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.statusText = statusText
+        self.content = content()
+    }
+    
+    public var body: some View {
+        StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 8) {
+            content
+            if let statusText, !statusText.isEmpty {
+                Text(statusText)
+                    .font(.system(size: 11.5))
+                    .foregroundColor(.secondary)
+                    .monospacedDigit()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 2)
     }
 }
 

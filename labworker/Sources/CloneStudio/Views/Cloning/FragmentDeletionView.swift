@@ -436,25 +436,23 @@ public struct FragmentDeletionView: View {
                             }
                         }
                         
-                        // 4. 参考图2对称全宽主操作栏
-                        HStack(spacing: 10) {
+                        // 4. 居左紧凑主操作栏（Plan A）
+                        StudioActionBar(statusText: plasmidBp < 100 ? "输入 ≥ 100 bp 质粒序列后可设计" : nil) {
                             StudioPrimaryActionButton(
                                 title: "设计反向 PCR 缺失引物",
                                 icon: "scissors",
                                 tint: .purple,
                                 isLoading: vm.isDesigning,
-                                isDisabled: plasmidBp < 100,
-                                fillWidth: true
+                                isDisabled: plasmidBp < 100
                             ) {
                                 Task { await vm.design() }
                             }
                             
                             if !vm.primers.isEmpty {
-                                StudioPrimaryActionButton(
+                                StudioActionPillButton(
                                     title: "加入引物池",
                                     icon: "cart.badge.plus",
                                     tint: .green,
-                                    fillWidth: true,
                                     action: vm.addAllToCart
                                 )
                             }

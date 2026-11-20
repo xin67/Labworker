@@ -197,32 +197,30 @@ public struct SingleFragmentCloneView: View {
                             }
                         }
                         
-                        // 4. 参考图2对称全宽主操作栏
-                        VStack(alignment: .leading, spacing: 10) {
+                        // 4. 居左紧凑主操作栏（Plan A）
+                        VStack(alignment: .leading, spacing: 8) {
                             if vm.mode == .pcr {
                                 Toggle("同时生成载体反向 PCR 扩增引物", isOn: $vm.includeVectorPCRPrimers)
                                     .toggleStyle(.checkbox)
                                     .font(.system(size: 13, weight: .medium))
                             }
                             
-                            HStack(spacing: 10) {
+                            StudioActionBar(statusText: cleanInsertLen < 50 ? "输入 ≥ 50 bp 插入序列后可设计" : nil) {
                                 StudioPrimaryActionButton(
                                     title: "设计单片段引物",
                                     icon: "sparkles",
                                     tint: .teal,
                                     isLoading: vm.isDesigning,
-                                    isDisabled: cleanInsertLen < 50,
-                                    fillWidth: true
+                                    isDisabled: cleanInsertLen < 50
                                 ) {
                                     Task { await vm.design() }
                                 }
                                 
                                 if !vm.primers.isEmpty {
-                                    StudioPrimaryActionButton(
+                                    StudioActionPillButton(
                                         title: "加入引物池",
                                         icon: "cart.badge.plus",
                                         tint: .green,
-                                        fillWidth: true,
                                         action: vm.addAllToCart
                                     )
                                 }

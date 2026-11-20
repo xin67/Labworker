@@ -161,36 +161,33 @@ public struct MutationView: View {
                             }
                         }
                         
-                        // 5. 参考图2对称全宽主操作栏
-                        HStack(spacing: 10) {
+                        // 5. 居左紧凑主操作栏（Plan A）
+                        StudioActionBar(statusText: (upCount < 50 || downCount < 50) ? "上下游序列均需 ≥ 50 bp" : nil) {
                             StudioPrimaryActionButton(
                                 title: "设计突变引物",
                                 icon: "wand.and.stars",
                                 tint: .pink,
                                 isLoading: vm.isDesigning,
-                                isDisabled: upCount < 50 || downCount < 50,
-                                fillWidth: true
+                                isDisabled: upCount < 50 || downCount < 50
                             ) {
                                 Task { await vm.design() }
                             }
                             
                             if !vm.primers.isEmpty {
                                 if vm.plasmidDNAInfo != nil {
-                                    StudioPrimaryActionButton(
+                                    StudioActionPillButton(
                                         title: "导出突变质粒 .dna",
                                         icon: "bolt.fill",
-                                        tint: .purple,
-                                        fillWidth: true
+                                        tint: .purple
                                     ) {
                                         Task { await vm.generateMutantDNAAndOpen() }
                                     }
                                 }
                                 
-                                StudioPrimaryActionButton(
+                                StudioActionPillButton(
                                     title: "加入引物池",
                                     icon: "cart.badge.plus",
                                     tint: .green,
-                                    fillWidth: true,
                                     action: vm.addAllToCart
                                 )
                             }

@@ -40,27 +40,25 @@ public struct SequenceToolsView: View {
                             minHeight: 100
                         )
                         
-                        // 图2风格：第一层对称分段转换胶囊组 + 第二层醒目全宽测算按钮
-                        HStack(spacing: 10) {
-                            StudioSegmentedPillGroup(
-                                items: [
-                                    StudioPillGroupItem(title: "反向互补", icon: "arrow.left.arrow.right", tint: .blue, action: vm.doReverseComplement),
-                                    StudioPillGroupItem(title: "仅反向", icon: "arrow.uturn.backward", action: vm.doReverse),
-                                    StudioPillGroupItem(title: "仅互补", icon: "arrow.up.arrow.down", action: vm.doComplement)
-                                ],
-                                expandEqually: true
-                            )
-                            
+                        // 居左紧凑操作栏（测算主按钮 + 序列转换分段胶囊组）
+                        StudioActionBar {
                             StudioPrimaryActionButton(
                                 title: vm.isCalculating ? "计算中..." : "测算解链温度 (Tm)",
                                 icon: "thermometer.medium",
                                 tint: .orange,
                                 isLoading: vm.isCalculating,
-                                isDisabled: vm.cleanLength == 0,
-                                fillWidth: true
+                                isDisabled: vm.cleanLength == 0
                             ) {
                                 Task { await vm.calculateTm() }
                             }
+                            
+                            StudioSegmentedPillGroup(
+                                items: [
+                                    StudioPillGroupItem(title: "反向互补", icon: "arrow.left.arrow.right", tint: .blue, action: vm.doReverseComplement),
+                                    StudioPillGroupItem(title: "仅反向", icon: "arrow.uturn.backward", action: vm.doReverse),
+                                    StudioPillGroupItem(title: "仅互补", icon: "arrow.up.arrow.down", action: vm.doComplement)
+                                ]
+                            )
                         }
                     }
                 }

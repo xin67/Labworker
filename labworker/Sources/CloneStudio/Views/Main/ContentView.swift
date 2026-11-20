@@ -172,9 +172,9 @@ public struct ContentView: View {
                 VStack(spacing: 0) {
                     detailContent
                         .animation(nil, value: appState.selectedNav)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
                 .background(mainWorkspaceBackground)
                 .overlay(alignment: .leading) {
                     Rectangle()
