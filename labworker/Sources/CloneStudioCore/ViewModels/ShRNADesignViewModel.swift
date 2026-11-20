@@ -16,8 +16,20 @@ public final class ShRNADesignViewModel: ObservableObject {
         }
     }
     
-    // 自定义模式
-    @Published public var isCustomInputMode: Bool = false
+    // 靶点来源模式（支持内嵌 Broad GPP Public Portal 在线对比）
+    public enum SourceMode: String, CaseIterable, Identifiable, Sendable {
+        case library = "TRC 文库"
+        case broadGPP = "Broad GPP"
+        case custom = "手动输入"
+        
+        public var id: String { rawValue }
+    }
+    
+    @Published public var sourceMode: SourceMode = .library
+    public var isCustomInputMode: Bool {
+        get { sourceMode == .custom }
+        set { sourceMode = newValue ? .custom : .library }
+    }
     @Published public var customGeneName: String = ""
     @Published public var customSequence: String = ""
     
@@ -126,7 +138,7 @@ public final class ShRNADesignViewModel: ObservableObject {
     /// 构建当前本地查找/选中的 shRNA 对比序列集合并同步至全局状态
     public func buildLocalCompareTargets() -> [LocalCompareTarget] {
         var items: [LocalCompareTarget] = []
-        if isCustomInputMode {
+        if isCustomInputMode || (searchResults.isEmpty && !customSequence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
             let clean = BioSequence.clean(customSequence)
             if clean.count >= 15 {
                 let geneLabel = customGeneName.trimmingCharacters(in: .whitespaces).isEmpty ? "自定义" : customGeneName
@@ -167,11 +179,44 @@ public final class ShRNADesignViewModel: ObservableObject {
         AppState.shared.syncLocalCompareTargets(items, replaceSourceType: .shRNA)
     }
     
+    /// 切换至内嵌「Broad GPP」在线对比，自动带入当前基因与本地 shRNA 序列并按需查询
+    public func openInlineBroadGPPCompare(gene: String? = nil, forceRefresh: Bool = false) {
+        let provided = (gene ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let qClean = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolved: String = {
+            if !provided.isEmpty { return provided }
+            if !qClean.isEmpty { return qClean }
+            if let sel = searchResults.first(where: { selectedTargetIDs.contains($0.id) }) { return sel.gene }
+            if let first = searchResults.first { return first.gene }
+            let customG = customGeneName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !customG.isEmpty { return customG }
+            return ""
+        }()
+        
+        syncLocalTargetsToGlobalComparePool()
+        sourceMode = .broadGPP
+        
+        let gppVM = WorkspaceSessionManager.shared.broadGPPVM
+        let effectiveGene = resolved.isEmpty ? gppVM.gene.trimmingCharacters(in: .whitespacesAndNewlines) : resolved
+        guard !effectiveGene.isEmpty else { return }
+        
+        let needsFetch = forceRefresh
+            || gppVM.targets.isEmpty
+            || gppVM.gene.caseInsensitiveCompare(effectiveGene) != .orderedSame
+            || gppVM.species != species
+        
+        gppVM.updateTarget(gene: effectiveGene, species: species)
+        if needsFetch {
+            gppVM.fetchTargets(forceRefresh: forceRefresh)
+        }
+    }
+    
     /// 一键生成 shRNA 发夹引物
     public func generatePrimers() {
         var list: [PrimerItem] = []
         
-        if isCustomInputMode {
+        switch sourceMode {
+        case .custom:
             let clean = BioSequence.clean(customSequence)
             guard clean.count >= 18 && clean.count <= 26 else {
                 errorMessage = "自定义 shRNA 靶点长度通常为 19～21 bp（当前：\(clean.count) bp）"
@@ -189,7 +234,54 @@ public final class ShRNADesignViewModel: ObservableObject {
             )
             list.append(pair.fwdPrimer)
             list.append(pair.revPrimer)
-        } else {
+            
+        case .broadGPP:
+            let gppVM = WorkspaceSessionManager.shared.broadGPPVM
+            let selected = gppVM.sortedTargets.filter { gppVM.selectedTargetIDs.contains($0.id) }
+            guard !selected.isEmpty else {
+                errorMessage = "请先在「Broad GPP」中检索基因，并至少勾选一条 TRC shRNA 克隆！"
+                showErrorAlert = true
+                return
+            }
+            let gppGene = (gppVM.resolvedGeneSymbol ?? gppVM.gene).trimmingCharacters(in: .whitespacesAndNewlines)
+            let resolvedGene = gppGene.isEmpty
+                ? (searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "shTarget" : searchQuery.trimmingCharacters(in: .whitespacesAndNewlines))
+                : gppGene
+            let userPrefix = customPrefix.trimmingCharacters(in: .whitespacesAndNewlines)
+            for target in selected {
+                let effectivePrefix = userPrefix.isEmpty ? target.primaryCloneID : userPrefix
+                let pair = ShRNADesigner.designPair(
+                    target: target.targetSequence,
+                    geneName: resolvedGene,
+                    index: target.rank,
+                    prefix: effectivePrefix,
+                    species: species,
+                    loop: loopSequence
+                )
+                let noteSuffix = " | Broad TRC: \(target.primaryCloneID)"
+                list.append(PrimerItem(
+                    name: pair.fwdPrimer.name,
+                    fullSequence: pair.fwdPrimer.fullSequence,
+                    homologyArm: pair.fwdPrimer.homologyArm,
+                    specificSequence: pair.fwdPrimer.specificSequence,
+                    tm: pair.fwdPrimer.tm,
+                    targetPurpose: pair.fwdPrimer.targetPurpose,
+                    notes: pair.fwdPrimer.notes + noteSuffix,
+                    sourceTool: pair.fwdPrimer.sourceTool
+                ))
+                list.append(PrimerItem(
+                    name: pair.revPrimer.name,
+                    fullSequence: pair.revPrimer.fullSequence,
+                    homologyArm: pair.revPrimer.homologyArm,
+                    specificSequence: pair.revPrimer.specificSequence,
+                    tm: pair.revPrimer.tm,
+                    targetPurpose: pair.revPrimer.targetPurpose,
+                    notes: pair.revPrimer.notes + noteSuffix,
+                    sourceTool: pair.revPrimer.sourceTool
+                ))
+            }
+            
+        case .library:
             let selectedTargets = searchResults.filter { selectedTargetIDs.contains($0.id) }
             guard !selectedTargets.isEmpty else {
                 errorMessage = "请先搜索基因，并至少勾选一条需要生成的 shRNA 靶点！"
@@ -213,7 +305,7 @@ public final class ShRNADesignViewModel: ObservableObject {
         
         self.generatedPrimers = list
         syncLocalTargetsToGlobalComparePool()
-        AppState.shared.showToast("已成功生成 \(list.count) 条 shRNA 配对引物（已同步至 CHOPCHOP 对比池）！")
+        AppState.shared.showToast("已成功生成 \(list.count) 条 shRNA 配对引物（已同步至对比高亮池）！")
     }
     
     public func addAllToCart() {
@@ -221,15 +313,9 @@ public final class ShRNADesignViewModel: ObservableObject {
         AppState.shared.addPrimersToCart(generatedPrimers)
     }
     
-    /// 跳转 CHOPCHOP 对比（自动携带当前本地查找/选中的 shRNA 靶点进行高亮对比）
+    /// 切换并展开内嵌 Broad GPP 在线克隆对比
     public func compareInCHOPCHOP(gene: String) {
-        let localItems = buildLocalCompareTargets()
-        AppState.shared.navigateToCHOPCHOP(
-            gene: gene,
-            species: species,
-            localTargets: localItems,
-            sourceType: .shRNA
-        )
+        openInlineBroadGPPCompare(gene: gene, forceRefresh: false)
     }
     
     /// 一键清空当前 shRNA 检索与引物生成状态

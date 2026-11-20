@@ -53,6 +53,14 @@ public enum TargetSpecies: String, CaseIterable, Identifiable, Codable, Sendable
         }
     }
     
+    /// NCBI Taxon ID（用于 Broad GPP Public Portal 物种检索）
+    public var ncbiTaxonId: String {
+        switch self {
+        case .human: return "9606"
+        case .mouse: return "10090"
+        }
+    }
+    
     public var themeColor: Color {
         switch self {
         case .human: return .blue

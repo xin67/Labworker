@@ -26,8 +26,20 @@ public final class SgRNADesignViewModel: ObservableObject {
         }
     }
     
-    // 自定义靶点模式
-    @Published public var isCustomInputMode: Bool = false
+    // 靶点来源模式（支持平滑内嵌三源在线对比）
+    public enum SourceMode: String, CaseIterable, Identifiable, Sendable {
+        case library = "本地文库"
+        case onlineCompare = "在线对比"
+        case custom = "手动输入"
+        
+        public var id: String { rawValue }
+    }
+    
+    @Published public var sourceMode: SourceMode = .library
+    public var isCustomInputMode: Bool {
+        get { sourceMode == .custom }
+        set { sourceMode = newValue ? .custom : .library }
+    }
     @Published public var customGeneName: String = ""
     @Published public var customSequence: String = ""
     
@@ -137,7 +149,7 @@ public final class SgRNADesignViewModel: ObservableObject {
     /// 构建当前本地查找/选中的 sgRNA 对比序列集合并同步至全局状态
     public func buildLocalCompareTargets() -> [LocalCompareTarget] {
         var items: [LocalCompareTarget] = []
-        if isCustomInputMode {
+        if isCustomInputMode || (searchResults.isEmpty && !customSequence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
             let clean = BioSequence.clean(customSequence)
             if clean.count >= 15 {
                 let geneLabel = customGeneName.trimmingCharacters(in: .whitespaces).isEmpty ? "自定义" : customGeneName
@@ -178,11 +190,44 @@ public final class SgRNADesignViewModel: ObservableObject {
         AppState.shared.syncLocalCompareTargets(items, replaceSourceType: .sgRNA)
     }
     
+    /// 切换至内嵌「在线对比」（VBC-Score + UCSC CRISPOR + CHOPCHOP），自动带入当前基因与本地序列并按需并发查询
+    public func openInlineOnlineCompare(gene: String? = nil, forceRefresh: Bool = false) {
+        let provided = (gene ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let qClean = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolved: String = {
+            if !provided.isEmpty { return provided }
+            if !qClean.isEmpty { return qClean }
+            if let sel = searchResults.first(where: { selectedTargetIDs.contains($0.id) }) { return sel.gene }
+            if let first = searchResults.first { return first.gene }
+            let customG = customGeneName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !customG.isEmpty { return customG }
+            return ""
+        }()
+        
+        syncLocalTargetsToGlobalComparePool()
+        sourceMode = .onlineCompare
+        
+        let onlineVM = WorkspaceSessionManager.shared.chopchopVM
+        let effectiveGene = resolved.isEmpty ? onlineVM.gene.trimmingCharacters(in: .whitespacesAndNewlines) : resolved
+        guard !effectiveGene.isEmpty else { return }
+        
+        let needsFetch = forceRefresh
+            || onlineVM.targets.isEmpty
+            || onlineVM.gene.caseInsensitiveCompare(effectiveGene) != .orderedSame
+            || onlineVM.species != species
+        
+        onlineVM.updateTarget(gene: effectiveGene, species: species)
+        if needsFetch {
+            onlineVM.fetchTargets(forceRefresh: forceRefresh)
+        }
+    }
+    
     /// 一键生成引物
     public func generatePrimers() {
         var list: [PrimerItem] = []
         
-        if isCustomInputMode {
+        switch sourceMode {
+        case .custom:
             let clean = BioSequence.clean(customSequence)
             guard clean.count >= 19 && clean.count <= 25 else {
                 errorMessage = "自定义靶点长度通常为 20 bp（当前：\(clean.count) bp）"
@@ -200,7 +245,33 @@ public final class SgRNADesignViewModel: ObservableObject {
             )
             list.append(pair.fwdPrimer)
             list.append(pair.revPrimer)
-        } else {
+            
+        case .onlineCompare:
+            let onlineVM = WorkspaceSessionManager.shared.chopchopVM
+            let selected = onlineVM.sortedTargets.filter { onlineVM.selectedTargetIDs.contains($0.id) }
+            guard !selected.isEmpty else {
+                errorMessage = "请先在「在线对比」中检索基因，并至少勾选一条 sgRNA 靶点！"
+                showErrorAlert = true
+                return
+            }
+            let onlineGene = onlineVM.gene.trimmingCharacters(in: .whitespacesAndNewlines)
+            let resolvedGene = onlineGene.isEmpty
+                ? (searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "sgTarget" : searchQuery.trimmingCharacters(in: .whitespacesAndNewlines))
+                : onlineGene
+            for target in selected {
+                let pair = CRISPRDesigner.designPair(
+                    target: target.spacer,
+                    geneName: resolvedGene,
+                    index: target.rank,
+                    prefix: customPrefix,
+                    species: species,
+                    vector: vectorOverhang
+                )
+                list.append(pair.fwdPrimer)
+                list.append(pair.revPrimer)
+            }
+            
+        case .library:
             let selectedTargets = searchResults.filter { selectedTargetIDs.contains($0.id) }
             guard !selectedTargets.isEmpty else {
                 errorMessage = "请先搜索基因，并至少勾选一条需要生成引物的靶点序列！"
@@ -224,7 +295,7 @@ public final class SgRNADesignViewModel: ObservableObject {
         
         self.generatedPrimers = list
         syncLocalTargetsToGlobalComparePool()
-        AppState.shared.showToast("已成功生成 \(list.count) 条 sgRNA 引物（已同步至 CHOPCHOP 对比池）！")
+        AppState.shared.showToast("已成功生成 \(list.count) 条 sgRNA 引物（已同步至对比高亮池）！")
     }
     
     /// 全部加入订购单
@@ -233,15 +304,9 @@ public final class SgRNADesignViewModel: ObservableObject {
         AppState.shared.addPrimersToCart(generatedPrimers)
     }
     
-    /// 跳转 CHOPCHOP 对比（自动携带当前本地查找/选中的 sgRNA 靶点进行高亮对比）
+    /// 切换并展开内嵌三源在线靶点对比
     public func compareInCHOPCHOP(gene: String) {
-        let localItems = buildLocalCompareTargets()
-        AppState.shared.navigateToCHOPCHOP(
-            gene: gene,
-            species: species,
-            localTargets: localItems,
-            sourceType: .sgRNA
-        )
+        openInlineOnlineCompare(gene: gene, forceRefresh: false)
     }
     
     /// 一键清空当前 sgRNA 检索与引物生成状态

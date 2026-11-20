@@ -119,12 +119,14 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         self.species = species
     }
     
-    /// 当前参与对比的「用户重点选中/生成/手动添加」的本地 SG/SH 序列
+    /// 当前参与对比的「用户重点选中/生成/手动添加」的本地 SG 序列
     public var activeUserLocalTargets: [LocalCompareTarget] {
-        AppState.shared.localCompareTargets.filter { $0.isSelectedOrGenerated }
+        AppState.shared.localCompareTargets.filter {
+            $0.isSelectedOrGenerated && ($0.sourceType == .sgRNA || $0.sourceType == .custom)
+        }
     }
     
-    /// 手动添加一条或多条本地 sgRNA / shRNA 序列进行高亮对比
+    /// 手动添加一条或多条本地 sgRNA 序列进行高亮对比
     public func addManualCompareSequence() {
         let raw = manualCompareInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return }
@@ -134,25 +136,24 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
             .filter { $0.count >= 15 }
         
         guard !parts.isEmpty else {
-            AppState.shared.showToast("请输入至少 15 bp 的有效 sgRNA 或 shRNA 靶点序列")
+            AppState.shared.showToast("请输入至少 15 bp 的有效 sgRNA 靶点序列")
             return
         }
         
         let existingCount = activeUserLocalTargets.count
         var newItems: [LocalCompareTarget] = []
         for (i, seq) in parts.enumerated() {
-            let typeLabel: LocalCompareTarget.SourceType = (seq.count == 20) ? .sgRNA : (seq.count >= 21 ? .shRNA : .custom)
             newItems.append(LocalCompareTarget(
-                label: "手动对比 #\(existingCount + i + 1)",
+                label: "手动 sg#\(existingCount + i + 1)",
                 sequence: seq,
-                sourceType: typeLabel,
+                sourceType: .sgRNA,
                 isSelectedOrGenerated: true
             ))
         }
         AppState.shared.syncLocalCompareTargets(newItems, replaceSourceType: nil)
         manualCompareInput = ""
         recomputeLocalMatches()
-        AppState.shared.showToast("已添加 \(newItems.count) 条序列至 CHOPCHOP 高亮对比池")
+        AppState.shared.showToast("已添加 \(newItems.count) 条序列至在线对比高亮池")
     }
     
     /// 移除单条本地对比序列
@@ -161,25 +162,28 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         recomputeLocalMatches()
     }
     
-    /// 清空全部自定义/已选对比序列
+    /// 清空全部自定义/已选 SG 对比序列
     public func clearUserLocalCompareTargets() {
-        AppState.shared.localCompareTargets.removeAll { $0.isSelectedOrGenerated }
+        AppState.shared.localCompareTargets.removeAll {
+            $0.isSelectedOrGenerated && ($0.sourceType == .sgRNA || $0.sourceType == .custom)
+        }
         showOnlyLocalMatches = false
         recomputeLocalMatches()
     }
     
-    /// 自动从本地 SQLite 文库补充同基因的 sgRNA 与 shRNA 候选，结合用户已选序列计算全部 CHOPCHOP 命中
+    /// 自动从本地 SQLite 文库补充同基因的 sgRNA 候选，结合用户已选序列计算全部命中
     public func recomputeLocalMatches() {
         guard !targets.isEmpty else {
             matchMap = [:]
             return
         }
         
-        var pool = AppState.shared.localCompareTargets
+        var pool = AppState.shared.localCompareTargets.filter {
+            $0.sourceType == .sgRNA || $0.sourceType == .custom
+        }
         let cleanGene = gene.trimmingCharacters(in: .whitespacesAndNewlines)
         if !cleanGene.isEmpty {
             let libSg = GenomicLibraryService.shared.search(query: cleanGene, species: species, type: .sgRNA)
-            let libSh = GenomicLibraryService.shared.search(query: cleanGene, species: species, type: .shRNA)
             let existingSeqs = Set(pool.map { $0.cleanSequence })
             
             for sg in libSg where !existingSeqs.contains(sg.sequence.uppercased()) {
@@ -187,14 +191,6 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
                     label: "本地文库 sgRNA",
                     sequence: sg.sequence,
                     sourceType: .sgRNA,
-                    isSelectedOrGenerated: false
-                ))
-            }
-            for sh in libSh where !existingSeqs.contains(sh.sequence.uppercased()) {
-                pool.append(LocalCompareTarget(
-                    label: "本地文库 shRNA",
-                    sequence: sh.sequence,
-                    sourceType: .shRNA,
                     isSelectedOrGenerated: false
                 ))
             }
@@ -620,36 +616,45 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
     }
     
     /// 为单条靶点生成配对引物并加入订购单
-    public func addPairToCart(_ target: CHOPCHOPTarget) {
+    public func addPairToCart(
+        _ target: CHOPCHOPTarget,
+        vector: CRISPRDesigner.VectorOverhang = .lentiCRISPRv2,
+        prefix: String = ""
+    ) {
+        let trimmedPrefix = prefix.trimmingCharacters(in: .whitespacesAndNewlines)
         let pair = CRISPRDesigner.designPair(
             target: target.spacer,
             geneName: gene,
             index: target.rank,
-            prefix: "CHOP",
+            prefix: trimmedPrefix.isEmpty ? "CHOP" : trimmedPrefix,
             species: species,
-            vector: .lentiCRISPRv2
+            vector: vector
         )
         AppState.shared.addPrimersToCart([pair.fwdPrimer, pair.revPrimer])
         AppState.shared.showToast("已将 \(gene) sg#\(target.rank) 配对引物加入订购单！")
     }
     
     /// 将所有选中的靶点生成引物并加入订购单
-    public func addSelectedToCart() {
+    public func addSelectedToCart(
+        vector: CRISPRDesigner.VectorOverhang = .lentiCRISPRv2,
+        prefix: String = ""
+    ) {
         let selected = sortedTargets.filter { selectedTargetIDs.contains($0.id) }
         guard !selected.isEmpty else {
             AppState.shared.showToast("请至少勾选一条靶点")
             return
         }
         
+        let trimmedPrefix = prefix.trimmingCharacters(in: .whitespacesAndNewlines)
         var primers: [PrimerItem] = []
         for t in selected {
             let pair = CRISPRDesigner.designPair(
                 target: t.spacer,
                 geneName: gene,
                 index: t.rank,
-                prefix: "CHOP",
+                prefix: trimmedPrefix.isEmpty ? "CHOP" : trimmedPrefix,
                 species: species,
-                vector: .lentiCRISPRv2
+                vector: vector
             )
             primers.append(pair.fwdPrimer)
             primers.append(pair.revPrimer)

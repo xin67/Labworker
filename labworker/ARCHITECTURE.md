@@ -11,10 +11,10 @@
 
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
-| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、5 张内置公开示例实机界面截图、Mermaid 架构工作流、19 模块速览、MCP 配置与 `v20261115` DMG 下载及源码构建说明 |
+| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、5 张内置公开示例实机界面截图、Mermaid 架构工作流、18 模块速览、MCP 配置与 `v20261115` DMG 下载及源码构建说明 |
 | `../docs/images/*.png` | GitHub 根目录 `README.md` 引用的实机高分界面截图集（`01-single-clone-map.png` 至 `06-qpcr-analysis.png`，仅使用公开示例数据，零隐私脱敏留档） |
 | `../.github/workflows/ci.yml` | GitHub Actions `macos-14` 自动化 CI 门禁：在每次 `push`/`pull_request` 执行 Python 跨语言测试向量、防篡改校验及 `check_doc_counts.sh` 全量回归 |
-| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、19 模块算法速查、UI 响应式规范与 MCP 20261115 协议指南 |
+| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、18 模块算法速查、UI 响应式规范与 MCP 20261115 协议指南 |
 | `labworker/HANDOVER.md` | AI 项目架构交接与维护规范手册：包含目录拓扑、Single Source of Truth 门禁契约、双端 (Swift + Python MCP) 同步机制、跨语言测试向量与编码红线 |
 | `labworker/Package.swift` | SwiftPM 工程定义（Swift 6.4 / 最低支持 `macOS 27.0`），包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |
@@ -51,9 +51,9 @@
 | `Views/Cloning/SangerVerificationView.swift` | Sanger 测序 (`.ab1` / `.abi` / `.seq`) 四色荧光峰图可视化、变异胶囊定位跳转与环状质粒双向比对验证视图 |
 | `Views/Mutagenesis/MutationView.swift` | 定点突变引物设计与交互式密码子/氨基酸点选突变视图 |
 | `Views/Pool/PlasmidPoolView.swift` | 本地质粒池纯粹管理视图（支持拖入 `.dna` 批量建库、特征/酶切位点检视与构建谱系树） |
-| `Views/CRISPR/SgRNADesignView.swift` | CRISPR sgRNA 离线文库检索与引物设计视图 |
-| `Views/RNAi/ShRNADesignView.swift` | shRNA 发夹结构离线文库检索与引物设计视图 |
-| `Views/Compare/CHOPCHOPWebView.swift` | 多源在线靶点对比视图（CHOPCHOP + VBC-Score + UCSC CRISPOR 三源并发检索与本地已选靶点置顶对比） |
+| `Views/CRISPR/SgRNADesignView.swift` | CRISPR sgRNA 离线文库检索、内嵌三源在线靶点对比与退火引物设计视图 |
+| `Views/RNAi/ShRNADesignView.swift` | shRNA 发夹结构离线 TRC 文库、内嵌 Broad GPP 在线克隆对比与引物设计视图 |
+| `Views/Compare/TargetOnlineComparePanels.swift` | 嵌入式多源在线靶点对比辅助面板（`SgRNAOnlineComparePanel` 三源并发比对与 `ShRNABroadGPPComparePanel` Broad GPP Public Portal 比对） |
 | `Views/Calculator/RestructureCalculatorView.swift` | 生物计算器工作台（含克隆与经典 0.03 pmol 摩尔比配液、DNA 换算、蛋白质换算与生理生化公式四大分页外壳） |
 | `Views/Calculator/LabBioCalculatorsView.swift` | DNA 换算（dsDNA / ssDNA / Linear / OD260）、蛋白质换算（摩尔互算 / DNA 编码容量）与生理生化公式（摩尔配制 / C1V1=C2V2 稀释 / 温度转换）视图及原生矢量公式卡 |
 | `Views/Tools/SequenceToolsView.swift` | 序列反向互补、GC 含量与 SantaLucia 近邻热力学 Tm 计算工具视图 |
@@ -63,7 +63,7 @@
 | `Views/BenchTools/GelFigureEditorView.swift` | 凝胶电泳分子量回归拟合、Marker 标准品标尺与多模块（质粒酶切/单多片段克隆/入门克隆/片段删除/定点突变/自定义条带）虚拟电泳对照叠加视图；采用左栏三卡（标曲/预测/明细）与右栏画布单一职责分区、L/S 两档控件对齐、非写死宽度的响应式画布及 `.allowedDynamicRange(.standard)` 胶图 SDR 隔离 |
 | `Views/BenchTools/ProteinWorkbenchView.swift` | 极简声明式窗口响应式蛋白质工作台：三维 Cα 骨架与 Vina 对接盒视窗、SPICE 五维指标、对齐 `DockFlowLab` 的 LIGSITE 共识融合盒与经验启发式 (`empirical_heuristic`) 突变 ΔΔG 扫描视图 |
 | `Views/Order/OrderExportView.swift` | 商业引物合成与测序订单（擎科/生工等）一键导出中心及引物批量写入 `.dna` 工具 |
-| `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观（仿 macOS 27 系统设置 Liquid Glass 实时预览与强度滑块、多色/系统主题色阵与跟随系统设置按钮、HDR 动态高光及双引擎协同调度模式）② 侧边栏定制 ③ MCP 智能体服务 (23 工具) ④ 19 模块全局功能说明书 |
+| `Views/Settings/SettingsView.swift` | 四段式系统设置中心：① 参数与外观（仿 macOS 27 系统设置 Liquid Glass 实时预览与强度滑块、多色/系统主题色阵与跟随系统设置按钮、HDR 动态高光及双引擎协同调度模式）② 侧边栏定制 ③ MCP 智能体服务 (23 工具) ④ 18 模块全局功能说明书 |
 
 ## 三、 核心算法与业务服务层 (`labworker/Sources/CloneStudioCore/`)
 
@@ -75,7 +75,7 @@
 - `ViewModels/FragmentDeletionViewModel.swift`：质粒大片段删除/敲除 (`FragmentDeletionViewModel`，四模式删除边界定位与谱系记录) 状态机。
 - `ViewModels/BenchCalculatorViewModels.swift`：克隆体系用量 (`CalculatorViewModel`)、生物科研换算工作台 (`BioCalculatorSuiteViewModel`) 与序列/SantaLucia $T_m$ 工具 (`SequenceToolViewModel`) 状态机。
 - `ViewModels/SgRNADesignViewModel.swift` & `ShRNADesignViewModel.swift`：CRISPR sgRNA 与 RNAi shRNA 检索及引物生成 ViewModel。
-- `ViewModels/CHOPCHOPCompareViewModel.swift`：三源靶点对比（VBC-Score / UCSC CRISPOR / CHOPCHOP）并发查询、分源过滤与本地靶点匹配 ViewModel。
+- `ViewModels/CHOPCHOPCompareViewModel.swift` & `BroadGPPCompareViewModel.swift`：sgRNA 三源靶点对比（VBC-Score / UCSC CRISPOR / CHOPCHOP）与 shRNA Broad GPP Public Portal 在线对比 ViewModel。
 - `ViewModels/OrderExportViewModel.swift`：商业合成与测序订购单导出 ViewModel。
 
 ### 3.2 纯数学几何与排版引擎 (`Geometry/`)
@@ -113,7 +113,7 @@
 - `Models/RestrictionEnzyme.swift`：限制性内切酶数据库、Type IIS (`BsaI` / `BsmBI` / `BbsI` / `SapI`) 外切规范与双链切点扫描器及 NEB/常用酶预设组。
 - `Models/ConstructHistory.swift`：质粒构建谱系树节点与特征偏移模型。
 - `Models/CloneStudioIconProvider.swift`：动态深浅色应用图标渲染器与右上角状态栏弹窗视图 `CloneStudioStatusBarPopoverView`。
-- `Models/GenomicTarget.swift`、`TargetScore.swift`、`CHOPCHOPResult.swift`、`OrderFormProfile.swift`：多源基因组靶点（`hg38` / `mm39` / `mm10` / `Mus_musculus_GRCm39`）、三源共识合并模型与评分数据模型。
+- `Models/GenomicTarget.swift`、`TargetScore.swift`、`CHOPCHOPResult.swift`、`BroadGPPResult.swift`、`OrderFormProfile.swift`：多源基因组靶点（`hg38` / `mm39` / `mm10` / `Mus_musculus_GRCm39` / NCBI Taxon）、sgRNA 三源共识合并模型、Broad GPP TRC shRNA 克隆与评分数据模型。
 - `Models/PlateLayoutModels.swift`：6～384 孔板几何规格、孔位分配模型、排布规则与科研分组调色板定义。
 - `Models/AnalysisRun.swift`：科学分析可复现溯源记录模型（`schemaVersion = 2`、`AnyCodableValue`、CryptoKit `SHA256` 文件指纹、`ManualEdit` 手动编辑记录、`Exclusion` 剔除记录、`linkedPlasmidIDs` 关联质粒 ID 列表与 `.run.json` 伴随文件写入器 + `AnalysisRunIndexStore` 跨模块索引）。
 
@@ -123,7 +123,7 @@
 - `Services/SnapGeneService.swift`：调用 `snapgene_bridge.py` 解析 `.dna` 质粒特征/引物、注入引物及生成重组质粒 `.dna` 文件。
 - `Services/ExcelOrderExporter.swift`：调用 `export_order.py` 将引物池与测序样品灌装导出为擎科/生工标准 `.xlsx` 订购表。
 - `Services/GenomicLibraryService.swift`：基于 SQLite3 高速检索 `Libraries.sqlite` 中的人源（hg38）/鼠源（mm39）sgRNA 与 shRNA 靶点。
-- `Services/CHOPCHOPService.swift` & `CloneOnlineAPIClient.swift`：三源靶点并发检索服务（CHOPCHOP Python 桥接 + VBC-Score REST + UCSC CRISPOR REST）与在线克隆引物设计客户端。
+- `Services/CHOPCHOPService.swift`、`BroadGPPService.swift` & `CloneOnlineAPIClient.swift`：sgRNA 三源并发检索服务（CHOPCHOP + VBC-Score + UCSC CRISPOR）、Broad GPP Public Portal TRC shRNA 检索服务与在线克隆引物设计客户端。
 - `Services/CloneStudioResourceLocator.swift`：兼容 `.app` Bundle 与 SwiftPM 命令行模式的资源路径定位器。
 
 ### 3.6 打包资源 (`Resources/`)

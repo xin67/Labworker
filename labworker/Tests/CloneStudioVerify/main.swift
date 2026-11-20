@@ -223,6 +223,39 @@ let crisporWebURL = CHOPCHOPService.shared.makeCRISPORWebURL(species: .human, ge
 assert(crisporWebURL.absoluteString.contains("org=hg38"))
 assert(crisporWebURL.absoluteString.contains("chr17") && crisporWebURL.absoluteString.contains("7668421-7687490"))
 
+// Broad GPP Public Portal 离线 URL、CSV 解析、同序列多载体归并、本地 shRNA 匹配及 Codable 校验
+assert(TargetSpecies.human.ncbiTaxonId == "9606" && TargetSpecies.mouse.ncbiTaxonId == "10090")
+let gppGeneURL = BroadGPPService.shared.makeWebURL(geneID: "7157")
+assert(gppGeneURL.absoluteString == "https://portals.broadinstitute.org/gpp/public/gene/details?geneId=7157")
+let gppCloneURL = BroadGPPService.shared.makeCloneWebURL(cloneID: "TRCN0000003756")
+assert(gppCloneURL.absoluteString == "https://portals.broadinstitute.org/gpp/public/clone/details?cloneId=TRCN0000003756")
+
+let sampleGPPSearchCSV = """
+Input,Taxon,"Gene ID","Gene Symbol",Current?,"Gene Description","Current WT Transcripts"
+TP53,human,7157,TP53,Y,"tumor protein p53","NM_000546.5, NM_001126112.2"
+"""
+let parsedGPPGene = BroadGPPService.parseGeneSearchCSV(sampleGPPSearchCSV)
+assert(parsedGPPGene?.geneID == "7157" && parsedGPPGene?.symbol == "TP53" && parsedGPPGene?.transcriptCount == 2)
+
+let sampleGPPClonesCSV = """
+Taxon,"Gene ID","Gene Symbol","Clone ID","Legacy Clone Name","Target Seq",Vector,"Matching Transcripts for Gene","Match Regions","Match %","SDR Match %","Intrinsic Score","Adjusted Score","Matches Other Gene in Same Taxon?","Orig. Target Gene ID","Orig. Target Gene Symbol","Forward Oligo Sequence","Reverse Oligo Sequence",Addgene
+human,7157,TP53,TRCN0000003756,NM_000546.x-941s1c1,CACCATCCACTACAACTACAT,pLKO.1,"NM_000546.5, NM_001126112.2",CDS,100,100,4.95,3.96,N,7157,TP53,CCGGCACCATCCACTACAACTACATCTCGAGATGTAGTTGTAGTGGATGGTGTTTTTG,AATTCAAAAACACCATCCACTACAACTACATCTCGAGATGTAGTTGTAGTGGATGGTG,n/a
+human,7157,TP53,TRCN0000342334,NM_000546.4-887s21c1,CACCATCCACTACAACTACAT,pLKO_005,"NM_000546.5, NM_001126112.2",CDS,100,100,4.95,3.96,N,7157,TP53,CCGGCACCATCCACTACAACTACATCTCGAGATGTAGTTGTAGTGGATGGTGTTTTTG,AATTCAAAAACACCATCCACTACAACTACATCTCGAGATGTAGTTGTAGTGGATGGTG,n/a
+human,7157,TP53,TRCN0000999999,NM_000546.x-off,GGCGTAGGTAGCGATGCTGAT,pLKO.1,"NM_000546.5",3UTR,100,95,4.10,2.05,Y,7157,TP53,,,12345
+"""
+let parsedGPPTargets = BroadGPPService.parseShRNAClonesCSV(sampleGPPClonesCSV)
+assert(parsedGPPTargets.count == 2, "Duplicate 21bp Target Seq across pLKO.1 and pLKO_005 must merge into 1 entry")
+let primaryGPP = parsedGPPTargets.first { $0.primaryCloneID == "TRCN0000003756" }!
+assert(primaryGPP.vectors == ["pLKO.1", "pLKO_005"] && primaryGPP.allCloneIDs.count == 2 && primaryGPP.transcriptCount == 2)
+assert(!primaryGPP.matchesOtherGene && primaryGPP.isHighlySpecific && primaryGPP.addgeneID == nil)
+let offTargetGPP = parsedGPPTargets.first { $0.primaryCloneID == "TRCN0000999999" }!
+assert(offTargetGPP.matchesOtherGene && offTargetGPP.addgeneID == "12345" && primaryGPP.combinedScore.score > offTargetGPP.combinedScore.score)
+let localShMatch = LocalCompareTarget(label: "本地已选 sh#1", sequence: "CACCATCCACTACAACTACAT", sourceType: .shRNA, isSelectedOrGenerated: true)
+assert(primaryGPP.matchAgainstLocalTargets([localShMatch])?.kind == .exact)
+let gppEncoded = try JSONEncoder().encode(parsedGPPTargets)
+let gppDecoded = try JSONDecoder().decode([BroadGPPShRNATarget].self, from: gppEncoded)
+assert(gppDecoded.count == 2 && gppDecoded[0].combinedScore.score == primaryGPP.combinedScore.score)
+
 if ProcessInfo.processInfo.environment["CLONESTUDIO_ONLINE_TEST"] == "1" {
     do {
         let chopTargets = try await CHOPCHOPService.shared.queryTargets(gene: "TP53", species: .human, timeout: 10)
@@ -563,16 +596,25 @@ if case .reverseComplementOverlap(let len) = rcHit?.kind {
     assertionFailure("Reverse complement match failed")
 }
 
-// 验证切换功能条目 (selectedNav) 绝不清空 CHOPCHOP / sgRNA / shRNA 查询结果
+// 验证切换功能条目 (selectedNav) 绝不清空 CHOPCHOP / Broad GPP / sgRNA / shRNA 查询结果
 await MainActor.run {
     let session = WorkspaceSessionManager.shared
     session.chopchopVM.gene = "TP53"
     session.chopchopVM.targets = [chopTarget1, chopTargetLowEff]
+    session.broadGPPVM.gene = "TP53"
+    session.broadGPPVM.targets = parsedGPPTargets
+    session.sgRNAVM.sourceMode = .onlineCompare
+    session.shRNAVM.sourceMode = .broadGPP
     AppState.shared.selectedNav = .singleFragment
     AppState.shared.selectedNav = .sgRNADesign
-    AppState.shared.selectedNav = .chopchopCompare
-    assert(session.chopchopVM.gene == "TP53" && session.chopchopVM.targets.count == 2, "Switching sidebar navigation must preserve CHOPCHOP query results")
+    AppState.shared.selectedNav = .shRNADesign
+    assert(session.chopchopVM.gene == "TP53" && session.chopchopVM.targets.count == 2, "Switching sidebar navigation must preserve sgRNA inline online comparison results")
+    assert(session.broadGPPVM.gene == "TP53" && session.broadGPPVM.targets.count == 2, "Switching sidebar navigation must preserve Broad GPP comparison results")
+    assert(session.sgRNAVM.sourceMode == .onlineCompare && session.shRNAVM.sourceMode == .broadGPP)
     session.chopchopVM.clear()
+    session.broadGPPVM.clear()
+    session.sgRNAVM.sourceMode = .library
+    session.shRNAVM.sourceMode = .library
 }
 
 // 验证三源靶点共识合并与 Codable 往返一致性
@@ -1137,14 +1179,15 @@ assert(pdbLigReport.healthCard.metalIons.contains("ZN"), "Must detect ZN metal i
 assert(pdbLigReport.dockingBox.sourceTitle.contains("共识融合盒"), "Co-crystal ligand overlapping pocket (>=35%) must trigger Consensus Box")
 pass("DockFlowLab-aligned LIGSITE P-S-P Pocket, Vina Box (\(pdbLigReport.dockingBox.sourceTitle)) & PDB Health Card passed.")
 
-// 32. 验证侧边栏自定义显隐控制、系统设置常驻防呆保护与 19 模块（18 个业务模块 + 系统设置）全局功能说明书完整性
+// 32. 验证侧边栏自定义显隐控制、系统设置常驻防呆保护与 18 模块（17 个业务模块 + 系统设置）全局功能说明书完整性
 print("🧪 [32/52] Testing Sidebar Visibility Customization & Global Feature Manual...")
 for nav in NavItem.allCases {
     assert(!nav.summaryDescription.isEmpty && !nav.supportedFormats.isEmpty && !nav.workflowTip.isEmpty, "NavItem \(nav.rawValue) must provide complete manual metadata")
 }
 let totalModulesCount = NavItem.allCases.count
 let businessModulesCount = NavItem.allCases.filter { $0.canBeHiddenInSidebar }.count
-assert(totalModulesCount == 19 && businessModulesCount == 18, "Expected 19 total modules (18 business modules + .settings), got \(totalModulesCount)")
+assert(totalModulesCount == 18 && businessModulesCount == 17, "Expected 18 total modules (17 business modules + .settings), got \(totalModulesCount)")
+assert(!NavItem.allCases.map(\.rawValue).contains("chopchopCompare"), "chopchopCompare standalone module must be removed")
 assert(!NavItem.allCases.map(\.rawValue).contains("figureAnnotator"), "figureAnnotator must be completely removed")
 assert(!NavItem.allCases.map(\.rawValue).contains("colonyCounter"), "colonyCounter must be completely removed")
 assert(!NavItem.settings.canBeHiddenInSidebar, ".settings must never be allowed to hide in sidebar")
@@ -1352,7 +1395,7 @@ do {
     let pyToolCount = Int((String(data: countData, encoding: .utf8) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
     let swiftCatalogCount = await MainActor.run { PlasmidPoolManager.mcpToolsCatalog.count }
     assert(pyToolCount == 23 && pyToolCount == swiftCatalogCount, "Python MCP_TOOLS count (\(pyToolCount)) must match Swift mcpToolsCatalog count (\(swiftCatalogCount))")
-    assert(NavItem.allCases.count == 19, "NavItem.allCases.count must be 19")
+    assert(NavItem.allCases.count == 18, "NavItem.allCases.count must be 18")
     let beforePassCount = passedTests.count
     pass("Single Source of Truth for Counts passed (MCP tools=\(pyToolCount), modules=\(NavItem.allCases.count), dynamic pass registry verified).")
     assert(passedTests.count == beforePassCount + 1, "pass() must dynamically increment passedTests.count")

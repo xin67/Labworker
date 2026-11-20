@@ -13,7 +13,7 @@
 [![MCP](https://img.shields.io/badge/MCP%20Tools-23%20Ready-30D158?style=for-the-badge)](#-ai-智能体协同)
 [![License](https://img.shields.io/badge/License-MIT-8E8E93?style=for-the-badge)](LICENSE)
 
-[⬇️ 下载最新版 DMG (`v20261115`)](https://github.com/xin67/Labworker/releases/tag/v20261115) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 19 个功能模块](#-19-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 源码构建](#-安装与源码构建)
+[⬇️ 下载最新版 DMG (`v20261115`)](https://github.com/xin67/Labworker/releases/tag/v20261115) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 18 个功能模块](#-18-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 源码构建](#-安装与源码构建)
 
 <br/>
 
@@ -110,7 +110,7 @@ flowchart LR
     end
 
     subgraph Surfaces["🖥️ 交互与自动化双端面"]
-        S1["macOS 27 Liquid Glass App\n5 大分类 · 19 个功能模块"]
+        S1["macOS 27 Liquid Glass App\n5 大分类 · 18 个功能模块"]
         S2["Python MCP Server\n23 大自动化工具 · 双向同步通道"]
     end
 
@@ -131,12 +131,12 @@ flowchart LR
 
 ---
 
-## 🧩 19 个全栈功能模块
+## 🧩 18 个全栈功能模块
 
 | 分类板块 | 模块名称 | 核心功能与支持格式 |
 | :--- | :--- | :--- |
 | **分子克隆与质粒 (7)** | `质粒池` / `入门克隆` / `单片段克隆` / `多片段克隆` / `定点突变` / `片段删除` / `Sanger 测序` | `.dna` (SnapGene)、`.gb`、`.fasta`、`.ab1` 解析与导出；支持矢量环形图谱、双链碱基视图、同源重组 PCR 凝胶电泳模拟、3n 移码校验与批量测序看板 |
-| **基因编辑与靶点 (3)** | `sgRNA 设计` / `shRNA 设计` / `靶点对比` | 基于 `Libraries.sqlite`（hg38/mm39）扫描 `NGG/TTTV` PAM、热力学不对称性与 CHOPCHOP 靶点分档比对，自动带酶切粘性末端 |
+| **基因编辑与靶点 (2)** | `sgRNA 设计` / `shRNA 设计` | 基于 `Libraries.sqlite`（hg38/mm39）与内嵌在线对比（sgRNA 集成 **VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源共识；shRNA 集成 **Broad GPP Public Portal** 官方 TRC 克隆核验），自动生成带粘性末端的配对引物 |
 | **电泳与图像定量 (2)** | `WB 灰度定量` / `凝胶分子量` | 原生 16-bit TIFF 滚球扣背景与显著性柱状图、Ladder $\log_{10}(\text{MW})$ 回归与多模块（质粒酶切/单多片段克隆/入门克隆/片段删除/定点突变/自定义条带）虚拟电泳对照 |
 | **定量与蛋白工具 (3)** | `微孔板设计` / `qPCR 定量` / `蛋白工作台` | 96/384 孔防边缘效应排布、$2^{-\Delta\Delta C_t}$ 与标准曲线定量、三维 Cα + LIGSITE 口袋 + Vina 盒 + 点突变 $\Delta\Delta G$ |
 | **工具、订购与系统 (4)** | `生物计算器` / `序列工具箱` / `引物测序订购` / `全局设置` | 克隆与经典 0.03 pmol 摩尔比配液、dsDNA/ssDNA/Linear/OD260 核酸定量、蛋白摩尔与编码容量、溶液配制/稀释 ($C_1V_1=C_2V_2$)/温标转换；SantaLucia 速算、Excel 订购单与主题管理 |

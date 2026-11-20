@@ -35,7 +35,6 @@ public enum NavItem: String, CaseIterable, Identifiable {
     case sangerVerify = "sangerVerify"
     case sgRNADesign = "sgRNADesign"
     case shRNADesign = "shRNADesign"
-    case chopchopCompare = "chopchopCompare"
     case westernBlot = "westernBlot"
     case gelFigure = "gelFigure"
     case plateDesigner = "plateDesigner"
@@ -52,7 +51,7 @@ public enum NavItem: String, CaseIterable, Identifiable {
         switch self {
         case .plasmidPool, .entryClone, .singleFragment, .multiFragment, .mutagenesis, .fragmentDeletion, .sangerVerify:
             return .cloning
-        case .sgRNADesign, .shRNADesign, .chopchopCompare:
+        case .sgRNADesign, .shRNADesign:
             return .targeting
         case .westernBlot, .gelFigure:
             return .bioImaging
@@ -74,7 +73,6 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .sangerVerify:     return "Sanger 测序"
         case .sgRNADesign:      return "sgRNA 设计"
         case .shRNADesign:      return "shRNA 设计"
-        case .chopchopCompare:  return "靶点对比"
         case .westernBlot:      return "WB 灰度定量"
         case .gelFigure:        return "凝胶分子量"
         case .plateDesigner:    return "微孔板设计"
@@ -98,7 +96,6 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .sangerVerify:     return "waveform.path.ecg.rectangle"
         case .sgRNADesign:      return "scope"
         case .shRNADesign:      return "waveform.path.badge.plus"
-        case .chopchopCompare:  return "globe.badge.chevron.backward"
         case .westernBlot:      return "slider.horizontal.below.rectangle"
         case .gelFigure:        return "chart.bar.doc.horizontal.fill"
         case .plateDesigner:    return "square.grid.3x3.fill"
@@ -121,9 +118,8 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .mutagenesis:      return "定点突变 mutagenesis point mutation 氨基酸 密码子"
         case .fragmentDeletion: return "片段删除 fragment deletion 敲除 截短"
         case .sangerVerify:     return "测序验证 sanger ab1 abi chromatogram 峰图 比对 突变 菌落测序"
-        case .sgRNADesign:      return "sgrna crispr cas9 基因编辑 敲除 靶点"
-        case .shRNADesign:      return "shrna rnai 干扰 敲低 发夹"
-        case .chopchopCompare:  return "靶点对比 chopchop compare 在线检索"
+        case .sgRNADesign:      return "sgrna crispr cas9 基因编辑 敲除 靶点 chopchop vbc crispor 靶点对比 在线检索 脱靶"
+        case .shRNADesign:      return "shrna rnai 干扰 敲低 发夹 broad gpp trc 靶点对比 在线检索"
         case .westernBlot:      return "wb 灰度定量 western blot densitometry 条带 内参 显影 tif"
         case .gelFigure:        return "凝胶分子量 gel electrophoresis figure marker ladder 电泳 胶图"
         case .plateDesigner:    return "微孔板设计 plate layout well 96孔板 384孔板 排布 样品"
@@ -159,11 +155,9 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .sangerVerify:
             return "原生解析 Sanger 测序 (.ab1 / .abi / .seq) 四色毛细管电泳荧光峰图与 Phred Q 值，执行环状质粒双向全局比对，自动识别 SNP 点突变、移码 Indel 与杂合双峰，并支持多文件批量克隆分组合并看板。"
         case .sgRNADesign:
-            return "支持离线文库 (hg38/mm39) 检索与全序列扫描 PAM 位点 (NGG/TTTV)，基于 GC 含量、二级结构、Poly-T 终止信号与位置权重计算 CRISPR/Cas9 序列启发式评分（不含全基因组脱靶搜索，可在靶点对比中用 CHOPCHOP 核验特异性）并生成退火 Oligo。"
+            return "支持离线文库 (hg38/mm39) 序列启发式评分与内嵌 VBC-Score / UCSC CRISPOR / CHOPCHOP 三源并发脱靶对比及 20bp 共识评分，一键生成 CRISPR/Cas9 退火 Oligo。"
         case .shRNADesign:
-            return "基于热力学不对称性 (5' 反义链解旋自由能差) 与 RISC 装载偏好筛选高活性 RNAi 干扰靶点，一键生成 pLKO.1 等载体正义/反义发夹序列。"
-        case .chopchopCompare:
-            return "内置 CHOPCHOP 靶点评分对比工作台，将本地设计的 sgRNA/shRNA 与全基因组脱靶及在线评分分档高亮比对。"
+            return "支持本地 TRC 文库与内嵌 Broad GPP Public Portal 在线克隆比对（Adjusted / Intrinsic Score、SDR 匹配与脱靶核验），一键生成 pLKO.1 正义/反义发夹引物。"
         case .westernBlot:
             return "原生 16-bit TIFF 无损灰度密度定量引擎，采用一维滚球背景扣除、高斯峰分离与内参归一化，自动执行 Welch t 检验并生成出版级显著性柱状图。"
         case .gelFigure:
@@ -192,7 +186,7 @@ public enum NavItem: String, CaseIterable, Identifiable {
             return ".dna (SnapGene) / .fa / .fasta / .seq / .gb"
         case .sangerVerify:
             return ".ab1 / .abi (ABIF 四色峰图) / .seq / .fasta"
-        case .sgRNADesign, .shRNADesign, .chopchopCompare, .sequenceTools:
+        case .sgRNADesign, .shRNADesign, .sequenceTools:
             return ".fa / .fasta / .dna / 纯文本序列"
         case .westernBlot, .gelFigure:
             return ".tif / .tiff (原生16-bit) / .png / .jpg"
@@ -215,9 +209,8 @@ public enum NavItem: String, CaseIterable, Identifiable {
         case .mutagenesis:      return "可直接输入如 V12A 或 K45R 氨基酸突变指令，自动挑选最优同义/非同义密码子。"
         case .fragmentDeletion: return "拖动滑块或输入起止位点即可预览截短后的环图及下游特征偏移量。"
         case .sangerVerify:     return "拖入测序公司返还的 .ab1 峰图后自动与参考质粒比对，点击异常变异胶囊可直接将荧光色谱图平滑滚动定位至突变峰。"
-        case .sgRNADesign:      return "勾选高分靶点后可自动生成带 BbsI / BsmBI 粘性末端的正反向退火 Oligo。"
-        case .shRNADesign:      return "内置 AgeI / EcoRI 酶切接头模板，设计完成后可一键送入靶点对比模块交叉验证。"
-        case .chopchopCompare:  return "本地设计的候选靶点会自动置顶并在检索表中以星标高亮。"
+        case .sgRNADesign:      return "勾选高分靶点后可生成带 BbsI / BsmBI 粘性末端的退火 Oligo；切换至「在线对比」可实时融合 VBC-Score、UCSC CRISPOR 与 CHOPCHOP 共识评分。"
+        case .shRNADesign:      return "内置 AgeI / EcoRI 酶切接头模板，切换至「Broad GPP」可对照官方 TRC 克隆（Adjusted/Intrinsic Score）与本地靶点并直接生成发夹引物。"
         case .westernBlot:      return "支持主条带与内参双行联动定量，可手动微调泳道框与基线，并导出带显著性星号的离线 HTML 报告。"
         case .gelFigure:        return "选择预设 Marker (如 DL2000 / 1kb Ladder) 后点击标准带即可拟合 R² 并自动测算未知条带大小。"
         case .plateDesigner:    return "开启「避开最外圈孔」可显著降低 96 孔板边缘蒸发带来的 ELISA / 细胞活性定量偏差。"
@@ -901,6 +894,7 @@ public final class AppState: ObservableObject {
     @Published public var chopchopGene: String = ""
     @Published public var chopchopSpecies: TargetSpecies = .human
     @Published public var shouldAutoQueryCHOPCHOP: Bool = false
+    @Published public var shouldAutoQueryBroadGPP: Bool = false
     /// 本地查找或生成的 sgRNA / shRNA / 自定义对比序列集合（用于在 CHOPCHOP 检索结果中自动高亮提示与置顶对比）
     @Published public var localCompareTargets: [LocalCompareTarget] = []
     @Published public var pendingChainedNode: ConstructHistoryNode? = nil
@@ -1269,13 +1263,19 @@ public final class AppState: ObservableObject {
         }
         self.chopchopGene = gene
         self.chopchopSpecies = species
-        self.shouldAutoQueryCHOPCHOP = true
-        self.selectedNav = .chopchopCompare
-        let selectedCount = self.localCompareTargets.filter { $0.isSelectedOrGenerated }.count
-        if selectedCount > 0 {
-            showToast("已带入 \(selectedCount) 条本地靶点跳转至「\(gene)」CHOPCHOP 对比")
+        if sourceType == .shRNA {
+            self.shouldAutoQueryBroadGPP = true
+            self.selectedNav = .shRNADesign
         } else {
-            showToast("已跳转至「\(gene)」CHOPCHOP 在线对比")
+            self.shouldAutoQueryCHOPCHOP = true
+            self.selectedNav = .sgRNADesign
+        }
+        let selectedCount = self.localCompareTargets.filter { $0.isSelectedOrGenerated }.count
+        let targetSiteName = (sourceType == .shRNA) ? "Broad GPP" : "在线三源"
+        if selectedCount > 0 {
+            showToast("已带入 \(selectedCount) 条本地靶点跳转至「\(gene)」\(targetSiteName)对比")
+        } else {
+            showToast("已跳转至「\(gene)」\(targetSiteName)在线对比")
         }
     }
     

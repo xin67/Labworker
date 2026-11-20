@@ -109,6 +109,83 @@ public struct CHOPCHOPLocalMatchResult: Hashable, Sendable {
             return "与\(matchedTarget.label) [\(matchedTarget.cleanSequence)] 的反向互补链在同一基因组位点连续重合 \(bp) bp"
         }
     }
+    
+    /// 通用本地靶点序列匹配器（供 CHOPCHOP/VBC/CRISPOR 与 Broad GPP shRNA 共用）
+    public static func bestMatch(
+        primarySequence: String,
+        fullSequence: String? = nil,
+        localTargets: [LocalCompareTarget]
+    ) -> CHOPCHOPLocalMatchResult? {
+        guard !localTargets.isEmpty else { return nil }
+        let cleanPrimary = primarySequence.uppercased()
+        let cleanFull = (fullSequence ?? primarySequence).uppercased()
+        guard !cleanPrimary.isEmpty else { return nil }
+        
+        var bestMatch: CHOPCHOPLocalMatchResult? = nil
+        
+        for item in localTargets {
+            let q = item.cleanSequence
+            guard q.count >= 15 else { continue }
+            
+            var candidateKind: CHOPCHOPLocalMatchKind? = nil
+            
+            if cleanPrimary == q || cleanFull == q {
+                candidateKind = .exact
+            } else if let overlap = longestCommonSubstringLength(cleanFull, q), overlap >= 18 {
+                if overlap >= min(cleanPrimary.count, q.count) {
+                    candidateKind = .exact
+                } else {
+                    candidateKind = .coreOverlap(overlap)
+                }
+            } else {
+                let rc = BioSequence.reverseComplement(q).uppercased()
+                if let rcOverlap = longestCommonSubstringLength(cleanFull, rc), rcOverlap >= 18 {
+                    candidateKind = .reverseComplementOverlap(rcOverlap)
+                }
+            }
+            
+            if let kind = candidateKind {
+                let candidate = CHOPCHOPLocalMatchResult(matchedTarget: item, kind: kind)
+                if let current = bestMatch {
+                    if candidate.isPrimaryUserSelection && !current.isPrimaryUserSelection {
+                        bestMatch = candidate
+                    } else if candidate.isPrimaryUserSelection == current.isPrimaryUserSelection,
+                              candidate.kind.priority > current.kind.priority {
+                        bestMatch = candidate
+                    }
+                } else {
+                    bestMatch = candidate
+                }
+            }
+        }
+        
+        return bestMatch
+    }
+    
+    /// 计算两条序列的最长连续公共子串长度
+    internal static func longestCommonSubstringLength(_ a: String, _ b: String) -> Int? {
+        let charsA = Array(a.utf8)
+        let charsB = Array(b.utf8)
+        let n = charsA.count
+        let m = charsB.count
+        guard n > 0 && m > 0 else { return nil }
+        
+        var maxLen = 0
+        for i in 0..<n {
+            if n - i <= maxLen { break }
+            for j in 0..<m {
+                if m - j <= maxLen { break }
+                var k = 0
+                while i + k < n && j + k < m && charsA[i + k] == charsB[j + k] {
+                    k += 1
+                }
+                if k > maxLen {
+                    maxLen = k
+                }
+            }
+        }
+        return maxLen > 0 ? maxLen : nil
+    }
 }
 
 /// 多源在线预测靶点模型（整合 CHOPCHOP / VBC-Score / UCSC CRISPOR 指标与全维综合推荐分）
@@ -737,77 +814,11 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
     
     /// 检测当前 CHOPCHOP 靶点是否与本地查找/生成的 sgRNA 或 shRNA 序列重合
     public func matchAgainstLocalTargets(_ localTargets: [LocalCompareTarget]) -> CHOPCHOPLocalMatchResult? {
-        guard !localTargets.isEmpty else { return nil }
-        let cleanSpacer = spacer.uppercased()
-        let cleanFull = targetSequence.uppercased()
-        
-        var bestMatch: CHOPCHOPLocalMatchResult? = nil
-        
-        for item in localTargets {
-            let q = item.cleanSequence
-            guard q.count >= 15 else { continue }
-            
-            var candidateKind: CHOPCHOPLocalMatchKind? = nil
-            
-            // 1. 精确匹配 (20bp Spacer 完全相等，或 21bp shRNA 完整包含 20bp Spacer)
-            if cleanSpacer == q || cleanFull == q {
-                candidateKind = .exact
-            } else if let overlap = Self.longestCommonSubstringLength(cleanFull, q), overlap >= 18 {
-                if overlap >= min(cleanSpacer.count, q.count) {
-                    candidateKind = .exact
-                } else {
-                    candidateKind = .coreOverlap(overlap)
-                }
-            } else {
-                // 2. 检查反向互补链同位点重合 (例如正负链靶向同一外显子区域)
-                let rc = BioSequence.reverseComplement(q).uppercased()
-                if let rcOverlap = Self.longestCommonSubstringLength(cleanFull, rc), rcOverlap >= 18 {
-                    candidateKind = .reverseComplementOverlap(rcOverlap)
-                }
-            }
-            
-            if let kind = candidateKind {
-                let candidate = CHOPCHOPLocalMatchResult(matchedTarget: item, kind: kind)
-                if let current = bestMatch {
-                    // 优先展示用户已勾选/已生成的靶点，其次按匹配精度排序
-                    if candidate.isPrimaryUserSelection && !current.isPrimaryUserSelection {
-                        bestMatch = candidate
-                    } else if candidate.isPrimaryUserSelection == current.isPrimaryUserSelection,
-                              candidate.kind.priority > current.kind.priority {
-                        bestMatch = candidate
-                    }
-                } else {
-                    bestMatch = candidate
-                }
-            }
-        }
-        
-        return bestMatch
-    }
-    
-    /// 计算两条序列的最长连续公共子串长度 (针对 19～23bp 短序列极速比对)
-    private static func longestCommonSubstringLength(_ a: String, _ b: String) -> Int? {
-        let charsA = Array(a.utf8)
-        let charsB = Array(b.utf8)
-        let n = charsA.count
-        let m = charsB.count
-        guard n > 0 && m > 0 else { return nil }
-        
-        var maxLen = 0
-        for i in 0..<n {
-            if n - i <= maxLen { break }
-            for j in 0..<m {
-                if m - j <= maxLen { break }
-                var k = 0
-                while i + k < n && j + k < m && charsA[i + k] == charsB[j + k] {
-                    k += 1
-                }
-                if k > maxLen {
-                    maxLen = k
-                }
-            }
-        }
-        return maxLen > 0 ? maxLen : nil
+        CHOPCHOPLocalMatchResult.bestMatch(
+            primarySequence: spacer,
+            fullSequence: targetSequence,
+            localTargets: localTargets
+        )
     }
 }
 

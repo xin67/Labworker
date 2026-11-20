@@ -309,7 +309,6 @@ public struct ContentView: View {
                 sidebarCollapsibleSection(.targeting) {
                     sidebarRow(item: .sgRNADesign, tint: .cyan)
                     sidebarRow(item: .shRNADesign, tint: .indigo)
-                    sidebarRow(item: .chopchopCompare, tint: .orange)
                 }
 
                 sidebarCollapsibleSection(.bioImaging) {
@@ -552,8 +551,6 @@ public struct ContentView: View {
             SgRNADesignView()
         case .shRNADesign:
             ShRNADesignView()
-        case .chopchopCompare:
-            CHOPCHOPWebView()
         case .dnaCalculator:
             RestructureCalculatorView()
         case .sequenceTools:

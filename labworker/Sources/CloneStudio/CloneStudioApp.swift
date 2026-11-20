@@ -229,7 +229,6 @@ struct CloneStudioApp: App {
                         .keyboardShortcut("6", modifiers: [.command])
                     Button("shRNA (RNAi) 设计") { AppState.shared.selectedNav = .shRNADesign }
                         .keyboardShortcut("7", modifiers: [.command])
-                    Button("CHOPCHOP 靶点对比") { AppState.shared.selectedNav = .chopchopCompare }
                 }
                 
                 Divider()
@@ -299,10 +298,10 @@ struct CloneStudioApp: App {
             session.fragmentDeletionVM.clear()
         case .sgRNADesign:
             session.sgRNAVM.clear()
+            session.chopchopVM.clear()
         case .shRNADesign:
             session.shRNAVM.clear()
-        case .chopchopCompare:
-            session.chopchopVM.clear()
+            session.broadGPPVM.clear()
         default:
             break
         }

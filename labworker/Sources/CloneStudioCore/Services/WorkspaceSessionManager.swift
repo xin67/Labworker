@@ -15,6 +15,7 @@ public final class WorkspaceSessionManager: ObservableObject {
     public let sgRNAVM = SgRNADesignViewModel()
     public let shRNAVM = ShRNADesignViewModel()
     public let chopchopVM = CHOPCHOPCompareViewModel()
+    public let broadGPPVM = BroadGPPCompareViewModel()
     public let calculatorVM = CalculatorViewModel()
     public let bioCalculatorVM = BioCalculatorSuiteViewModel()
     public let sequenceToolVM = SequenceToolViewModel()
@@ -126,6 +127,16 @@ public final class WorkspaceSessionManager: ObservableObject {
         public var shRNASpeciesRaw: String?
         public var shRNASelectedIDs: [Int]?
         public var shRNAGeneratedPrimers: [PrimerItem]?
+        public var broadGPPGene: String?
+        public var broadGPPGeneID: String?
+        public var broadGPPGeneSymbol: String?
+        public var broadGPPGeneDescription: String?
+        public var broadGPPWTTranscriptCount: Int?
+        public var broadGPPIsNearMatchFallback: Bool?
+        public var broadGPPSpeciesRaw: String?
+        public var broadGPPTargets: [BroadGPPShRNATarget]?
+        public var broadGPPSelectedIDs: [String]?
+        public var broadGPPSortModeRaw: String?
     }
     
     private let kDidTerminateCleanly = "cs.workspace.v3.didTerminateCleanly"
@@ -184,6 +195,7 @@ public final class WorkspaceSessionManager: ObservableObject {
             sgRNAVM.objectWillChange.eraseToAnyPublisher(),
             shRNAVM.objectWillChange.eraseToAnyPublisher(),
             chopchopVM.objectWillChange.eraseToAnyPublisher(),
+            broadGPPVM.objectWillChange.eraseToAnyPublisher(),
             AppState.shared.$primersCart.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             AppState.shared.$selectedNav.dropFirst().map { _ in () }.eraseToAnyPublisher()
         ])
@@ -205,6 +217,7 @@ public final class WorkspaceSessionManager: ObservableObject {
         if mutagenesisVM.plasmidDNAInfo != nil || !mutagenesisVM.mutUp.isEmpty || !mutagenesisVM.mutDown.isEmpty || !mutagenesisVM.mutSite.isEmpty || !mutagenesisVM.primers.isEmpty { return true }
         if fragmentDeletionVM.plasmidDNAInfo != nil || !fragmentDeletionVM.plasmidSeq.isEmpty || !fragmentDeletionVM.primers.isEmpty { return true }
         if !chopchopVM.gene.isEmpty || !chopchopVM.targets.isEmpty { return true }
+        if !broadGPPVM.gene.isEmpty || !broadGPPVM.targets.isEmpty { return true }
         if !sgRNAVM.searchQuery.isEmpty || !sgRNAVM.generatedPrimers.isEmpty { return true }
         if !shRNAVM.searchQuery.isEmpty || !shRNAVM.generatedPrimers.isEmpty { return true }
         if !AppState.shared.primersCart.isEmpty { return true }
@@ -410,13 +423,25 @@ public final class WorkspaceSessionManager: ObservableObject {
             shRNASearchQuery: shRNAVM.searchQuery,
             shRNASpeciesRaw: shRNAVM.species.rawValue,
             shRNASelectedIDs: Array(shRNAVM.selectedTargetIDs),
-            shRNAGeneratedPrimers: shRNAVM.generatedPrimers
+            shRNAGeneratedPrimers: shRNAVM.generatedPrimers,
+            broadGPPGene: broadGPPVM.gene,
+            broadGPPGeneID: broadGPPVM.resolvedGeneID,
+            broadGPPGeneSymbol: broadGPPVM.resolvedGeneSymbol,
+            broadGPPGeneDescription: broadGPPVM.resolvedGeneDescription,
+            broadGPPWTTranscriptCount: broadGPPVM.wtTranscriptCount,
+            broadGPPIsNearMatchFallback: broadGPPVM.isNearMatchFallback,
+            broadGPPSpeciesRaw: broadGPPVM.species.rawValue,
+            broadGPPTargets: broadGPPVM.targets,
+            broadGPPSelectedIDs: Array(broadGPPVM.selectedTargetIDs),
+            broadGPPSortModeRaw: broadGPPVM.sortMode.rawValue
         )
     }
     
     private func applySnapshot(_ snap: SessionSnapshot) {
         if let nav = NavItem(rawValue: snap.selectedNavRawValue) {
             AppState.shared.selectedNav = nav
+        } else if snap.selectedNavRawValue == "chopchopCompare" {
+            AppState.shared.selectedNav = .sgRNADesign
         }
         AppState.shared.primersCart = snap.primersCart
         
@@ -601,6 +626,39 @@ public final class WorkspaceSessionManager: ObservableObject {
         }
         if let ccSel = snap.chopchopSelectedIDs {
             chopchopVM.selectedTargetIDs = Set(ccSel)
+        }
+        
+        if let gppGene = snap.broadGPPGene {
+            broadGPPVM.gene = gppGene
+        }
+        if let gppGID = snap.broadGPPGeneID {
+            broadGPPVM.resolvedGeneID = gppGID
+        }
+        if let gppSym = snap.broadGPPGeneSymbol {
+            broadGPPVM.resolvedGeneSymbol = gppSym
+        }
+        if let gppDesc = snap.broadGPPGeneDescription {
+            broadGPPVM.resolvedGeneDescription = gppDesc
+        }
+        if let gppWT = snap.broadGPPWTTranscriptCount {
+            broadGPPVM.wtTranscriptCount = gppWT
+        }
+        if let gppNear = snap.broadGPPIsNearMatchFallback {
+            broadGPPVM.isNearMatchFallback = gppNear
+        }
+        if let gppSp = snap.broadGPPSpeciesRaw, let sp = TargetSpecies(rawValue: gppSp) {
+            broadGPPVM.species = sp
+        }
+        if let gppSort = snap.broadGPPSortModeRaw,
+           let sm = BroadGPPCompareViewModel.BroadGPPSortMode(rawValue: gppSort) {
+            broadGPPVM.sortMode = sm
+        }
+        if let gppTargets = snap.broadGPPTargets {
+            broadGPPVM.targets = gppTargets
+            broadGPPVM.recomputeLocalMatches()
+        }
+        if let gppSel = snap.broadGPPSelectedIDs {
+            broadGPPVM.selectedTargetIDs = Set(gppSel)
         }
     }
     

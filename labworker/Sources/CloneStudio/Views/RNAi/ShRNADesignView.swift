@@ -1,19 +1,30 @@
 import SwiftUI
 import CloneStudioCore
 
-/// 慢病毒 RNA 干扰 shRNA 文库检索与设计界面 (紧凑无冗余、仅在提交后真实预览、多维可靠性打分与排序)
+/// 慢病毒 RNA 干扰 shRNA 文库检索、内嵌 Broad GPP 在线对比与发夹引物设计界面
 public struct ShRNADesignView: View {
     @ObservedObject private var vm = WorkspaceSessionManager.shared.shRNAVM
+    @ObservedObject private var gppVM = WorkspaceSessionManager.shared.broadGPPVM
     @ObservedObject private var appState = AppState.shared
     
     public init() {}
     
     private var previewTarget: (gene: String, seq: String)? {
         guard !vm.generatedPrimers.isEmpty else { return nil }
-        if vm.isCustomInputMode {
+        switch vm.sourceMode {
+        case .custom:
             let g = vm.customGeneName.isEmpty ? "shTarget" : vm.customGeneName
             return (g, vm.customSequence)
-        } else {
+        case .broadGPP:
+            let g = (gppVM.resolvedGeneSymbol ?? gppVM.gene).trimmingCharacters(in: .whitespacesAndNewlines)
+            let resolvedGene = g.isEmpty ? "shTarget" : g
+            if let sel = gppVM.sortedTargets.first(where: { gppVM.selectedTargetIDs.contains($0.id) }) {
+                return (resolvedGene, sel.targetSequence)
+            } else if let first = gppVM.sortedTargets.first {
+                return (resolvedGene, first.targetSequence)
+            }
+            return nil
+        case .library:
             if let firstSel = vm.searchResults.first(where: { vm.selectedTargetIDs.contains($0.id) }) {
                 return (firstSel.gene, firstSel.sequence)
             } else if let first = vm.searchResults.first {
@@ -34,6 +45,26 @@ public struct ShRNADesignView: View {
         )
     }
     
+    private var activeSelectionCount: Int {
+        switch vm.sourceMode {
+        case .library:
+            return vm.selectedTargetIDs.count
+        case .broadGPP:
+            return gppVM.selectedTargetIDs.count
+        case .custom:
+            return BioSequence.clean(vm.customSequence).count >= 18 ? 1 : 0
+        }
+    }
+    
+    private var canClearAny: Bool {
+        !vm.searchQuery.isEmpty
+            || !vm.searchResults.isEmpty
+            || !vm.customSequence.isEmpty
+            || !vm.generatedPrimers.isEmpty
+            || !gppVM.gene.isEmpty
+            || !gppVM.targets.isEmpty
+    }
+    
     public var body: some View {
         StudioPageLayout(
             title: "RNAi shRNA 设计 (pLKO.1)",
@@ -51,7 +82,12 @@ public struct ShRNADesignView: View {
                         ) {
                             if vm.species != spec {
                                 vm.species = spec
-                                if !vm.searchQuery.isEmpty {
+                                gppVM.species = spec
+                                if vm.sourceMode == .broadGPP {
+                                    if !gppVM.gene.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        gppVM.fetchTargets()
+                                    }
+                                } else if !vm.searchQuery.isEmpty {
                                     vm.search()
                                 }
                             }
@@ -59,145 +95,199 @@ public struct ShRNADesignView: View {
                     }
                 ),
                 .action(
+                    id: "shrna_web_menu",
+                    groupKey: nil,
+                    title: "Broad GPP",
+                    icon: "safari",
+                    help: "在 Safari 中打开 Broad GPP Public Portal",
+                    menuItems: [
+                        StudioToolbarMenuItem(
+                            title: gppVM.resolvedGeneSymbol.map { "打开 \($0) 克隆详情页" } ?? "打开 Broad GPP 基因检索",
+                            icon: "magnifyingglass"
+                        ) {
+                            gppVM.openGeneInSafari()
+                        },
+                        StudioToolbarMenuItem(title: "打开 Broad GPP 主页", icon: "globe") {
+                            BroadGPPService.shared.openInDefaultBrowser(geneID: nil)
+                        }
+                    ]
+                ),
+                .action(
                     id: "clear_shrna",
                     groupKey: nil,
                     title: "",
                     icon: "trash",
                     tint: .red,
-                    isDisabled: vm.searchQuery.isEmpty && vm.searchResults.isEmpty && vm.customSequence.isEmpty && vm.generatedPrimers.isEmpty,
-                    help: "一键清除",
-                    action: vm.clear
-                )
+                    isDisabled: !canClearAny,
+                    help: "一键清除本地与 Broad GPP 检索结果"
+                ) {
+                    vm.clear()
+                    gppVM.clear()
+                }
             ]
         ) {
-                
-                AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        // 1. 靶点模式
-                        StudioCard(title: "靶点来源") {
-                            StudioSegmentedPicker(
-                                selection: $vm.isCustomInputMode,
-                                options: [
-                                    StudioSegmentedOption(value: false, title: "TRC 文库", tint: .indigo),
-                                    StudioSegmentedOption(value: true, title: "手动输入", tint: .purple)
-                                ]
+            AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {
+                VStack(alignment: .leading, spacing: 12) {
+                    // 1. 靶点筛选与在线 Broad GPP 对比
+                    StudioCard(title: "靶点筛选与对比") {
+                        StudioSegmentedPicker(
+                            selection: $vm.sourceMode,
+                            options: [
+                                StudioSegmentedOption(value: .library, title: "TRC 文库", tint: .indigo),
+                                StudioSegmentedOption(value: .broadGPP, title: "Broad GPP", tint: .orange),
+                                StudioSegmentedOption(value: .custom, title: "手动输入", tint: .purple)
+                            ]
+                        )
+                    } content: {
+                        switch vm.sourceMode {
+                        case .library:
+                            librarySearchSection
+                        case .broadGPP:
+                            ShRNABroadGPPComparePanel(
+                                species: vm.species,
+                                loopSequence: vm.loopSequence,
+                                customPrefix: vm.customPrefix
                             )
-                        } content: {
-                            if !vm.isCustomInputMode {
-                                librarySearchSection
-                            } else {
-                                customInputSection
-                            }
+                        case .custom:
+                            customInputSection
                         }
-                        
-                        // 2. Loop 与前缀
-                        StudioCard(title: "发夹环 (Loop) 与命名前缀") {
-                            ViewThatFits(in: .horizontal) {
-                                HStack(spacing: 12) {
-                                    HStack(spacing: 6) {
-                                        Text("Loop:").font(.system(size: 11.5)).foregroundColor(.secondary)
-                                        TextField("CTCGAG", text: $vm.loopSequence)
-                                            .font(.system(size: 12))
-                                            .textFieldStyle(.roundedBorder)
-                                            .frame(width: 90)
-                                    }
-                                    TextField("引物前缀 (可选)", text: $vm.customPrefix)
+                    }
+                    
+                    // 2. 发夹环 (Loop) 与命名前缀
+                    StudioCard(title: "发夹参数与命名") {
+                        StudioMetricBadge(label: "载体", value: "pLKO.1 (AgeI/EcoRI)", color: .indigo)
+                    } content: {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 10) {
+                                HStack(spacing: 6) {
+                                    Text("Loop:")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                    TextField("CTCGAG", text: $vm.loopSequence)
+                                        .font(.system(size: 12, design: .monospaced))
                                         .textFieldStyle(.roundedBorder)
+                                        .controlSize(.large)
+                                        .frame(width: 108)
                                 }
                                 
-                                VStack(alignment: .leading, spacing: 6) {
+                                loopPresetButton("CTCGAG", label: "CTCGAG")
+                                loopPresetButton("TTCAAGAGA", label: "TTCAAGAGA")
+                                
+                                TextField("引物前缀 (可选)", text: $vm.customPrefix)
+                                    .textFieldStyle(.roundedBorder)
+                                    .controlSize(.large)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                                     HStack(spacing: 6) {
-                                        Text("Loop:").font(.system(size: 11.5)).foregroundColor(.secondary)
+                                        Text("Loop:")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(.secondary)
                                         TextField("CTCGAG", text: $vm.loopSequence)
-                                            .font(.system(size: 12))
+                                            .font(.system(size: 12, design: .monospaced))
                                             .textFieldStyle(.roundedBorder)
-                                            .frame(width: 90)
+                                            .controlSize(.large)
+                                            .frame(width: 108)
                                     }
-                                    TextField("引物前缀 (可选)", text: $vm.customPrefix)
-                                        .textFieldStyle(.roundedBorder)
+                                    loopPresetButton("CTCGAG", label: "CTCGAG")
+                                    loopPresetButton("TTCAAGAGA", label: "TTCAAGAGA")
                                 }
-                            }
-                        }
-                        
-                        // 3. 参考图2对称全宽主操作栏
-                        HStack(spacing: 10) {
-                            StudioPrimaryActionButton(
-                                title: "设计 shRNA 引物",
-                                icon: "sparkles",
-                                tint: .indigo,
-                                fillWidth: true,
-                                action: vm.generatePrimers
-                            )
-                            
-                            StudioPrimaryActionButton(
-                                title: "CHOPCHOP 靶点对比",
-                                icon: "globe.badge.chevron.backward",
-                                tint: .orange,
-                                fillWidth: true
-                            ) {
-                                let clean = vm.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-                                let g: String
-                                if !clean.isEmpty {
-                                    g = clean
-                                } else if let firstSel = vm.searchResults.first(where: { vm.selectedTargetIDs.contains($0.id) }) {
-                                    g = firstSel.gene
-                                } else if let first = vm.searchResults.first {
-                                    g = first.gene
-                                } else if vm.isCustomInputMode && !vm.customGeneName.isEmpty {
-                                    g = vm.customGeneName
-                                } else {
-                                    g = "TP53"
-                                }
-                                vm.compareInCHOPCHOP(gene: g)
-                            }
-                            
-                            if !vm.generatedPrimers.isEmpty {
-                                StudioPrimaryActionButton(
-                                    title: "加入引物池",
-                                    icon: "cart.badge.plus",
-                                    tint: .green,
-                                    fillWidth: true,
-                                    action: vm.addAllToCart
-                                )
-                            }
-                        }
-                        // 结果展示 (就近展示)
-                        if !vm.generatedPrimers.isEmpty {
-                            StudioCard(title: "生成的引物结果") {
-                                StudioMetricBadge(label: "数量", value: "\(vm.generatedPrimers.count) 条", color: .green)
-                            } content: {
-                                VStack(spacing: 10) {
-                                    ForEach(Array(vm.generatedPrimers.enumerated()), id: \.element.id) { idx, primer in
-                                        let partnerIdx = (idx % 2 == 0) ? (idx + 1) : (idx - 1)
-                                        let partner = (partnerIdx >= 0 && partnerIdx < vm.generatedPrimers.count) ? vm.generatedPrimers[partnerIdx] : nil
-                                        PrimerCardView(primer: primer, partnerPrimer: partner)
-                                    }
-                                }
+                                
+                                TextField("引物前缀 (可选)", text: $vm.customPrefix)
+                                    .textFieldStyle(.roundedBorder)
+                                    .controlSize(.large)
                             }
                         }
                     }
-                } right: {
-                    // 仅在真实生成引物且开关开启时展示质粒图谱，绝不凭空臆造
-                    if let pData = previewData {
-                        PlasmidPreviewPanel(data: pData, onClose: {
-                            appState.showPlasmidPreview = false
-                        })
-                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    
+                    // 3. 主操作栏（设计发夹引物 + 一键入池）
+                    HStack(spacing: 10) {
+                        StudioPrimaryActionButton(
+                            title: activeSelectionCount > 0 ? "设计 shRNA 引物 (\(activeSelectionCount))" : "设计 shRNA 引物",
+                            icon: "sparkles",
+                            tint: .indigo,
+                            fillWidth: true,
+                            action: vm.generatePrimers
+                        )
+                        
+                        if !vm.generatedPrimers.isEmpty {
+                            StudioPrimaryActionButton(
+                                title: "加入引物池 (\(vm.generatedPrimers.count))",
+                                icon: "cart.badge.plus",
+                                tint: .green,
+                                fillWidth: true,
+                                action: vm.addAllToCart
+                            )
+                        }
+                    }
+                    
+                    // 4. 生成的引物结果
+                    if !vm.generatedPrimers.isEmpty {
+                        StudioCard(title: "生成的引物结果") {
+                            StudioMetricBadge(label: "数量", value: "\(vm.generatedPrimers.count) 条", color: .green)
+                        } content: {
+                            VStack(spacing: 10) {
+                                ForEach(Array(vm.generatedPrimers.enumerated()), id: \.element.id) { idx, primer in
+                                    let partnerIdx = (idx % 2 == 0) ? (idx + 1) : (idx - 1)
+                                    let partner = (partnerIdx >= 0 && partnerIdx < vm.generatedPrimers.count) ? vm.generatedPrimers[partnerIdx] : nil
+                                    PrimerCardView(primer: primer, partnerPrimer: partner)
+                                }
+                            }
+                        }
                     }
                 }
+            } right: {
+                if let pData = previewData {
+                    PlasmidPreviewPanel(data: pData, onClose: {
+                        appState.showPlasmidPreview = false
+                    })
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
+            }
         }
         .alert("提示", isPresented: $vm.showErrorAlert) {
             Button("好的", role: .cancel) {}
         } message: {
             Text(vm.errorMessage ?? "")
         }
+        .onAppear {
+            handleAutoGPPTrigger()
+        }
+        .onChange(of: appState.shouldAutoQueryBroadGPP) { _, shouldQuery in
+            if shouldQuery {
+                handleAutoGPPTrigger()
+            }
+        }
+    }
+    
+    private func loopPresetButton(_ seq: String, label: String) -> some View {
+        let isActive = BioSequence.clean(vm.loopSequence).uppercased() == seq
+        return StudioCompactPillButton(
+            title: label,
+            tint: isActive ? .indigo : nil,
+            isSelected: isActive,
+            help: "切换经典 pLKO.1 发夹环序列 \(seq)"
+        ) {
+            vm.loopSequence = seq
+        }
+    }
+    
+    private func handleAutoGPPTrigger() {
+        if appState.shouldAutoQueryBroadGPP {
+            appState.shouldAutoQueryBroadGPP = false
+            vm.species = appState.chopchopSpecies
+            vm.openInlineBroadGPPCompare(gene: appState.chopchopGene, forceRefresh: false)
+        }
     }
     
     private var librarySearchSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                TextField("输入待检索基因 (如 TP53, CDH17, GAPDH)", text: $vm.searchQuery)
+                TextField("输入待检索基因 (如 TP53, CDH17, Trp53)", text: $vm.searchQuery)
                     .textFieldStyle(.roundedBorder)
+                    .controlSize(.large)
+                    .font(.system(size: 12.5))
                     .onSubmit { vm.search() }
                 
                 StudioActionPillButton(
@@ -211,138 +301,76 @@ public struct ShRNADesignView: View {
             }
             
             if !vm.searchResults.isEmpty {
-                VStack(alignment: .leading, spacing: 5) {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .center, spacing: 6) {
-                            Text("结果 (\(vm.searchResults.count)条, 已选\(vm.selectedTargetIDs.count)条)")
-                                .font(.system(size: 11, weight: .semibold))
-                            
-                            Spacer()
-                            
-                            StudioMenuPicker(
-                                selection: $vm.sortOption,
-                                options: TargetSortOption.allCases.map {
-                                    StudioMenuPickerOption(value: $0, title: $0.rawValue)
-                                },
-                                compact: true
-                            )
-                            
-                            StudioCompactPillButton(
-                                title: "选推荐",
-                                tint: .indigo,
-                                help: "快速勾选 ★★★ 卓越与 ★★ 良好靶点",
-                                action: vm.selectRecommendedOnly
-                            )
-                            
-                            StudioCompactPillButton(title: "全选", action: vm.selectAll)
-                            
-                            StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
-                        }
+                VStack(alignment: .leading, spacing: 8) {
+                    StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
+                        StudioMetricBadge(
+                            label: "已选",
+                            value: "\(vm.selectedTargetIDs.count)/\(vm.searchResults.count)",
+                            color: .indigo
+                        )
                         
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("结果 (\(vm.searchResults.count)条, 已选\(vm.selectedTargetIDs.count)条)")
-                                    .font(.system(size: 11, weight: .semibold))
-                                Spacer()
-                                StudioMenuPicker(
-                                    selection: $vm.sortOption,
-                                    options: TargetSortOption.allCases.map {
-                                        StudioMenuPickerOption(value: $0, title: $0.rawValue)
-                                    },
-                                    compact: true
-                                )
-                            }
-                            HStack(spacing: 6) {
-                                StudioCompactPillButton(
-                                    title: "选推荐",
-                                    tint: .indigo,
-                                    help: "快速勾选 ★★★ 卓越与 ★★ 良好靶点",
-                                    action: vm.selectRecommendedOnly
-                                )
-                                StudioCompactPillButton(title: "全选", action: vm.selectAll)
-                                StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
-                                Spacer()
-                            }
+                        Text(vm.species.shortName)
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(vm.species.themeColor.opacity(0.14)))
+                            .foregroundColor(vm.species.themeColor)
+                        
+                        StudioMenuPicker(
+                            selection: $vm.sortOption,
+                            options: TargetSortOption.allCases.map {
+                                StudioMenuPickerOption(value: $0, title: $0.rawValue)
+                            },
+                            compact: true
+                        )
+                        
+                        StudioCompactPillButton(
+                            title: "选推荐",
+                            tint: .indigo,
+                            help: "快速勾选 ★★★ 卓越与 ★★ 良好靶点",
+                            action: vm.selectRecommendedOnly
+                        )
+                        
+                        StudioCompactPillButton(title: "全选", action: vm.selectAll)
+                        StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
+                        
+                        StudioCompactPillButton(
+                            title: "Broad GPP 核验",
+                            icon: "arrow.triangle.2.circlepath",
+                            tint: .orange,
+                            isProminent: true,
+                            help: "转至内嵌 Broad GPP Public Portal 对照官方 TRC 克隆评分与脱靶情况"
+                        ) {
+                            vm.openInlineBroadGPPCompare()
                         }
                     }
                     
                     ScrollView {
-                        VStack(spacing: 4) {
+                        LazyVStack(spacing: 5) {
                             ForEach(vm.searchResults) { target in
-                                let isChecked = vm.selectedTargetIDs.contains(target.id)
-                                let scoreRes = target.scoreResult
-                                
-                                HStack(spacing: 6) {
-                                    Toggle("", isOn: Binding(
-                                        get: { isChecked },
-                                        set: { _ in vm.toggleTarget(target) }
-                                    ))
-                                    .labelsHidden()
-                                    
-                                    // 评分徽章 (点击悬停诊断详情)
-                                    TargetScoreBadge(score: scoreRes, compact: true)
-                                    
-                                    Text(target.gene)
-                                        .font(.system(size: 11, weight: .bold))
-                                        .frame(width: 50, alignment: .leading)
-                                    
-                                    Text(target.sequence)
-                                        .font(.system(size: 11, design: .monospaced))
-                                        .foregroundColor(isChecked ? .indigo : .primary)
-                                        .textSelection(.enabled)
-                                    
-                                    Spacer()
-                                    
-                                    if scoreRes.hasFatalIssue {
-                                        Text("⚠️TTTT")
-                                            .font(.system(size: 9.5, weight: .bold))
-                                            .foregroundColor(.red)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Capsule().fill(Color.red.opacity(0.12)))
-                                            .help("Sense链含连续4个T，在pLKO.1中导致提前转录终止")
-                                    }
-                                    
-                                    Text("GC \(String(format: "%.0f", target.gcPercent))%")
-                                        .font(.system(size: 10))
-                                        .monospacedDigit()
-                                        .foregroundColor(.secondary)
-                                }
-                                .studioInnerBox(tint: isChecked ? .indigo : nil, isHighlighted: isChecked, paddingH: 8, paddingV: 5)
+                                LocalLibraryTargetRow(
+                                    target: target,
+                                    isChecked: vm.selectedTargetIDs.contains(target.id),
+                                    accentColor: .indigo,
+                                    copyToastPrefix: "已复制 shRNA 靶点序列",
+                                    polyTHelp: "Sense 链含连续 4 个 T，在 pLKO.1 中导致提前转录终止",
+                                    onToggle: { vm.toggleTarget(target) }
+                                )
                             }
                         }
                     }
-                    .frame(maxHeight: 170)
+                    .frame(height: min(max(130, CGFloat(vm.searchResults.count) * 34), 260))
                 }
             }
         }
     }
     
     private var customInputSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                TextField("基因名", text: $vm.customGeneName)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 90)
-                
-                TextField("19~21 bp 靶点 Sense 序列", text: $vm.customSequence)
-                    .font(.system(size: 11.5))
-                    .textFieldStyle(.roundedBorder)
-                
-                if let sc = vm.customTargetScore {
-                    TargetScoreBadge(score: sc, compact: false)
-                }
-            }
-            
-            if let sc = vm.customTargetScore, sc.hasFatalIssue, let warning = sc.fatalWarning {
-                HStack(spacing: 4) {
-                    Text("⚠️")
-                    Text(warning)
-                        .font(.system(size: 10.5))
-                        .foregroundColor(.red)
-                }
-                .studioInnerBox(tint: .red, paddingH: 8, paddingV: 4)
-            }
-        }
+        LocalCustomTargetInputSection(
+            geneName: $vm.customGeneName,
+            sequence: $vm.customSequence,
+            sequencePlaceholder: "19~21 bp 靶点 Sense 序列",
+            score: vm.customTargetScore
+        )
     }
 }

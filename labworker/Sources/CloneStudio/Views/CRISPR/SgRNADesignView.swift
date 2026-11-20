@@ -1,19 +1,30 @@
 import SwiftUI
 import CloneStudioCore
 
-/// CRISPR/Cas9 sgRNA 文库检索与设计界面 (紧凑无冗余、仅在提交后真实预览、多维可靠性打分与排序)
+/// CRISPR/Cas9 sgRNA 文库检索、内嵌三源在线比对与引物设计界面
 public struct SgRNADesignView: View {
     @ObservedObject private var vm = WorkspaceSessionManager.shared.sgRNAVM
+    @ObservedObject private var onlineVM = WorkspaceSessionManager.shared.chopchopVM
     @ObservedObject private var appState = AppState.shared
     
     public init() {}
     
     private var previewTarget: (gene: String, seq: String)? {
         guard !vm.generatedPrimers.isEmpty else { return nil }
-        if vm.isCustomInputMode {
+        switch vm.sourceMode {
+        case .custom:
             let g = vm.customGeneName.isEmpty ? "sgTarget" : vm.customGeneName
             return (g, vm.customSequence)
-        } else {
+        case .onlineCompare:
+            let g = onlineVM.gene.trimmingCharacters(in: .whitespacesAndNewlines)
+            let resolvedGene = g.isEmpty ? "sgTarget" : g
+            if let sel = onlineVM.sortedTargets.first(where: { onlineVM.selectedTargetIDs.contains($0.id) }) {
+                return (resolvedGene, sel.spacer)
+            } else if let first = onlineVM.sortedTargets.first {
+                return (resolvedGene, first.spacer)
+            }
+            return nil
+        case .library:
             if let firstSel = vm.searchResults.first(where: { vm.selectedTargetIDs.contains($0.id) }) {
                 return (firstSel.gene, firstSel.sequence)
             } else if let first = vm.searchResults.first {
@@ -34,6 +45,26 @@ public struct SgRNADesignView: View {
         )
     }
     
+    private var activeSelectionCount: Int {
+        switch vm.sourceMode {
+        case .library:
+            return vm.selectedTargetIDs.count
+        case .onlineCompare:
+            return onlineVM.selectedTargetIDs.count
+        case .custom:
+            return BioSequence.clean(vm.customSequence).count >= 19 ? 1 : 0
+        }
+    }
+    
+    private var canClearAny: Bool {
+        !vm.searchQuery.isEmpty
+            || !vm.searchResults.isEmpty
+            || !vm.customSequence.isEmpty
+            || !vm.generatedPrimers.isEmpty
+            || !onlineVM.gene.isEmpty
+            || !onlineVM.targets.isEmpty
+    }
+    
     public var body: some View {
         StudioPageLayout(
             title: "CRISPR/Cas9 sgRNA 设计",
@@ -51,7 +82,12 @@ public struct SgRNADesignView: View {
                         ) {
                             if vm.species != spec {
                                 vm.species = spec
-                                if !vm.searchQuery.isEmpty {
+                                onlineVM.species = spec
+                                if vm.sourceMode == .onlineCompare {
+                                    if !onlineVM.gene.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        onlineVM.fetchTargets()
+                                    }
+                                } else if !vm.searchQuery.isEmpty {
                                     vm.search()
                                 }
                             }
@@ -59,148 +95,183 @@ public struct SgRNADesignView: View {
                     }
                 ),
                 .action(
+                    id: "sgrna_web_menu",
+                    groupKey: nil,
+                    title: "网页版",
+                    icon: "safari",
+                    help: "在 Safari 中打开对应的在线靶点设计数据库",
+                    menuItems: [
+                        StudioToolbarMenuItem(title: "打开 VBC-Score", icon: "bolt.shield.fill") {
+                            onlineVM.openSourceInSafari(.vbcScore)
+                        },
+                        StudioToolbarMenuItem(title: "打开 CRISPOR (UCSC)", icon: "waveform.path.ecg") {
+                            onlineVM.openSourceInSafari(.ucscCrispor)
+                        },
+                        StudioToolbarMenuItem(title: "打开 CHOPCHOP", icon: "globe") {
+                            onlineVM.openSourceInSafari(.chopchop)
+                        }
+                    ]
+                ),
+                .action(
                     id: "clear_sgrna",
                     groupKey: nil,
                     title: "",
                     icon: "trash",
                     tint: .red,
-                    isDisabled: vm.searchQuery.isEmpty && vm.searchResults.isEmpty && vm.customSequence.isEmpty && vm.generatedPrimers.isEmpty,
-                    help: "一键清除",
-                    action: vm.clear
-                )
+                    isDisabled: !canClearAny,
+                    help: "一键清除本地与在线检索结果"
+                ) {
+                    vm.clear()
+                    onlineVM.clear()
+                }
             ]
         ) {
-                
-                AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        // 1. 靶点来源模式
-                        StudioCard(title: "靶点来源") {
-                            StudioSegmentedPicker(
-                                selection: $vm.isCustomInputMode,
-                                options: [
-                                    StudioSegmentedOption(value: false, title: "文库检索", tint: .blue),
-                                    StudioSegmentedOption(value: true, title: "手动输入", tint: .teal)
-                                ]
+            AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {
+                VStack(alignment: .leading, spacing: 12) {
+                    // 1. 靶点筛选与在线对比
+                    StudioCard(title: "靶点筛选与对比") {
+                        StudioSegmentedPicker(
+                            selection: $vm.sourceMode,
+                            options: [
+                                StudioSegmentedOption(value: .library, title: "本地文库", tint: .blue),
+                                StudioSegmentedOption(value: .onlineCompare, title: "在线对比", tint: .orange),
+                                StudioSegmentedOption(value: .custom, title: "手动输入", tint: .teal)
+                            ]
+                        )
+                    } content: {
+                        switch vm.sourceMode {
+                        case .library:
+                            librarySearchSection
+                        case .onlineCompare:
+                            SgRNAOnlineComparePanel(
+                                species: vm.species,
+                                vectorOverhang: vm.vectorOverhang,
+                                customPrefix: vm.customPrefix
                             )
-                        } content: {
-                            if !vm.isCustomInputMode {
-                                librarySearchSection
-                            } else {
-                                customInputSection
-                            }
+                        case .custom:
+                            customInputSection
                         }
-                        
-                        // 2. 载体骨架
-                        StudioCard(title: "载体骨架与命名") {
-                            ViewThatFits(in: .horizontal) {
-                                HStack(spacing: 12) {
-                                    Picker("载体", selection: $vm.vectorOverhang) {
-                                        ForEach(CRISPRDesigner.VectorOverhang.allCases) { v in
-                                            Text(v.rawValue).tag(v)
-                                        }
-                                    }
-                                    .labelsHidden()
-                                    .frame(width: 200)
-                                    
-                                    TextField("引物前缀 (可选)", text: $vm.customPrefix)
-                                        .textFieldStyle(.roundedBorder)
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Picker("载体", selection: $vm.vectorOverhang) {
-                                        ForEach(CRISPRDesigner.VectorOverhang.allCases) { v in
-                                            Text(v.rawValue).tag(v)
-                                        }
-                                    }
-                                    .labelsHidden()
-                                    
-                                    TextField("引物前缀 (可选)", text: $vm.customPrefix)
-                                        .textFieldStyle(.roundedBorder)
-                                }
-                            }
-                        }
-                        
-                        // 3. 参考图2对称全宽主操作栏
-                        HStack(spacing: 10) {
-                            StudioPrimaryActionButton(
-                                title: "设计 sgRNA 引物",
-                                icon: "sparkles",
-                                tint: .cyan,
-                                fillWidth: true,
-                                action: vm.generatePrimers
-                            )
-                            
-                            StudioPrimaryActionButton(
-                                title: "CHOPCHOP 靶点对比",
-                                icon: "globe.badge.chevron.backward",
-                                tint: .orange,
-                                fillWidth: true
-                            ) {
-                                let clean = vm.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-                                let g: String
-                                if !clean.isEmpty {
-                                    g = clean
-                                } else if let firstSel = vm.searchResults.first(where: { vm.selectedTargetIDs.contains($0.id) }) {
-                                    g = firstSel.gene
-                                } else if let first = vm.searchResults.first {
-                                    g = first.gene
-                                } else if vm.isCustomInputMode && !vm.customGeneName.isEmpty {
-                                    g = vm.customGeneName
-                                } else {
-                                    g = "TP53"
-                                }
-                                vm.compareInCHOPCHOP(gene: g)
-                            }
-                            
-                            if !vm.generatedPrimers.isEmpty {
-                                StudioPrimaryActionButton(
-                                    title: "加入引物池",
-                                    icon: "cart.badge.plus",
-                                    tint: .green,
-                                    fillWidth: true,
-                                    action: vm.addAllToCart
+                    }
+                    
+                    // 2. 载体骨架与命名
+                    StudioCard(title: "载体骨架与命名") {
+                        StudioMetricBadge(
+                            label: "接头",
+                            value: vm.vectorOverhang == .px459_px458 ? "BbsI (CACC)" : "BsmBI (CACCG)",
+                            color: .cyan
+                        )
+                    } content: {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 10) {
+                                StudioMenuPicker(
+                                    selection: $vm.vectorOverhang,
+                                    options: CRISPRDesigner.VectorOverhang.allCases.map {
+                                        StudioMenuPickerOption(value: $0, title: $0.rawValue)
+                                    },
+                                    prefix: "载体",
+                                    icon: "circle.dotted.circle",
+                                    help: "选择靶点寡核苷酸退火克隆的载体酶切粘性末端"
                                 )
+                                
+                                TextField("引物前缀 (可选)", text: $vm.customPrefix)
+                                    .textFieldStyle(.roundedBorder)
+                                    .controlSize(.large)
                             }
-                        }
-                        // 生成的引物展示 (就近展示)
-                        if !vm.generatedPrimers.isEmpty {
-                            StudioCard(title: "生成的引物结果") {
-                                StudioMetricBadge(label: "数量", value: "\(vm.generatedPrimers.count) 条", color: .green)
-                            } content: {
-                                VStack(spacing: 10) {
-                                    ForEach(Array(vm.generatedPrimers.enumerated()), id: \.element.id) { idx, primer in
-                                        let partnerIdx = (idx % 2 == 0) ? (idx + 1) : (idx - 1)
-                                        let partner = (partnerIdx >= 0 && partnerIdx < vm.generatedPrimers.count) ? vm.generatedPrimers[partnerIdx] : nil
-                                        PrimerCardView(primer: primer, partnerPrimer: partner)
-                                    }
-                                }
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                StudioMenuPicker(
+                                    selection: $vm.vectorOverhang,
+                                    options: CRISPRDesigner.VectorOverhang.allCases.map {
+                                        StudioMenuPickerOption(value: $0, title: $0.rawValue)
+                                    },
+                                    prefix: "载体",
+                                    icon: "circle.dotted.circle"
+                                )
+                                
+                                TextField("引物前缀 (可选)", text: $vm.customPrefix)
+                                    .textFieldStyle(.roundedBorder)
+                                    .controlSize(.large)
                             }
                         }
                     }
-                } right: {
-                    // 仅在真实生成引物且开关开启时展示质粒图谱，绝不凭空臆造
-                    if let pData = previewData {
-                        PlasmidPreviewPanel(data: pData, onClose: {
-                            appState.showPlasmidPreview = false
-                        })
-                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    
+                    // 3. 主操作栏（设计引物 + 一键入池）
+                    HStack(spacing: 10) {
+                        StudioPrimaryActionButton(
+                            title: activeSelectionCount > 0 ? "设计 sgRNA 引物 (\(activeSelectionCount))" : "设计 sgRNA 引物",
+                            icon: "sparkles",
+                            tint: .cyan,
+                            fillWidth: true,
+                            action: vm.generatePrimers
+                        )
+                        
+                        if !vm.generatedPrimers.isEmpty {
+                            StudioPrimaryActionButton(
+                                title: "加入引物池 (\(vm.generatedPrimers.count))",
+                                icon: "cart.badge.plus",
+                                tint: .green,
+                                fillWidth: true,
+                                action: vm.addAllToCart
+                            )
+                        }
+                    }
+                    
+                    // 4. 生成的引物结果
+                    if !vm.generatedPrimers.isEmpty {
+                        StudioCard(title: "生成的引物结果") {
+                            StudioMetricBadge(label: "数量", value: "\(vm.generatedPrimers.count) 条", color: .green)
+                        } content: {
+                            VStack(spacing: 10) {
+                                ForEach(Array(vm.generatedPrimers.enumerated()), id: \.element.id) { idx, primer in
+                                    let partnerIdx = (idx % 2 == 0) ? (idx + 1) : (idx - 1)
+                                    let partner = (partnerIdx >= 0 && partnerIdx < vm.generatedPrimers.count) ? vm.generatedPrimers[partnerIdx] : nil
+                                    PrimerCardView(primer: primer, partnerPrimer: partner)
+                                }
+                            }
+                        }
                     }
                 }
+            } right: {
+                if let pData = previewData {
+                    PlasmidPreviewPanel(data: pData, onClose: {
+                        appState.showPlasmidPreview = false
+                    })
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
+            }
         }
         .alert("提示", isPresented: $vm.showErrorAlert) {
             Button("好的", role: .cancel) {}
         } message: {
             Text(vm.errorMessage ?? "")
         }
+        .onAppear {
+            handleAutoOnlineTrigger()
+        }
+        .onChange(of: appState.shouldAutoQueryCHOPCHOP) { _, shouldQuery in
+            if shouldQuery {
+                handleAutoOnlineTrigger()
+            }
+        }
+    }
+    
+    private func handleAutoOnlineTrigger() {
+        if appState.shouldAutoQueryCHOPCHOP {
+            appState.shouldAutoQueryCHOPCHOP = false
+            vm.species = appState.chopchopSpecies
+            vm.openInlineOnlineCompare(gene: appState.chopchopGene, forceRefresh: false)
+        }
     }
     
     private var librarySearchSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 TextField("输入待检索基因 (如 TP53, PRKAA1, Trp53)", text: $vm.searchQuery)
                     .textFieldStyle(.roundedBorder)
+                    .controlSize(.large)
+                    .font(.system(size: 12.5))
                     .onSubmit { vm.search() }
-
+                
                 StudioActionPillButton(
                     title: vm.isSearching ? "检索中" : "检索",
                     icon: "magnifyingglass",
@@ -210,176 +281,79 @@ public struct SgRNADesignView: View {
                     action: vm.search
                 )
             }
-
+            
             if !vm.searchResults.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    // 固定非浮层脱靶核验说明条
-                    HStack(alignment: .center, spacing: 8) {
-                        Image(systemName: "info.circle.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(.orange)
-                        Text("本评分仅评估 GC、二级结构与 Poly-T，未进行全基因组脱靶搜索。请在‘靶点对比’中用 CHOPCHOP 核验特异性。")
-                            .font(.system(size: 10.5))
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 4)
+                VStack(alignment: .leading, spacing: 8) {
+                    StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
+                        StudioMetricBadge(
+                            label: "已选",
+                            value: "\(vm.selectedTargetIDs.count)/\(vm.searchResults.count)",
+                            color: .cyan
+                        )
+                        
+                        Text(vm.species.chopchopGenome)
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(vm.species.themeColor.opacity(0.14)))
+                            .foregroundColor(vm.species.themeColor)
+                        
+                        StudioMenuPicker(
+                            selection: $vm.sortOption,
+                            options: TargetSortOption.allCases.map {
+                                StudioMenuPickerOption(value: $0, title: $0.rawValue)
+                            },
+                            compact: true,
+                            help: "本地评分仅评估 GC、二级结构与 Poly-T；点击「在线核验」可用 VBC-Score / UCSC CRISPOR / CHOPCHOP 验证全基因组脱靶"
+                        )
+                        
                         StudioCompactPillButton(
-                            title: "靶点对比",
-                            icon: "globe.badge.chevron.backward",
+                            title: "选高分",
+                            tint: .green,
+                            help: "快速勾选序列启发式评分高 (★★★ / ★★) 的靶点",
+                            action: vm.selectRecommendedOnly
+                        )
+                        
+                        StudioCompactPillButton(title: "全选", action: vm.selectAll)
+                        StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
+                        
+                        StudioCompactPillButton(
+                            title: "在线核验",
+                            icon: "waveform.path.ecg",
                             tint: .orange,
-                            help: "在 CHOPCHOP 靶点对比模块中核验脱靶特异性"
+                            isProminent: true,
+                            help: "转至内嵌三源在线对比，核验全基因组脱靶并交叉评分"
                         ) {
-                            let clean = vm.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-                            let g = !clean.isEmpty ? clean : (vm.searchResults.first?.gene ?? "TP53")
-                            vm.compareInCHOPCHOP(gene: g)
-                        }
-                    }
-                    .studioInnerBox(tint: .orange, paddingH: 10, paddingV: 6)
-
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .center, spacing: 6) {
-                            Text("结果 (\(vm.searchResults.count)条, 已选\(vm.selectedTargetIDs.count)条)")
-                                .font(.system(size: 11, weight: .semibold))
-
-                            Text("文库参考基因组: \(vm.species.chopchopGenome)")
-                                .font(.system(size: 10, weight: .medium))
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(vm.species.themeColor.opacity(0.12)))
-                                .foregroundColor(vm.species.themeColor)
-
-                            Spacer()
-
-                            StudioMenuPicker(
-                                selection: $vm.sortOption,
-                                options: TargetSortOption.allCases.map {
-                                    StudioMenuPickerOption(value: $0, title: $0.rawValue)
-                                },
-                                compact: true
-                            )
-
-                            StudioCompactPillButton(
-                                title: "选高分",
-                                tint: .green,
-                                help: "快速勾选序列启发式评分高 (★★★ / ★★) 的靶点",
-                                action: vm.selectRecommendedOnly
-                            )
-
-                            StudioCompactPillButton(title: "全选", action: vm.selectAll)
-
-                            StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
-                        }
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
-                                Text("结果 (\(vm.searchResults.count)条, 已选\(vm.selectedTargetIDs.count)条)")
-                                    .font(.system(size: 11, weight: .semibold))
-                                Text("参考基因组: \(vm.species.chopchopGenome)")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 2)
-                                    .background(Capsule().fill(vm.species.themeColor.opacity(0.12)))
-                                    .foregroundColor(vm.species.themeColor)
-                                Spacer()
-                                StudioMenuPicker(
-                                    selection: $vm.sortOption,
-                                    options: TargetSortOption.allCases.map {
-                                        StudioMenuPickerOption(value: $0, title: $0.rawValue)
-                                    },
-                                    compact: true
-                                )
-                            }
-                            HStack(spacing: 6) {
-                                StudioCompactPillButton(
-                                    title: "选高分",
-                                    tint: .green,
-                                    help: "快速勾选序列启发式评分高 (★★★ / ★★) 的靶点",
-                                    action: vm.selectRecommendedOnly
-                                )
-                                StudioCompactPillButton(title: "全选", action: vm.selectAll)
-                                StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
-                                Spacer()
-                            }
+                            vm.openInlineOnlineCompare()
                         }
                     }
                     
                     ScrollView {
-                        VStack(spacing: 4) {
+                        LazyVStack(spacing: 5) {
                             ForEach(vm.searchResults) { target in
-                                let isChecked = vm.selectedTargetIDs.contains(target.id)
-                                let scoreRes = target.scoreResult
-                                
-                                HStack(spacing: 6) {
-                                    Toggle("", isOn: Binding(
-                                        get: { isChecked },
-                                        set: { _ in vm.toggleTarget(target) }
-                                    ))
-                                    .labelsHidden()
-                                    
-                                    // 评分徽章 (点击悬停诊断详情)
-                                    TargetScoreBadge(score: scoreRes, compact: true)
-                                    
-                                    Text(target.gene)
-                                        .font(.system(size: 11, weight: .bold))
-                                        .frame(width: 50, alignment: .leading)
-                                    
-                                    Text(target.sequence)
-                                        .font(.system(size: 11, design: .monospaced))
-                                        .foregroundColor(isChecked ? .cyan : .primary)
-                                        .textSelection(.enabled)
-                                    
-                                    Spacer()
-                                    
-                                    if scoreRes.hasFatalIssue {
-                                        Text("⚠️TTTT")
-                                            .font(.system(size: 9.5, weight: .bold))
-                                            .foregroundColor(.red)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Capsule().fill(Color.red.opacity(0.12)))
-                                            .help("该靶点含连续4个T，在U6启动子下转录提前终止")
-                                    }
-
-                                    Text("GC \(String(format: "%.0f", target.gcPercent))%")
-                                        .font(.system(size: 10))
-                                        .monospacedDigit()
-                                        .foregroundColor(.secondary)
-                                }
-                                .studioInnerBox(tint: isChecked ? .cyan : nil, isHighlighted: isChecked, paddingH: 8, paddingV: 5)
+                                LocalLibraryTargetRow(
+                                    target: target,
+                                    isChecked: vm.selectedTargetIDs.contains(target.id),
+                                    accentColor: .cyan,
+                                    copyToastPrefix: "已复制 20bp Spacer",
+                                    polyTHelp: "该靶点含连续 4 个 T，在 U6 启动子下转录提前终止",
+                                    onToggle: { vm.toggleTarget(target) }
+                                )
                             }
                         }
                     }
-                    .frame(maxHeight: 170)
+                    .frame(height: min(max(130, CGFloat(vm.searchResults.count) * 34), 260))
                 }
             }
         }
     }
-
+    
     private var customInputSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                TextField("基因名", text: $vm.customGeneName)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 90)
-
-                TextField("20 bp 靶点 Spacer (不含 PAM)", text: $vm.customSequence)
-                    .font(.system(size: 11.5))
-                    .textFieldStyle(.roundedBorder)
-
-                if let sc = vm.customTargetScore {
-                    TargetScoreBadge(score: sc, compact: false)
-                }
-            }
-
-            if let sc = vm.customTargetScore, sc.hasFatalIssue, let warning = sc.fatalWarning {
-                HStack(spacing: 4) {
-                    Text("⚠️")
-                    Text(warning)
-                        .font(.system(size: 10.5))
-                        .foregroundColor(.red)
-                }
-                .studioInnerBox(tint: .red, paddingH: 8, paddingV: 4)
-            }
-        }
+        LocalCustomTargetInputSection(
+            geneName: $vm.customGeneName,
+            sequence: $vm.customSequence,
+            sequencePlaceholder: "20 bp 靶点 Spacer (不含 PAM)",
+            score: vm.customTargetScore
+        )
     }
 }

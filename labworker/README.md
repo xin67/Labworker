@@ -46,7 +46,7 @@
    git add <修改文件> && git commit -m "清晰的中文提交说明"
    ```
 
-## 3. 五大侧边栏分组与 19 个功能模块全景说明
+## 3. 五大侧边栏分组与 18 个功能模块全景说明
 
 侧边栏定义位于 `Sources/CloneStudioCore/ViewModels/AppState.swift` 的 `SidebarSectionKind` 与 `NavItem` 枚举中，支持顶部关键词实时检索、分类折叠以及在 **“系统设置 → 侧边栏定制”** 中按需隐藏任意非常驻模块（`系统设置` 固定常驻不可隐藏）。
 
@@ -66,9 +66,8 @@
 
 | 模块枚举 (`NavItem`) | 界面名称 | 核心源码文件 | 核心算法与业务功能说明 | 支持快导格式 |
 | :--- | :--- | :--- | :--- | :--- |
-| `.sgRNADesign` | **sgRNA 设计** | `Views/CRISPR/SgRNADesignView.swift`<br>`Engine/CRISPRDesigner.swift`<br>`Services/GenomicLibraryService.swift` | 支持从离线 `Libraries.sqlite`（标注参考基因组 `hg38` / `mm39`）高速检索或从给定序列全长扫描 PAM 位点（NGG / TTTV），综合 GC%、二级结构、Poly-T 终止信号与位置权重计算 **序列启发式评分**（`score_type = sequence_heuristic`，明确提示未含全基因组脱靶搜索并提供一键跳转 CHOPCHOP 靶点对比），生成 `lentiCRISPRv2` (BsmBI) 或 `pX459` (BbsI) 退火 Oligo。 | `.fa`, `.fasta`, `.dna` |
-| `.shRNADesign` | **shRNA 设计** | `Views/RNAi/ShRNADesignView.swift`<br>`Engine/ShRNADesigner.swift` | 基于 21nt 靶点热力学不对称性（5' 反义链解旋自由能差）与 RISC 装载偏好筛选高活性 RNAi 靶点，自动生成 `pLKO.1` (AgeI / EcoRI) 正义与反义发夹引物。 | `.fa`, `.fasta`, `.dna` |
-| `.chopchopCompare` | **靶点对比** | `Views/Compare/CHOPCHOPWebView.swift`<br>`Services/CHOPCHOPService.swift` | 内置三源靶点对比工作台（CHOPCHOP + VBC-Score + UCSC CRISPOR 并发检索与 20bp 共识合并），支持 `hg38` 与 `mm39`/`mm10`，并将本地已选 sgRNA / shRNA 候选靶点自动置顶交叉比对。 | `.fa`, `.fasta`, `.dna` |
+| `.sgRNADesign` | **sgRNA 设计** | `Views/CRISPR/SgRNADesignView.swift`<br>`Views/Compare/TargetOnlineComparePanels.swift`<br>`Engine/CRISPRDesigner.swift`<br>`Services/GenomicLibraryService.swift`<br>`Services/CHOPCHOPService.swift` | 支持离线 `Libraries.sqlite`（`hg38` / `mm39`）与内嵌 **VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源并发在线对比（20bp 共识合并与全基因组脱靶核验），一键生成 `lentiCRISPRv2` (BsmBI) 或 `pX459` (BbsI) 退火 Oligo。 | `.fa`, `.fasta`, `.dna` |
+| `.shRNADesign` | **shRNA 设计** | `Views/RNAi/ShRNADesignView.swift`<br>`Views/Compare/TargetOnlineComparePanels.swift`<br>`Engine/ShRNADesigner.swift`<br>`Services/BroadGPPService.swift` | 支持本地 TRC 文库与内嵌 **Broad GPP Public Portal** 官方 shRNA 克隆检索对比（Adjusted / Intrinsic Score、SDR Match %、他基因脱靶核验及多载体 `pLKO.1`/`pLKO_005` 归并），一键生成 `pLKO.1` (AgeI / EcoRI) 正义与反义发夹引物。 | `.fa`, `.fasta`, `.dna` |
 
 ### 3.3 电泳与图像定量 (`SidebarSectionKind.bioImaging`)
 
@@ -92,7 +91,7 @@
 | 模块枚举 (`NavItem`) | 界面名称 | 核心源码文件 | 核心算法与业务功能说明 |
 | :--- | :--- | :--- | :--- |
 | `.orderCenter` | **订购中心** | `Views/Order/OrderExportView.swift`<br>`Services/ExcelOrderExporter.swift` | 汇总各模块加入订购池的引物与测序样品，支持成对重命名、批量写回 `.dna` 质粒文件，并一键导出符合擎科（Tsingke）、生工（Sangon）官方模板格式的 `.xlsx` 订购表。 |
-| `.settings` | **系统设置** | `Views/Settings/SettingsView.swift`<br>`ViewModels/AppState.swift` | **四段式极简响应式设置中心**：<br>① **参数与外观**：浅色/深色/跟随系统主题、画布底色、强调色、状态栏图标开关，以及分子克隆、WB/微孔板/qPCR、蛋白质工作台与订购人档案默认参数。<br>② **侧边栏定制**：提供 3 个一键预设（显示全部 / 仅分子克隆与基因编辑 / 仅图像定量与蛋白工具）及 5 大分类自适应开关矩阵。<br>③ **MCP 服务**：集中管理 `labworker-mcp` 20261115，支持一键注入 Claude Desktop / Cursor / Windsurf、复制标准 JSON、查看跨进程同步记录与 23 项工具清单。<br>④ **全局说明书**：支持按名称/算法/文件格式实时检索全部 19 个模块的功能定位、支持格式与实操提示，并提供 `直达功能` 与 `恢复显示` 按钮。 |
+| `.settings` | **系统设置** | `Views/Settings/SettingsView.swift`<br>`ViewModels/AppState.swift` | **四段式极简响应式设置中心**：<br>① **参数与外观**：浅色/深色/跟随系统主题、画布底色、强调色、状态栏图标开关，以及分子克隆、WB/微孔板/qPCR、蛋白质工作台与订购人档案默认参数。<br>② **侧边栏定制**：提供 3 个一键预设（显示全部 / 仅分子克隆与基因编辑 / 仅图像定量与蛋白工具）及 5 大分类自适应开关矩阵。<br>③ **MCP 服务**：集中管理 `labworker-mcp` 20261115，支持一键注入 Claude Desktop / Cursor / Windsurf、复制标准 JSON、查看跨进程同步记录与 23 项工具清单。<br>④ **全局说明书**：支持按名称/算法/文件格式实时检索全部 18 个模块的功能定位、支持格式与实操提示，并提供 `直达功能` 与 `恢复显示` 按钮。 |
 
 ## 4. Finder 多格式智能快导与状态栏极简工作台
 
