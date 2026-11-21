@@ -11,10 +11,14 @@
 
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
-| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、7 张内置公开示例实机界面截图、Mermaid 架构工作流、18 模块速览、MCP 配置、参考项目致谢与 `v20261120` DMG 下载及源码构建说明 |
+| `../LICENSE` | 项目根目录许可协议文件（PolyForm Noncommercial License 1.0.0，SPDX: `PolyForm-Noncommercial-1.0.0`，禁止商业用途） |
+| `../NOTICE` | PolyForm Noncommercial License 1.0.0 要求的 `Required Notice:` 版权声明及禁止商用与商业授权联系说明 |
+| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、7 张内置公开示例实机界面截图、Mermaid 架构工作流、18 模块速览、MCP 配置、参考项目致谢、`v20261120` DMG 下载、源码构建及禁止商用声明 |
 | `../docs/images/*.png` | GitHub 根目录 `README.md` 引用的实机高分界面截图集（`01-single-clone-map.png` 至 `07-sgrna-consensus.png`，仅使用公开示例数据，零隐私脱敏留档） |
 | `../.github/workflows/ci.yml` | GitHub Actions `macos-14` 自动化 CI 门禁：在每次 `push`/`pull_request` 执行 Python 跨语言测试向量、防篡改校验及 `check_doc_counts.sh` 全量回归 |
-| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、18 模块算法速查、UI 响应式规范与 MCP 20261120 协议指南 |
+| `labworker/LICENSE` | `labworker/` 子目录同步许可协议文件（PolyForm Noncommercial License 1.0.0） |
+| `labworker/NOTICE` | `labworker/` 子目录同步版权与禁止商用 `Required Notice:` 声明 |
+| `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、18 模块算法速查、UI 响应式规范、MCP 20261120 协议指南及非商用限制说明 |
 | `labworker/HANDOVER.md` | AI 项目架构交接与维护规范手册：包含目录拓扑、Single Source of Truth 门禁契约、双端 (Swift + Python MCP) 同步机制、跨语言测试向量与编码红线 |
 | `labworker/Package.swift` | SwiftPM 工程定义（Swift 6.4 / 最低支持 `macOS 27.0`），包含 `CloneStudio`（macOS 桌面端）、`CloneStudioCore`（核心算法与业务服务库）、`CloneStudioVerify`（命令行回归自检靶点）三个 Target |
 | `labworker/ARCHITECTURE.md` | 项目全量核心文件职责权威清单与工程维护规范 |

@@ -10,8 +10,9 @@
 - **项目名称**：Labworker 20261120（SwiftPM Package / Target 名称：`CloneStudio`、`CloneStudioCore`、`CloneStudioVerify`）
 - **形态与定位**：macOS 原生干湿实验与生物信息学一体化科研桌面工作台（Wet-Lab & Bioinformatics Native Workbench）
 - **目录结构**：
-  - 仓库根目录：`<repo-root>/`（包含 `.gitignore`、`.github/workflows/ci.yml`、`ARCHITECTURE.md` 及 `labworker/`）
+  - 仓库根目录：`<repo-root>/`（包含 `.gitignore`、`.github/workflows/ci.yml`、`LICENSE`、`NOTICE`、`README.md`、`docs/` 及 `labworker/`）
   - Swift Package 主目录：`<repo-root>/labworker`
+- **许可协议**：`PolyForm Noncommercial License 1.0.0`（SPDX: `PolyForm-Noncommercial-1.0.0`，详见 `LICENSE` 与 `NOTICE`；允许个人学习与非营利性学术科研使用，禁止任何商业用途）
 - **远程仓库**：`https://github.com/xin67/Labworker.git`（分支：`main`，已全局脱敏个人隐私、本地用户名路径与实验室私有质粒记录）
 - **本地私有数据保护（已在 `/.gitignore` 拦截，严禁提交到 Git）**：
   - `本地个人备份_勿上传/`（用户个人本地 `.dna` / 备份数据与私人订购模板）
@@ -40,8 +41,12 @@
 <repo-root>/
 ├── .gitignore                                  # 严格拦截 .dna/.ab1/.gb、私有质粒池、本地个人备份及生成物
 ├── .github/workflows/ci.yml                    # macOS-14 CI：Python 共享向量 + 防篡改检查 + check_doc_counts.sh
-├── ARCHITECTURE.md                             # 仓库根指向 labworker/ARCHITECTURE.md
+├── LICENSE                                     # PolyForm Noncommercial License 1.0.0（禁止商用）
+├── NOTICE                                      # Required Notice 版权与商业授权联系声明
+├── README.md                                   # GitHub 项目主页图文展示与禁止商用声明
+├── docs/images/                                # README 实机界面截图集
 └── labworker/                                  # Swift Package 主目录
+    ├── LICENSE / NOTICE                        # 同步许可协议与 Required Notice 声明
     ├── Package.swift                           # macOS 27+，3 Targets: CloneStudioCore, CloneStudio, CloneStudioVerify
     ├── README.md / ARCHITECTURE.md / HANDOVER.md
     ├── Scripts/

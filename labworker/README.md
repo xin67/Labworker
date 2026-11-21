@@ -157,3 +157,14 @@ MCP 服务端脚本位于 `Sources/CloneStudioCore/Resources/clonestudio_mcp_ser
 
 ### 5.3 跨进程 GUI 实时同步机制
 当外部 AI 通过 MCP 调用上述工具时，`clonestudio_mcp_server.py` 会为每次运行生成唯一 `run_id`，将包含 `schema_version: 1`、`run_id`、`tool_name` 与 `target_module` 的结构化结果通过临时文件 `os.replace` 原子写入 `~/Library/Application Support/CloneStudio/mcp_sync/<run_id>.json`（同时原子更新兼容文件 `latest.json`），并以非阻塞方式广播 macOS `DistributedNotificationCenter` 通知（`com.clonestudio.mcp.updated`）。正在运行的 `Labworker.app`（或在下次启动时）会按时间顺序扫描 `mcp_sync/`、基于 `processed_runs.json` 幂等去重消费、自动归档至 `mcp_sync/done/`（自动清理超过 7 天的旧归档）并刷新对应工作台画布。
+
+## 6. 许可协议与禁止商用声明
+
+本项目采用 [**PolyForm Noncommercial License 1.0.0**](LICENSE)（SPDX: `PolyForm-Noncommercial-1.0.0`，详见根目录 [`../LICENSE`](../LICENSE) 与 [`../NOTICE`](../NOTICE)）发布：
+
+```text
+Required Notice: Copyright (c) 2026 Labworker Contributors (https://github.com/xin67/Labworker)
+```
+
+- **允许范围**：个人学习、教育教学及非营利性学术科研使用，以及遵守同协议并完整保留许可文本与 `Required Notice:` 声明的非商用修改和分发。
+- **禁止商用**：未经版权方书面商业授权，严禁将本软件、源码、构建产物（`.app` / `.dmg`）、衍生作品或内嵌算法/MCP 工具用于任何直接或间接商业用途。如需商业授权，请通过 [GitHub Issues](https://github.com/xin67/Labworker/issues) 联系。

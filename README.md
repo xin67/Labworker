@@ -11,9 +11,10 @@
 [![macOS](https://img.shields.io/badge/macOS-27.0%2B%20Liquid%20Glass-1D1D1F?style=for-the-badge)](https://github.com/xin67/Labworker/releases/tag/v20261120)
 [![Swift](https://img.shields.io/badge/Swift-6.4%20%7C%20Zero%203rd--Party%20Deps-F05138?style=for-the-badge&logo=swift&logoColor=white)](#-架构设计与协同工作流)
 [![MCP](https://img.shields.io/badge/MCP%20Tools-23%20Ready-30D158?style=for-the-badge)](#-ai-智能体协同)
-[![License](https://img.shields.io/badge/License-MIT-8E8E93?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-D93F0B?style=for-the-badge)](LICENSE)
+[![Commercial Use](https://img.shields.io/badge/Commercial%20Use-Prohibited-E5484D?style=for-the-badge)](#-许可协议与禁止商用声明)
 
-[⬇️ 下载最新版 DMG (`v20261120`)](https://github.com/xin67/Labworker/releases/tag/v20261120) &nbsp;·&nbsp; [🆕 v20261120 最新进展](#-v20261120-最新进展) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 18 个功能模块](#-18-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 源码构建](#-安装与源码构建) &nbsp;·&nbsp; [🙏 致谢](#-致谢与参考项目)
+[⬇️ 下载最新版 DMG (`v20261120`)](https://github.com/xin67/Labworker/releases/tag/v20261120) &nbsp;·&nbsp; [🆕 v20261120 最新进展](#-v20261120-最新进展) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 18 个功能模块](#-18-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 源码构建](#-安装与源码构建) &nbsp;·&nbsp; [🙏 致谢](#-致谢与参考项目) &nbsp;·&nbsp; [📄 禁止商用协议](#-许可协议与禁止商用声明)
 
 <br/>
 
@@ -24,6 +25,9 @@
 </div>
 
 ---
+
+> [!WARNING]
+> **非商用许可限制（Non-Commercial Only）**：本项目采用 [**PolyForm Noncommercial License 1.0.0**](LICENSE)（SPDX: `PolyForm-Noncommercial-1.0.0`）发布，**仅允许个人学习、教育教学与非营利性学术科研使用，严禁任何形式的商业用途**。如需商业授权，请通过 [GitHub Issues](https://github.com/xin67/Labworker/issues) 联系。
 
 ## ✨ 为什么选择 Labworker？
 
@@ -260,6 +264,21 @@ Labworker 在研发与算法对齐过程中学习、参考并集成了以下优�
 
 ---
 
-## 📄 开源协议
+## 📄 许可协议与禁止商用声明
 
-本项目基于 [MIT License](LICENSE) 开源发布。欢迎提交 Issue 或 Pull Request 共建更好用的原生科研工具链。
+本项目采用 [**PolyForm Noncommercial License 1.0.0**](LICENSE)（SPDX: `PolyForm-Noncommercial-1.0.0`，[官方协议原文](https://polyformproject.org/licenses/noncommercial/1.0.0)）发布源代码与构建产物，并附加 [`NOTICE`](NOTICE) 版权声明。**本协议不属于允许自由商用的宽松开源协议，明确禁止任何未经授权的商业用途。**
+
+```text
+Required Notice: Copyright (c) 2026 Labworker Contributors (https://github.com/xin67/Labworker)
+```
+
+- **允许的使用范围（Permitted Uses）**：
+  - 个人学习、研究、实验测试与非营利性个人项目；
+  - 高等院校、科研院所、公益组织、公共卫生或环保机构及政府机构的非商业科研与教学使用；
+  - 在遵守本协议全部条件（**分发任何部分时必须完整附带本协议条款或上述官方链接，并完整保留上述 `Required Notice:` 版权声明**）的前提下进行修改、构建衍生作品与非商用分发。
+- **禁止的商业行为（Prohibited Commercial Uses）**：
+  - 未经版权方书面商业授权，**严禁**将本项目代码、预编译应用（`Labworker.app` / `.dmg`）、衍生作品或内嵌算法/MCP 工具用于任何直接或间接的商业用途；
+  - 包括但不限于：商业公司内部生产或商业研发服务、集成到闭源或付费商业软件/硬件产品中、二次打包或换壳售卖、提供收费 SaaS/云端托管或商业付费技术服务，以及任何以营利为目的的商业推广或商业分发。
+- **商业授权与社区共建**：
+  - 如企业或商业机构需要商业授权或商业合作，请通过本仓库 [**GitHub Issues**](https://github.com/xin67/Labworker/issues) 联系项目维护方取得单独的书面商业许可；
+  - 欢迎在非商用条款下提交 Issue 或 Pull Request 共建更好的科研工具链（[致谢章节](#-致谢与参考项目) 所列第三方开源项目及公开科研数据库各自保留其原始许可与版权）。
