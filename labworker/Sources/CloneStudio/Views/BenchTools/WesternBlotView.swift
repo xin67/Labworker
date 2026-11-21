@@ -1367,6 +1367,7 @@ public struct WesternBlotView: View {
             return
         }
         guard let group = selectedGroup else { return }
+        let targetGroupID = group.id
         let quantPath = group.primaryQuantPath
         let cfg = params
         let useNative = preferNativeEngine
@@ -1377,6 +1378,7 @@ public struct WesternBlotView: View {
                 preferNative: useNative
             )
             await MainActor.run {
+                guard self.selectedGroupID == targetGroupID else { return }
                 if let res {
                     self.currentResult = res
                     if self.selectedLaneIndex >= res.lanes.count {

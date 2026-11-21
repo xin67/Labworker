@@ -11,8 +11,8 @@
 
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
-| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、5 张内置公开示例实机界面截图、Mermaid 架构工作流、18 模块速览、MCP 配置与 `v20261120` DMG 下载及源码构建说明 |
-| `../docs/images/*.png` | GitHub 根目录 `README.md` 引用的实机高分界面截图集（`01-single-clone-map.png` 至 `06-qpcr-analysis.png`，仅使用公开示例数据，零隐私脱敏留档） |
+| `../README.md` | GitHub 项目主页图文展示文档：含应用图标、7 张内置公开示例实机界面截图、Mermaid 架构工作流、18 模块速览、MCP 配置、参考项目致谢与 `v20261120` DMG 下载及源码构建说明 |
+| `../docs/images/*.png` | GitHub 根目录 `README.md` 引用的实机高分界面截图集（`01-single-clone-map.png` 至 `07-sgrna-consensus.png`，仅使用公开示例数据，零隐私脱敏留档） |
 | `../.github/workflows/ci.yml` | GitHub Actions `macos-14` 自动化 CI 门禁：在每次 `push`/`pull_request` 执行 Python 跨语言测试向量、防篡改校验及 `check_doc_counts.sh` 全量回归 |
 | `labworker/README.md` | 面向其他 AI 智能体（Claude / Cursor / Windsurf / Gemini / Codex）与开发者的项目全景功能说明书、18 模块算法速查、UI 响应式规范与 MCP 20261120 协议指南 |
 | `labworker/HANDOVER.md` | AI 项目架构交接与维护规范手册：包含目录拓扑、Single Source of Truth 门禁契约、双端 (Swift + Python MCP) 同步机制、跨语言测试向量与编码红线 |

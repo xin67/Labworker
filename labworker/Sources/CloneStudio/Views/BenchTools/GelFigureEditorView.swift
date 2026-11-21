@@ -739,17 +739,18 @@ public struct GelFigureEditorView: View {
                         }
                         
                         Canvas { context, _ in
-                            let staggerHeaders = lanes.count > 6
+                            let staggerHeaders = lanes.count > 5
                             for (laneOffset, lane) in lanes.enumerated() {
                                 let lx = CGFloat(lane.centerX) * drawW
                                 let bw = CGFloat(lane.widthFrac) * drawW
                                 
                                 if lane.isVirtualDigestLane {
+                                    let topPad: CGFloat = staggerHeaders ? 34 : 26
                                     let laneRect = CGRect(
                                         x: lx - bw * 0.52,
-                                        y: 28,
+                                        y: topPad,
                                         width: bw * 1.04,
-                                        height: max(40, drawH - 36)
+                                        height: max(40, drawH - topPad - 8)
                                     )
                                     context.fill(
                                         Path(roundedRect: laneRect, cornerRadius: 4),
@@ -757,9 +758,10 @@ public struct GelFigureEditorView: View {
                                     )
                                 }
                                 
-                                // 泳道顶部名称标签（泳道较多时自动错行，避免文字重叠）
-                                let headerY: CGFloat = staggerHeaders ? (laneOffset.isMultiple(of: 2) ? 12 : 24) : 14
-                                let headerText = Text(lane.name)
+                                // 泳道顶部名称标签（泳道较多时自动错行并截断，避免文字重叠）
+                                let headerY: CGFloat = staggerHeaders ? (laneOffset.isMultiple(of: 2) ? 11 : 23) : 14
+                                let displayName = Self.shortName(lane.name, maxLength: lanes.count > 5 ? 12 : 16)
+                                let headerText = Text(displayName)
                                     .font(.system(size: staggerHeaders ? 9 : 10, weight: .bold))
                                     .foregroundColor(lane.isVirtualDigestLane ? .cyan : .white)
                                 context.draw(headerText, at: CGPoint(x: lx, y: headerY))
