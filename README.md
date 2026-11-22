@@ -47,6 +47,49 @@
 
 ---
 
+## 🎬 实机操作动态演示与功能巡礼视频
+
+以下动图与视频均基于 **`Labworker v20261120` 实机窗口交互录屏**制作（内置公开示范数据，含平滑指针轨迹与点击交互反馈）：
+
+- 🎬 [**高清实机操作演示视频（约 78 秒 · 1920×1240 @ 30fps · 含中文字幕 / 静音版）**](docs/videos/Labworker-Feature-Tour.mp4)
+
+<div align="center">
+  <a href="docs/videos/Labworker-Feature-Tour.mp4">
+    <img src="docs/images/demo-00-full-overview.gif" width="100%" alt="Labworker 全流程实机操作精华速览动图" />
+  </a>
+  <sub>▲ Labworker 全栈工作流实机操作速览（质粒池 → 单片段克隆 → Sanger 验证 → CRISPR sgRNA → WB 定量 → 凝胶分子量 → qPCR → 3D 蛋白工作台），点击动图查看高清带字幕操作视频。</sub>
+</div>
+
+<br/>
+
+<table>
+  <tr>
+    <td width="33.3%" valign="top">
+      <a href="docs/images/demo-01-cloning-sanger.gif">
+        <img src="docs/images/demo-01-cloning-sanger.gif" width="100%" alt="质粒池、单片段无缝克隆与 Sanger 测序验证动图" />
+      </a>
+      <h4>🧬 质粒池 · 无缝克隆 · Sanger</h4>
+      <p><sub>特征筛选、OVE 环形与双链图谱、PCR 模拟电泳弹窗、四色峰图与批量克隆看板。</sub></p>
+    </td>
+    <td width="33.3%" valign="top">
+      <a href="docs/images/demo-02-crispr-wb-gel.gif">
+        <img src="docs/images/demo-02-crispr-wb-gel.gif" width="100%" alt="CRISPR sgRNA 三源共识、16-bit WB 定量与凝胶虚拟电泳动图" />
+      </a>
+      <h4>🎯 sgRNA · WB · 凝胶虚拟电泳</h4>
+      <p><sub>VBC/CRISPOR/CHOPCHOP 三源在线共识、Rolling-Ball 扣背景与多泳道虚拟电泳叠加。</sub></p>
+    </td>
+    <td width="33.3%" valign="top">
+      <a href="docs/images/demo-03-qpcr-protein3d.gif">
+        <img src="docs/images/demo-03-qpcr-protein3d.gif" width="100%" alt="qPCR 荧光定量与三维蛋白骨架 Vina 对接盒动图" />
+      </a>
+      <h4>🧊 qPCR · 3D 蛋白与 Vina 对接盒</h4>
+      <p><sub>ΔCt 热图与对照组切换、3D Cα 骨架交互旋转、LIGSITE 口袋、拉氏图与点突变 ΔΔG。</sub></p>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 📸 实机界面与核心能力展示
 
 以下全部截图采集自 **`Labworker v20261120`（macOS 实机浅色 Liquid Glass 主题）** 运行内置公开示范数据的真实界面：
