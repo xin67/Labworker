@@ -8,13 +8,13 @@
 *分子克隆引物设计 · 环形质粒与双链图谱 · Sanger 四色峰图 · 16-bit WB / 凝胶 / qPCR 定量 · 三维蛋白口袋与 AI MCP 协同*
 
 [![Version](https://img.shields.io/badge/Release-v20261120-0A84FF?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/xin67/Labworker/releases/tag/v20261120)
-[![macOS](https://img.shields.io/badge/macOS-27.0%2B%20Liquid%20Glass-1D1D1F?style=for-the-badge)](https://github.com/xin67/Labworker/releases/tag/v20261120)
-[![Swift](https://img.shields.io/badge/Swift-6.4%20%7C%20Zero%203rd--Party%20Deps-F05138?style=for-the-badge&logo=swift&logoColor=white)](#-架构设计与协同工作流)
+[![macOS](https://img.shields.io/badge/macOS-14.0%2B%20Sonoma%20%7C%20Liquid%20Glass-1D1D1F?style=for-the-badge)](https://github.com/xin67/Labworker/releases/tag/v20261120)
+[![Swift](https://img.shields.io/badge/Swift-6.0%2B%20%7C%20Zero%203rd--Party%20Deps-F05138?style=for-the-badge&logo=swift&logoColor=white)](#-架构设计与协同工作流)
 [![MCP](https://img.shields.io/badge/MCP%20Tools-23%20Ready-30D158?style=for-the-badge)](#-ai-智能体协同)
 [![License](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-D93F0B?style=for-the-badge)](LICENSE)
 [![Commercial Use](https://img.shields.io/badge/Commercial%20Use-Prohibited-E5484D?style=for-the-badge)](#-许可协议与禁止商用声明)
 
-[⬇️ 下载最新版 DMG (`v20261120`)](https://github.com/xin67/Labworker/releases/tag/v20261120) &nbsp;·&nbsp; [🆕 v20261120 最新进展](#-v20261120-最新进展) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 18 个功能模块](#-18-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 源码构建](#-安装与源码构建) &nbsp;·&nbsp; [🙏 致谢](#-致谢与参考项目) &nbsp;·&nbsp; [📄 禁止商用协议](#-许可协议与禁止商用声明)
+[⬇️ 下载最新版 DMG (`v20261120`)](https://github.com/xin67/Labworker/releases/tag/v20261120) &nbsp;·&nbsp; [🆕 v20261120 最新进展](#-v20261120-最新进展) &nbsp;·&nbsp; [📸 实机界面画廊](#-实机界面与核心能力展示) &nbsp;·&nbsp; [🧩 18 个功能模块](#-18-个全栈功能模块) &nbsp;·&nbsp; [🤖 MCP 智能体接入](#-ai-智能体协同) &nbsp;·&nbsp; [🔧 安装与源码构建](#-安装与源码构建) &nbsp;·&nbsp; [🙏 致谢](#-致谢与参考项目) &nbsp;·&nbsp; [📄 禁止商用协议](#-许可协议与禁止商用声明)
 
 <br/>
 
@@ -31,7 +31,7 @@
 
 ## ✨ 为什么选择 Labworker？
 
-- **🎨 原生 macOS 27 Liquid Glass 体验**：纯 SwiftUI + AppKit 构建，深浅色与系统强调色实时跟随，统一 macOS 系统字体与 `.monospacedDigit()` 等宽数值排版；支持将 `.dna`、`.ab1`、`.tif`、`.pdb` 等文件从 Finder 直接拖入或右键打开自动跳转对应模块。
+- **🎨 原生 macOS 14.0+ 跨版本体验（macOS 26/27 Liquid Glass 渐进增强）**：纯 SwiftUI + AppKit 构建，兼容 `macOS 14.0 (Sonoma)` 至最新系统；在 macOS 26+ 自动启用原生 Liquid Glass 液态玻璃折射，在 macOS 14/15 平滑回退原生系统材质；支持将 `.dna`、`.ab1`、`.tif`、`.pdb` 等文件从 Finder 直接拖入或右键打开自动跳转对应模块。
 - **⚡️ 零第三方 Swift 依赖 · 本地硬件加速**：底层完全依托 Apple 原生 `Accelerate/vDSP`、`SQLite3` 与本地计算引擎离线运行——**实验序列与原始图像无需离开本机**。
 - **🔬 对齐期刊审稿标准的湿实验统计**：内置 SantaLucia 最近邻 $T_m$ 与二级结构 $\Delta G$ 计算、Rolling-Ball 背景扣减、Welch's *t*-test 及 Holm–Bonferroni 多重检验校正。
 - **🤖 开箱即用的 AI MCP 双端协同**：随包内置 `clonestudio_mcp_server.py`（**23** 个工具），可直接接入 Claude Desktop、Cursor、Windsurf、Antigravity 等 AI 客户端，实现自动化引物设计、测序 QC 与工作台联动同步。
@@ -40,10 +40,11 @@
 
 ## 🆕 v20261120 最新进展
 
-- **🧬 核心引擎与 MCP 23 工具扩展**：在 `CloneStudioCore` 与 `labworker-mcp` 服务端新增 **Golden Gate 组装**（基于 `Libraries.sqlite` 中 NEB T4 4-bp 连接保真度矩阵，支持 `BsaI / BsmBI / BbsI / SapI` 2–6 片段零错配接头分配与同义 Domestication）、**诊断性限制酶切推荐**、**离线质粒自动注释**（双链扫描、跨 Origin 拼接与历史残留片段标记）、**HDR 同源修复供体设计**（ssODN/dsDNA、PAM/Seed 同义阻断突变与 Out-Out PCR 引物）及 **CRISPR 编辑池 Sanger NNLS 峰图反卷积**（`Indel%`、`KO Score`、`HDR%` 与拟合优度 $R^2$）。
-- **🧪 同源重组 PCR 虚拟电泳与凝胶定量升级**：全部克隆/突变/删除工作台内置实时**同源重组 PCR 凝胶电泳模拟**；`凝胶分子量` 升级支持质粒酶切、单/多片段克隆、入门克隆、片段删除、定点突变与自定义条带多模式虚拟预测道叠加，并优化多泳道标题防重叠排布。
-- **🌐 靶点设计内嵌多源在线共识**：移除独立「靶点对比」页签，将在线核验直接嵌入 `sgRNA 设计`（**VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源并发共识评分，修复 `mm39` 与 501 bp 窗口问题）与 `shRNA 设计`（集成 **Broad GPP Public Portal** 官方 TRC 克隆库核验）。
-- **🧮 全能生物计算器与 Liquid Glass 细节打磨**：新增**生物计算器**（重组摩尔比配液、dsDNA/ssDNA/Linear/OD260 核酸定量、蛋白摩尔与编码容量、$C_1V_1=C_2V_2$ 溶液配制与温标转换）；移除冗余菌落计数器，收口为 **5 大分类 · 18 个全栈模块**，修复电泳画布横向溢出、Liquid Glass 默认态 HDR 过亮与 WB 切组竞态，全局统一居左紧凑主操作栏与条件性图谱按钮；全部核心算法经 **50 项自动化测试**与 10 组跨语言黄金测试向量验证。
+- **🧬 五大高阶引擎全量直连桌面 GUI & MCP 23 工具**：在 `CloneStudioCore`、`CloneStudio` 桌面工作台与 `labworker-mcp` 服务端全线打通 **Golden Gate 组装**（`多片段克隆` 双模式切换；基于 NEB T4 4-bp 连接保真度矩阵，支持 `BsaI / BsmBI / BbsI / SapI` 2–6 片段零错配接头分配与同义 Domestication）、**诊断性限制酶切推荐**（`质粒池` + `凝胶分子量` 虚拟预测道直连）、**离线质粒自动注释**（`质粒池` 内置 FASTA 自动注释，基于 `Libraries.sqlite` **1,415** 条 NCBI GenBank + FPbase 真实公共元件词典与 k-mer 索引）、**HDR 同源修复供体设计**（`sgRNA 设计` 切换页签：ssODN/dsDNA、PAM/Seed 同义阻断突变、可选 RFLP 与 Out-Out PCR 引物）及 **CRISPR 编辑池 Sanger NNLS 峰图反卷积**（`测序验证` 切换页签：基于 `Accelerate vDSP` 求解 `Indel%`、`KO Score`、`HDR%` 与拟合优度 $R^2$）。
+- **🖥️ macOS 14.0+ 全系覆盖与免付费公证零门槛分发**：全面下调部署门槛至 `macOS 14.0 (Sonoma)` 并升级 CI 至 `macos-15`；内置自托管 Homebrew Cask（`Casks/labworker.rb`）、`install.sh` 一键免隔离安装脚本及 DMG 内附 `一键修复首次无法打开.command`，彻底消除无付费 Apple 开发者账号情况下的 Gatekeeper 首次打开阻碍。
+- **🧪 同源重组 PCR 虚拟电泳与凝胶定量升级**：全部克隆/突变/删除工作台内置实时**同源重组 PCR 凝胶电泳模拟**；`凝胶分子量` 升级支持质粒酶切、诊断性酶切推荐直连、单/多片段克隆、入门克隆、片段删除、定点突变与自定义条带多模式虚拟预测道叠加，并优化多泳道标题防重叠排布。
+- **🌐 靶点设计内嵌多源在线共识 & 全能生物计算器**：`sgRNA 设计`（**VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源并发共识）与 `shRNA 设计`（**Broad GPP Public Portal**）内嵌在线核验；**生物计算器**整合摩尔比配液、核酸/蛋白定量与溶液换算；全套工作台收口为 **5 大分类 · 18 个全栈模块**，全部核心算法经 **57 项自动化测试**与 10 组跨语言黄金测试向量验证。
+- **🔬 全栈实验定量、全质粒验证、离线 Mol* 3D 与国际订购升级**：`序列工具` 新增五宿主（Human / Mouse / E. coli / Yeast / Insect）**多约束密码子优化与 5' 发夹避让器**；`测序验证` 集成 **全质粒 Nanopore 环状 SV 验证与多 Sanger 双向拼接 Contig**（`.fasta`/`.fastq`）；`质粒池` / `蛋白工作台` 打通 **GenBank / OpenCloning JSON / SBOL3 / 完整 `mmCIF` 解析**及 **NCBI / Addgene / RCSB / AlphaFold 在线拉取**；`蛋白工作台` 新增随包离线 **`Mol*` 全原子 3D 视窗**及本地 **`vina`/`smina`/`gnina`/`boltz` 对接共折叠桥接与 Pose 回放**；`qPCR 定量` 支持四仪器自动解析、**`.rdml` 双向读写**与 **8 项 MIQE 清单**；`微孔板设计` 内置 **酶标仪曲线拟合工作台**（BCA / 4PL-5PL / IC50 / CCK-8 ANOVA）；`订购中心` 扩展支持 **IDT / Twist / GenScript / Eurofins / BGI** 批量 `.xlsx`/`.csv` 与 **自定义 JSON 列映射模板**。
 
 ---
 
@@ -215,11 +216,11 @@ flowchart LR
 
 | 分类板块 | 模块名称 | 核心功能与支持格式 |
 | :--- | :--- | :--- |
-| **分子克隆与质粒 (7)** | `质粒池` / `入门克隆` / `单片段克隆` / `多片段克隆` / `定点突变` / `片段删除` / `Sanger 测序` | `.dna` (SnapGene)、`.gb`、`.fasta`、`.ab1` 解析与导出；支持矢量环形图谱、双链碱基视图、同源重组 PCR 凝胶电泳模拟、3n 移码校验与批量测序看板 |
-| **基因编辑与靶点 (2)** | `sgRNA 设计` / `shRNA 设计` | 基于 `Libraries.sqlite`（hg38/mm39）与内嵌在线对比（sgRNA 集成 **VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源共识；shRNA 集成 **Broad GPP Public Portal** 官方 TRC 克隆核验），自动生成带粘性末端的配对引物 |
-| **电泳与图像定量 (2)** | `WB 灰度定量` / `凝胶分子量` | 原生 16-bit TIFF 滚球扣背景与显著性柱状图、Ladder $\log_{10}(\text{MW})$ 回归与多模块（质粒酶切/单多片段克隆/入门克隆/片段删除/定点突变/自定义条带）虚拟电泳对照 |
-| **定量与蛋白工具 (5)** | `微孔板设计` / `qPCR 定量` / `蛋白工作台` / `生物计算器` / `序列与 Tm` | 96/384 孔防边缘效应排布、$2^{-\Delta\Delta C_t}$ 与标准曲线定量、三维 Cα + LIGSITE 口袋 + Vina 盒 + 点突变 $\Delta\Delta G$；重组 0.03 pmol 摩尔比配液、dsDNA/ssDNA/Linear/OD260 定量、蛋白摩尔/编码容量与 $C_1V_1=C_2V_2$ 溶液换算；SantaLucia 速算 |
-| **合成订购与设置 (2)** | `订购中心` / `系统设置` | 擎科 / 生工标准引物与测序 Excel 订购单导出、批量写回 `.dna` 质粒、MCP 服务一键注入与 Liquid Glass 主题/侧边栏定制 |
+| **分子克隆与质粒 (7)** | `质粒池` / `入门克隆` / `单片段克隆` / `多片段克隆` / `定点突变` / `片段删除` / `Sanger 测序` | `.dna` (SnapGene)、`.gb`/`.gbk`、OpenCloning JSON、SBOL3 JSON-LD、`.fasta`/`.fastq`、`.ab1` 解析导出与 **NCBI/Addgene 在线拉取**；支持环形图谱、双链视图、**离线自动注释 (`1,415` 元件)**、**诊断性酶切推荐**、**Type IIS Golden Gate**、**CRISPR ICE 反卷积**及 **全质粒 Nanopore 环状 SV 与多 Sanger 双向 Contig 拼接** |
+| **基因编辑与靶点 (2)** | `sgRNA 设计` / `shRNA 设计` | 基于 `Libraries.sqlite`（hg38/mm39）与内嵌在线对比（sgRNA 集成 **VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源共识 + **HDR Knock-in 供体与 Out-Out 引物设计**；shRNA 集成 **Broad GPP Public Portal** 官方 TRC 克隆核验），自动生成带粘性末端的配对引物 |
+| **电泳与图像定量 (2)** | `WB 灰度定量` / `凝胶分子量` | 原生 16-bit TIFF 滚球扣背景与显著性柱状图、Ladder $\log_{10}(\text{MW})$ 回归与多模块（质粒酶切与**智能推荐鉴定酶切**/单多片段克隆/入门克隆/片段删除/定点突变/自定义条带）虚拟电泳对照 |
+| **定量与蛋白工具 (5)** | `微孔板设计` / `qPCR 定量` / `蛋白工作台` / `生物计算器` / `序列与 Tm` | 96/384 孔防边缘排布与 **酶标仪曲线拟合 (BCA / 4PL-5PL / IC50 / CCK-8 ANOVA)**、四仪器 qPCR + **`.rdml`** + **MIQE 清单**、Canvas 骨架 + **离线 `Mol*` 全原子 3D + 本地 `vina`/`smina`/`gnina`/`boltz` 对接回放** + **完整 `mmCIF`** + **RCSB/AlphaFold 在线拉取**；全能计算器；**五宿主多约束密码子优化**与 SantaLucia $T_m$ 速算 |
+| **合成订购与设置 (2)** | `订购中心` / `系统设置` | 擎科 / 生工 / **IDT / Twist / GenScript / Eurofins / BGI** 与 **自定义 JSON 列映射** `.xlsx`/`.csv` 导出、批量写回 `.dna`、MCP 服务一键注入与 macOS 14.0+ / Liquid Glass 定制 |
 
 ---
 
@@ -258,26 +259,46 @@ flowchart LR
 
 ## 🔧 安装与源码构建
 
-### 方式 A：直接安装发布版 DMG（推荐）
+系统要求：**`macOS 14.0 (Sonoma)` 及以上**（Apple Silicon 原生优化；macOS 26/27 自动启用原生 Liquid Glass，macOS 14–15 平滑回退系统材质）。因本项目免费开源且未购买付费 Apple 开发者账号进行商业公证，提供以下 **4 种零成本安装方式** 帮助首次安装免受 Gatekeeper 拦截：
+
+### 方式 A：Homebrew 自托管 Cask 一键安装（自动清除隔离属性）
+
+```bash
+brew tap xin67/tap https://github.com/xin67/Labworker.git
+brew install --cask labworker
+```
+> 内置 `postflight` 自动移除 `com.apple.quarantine`，装完即可直接从启动台或 `/Applications` 打开。
+
+### 方式 B：终端一键安装脚本（自动校验 SHA-256 与签名）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xin67/Labworker/main/labworker/Scripts/install.sh | bash
+```
+> 亦支持下载本地 DMG 后执行离线校验安装：`bash labworker/Scripts/install.sh --local-dmg Labworker-20261120.dmg`。
+
+### 方式 C：直接安装发布版 DMG（内置一键放行工具）
 
 1. 前往 [**GitHub Releases (`v20261120`)**](https://github.com/xin67/Labworker/releases/tag/v20261120) 下载 `Labworker-20261120.dmg`。
-2. 双击打开 DMG 镜像，将 `Labworker.app` 拖入 `/Applications` 文件夹。
-3. 要求系统环境：**`macOS 27.0` 及以上**。
+2. 双击打开 DMG 镜像，将 `Labworker.app` 拖入左侧 `Applications` 文件夹。
+3. **首次打开防拦截三选一**：
+   - 运行 DMG 内附的 **`一键修复首次无法打开.command`**（或查阅 **`首次打开说明.txt`**）；
+   - 或右键 `/Applications/Labworker.app` → 打开 → 确认（或在「系统设置 → 隐私与安全性」点击 **仍要打开**）；
+   - 或终端执行：`xattr -dr com.apple.quarantine /Applications/Labworker.app`。
 
-### 方式 B：从源码编译、打包与回归测试
+### 方式 D：从源码编译、打包与回归测试
 
 ```bash
 git clone https://github.com/xin67/Labworker.git
 cd Labworker/labworker
 
-# 1. 运行全部 50 项底层算法与跨语言测试向量（含文档单一真值门禁）
+# 1. 运行全部 57 项底层算法与跨语言测试向量（含文档单一真值门禁）
 bash Scripts/check_doc_counts.sh
 
 # 2. Release 编译并打包 Labworker.app（自动完成 Ad-hoc 签名校验）
 bash Scripts/build_app.sh
 
-# 3. 打包标准可分发 DMG 镜像（输出 Labworker-20261120.dmg 并校验 SHA-256）
-bash Scripts/package_dmg.sh
+# 3. 打包可分发 DMG（附带首次打开说明、一键放行脚本、.sha256 并同步更新 Casks/labworker.rb）
+bash Scripts/package_dmg.sh --skip-build --update-cask
 ```
 
 > **提示**：仓库已配置 `.gitignore`，所有本地 `.dna` / `.ab1` 序列及私有质粒库记录（`.clonestudio_plasmid_pool.json`）均仅留存于用户本地，不会随代码提交上传。
@@ -295,6 +316,7 @@ Labworker 在研发与算法对齐过程中学习、参考并集成了以下优�
 - **[mmcguffi / pLannotate](https://github.com/mmcguffi/pLannotate)**：本地离线未知质粒 FASTA 自动注释引擎（正反双链特征匹配、环形质粒跨零点 Origin 识别与历史残留 Fragment 贪心筛选）参考了 pLannotate 的注释过滤思路。
 - **[synthego-open / ice](https://github.com/synthego-open/ice)**：CRISPR 编辑池 Sanger 四色峰图解卷积模块（`deconvolute_crispr_sanger`）参考了 Synthego ICE 的非负最小二乘（NNLS）混杂峰建模思想。
 - **[Edinburgh-Genome-Foundry / SnapGeneReader](https://github.com/Edinburgh-Genome-Foundry/SnapGeneReader)**：SnapGene `.dna` 二进制 TLV 区块解析格式参考了社区对 `.dna` 结构的逆向解析规范。
+- **[molstar / Mol* Viewer](https://github.com/molstar/molstar)**（`MIT License`）：内置离线全原子三维分子渲染引擎（v5.13.1 `molstar.js`/`molstar.css`），为蛋白质工作台提供纯本地零外网请求的三维结构、表面静电与非共价相互作用渲染及对接构象回放。
 
 ### 学术算法与在线靶点数据库
 - **DNA 最近邻热力学模型**：遵循 **SantaLucia & Hicks (2004)** 与 **Bommarito et al. (2000)** 统一最近邻参数及 5'/3' 悬垂端（Dangling Ends）自由能模型。

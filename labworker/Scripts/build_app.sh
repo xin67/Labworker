@@ -38,6 +38,12 @@ package_app_bundle() {
         fi
     done
 
+    for web_asset in "molstar.js" "molstar.css" "molstar_host.html"; do
+        if [ -f "$DIR/Sources/CloneStudioCore/Resources/$web_asset" ]; then
+            cp -f "$DIR/Sources/CloneStudioCore/Resources/$web_asset" "$RESOURCES_DIR/"
+        fi
+    done
+
     for tpl in "擎科引物合成订购表.xlsx" "擎科测序订购表专属电子订单.xlsx" "生工DNA测序订购表.xlsx" "DNA测序订购表_V9(1).xlsx"; do
         if [ -f "$DIR/$tpl" ]; then
             cp -f "$DIR/$tpl" "$RESOURCES_DIR/"
@@ -77,7 +83,7 @@ package_app_bundle() {
     <key>LWGitCommit</key>
     <string>$GIT_COMMIT</string>
     <key>LSMinimumSystemVersion</key>
-    <string>27.0</string>
+    <string>14.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSAppTransportSecurity</key>
@@ -124,6 +130,12 @@ package_app_bundle() {
                 <string>gb</string>
                 <string>gbk</string>
                 <string>seq</string>
+                <string>fastq</string>
+                <string>fq</string>
+                <string>rdml</string>
+                <string>xml</string>
+                <string>json</string>
+                <string>jsonld</string>
                 <string>txt</string>
                 <string>pdb</string>
                 <string>cif</string>

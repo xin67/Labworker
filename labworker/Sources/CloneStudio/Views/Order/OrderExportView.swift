@@ -1,11 +1,20 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import CloneStudioCore
 
-/// 商业订购表单中心（极简按钮驱动布局，去除冗长模板说明文案）
+/// 商业订购表单中心（支持擎科 / 生工 / IDT / Twist / GenScript / Eurofins / BGI 及自定义 JSON 列映射）
 public struct OrderExportView: View {
     @ObservedObject private var appState = AppState.shared
     @StateObject private var vm = OrderExportViewModel()
     @State private var isEditingProfile: Bool = false
+    @State private var showManualOligoInput: Bool = false
+    @State private var showCustomTemplateSheet: Bool = false
+
+    @State private var manualOligoName: String = "GeneFrag_1"
+    @State private var manualOligoSeq: String = ""
+    @State private var manualOligoPurity: String = "PAGE"
+    @State private var manualOligoOD: String = "2.0"
+    @State private var manualOligoPurpose: String = "合成订购"
     
     @State private var newSampleName: String = "pCE-Construct"
     @State private var newVectorName: String = "pCE-Entry"
@@ -75,6 +84,9 @@ public struct OrderExportView: View {
         } message: {
             Text(vm.errorMessage ?? "")
         }
+        .sheet(isPresented: $showCustomTemplateSheet) {
+            CustomOrderTemplateEditorSheet(vm: vm)
+        }
     }
     
     // MARK: - 订购人信息展示卡片
@@ -125,10 +137,93 @@ public struct OrderExportView: View {
         .textFieldStyle(.roundedBorder)
     }
     
-    // MARK: - 1. 引物合成订购区
+    // MARK: - 1. 引物与基因合成订购区
+    private var activePrimerTemplateLabel: String {
+        if vm.selectedPrimerTemplate == .customJSON {
+            return "自定义: \(vm.activeCustomTemplate?.name ?? "JSON")"
+        }
+        switch vm.selectedPrimerTemplate {
+        case .tsingkePrimer: return "擎科引物 (.xlsx)"
+        case .idtBulk:       return "IDT Bulk Input"
+        case .twistBulk:     return "Twist Bioscience"
+        case .genscriptBulk: return "GenScript 金斯瑞"
+        case .eurofinsBulk:  return "Eurofins Genomics"
+        case .bgiBulk:       return "华大基因 BGI"
+        default:             return vm.selectedPrimerTemplate.displayName
+        }
+    }
+
     private var primerOrderSection: some View {
-        StudioCard(title: "引物合成池 (\(appState.primersCart.count))") {
+        let fmtExt = vm.selectedPrimerTemplate.requiresBundledXLSXTemplate ? "xlsx" : vm.selectedOutputFormat.rawValue
+        return StudioCard(title: "引物与基因合成池 (\(appState.primersCart.count))") {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
+                StudioMenuPillButton(
+                    title: activePrimerTemplateLabel,
+                    icon: "building.2.fill",
+                    tint: .indigo,
+                    compact: true,
+                    help: "选择国内/国际合成商批量模板或自定义 JSON 映射"
+                ) {
+                    Section("常用合成商模板") {
+                        ForEach([OrderFormTemplate.tsingkePrimer, .idtBulk, .twistBulk, .genscriptBulk, .eurofinsBulk, .bgiBulk]) { tpl in
+                            Button {
+                                vm.selectPrimerTemplate(tpl)
+                            } label: {
+                                HStack {
+                                    Text(tpl.displayName)
+                                    if vm.selectedPrimerTemplate == tpl {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if !vm.customTemplates.isEmpty {
+                        Section("自定义列映射模板 (.json)") {
+                            ForEach(vm.customTemplates) { ct in
+                                Button {
+                                    vm.selectPrimerTemplate(.customJSON, customTemplateID: ct.id)
+                                } label: {
+                                    HStack {
+                                        Text("\(ct.name) (\(ct.columns.count) 列)")
+                                        if vm.selectedPrimerTemplate == .customJSON && vm.selectedCustomTemplateID == ct.id {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !vm.selectedPrimerTemplate.requiresBundledXLSXTemplate {
+                    StudioSegmentedPicker(
+                        selection: $vm.selectedOutputFormat,
+                        options: OrderOutputFileFormat.allCases.map {
+                            StudioSegmentedOption(value: $0, title: ".\($0.rawValue.uppercased())", tint: .blue)
+                        }
+                    )
+                }
+
+                StudioCompactPillButton(
+                    title: "自定义模板",
+                    icon: "slider.horizontal.3",
+                    tint: .indigo
+                ) {
+                    showCustomTemplateSheet = true
+                }
+
+                StudioCompactPillButton(
+                    title: showManualOligoInput ? "收起手动添加" : "手动添加",
+                    icon: "plus",
+                    tint: .teal,
+                    isSelected: showManualOligoInput
+                ) {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        showManualOligoInput.toggle()
+                    }
+                }
+
                 StudioActionPillButton(
                     title: "复制 TSV",
                     icon: "doc.on.doc",
@@ -164,12 +259,12 @@ public struct OrderExportView: View {
                 }
 
                 StudioActionPillButton(
-                    title: "导出 .xlsx",
+                    title: "导出 .\(fmtExt)",
                     icon: "arrow.down.doc.fill",
                     tint: .blue,
                     isProminent: true,
                     isDisabled: appState.primersCart.isEmpty || vm.isExporting,
-                    help: "导出擎科引物合成订购表 (.xlsx)",
+                    help: "按所选供应商模板导出 .\(fmtExt) 批量订购文件",
                     action: vm.exportPrimersOrder
                 )
 
@@ -180,60 +275,110 @@ public struct OrderExportView: View {
                 )
             }
         } content: {
-            if appState.primersCart.isEmpty {
-                HStack {
-                    Spacer()
-                    Text("暂无待订引物")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                    Spacer()
-                }
-                .padding(.vertical, 22)
-            } else {
-                VStack(spacing: 5) {
-                    ForEach(Array(appState.primersCart.enumerated()), id: \.element.id) { index, primer in
-                        HStack(spacing: 8) {
-                            Text("#\(index + 1)")
-                                .font(.system(size: 10.5, weight: .bold))
-                                .monospacedDigit()
-                                .foregroundColor(.secondary)
-                                .frame(width: 24, alignment: .leading)
-                            
-                            Text(primer.name)
-                                .font(.system(size: 11.5, weight: .bold))
-                                .frame(width: 140, alignment: .leading)
-                            
-                            Text(primer.fullSequence)
-                                .font(.system(size: 11, design: .monospaced))
-                                .lineLimit(1)
-                                .textSelection(.enabled)
-                            
-                            Spacer()
-                            
-                            Text("\(primer.length)bp")
-                                .font(.system(size: 10.5))
-                                .monospacedDigit()
-                                .foregroundColor(.secondary)
-                            
-                            Text(primer.purity)
-                                .font(.system(size: 10.5, weight: .semibold))
-                                .foregroundColor(.blue)
-                            
-                            Text("\(String(format: "%.1f", primer.od)) OD")
-                                .font(.system(size: 10))
-                                .monospacedDigit()
-                                .foregroundColor(.secondary)
-                            
-                            StudioCompactPillButton(
-                                title: "",
-                                icon: "xmark",
-                                tint: .secondary,
-                                help: "移除引物"
-                            ) {
-                                appState.removePrimer(at: index)
-                            }
+            VStack(alignment: .leading, spacing: 10) {
+                if showManualOligoInput {
+                    StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+                        TextField("名称 (如 EGF_opt)", text: $manualOligoName)
+                            .frame(width: 130)
+                        TextField("5'->3' DNA 序列 (引物或基因片段)", text: $manualOligoSeq)
+                            .frame(minWidth: 220, maxWidth: 340)
+                        TextField("纯化 (PAGE/HPLC)", text: $manualOligoPurity)
+                            .frame(width: 95)
+                        TextField("OD", text: $manualOligoOD)
+                            .frame(width: 55)
+                        TextField("用途备注", text: $manualOligoPurpose)
+                            .frame(width: 110)
+
+                        StudioCompactPillButton(title: "加入订购池", icon: "plus.circle.fill", tint: .teal) {
+                            vm.addManualOligoOrGene(
+                                name: manualOligoName,
+                                sequence: manualOligoSeq,
+                                purity: manualOligoPurity,
+                                od: Double(manualOligoOD) ?? 2.0,
+                                purpose: manualOligoPurpose
+                            )
+                            manualOligoSeq = ""
                         }
-                        .studioInnerBox(paddingH: 10, paddingV: 6)
+                    }
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11.5))
+                    .studioInnerBox(tint: .teal, paddingH: 10, paddingV: 8)
+                }
+
+                if !appState.primersCart.isEmpty && !vm.sanitizationWarnings.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                                .font(.system(size: 11.5))
+                            Text("供应商格式清洗提示（导出时自动处理）：")
+                                .font(.system(size: 11.5, weight: .semibold))
+                        }
+                        ForEach(vm.sanitizationWarnings, id: \.self) { warn in
+                            Text("• \(warn)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .studioInnerBox(tint: .orange, paddingH: 10, paddingV: 8)
+                }
+
+                if appState.primersCart.isEmpty {
+                    HStack {
+                        Spacer()
+                        Text("暂无待订引物或基因片段（可通过左侧克隆/密码子优化加入，或点击「手动添加」）")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    .padding(.vertical, 22)
+                } else {
+                    VStack(spacing: 5) {
+                        ForEach(Array(appState.primersCart.enumerated()), id: \.element.id) { index, primer in
+                            HStack(spacing: 8) {
+                                Text("#\(index + 1)")
+                                    .font(.system(size: 10.5, weight: .bold))
+                                    .monospacedDigit()
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 24, alignment: .leading)
+                                
+                                Text(primer.name)
+                                    .font(.system(size: 11.5, weight: .bold))
+                                    .frame(width: 140, alignment: .leading)
+                                
+                                Text(primer.fullSequence)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .lineLimit(1)
+                                    .textSelection(.enabled)
+                                
+                                Spacer()
+                                
+                                Text("\(primer.length)bp")
+                                    .font(.system(size: 10.5))
+                                    .monospacedDigit()
+                                    .foregroundColor(.secondary)
+                                
+                                Text(primer.purity)
+                                    .font(.system(size: 10.5, weight: .semibold))
+                                    .foregroundColor(.blue)
+                                
+                                Text("\(String(format: "%.1f", primer.od)) OD")
+                                    .font(.system(size: 10))
+                                    .monospacedDigit()
+                                    .foregroundColor(.secondary)
+                                
+                                StudioCompactPillButton(
+                                    title: "",
+                                    icon: "xmark",
+                                    tint: .secondary,
+                                    help: "移除引物"
+                                ) {
+                                    appState.removePrimer(at: index)
+                                }
+                            }
+                            .studioInnerBox(paddingH: 10, paddingV: 6)
+                        }
                     }
                 }
             }
@@ -365,5 +510,187 @@ public struct OrderExportView: View {
             prompt: "批量写入",
             completion: completion
         )
+    }
+}
+
+// MARK: - 自定义列映射 JSON 模板编辑器弹窗
+
+private struct CustomOrderTemplateEditorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var vm: OrderExportViewModel
+
+    @State private var draft: CustomOrderTemplateSpec
+    @State private var importExportError: String? = nil
+
+    init(vm: OrderExportViewModel) {
+        self.vm = vm
+        _draft = State(initialValue: vm.activeCustomTemplate ?? OrderTemplateEngine.defaultCustomTemplate())
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("自定义订购表列映射模板 (.json)")
+                        .font(.system(size: 15, weight: .bold))
+                    Text("按需映射列标题与 Labworker 序列/孔板/规格字段，支持导出/导入团队共享 JSON 模板")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("关闭") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+            }
+
+            Divider()
+
+            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
+                if vm.customTemplates.count > 1 {
+                    StudioMenuPicker(
+                        selection: Binding(
+                            get: { draft.id },
+                            set: { newID in
+                                if let found = vm.customTemplates.first(where: { $0.id == newID }) {
+                                    draft = found
+                                }
+                            }
+                        ),
+                        options: vm.customTemplates.map { StudioMenuPickerOption(value: $0.id, title: $0.name) },
+                        prefix: "已有模板",
+                        icon: "doc.badge.gearshape",
+                        compact: true
+                    )
+                }
+
+                StudioCompactPillButton(title: "新建空白模板", icon: "plus", tint: .blue) {
+                    draft = OrderTemplateEngine.defaultCustomTemplate()
+                    draft.id = UUID().uuidString
+                    draft.name = "新模板 \(vm.customTemplates.count + 1)"
+                }
+
+                StudioCompactPillButton(title: "导入 .json", icon: "square.and.arrow.down", tint: .teal) {
+                    let panel = NSOpenPanel()
+                    panel.allowedContentTypes = [.json]
+                    if panel.runModal() == .OK, let url = panel.url {
+                        do {
+                            let data = try Data(contentsOf: url)
+                            var decoded = try JSONDecoder().decode(CustomOrderTemplateSpec.self, from: data)
+                            if decoded.id.isEmpty { decoded.id = UUID().uuidString }
+                            draft = decoded
+                            importExportError = nil
+                        } catch {
+                            importExportError = "导入 JSON 失败：\(error.localizedDescription)"
+                        }
+                    }
+                }
+
+                StudioCompactPillButton(title: "导出 .json", icon: "square.and.arrow.up", tint: .indigo) {
+                    let panel = NSSavePanel()
+                    panel.allowedContentTypes = [.json]
+                    panel.nameFieldStringValue = "\(draft.name.replacingOccurrences(of: " ", with: "_")).json"
+                    if panel.runModal() == .OK, let url = panel.url {
+                        try? vm.exportCustomTemplateJSON(draft, to: url)
+                    }
+                }
+            }
+
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("模板名称").font(.system(size: 11)).foregroundStyle(.secondary)
+                    TextField("模板名称", text: $draft.name)
+                        .textFieldStyle(.roundedBorder)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("工作表名 / 供应商").font(.system(size: 11)).foregroundStyle(.secondary)
+                    TextField("Sheet 名称", text: $draft.sheetName)
+                        .textFieldStyle(.roundedBorder)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("默认格式").font(.system(size: 11)).foregroundStyle(.secondary)
+                    StudioSegmentedPicker(
+                        selection: $draft.preferredFormat,
+                        options: OrderOutputFileFormat.allCases.map {
+                            StudioSegmentedOption(value: $0, title: $0.rawValue.uppercased(), tint: .blue)
+                        }
+                    )
+                }
+            }
+
+            if let err = importExportError {
+                Text(err)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.red)
+            }
+
+            ScrollView {
+                VStack(spacing: 6) {
+                    ForEach(Array(draft.columns.enumerated()), id: \.element.id) { idx, _ in
+                        HStack(spacing: 8) {
+                            Text("#\(idx + 1)")
+                                .font(.system(size: 11, weight: .bold))
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                                .frame(width: 24)
+
+                            TextField("导出列标题", text: $draft.columns[idx].header)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 150)
+
+                            StudioMenuPicker(
+                                selection: $draft.columns[idx].field,
+                                options: OrderColumnField.allCases.map {
+                                    StudioMenuPickerOption(value: $0, title: $0.displayName)
+                                },
+                                icon: "arrow.left.arrow.right",
+                                compact: true
+                            )
+
+                            TextField("默认值", text: $draft.columns[idx].defaultValue)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 90)
+
+                            StudioCompactPillButton(title: "", icon: "arrow.up", isDisabled: idx == 0) {
+                                draft.columns.swapAt(idx, idx - 1)
+                            }
+                            StudioCompactPillButton(title: "", icon: "arrow.down", isDisabled: idx >= draft.columns.count - 1) {
+                                draft.columns.swapAt(idx, idx + 1)
+                            }
+                            StudioCompactPillButton(title: "", icon: "trash", tint: .red, isDisabled: draft.columns.count <= 1) {
+                                draft.columns.remove(at: idx)
+                            }
+                        }
+                        .studioInnerBox(paddingH: 8, paddingV: 6)
+                    }
+                }
+            }
+            .frame(maxHeight: 220)
+
+            let samplePrimers = AppState.shared.primersCart.isEmpty
+                ? [PrimerItem(name: "Demo_EGFP_F", fullSequence: "ggatccATGGTGAGCAAGGGCGAG", homologyArm: "ggatcc", specificSequence: "ATGGTGAGCAAGGGCGAG", tm: 60.2, purity: "PAGE", od: 2.0, targetPurpose: "克隆扩增")]
+                : Array(AppState.shared.primersCart.prefix(3))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("实时预览 (前 \(samplePrimers.count) 条)：")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Text(OrderTemplateEngine.renderCSVPreview(spec: draft, primers: samplePrimers, profile: AppState.shared.profile))
+                    .font(.system(size: 10.5, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color(NSColor.textBackgroundColor).opacity(0.8))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+
+            StudioActionBar {
+                StudioCompactPillButton(title: "新增映射列", icon: "plus.circle", tint: .teal) {
+                    draft.columns.append(OrderColumnMapping(header: "Column_\(draft.columns.count + 1)", field: .notes))
+                }
+                StudioPrimaryActionButton(title: "保存并应用此模板", icon: "checkmark.circle.fill", tint: .indigo) {
+                    vm.saveCustomTemplate(draft)
+                    dismiss()
+                }
+            }
+        }
+        .padding(18)
+        .frame(width: 680, height: 610)
     }
 }

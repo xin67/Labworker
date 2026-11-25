@@ -34,6 +34,40 @@ public struct ProteinWorkbenchView: View {
     // 精简为 4 个短标签，消除窄窗口分段控件挤压
     @State private var analysisTab: ProteinAnalysisTab = .dockingBox
     @State private var mutantInputText: String = "V13A\nI15L + L19M\nK27R\nF42W\nT48P"
+    @State private var showOnlineFetchSheet: Bool = false
+    @State private var onlineSourceNote: String? = nil
+
+    // 离线 Mol* 3D 视窗与本地计算桥接 (Vina / Smina / Gnina / Boltz)
+    @State private var viewerMode: StructureViewerMode = .nativeCanvas
+    @State private var molstarStyle: MolstarRenderStyle = .cartoon
+    @State private var molstarColorMode: MolstarColorPreset = .plddt
+    @State private var molstarShowInteractions: Bool = true
+    @State private var molstarShowControls: Bool = false
+    @State private var molstarResetTrigger: Int = 0
+    @State private var molstarStatusNote: String? = nil
+    @State private var isMolstarRendering: Bool = false
+
+    @State private var detectedTools: [ProteinDockingBridgeEngine.DetectedCLITool] = []
+    @State private var selectedDockingTool: ProteinDockingBridgeEngine.LocalComputeToolKind = .vina
+    @State private var ligandSMILESInput: String = ""
+    @State private var selectedLigandFileURL: URL? = nil
+    @State private var customPathTextByTool: [String: String] = [:]
+    @State private var isShowingCustomToolPaths: Bool = false
+    @State private var isRunningLocalCompute: Bool = false
+    @State private var dockingResult: ProteinDockingBridgeEngine.DockingExecutionResult? = nil
+    @State private var importedDockingPoses: [ProteinDockingBridgeEngine.DockingPose] = []
+    @State private var selectedPoseIndex: Int? = nil
+    @State private var boltzSummary: ProteinDockingBridgeEngine.BoltzConfidenceSummary? = nil
+    @State private var localComputeError: String? = nil
+    @State private var isPoseAutoPlaying: Bool = false
+    @State private var poseAutoPlayTask: Task<Void, Never>? = nil
+
+    public enum StructureViewerMode: String, CaseIterable, Identifiable, Hashable {
+        case nativeCanvas = "Native Canvas (极速)"
+        case molstar3D = "Mol* 3D (离线)"
+
+        public var id: String { rawValue }
+    }
 
     public enum StructureColorMode: String, CaseIterable, Identifiable {
         case plddt = "plddt"
@@ -93,7 +127,10 @@ public struct ProteinWorkbenchView: View {
         StudioPageLayout(
             title: "蛋白工作台",
             toolbar: [
-                .action(title: "导入", icon: "folder.badge.plus", help: "导入 PDB / CIF / FASTA 文件", action: importStructureOrSequenceFile),
+                .action(title: "导入", icon: "folder.badge.plus", help: "导入 PDB / mmCIF (.cif) / FASTA 文件", action: importStructureOrSequenceFile),
+                .action(title: "在线拉取", icon: "arrow.down.circle", tint: .indigo, help: "通过 RCSB PDB / AlphaFold DB / UniProt ID 一键拉取三维结构或序列") {
+                    showOnlineFetchSheet = true
+                },
                 .action(title: "Vina", icon: "cube.box.fill", tint: .orange, help: "复制 AutoDock Vina 结合口袋对接盒参数") {
                     copyVinaConfig(report: currentReport)
                 },
@@ -121,10 +158,21 @@ public struct ProteinWorkbenchView: View {
                 }
             }
         }
+        .sheet(isPresented: $showOnlineFetchSheet) {
+            ProteinOnlineFetchSheet { res in
+                applyFetchedProteinResult(res)
+            }
+        }
         .onAppear {
             env.ph = appState.defaultProteinPH
             env.temperatureK = appState.defaultProteinTempK
             consumePendingFinderProteinFileIfNeeded()
+            refreshDetectedCLITools()
+        }
+        .onDisappear {
+            poseAutoPlayTask?.cancel()
+            poseAutoPlayTask = nil
+            isPoseAutoPlaying = false
         }
         .onChange(of: appState.pendingFinderOpenedFileURL) { _, _ in
             consumePendingFinderProteinFileIfNeeded()
@@ -143,14 +191,16 @@ public struct ProteinWorkbenchView: View {
         let ext = url.pathExtension.lowercased()
         guard ["pdb", "cif", "ent", "fa", "fasta", "seq", "txt"].contains(ext) else { return }
         appState.pendingFinderOpenedFileURL = nil
-        if ["pdb", "cif", "ent"].contains(ext) || content.contains("ATOM  ") {
+        if ["pdb", "cif", "ent"].contains(ext) || content.contains("ATOM  ") || ProteinBiophysicsEngine.isMMCIFFormat(content) {
             importedPDBText = content
             let parsed = ProteinBiophysicsEngine.parsePDBResidues(content)
             if !parsed.isEmpty {
                 rawSequence = parsed.map(\.oneLetter).joined()
             }
+            onlineSourceNote = ProteinBiophysicsEngine.isMMCIFFormat(content) ? "本地 mmCIF (.cif)" : nil
         } else {
             importedPDBText = nil
+            onlineSourceNote = nil
             rawSequence = ProteinBiophysicsEngine.cleanProteinSequence(content)
         }
     }
@@ -173,7 +223,7 @@ public struct ProteinWorkbenchView: View {
                 )
                 StudioMetricBadge(
                     label: "坐标源",
-                    value: importedPDBText != nil ? "外部实验/AlphaFold PDB" : "SPICE 启发式折叠",
+                    value: onlineSourceNote ?? (importedPDBText != nil ? "外部 PDB / mmCIF" : "SPICE 启发式折叠"),
                     color: importedPDBText != nil ? .green : .teal
                 )
                 StudioCompactPillButton(
@@ -280,96 +330,253 @@ public struct ProteinWorkbenchView: View {
         }
     }
 
-    // MARK: - 2. 无浮层遮挡的三维视窗 (自适应流式工具栏置顶)
+    private var activeDockingPoses: [ProteinDockingBridgeEngine.DockingPose] {
+        dockingResult?.poses.isEmpty == false ? (dockingResult?.poses ?? []) : importedDockingPoses
+    }
+
+    private var selectedPose: ProteinDockingBridgeEngine.DockingPose? {
+        guard let idx = selectedPoseIndex else { return nil }
+        return activeDockingPoses.first(where: { $0.modeIndex == idx })
+    }
+
+    private func buildMolstarPayload(report: ProteinBiophysicsReport) -> MolstarRenderPayload {
+        let isCIF = importedPDBText.map { ProteinBiophysicsEngine.isMMCIFFormat($0) } ?? false
+        let receptorText = importedPDBText ?? ProteinBiophysicsEngine.exportPDB(report: report)
+        let receptorFormat = isCIF ? "mmcif" : "pdb"
+        let receptorLabel = onlineSourceNote ?? (importedPDBText != nil ? "Imported_Structure" : "SPICE_Model")
+        let ligData: String?
+        let ligFmt: String?
+        let ligLabel: String?
+        if let pose = selectedPose {
+            let usePDB = !pose.pdbBlock.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ligData = usePDB ? pose.pdbBlock : pose.pdbqtBlock
+            ligFmt = usePDB ? "pdb" : "sdf"
+            ligLabel = "Pose_\(pose.modeIndex)_dG_\(String(format: "%.2f", pose.affinityKcalMol))"
+        } else {
+            ligData = nil
+            ligFmt = nil
+            ligLabel = nil
+        }
+        return MolstarRenderPayload(
+            receptorData: receptorText,
+            receptorFormat: receptorFormat,
+            receptorLabel: receptorLabel,
+            ligandData: ligData,
+            ligandFormat: ligFmt,
+            ligandLabel: ligLabel,
+            style: molstarStyle,
+            colorMode: molstarColorMode,
+            showInteractions: molstarShowInteractions,
+            showControls: molstarShowControls,
+            darkBackground: !appState.isLightAppearance
+        )
+    }
+
+    // MARK: - 2. 无浮层遮挡的三维视窗 (Native Canvas / 离线 Mol* 3D 双模式)
 
     private func structure3DViewerCard(report: ProteinBiophysicsReport) -> some View {
-        StudioCard(title: "三维 Cα 骨架与 Vina 对接盒视窗") {
-            StudioSegmentedPicker(
-                selection: $colorSchemeMode,
-                options: StructureColorMode.allCases.map {
-                    StudioSegmentedOption(value: $0, title: $0.title, tint: .blue)
+        StudioCard(title: viewerMode == .nativeCanvas ? "三维 Cα 骨架与 Vina 对接盒视窗" : "Mol* 全原子 3D 与对接构象视窗 (离线)") {
+            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 4) {
+                StudioSegmentedPicker(
+                    selection: $viewerMode,
+                    options: [
+                        StudioSegmentedOption(value: StructureViewerMode.nativeCanvas, title: "Canvas 极速", tint: .blue),
+                        StudioSegmentedOption(value: StructureViewerMode.molstar3D, title: "Mol* 3D (离线)", tint: .indigo)
+                    ]
+                )
+                if viewerMode == .nativeCanvas {
+                    StudioSegmentedPicker(
+                        selection: $colorSchemeMode,
+                        options: StructureColorMode.allCases.map {
+                            StudioSegmentedOption(value: $0, title: $0.title, tint: .blue)
+                        }
+                    )
                 }
-            )
+            }
         } content: {
             VStack(alignment: .leading, spacing: 8) {
-                // 响应式控制栏：脱离 3D 画布，窄窗自动换行，不遮挡三维结构
-                StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
-                    Toggle("聚焦口袋", isOn: $focusPocketOnly)
-                        .toggleStyle(.checkbox)
-                        .font(.system(size: 11, weight: .medium))
-                    Toggle("Vina 对接盒", isOn: $showDockingBoxWireframe)
-                        .toggleStyle(.checkbox)
-                        .font(.system(size: 11, weight: .medium))
-                    Toggle("接触虚线", isOn: $showContactLines)
-                        .toggleStyle(.checkbox)
-                        .font(.system(size: 11, weight: .medium))
-                    Toggle("口袋光晕", isOn: $showPocketHighlight)
-                        .toggleStyle(.checkbox)
-                        .font(.system(size: 11, weight: .medium))
+                if viewerMode == .nativeCanvas {
+                    // 响应式控制栏：脱离 3D 画布，窄窗自动换行，不遮挡三维结构
+                    StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
+                        Toggle("聚焦口袋", isOn: $focusPocketOnly)
+                            .toggleStyle(.checkbox)
+                            .font(.system(size: 11, weight: .medium))
+                        Toggle("Vina 对接盒", isOn: $showDockingBoxWireframe)
+                            .toggleStyle(.checkbox)
+                            .font(.system(size: 11, weight: .medium))
+                        Toggle("接触虚线", isOn: $showContactLines)
+                            .toggleStyle(.checkbox)
+                            .font(.system(size: 11, weight: .medium))
+                        Toggle("口袋光晕", isOn: $showPocketHighlight)
+                            .toggleStyle(.checkbox)
+                            .font(.system(size: 11, weight: .medium))
 
-                    HStack(spacing: 4) {
-                        Text("缩放")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                        Slider(value: $zoomScale, in: 0.65...2.2)
-                            .frame(width: 72)
+                        HStack(spacing: 4) {
+                            Text("缩放")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                            Slider(value: $zoomScale, in: 0.65...2.2)
+                                .frame(width: 72)
+                        }
+
+                        StudioCompactPillButton(title: "重置视角", icon: "arrow.counterclockwise") {
+                            yawAngle = 0.45
+                            pitchAngle = 0.25
+                            lastYaw = 0.45
+                            lastPitch = 0.25
+                            zoomScale = 1.0
+                        }
                     }
 
-                    StudioCompactPillButton(title: "重置视角", icon: "arrow.counterclockwise") {
-                        yawAngle = 0.45
-                        pitchAngle = 0.25
-                        lastYaw = 0.45
-                        lastPitch = 0.25
-                        zoomScale = 1.0
-                    }
-                }
-
-                // 纯净 3D 画布（无右下角黑色胶囊浮层遮挡）
-                ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.07, green: 0.09, blue: 0.14),
-                                    Color(red: 0.11, green: 0.14, blue: 0.21)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                    // 纯净 3D 画布（无右下角黑色胶囊浮层遮挡）
+                    ZStack(alignment: .topLeading) {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.07, green: 0.09, blue: 0.14),
+                                        Color(red: 0.11, green: 0.14, blue: 0.21)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
+
+                        Canvas { ctx, size in
+                            drawProtein3DScene(
+                                ctx: &ctx,
+                                size: size,
+                                report: report
+                            )
+                        }
+                        .gesture(
+                            DragGesture(minimumDistance: 2)
+                                .onChanged { val in
+                                    yawAngle = lastYaw + Double(val.translation.width) * 0.012
+                                    pitchAngle = max(-1.45, min(1.45, lastPitch + Double(val.translation.height) * 0.012))
+                                }
+                                .onEnded { _ in
+                                    lastYaw = yawAngle
+                                    lastPitch = pitchAngle
+                                }
                         )
 
-                    Canvas { ctx, size in
-                        drawProtein3DScene(
-                            ctx: &ctx,
-                            size: size,
-                            report: report
-                        )
+                        if let selIdx = selectedResidueIndex,
+                           let res = report.residues.first(where: { $0.index == selIdx }) {
+                            Text("\(res.threeLetter)\(res.index) (\(res.oneLetter)) · \(res.secondary.title) · pLDDT \(String(format: "%.1f", res.plddt))")
+                                .font(.system(size: 11, weight: .semibold))
+                                .monospacedDigit()
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(Color.black.opacity(0.55)))
+                                .padding(8)
+                        }
                     }
-                    .gesture(
-                        DragGesture(minimumDistance: 2)
-                            .onChanged { val in
-                                yawAngle = lastYaw + Double(val.translation.width) * 0.012
-                                pitchAngle = max(-1.45, min(1.45, lastPitch + Double(val.translation.height) * 0.012))
+                    .frame(minHeight: 270, idealHeight: 310)
+                } else {
+                    // Mol* 3D 离线全原子渲染控制栏（位于画布上方，绝不遮挡画面）
+                    StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+                        StudioMenuPicker(
+                            selection: $molstarStyle,
+                            options: MolstarRenderStyle.allCases.map {
+                                StudioMenuPickerOption(value: $0, title: $0.title)
+                            },
+                            prefix: "样式",
+                            icon: "cube.transparent",
+                            tint: .indigo,
+                            compact: true
+                        )
+
+                        StudioMenuPicker(
+                            selection: $molstarColorMode,
+                            options: MolstarColorPreset.allCases.map {
+                                StudioMenuPickerOption(value: $0, title: $0.title)
+                            },
+                            prefix: "着色",
+                            icon: "paintpalette",
+                            tint: .teal,
+                            compact: true
+                        )
+
+                        Toggle("非共价相互作用", isOn: $molstarShowInteractions)
+                            .toggleStyle(.checkbox)
+                            .font(.system(size: 11, weight: .medium))
+
+                        Toggle("Mol* 控件", isOn: $molstarShowControls)
+                            .toggleStyle(.checkbox)
+                            .font(.system(size: 11, weight: .medium))
+
+                        StudioCompactPillButton(title: "重置视角", icon: "arrow.counterclockwise") {
+                            molstarResetTrigger += 1
+                        }
+                    }
+
+                    if !activeDockingPoses.isEmpty {
+                        StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
+                            StudioMenuPicker(
+                                selection: Binding(
+                                    get: { selectedPoseIndex ?? activeDockingPoses[0].modeIndex },
+                                    set: { selectedPoseIndex = $0 }
+                                ),
+                                options: activeDockingPoses.map { pose in
+                                    StudioMenuPickerOption(
+                                        value: pose.modeIndex,
+                                        title: "Pose #\(pose.modeIndex) (\(String(format: "%.2f", pose.affinityKcalMol)) kcal/mol)"
+                                    )
+                                },
+                                prefix: "对接构象",
+                                icon: "capsule.fill",
+                                tint: .orange,
+                                compact: true
+                            )
+
+                            StudioCompactPillButton(title: "", icon: "chevron.left", help: "上一构象") {
+                                stepSelectedPose(delta: -1)
                             }
-                            .onEnded { _ in
-                                lastYaw = yawAngle
-                                lastPitch = pitchAngle
+                            StudioCompactPillButton(title: "", icon: "chevron.right", help: "下一构象") {
+                                stepSelectedPose(delta: 1)
                             }
+                            StudioCompactPillButton(
+                                title: isPoseAutoPlaying ? "停止轮播" : "轮播 Pose",
+                                icon: isPoseAutoPlaying ? "stop.fill" : "play.fill",
+                                tint: isPoseAutoPlaying ? .red : .orange,
+                                isSelected: isPoseAutoPlaying
+                            ) {
+                                togglePoseAutoPlay()
+                            }
+                        }
+                    }
+
+                    MolstarWebView(
+                        payload: buildMolstarPayload(report: report),
+                        resetCameraTrigger: molstarResetTrigger
+                    ) { status, loading in
+                        molstarStatusNote = status
+                        isMolstarRendering = loading
+                    }
+                    .frame(minHeight: 330, idealHeight: 370)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Color.primary.opacity(0.10), lineWidth: 1)
                     )
 
-                    if let selIdx = selectedResidueIndex,
-                       let res = report.residues.first(where: { $0.index == selIdx }) {
-                        Text("\(res.threeLetter)\(res.index) (\(res.oneLetter)) · \(res.secondary.title) · pLDDT \(String(format: "%.1f", res.plddt))")
-                            .font(.system(size: 11, weight: .semibold))
-                            .monospacedDigit()
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.black.opacity(0.55)))
-                            .padding(8)
+                    if isMolstarRendering || (molstarStatusNote?.isEmpty == false) {
+                        HStack(spacing: 6) {
+                            if isMolstarRendering {
+                                ProgressView().controlSize(.small)
+                                Text("正在离线载入 Mol* 全原子模型...")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            } else if let note = molstarStatusNote {
+                                Text(note)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                 }
-                .frame(minHeight: 270, idealHeight: 310)
 
                 // 底部轻量状态摘要行（自适应折行）
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 4) {
@@ -799,6 +1006,413 @@ public struct ProteinWorkbenchView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .studioInnerBox(tint: .orange, paddingH: 10, paddingV: 10)
+
+            // 5. 本地计算工具探测与对接 / Boltz 共折叠桥接面板
+            localComputeBridgeSection(report: report)
+        }
+    }
+
+    private func localComputeBridgeSection(report: ProteinBiophysicsReport) -> some View {
+        let runnableEngines: [ProteinDockingBridgeEngine.LocalComputeToolKind] = [.vina, .smina, .gnina, .boltz]
+        let detectedSelected = detectedTools.first(where: { $0.kind == selectedDockingTool })
+        let obabelDetected = detectedTools.first(where: { $0.kind == .obabel })
+
+        return VStack(alignment: .leading, spacing: 10) {
+            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+                HStack(spacing: 5) {
+                    Image(systemName: "terminal.fill")
+                        .foregroundColor(.indigo)
+                    Text("本地计算桥接 (Vina / Smina / Gnina / Boltz)")
+                        .font(.system(size: 12, weight: .bold))
+                }
+
+                StudioCompactPillButton(title: "刷新探测", icon: "arrow.clockwise", tint: .blue) {
+                    refreshDetectedCLITools()
+                }
+                StudioCompactPillButton(
+                    title: isShowingCustomToolPaths ? "收起路径设置" : "自定义路径",
+                    icon: "wrench.and.screwdriver",
+                    isSelected: isShowingCustomToolPaths
+                ) {
+                    isShowingCustomToolPaths.toggle()
+                }
+                StudioCompactPillButton(title: "导出 Boltz YAML", icon: "doc.text", tint: .teal) {
+                    let yaml = ProteinDockingBridgeEngine.generateBoltzYAML(
+                        proteinSequence: report.sequence,
+                        ligandSMILES: ligandSMILESInput
+                    )
+                    FinderFileDropHelper.saveTextToFile(
+                        content: yaml,
+                        defaultFileName: "Labworker_Boltz_Complex.yaml",
+                        contentType: .plainText,
+                        toastPrefix: "已导出 Boltz 共折叠 YAML"
+                    )
+                }
+                StudioCompactPillButton(title: "导入对接结果 (.pdbqt/.sdf)", icon: "tray.and.arrow.down.fill", tint: .orange) {
+                    importExternalDockingResult()
+                }
+            }
+
+            // 工具链可用状态徽章条
+            StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 5) {
+                ForEach(detectedTools) { tool in
+                    let color: Color = tool.isAvailable ? .green : .secondary
+                    Button {
+                        if tool.kind != .obabel {
+                            selectedDockingTool = tool.kind
+                        } else {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(tool.installHint, forType: .string)
+                            appState.showToast("已复制安装命令：\(tool.installHint)")
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(tool.isAvailable ? Color.green : Color.orange.opacity(0.6))
+                                .frame(width: 6, height: 6)
+                            Text("\(tool.kind.cliName)\(tool.isAvailable ? " ✓" : "")")
+                                .font(.system(size: 10.5, weight: .semibold))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3.5)
+                        .background(
+                            Capsule()
+                                .fill(color.opacity(selectedDockingTool == tool.kind ? 0.22 : 0.10))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(selectedDockingTool == tool.kind ? Color.indigo : color.opacity(0.25), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help(tool.isAvailable
+                          ? "\(tool.kind.displayName)\n路径：\(tool.executablePath ?? "")\n版本：\(tool.versionText ?? "已就绪")"
+                          : "未在本机检测到 \(tool.kind.cliName)\n安装建议：\(tool.installHint)")
+                }
+            }
+
+            if isShowingCustomToolPaths {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(ProteinDockingBridgeEngine.LocalComputeToolKind.allCases) { kind in
+                        HStack(spacing: 6) {
+                            Text(kind.cliName)
+                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .frame(width: 56, alignment: .leading)
+                            TextField(
+                                "留空则自动从 PATH / Homebrew / Conda 探测",
+                                text: Binding(
+                                    get: { customPathTextByTool[kind.rawValue] ?? "" },
+                                    set: { customPathTextByTool[kind.rawValue] = $0 }
+                                )
+                            )
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 11, design: .monospaced))
+                        }
+                    }
+                }
+                .padding(.top, 2)
+            }
+
+            StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+                StudioMenuPicker(
+                    selection: $selectedDockingTool,
+                    options: runnableEngines.map { StudioMenuPickerOption(value: $0, title: $0.displayName) },
+                    prefix: "计算引擎",
+                    icon: "cpu",
+                    tint: .indigo,
+                    compact: true
+                )
+
+                TextField("输入配体 SMILES（或右侧选 .pdbqt/.sdf）", text: $ligandSMILESInput)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11.5, design: .monospaced))
+                    .frame(minWidth: 200, maxWidth: 320)
+
+                StudioCompactPillButton(
+                    title: selectedLigandFileURL?.lastPathComponent ?? "选择配体文件",
+                    icon: "doc.fill",
+                    tint: .blue
+                ) {
+                    pickLigandFile()
+                }
+
+                if selectedLigandFileURL != nil {
+                    StudioCompactPillButton(title: "清除配体", icon: "xmark", tint: .secondary) {
+                        selectedLigandFileURL = nil
+                    }
+                }
+            }
+
+            StudioActionBar {
+                StudioPrimaryActionButton(
+                    title: isRunningLocalCompute
+                        ? "正在运行 \(selectedDockingTool.cliName)..."
+                        : (selectedDockingTool == .boltz ? "运行本地 Boltz 共折叠" : "运行本地 \(selectedDockingTool.cliName) 对接"),
+                    icon: "play.circle.fill",
+                    tint: .indigo,
+                    isLoading: isRunningLocalCompute,
+                    isDisabled: isRunningLocalCompute || (detectedSelected?.isAvailable != true)
+                ) {
+                    launchLocalCompute(report: report, obabelPath: obabelDetected?.executablePath)
+                }
+
+                if detectedSelected?.isAvailable != true, let hint = detectedSelected?.installHint {
+                    StudioActionPillButton(title: "复制安装命令: \(hint)", icon: "doc.on.doc", tint: .orange) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(hint, forType: .string)
+                        appState.showToast("已复制：\(hint)")
+                    }
+                }
+            }
+
+            if let err = localComputeError {
+                Text(err)
+                    .font(.system(size: 11.5))
+                    .foregroundColor(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .studioInnerBox(tint: .red, paddingH: 8, paddingV: 6)
+            }
+
+            if let bz = boltzSummary {
+                StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 4) {
+                    if let c = bz.confidenceScore {
+                        StudioMetricBadge(label: "Confidence", value: String(format: "%.3f", c), color: .indigo)
+                    }
+                    if let ptm = bz.ptm {
+                        StudioMetricBadge(label: "pTM", value: String(format: "%.3f", ptm), color: .blue)
+                    }
+                    if let iptm = bz.iptm {
+                        StudioMetricBadge(label: "ipTM", value: String(format: "%.3f", iptm), color: .teal)
+                    }
+                    if let plddt = bz.complexPLDDT {
+                        StudioMetricBadge(label: "Complex pLDDT", value: String(format: "%.2f", plddt), color: .green)
+                    }
+                }
+            }
+
+            if !activeDockingPoses.isEmpty {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("对接结合构象表（点击任意行在 Mol* 3D 中查看配体与氢键/疏水相互作用）：")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+
+                    ForEach(activeDockingPoses) { pose in
+                        let isSel = (selectedPoseIndex == pose.modeIndex)
+                        Button {
+                            selectedPoseIndex = pose.modeIndex
+                            if viewerMode != .molstar3D {
+                                viewerMode = .molstar3D
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text("Mode #\(pose.modeIndex)")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .monospacedDigit()
+                                    .frame(width: 64, alignment: .leading)
+                                Text(String(format: "%.2f kcal/mol", pose.affinityKcalMol))
+                                    .font(.system(size: 11.5, weight: .bold))
+                                    .monospacedDigit()
+                                    .foregroundColor(pose.affinityKcalMol <= -7.0 ? .green : .blue)
+                                Text(String(format: "RMSD %.2f / %.2f Å", pose.rmsdLB, pose.rmsdUB))
+                                    .font(.system(size: 10.5))
+                                    .monospacedDigit()
+                                    .foregroundColor(.secondary)
+                                if let cs = pose.cnnScore {
+                                    Text(String(format: "CNN %.3f", cs))
+                                        .font(.system(size: 10.5, weight: .semibold))
+                                        .monospacedDigit()
+                                        .foregroundColor(.purple)
+                                }
+                                if let ca = pose.cnnAffinity {
+                                    Text(String(format: "CNN-Aff %.2f", ca))
+                                        .font(.system(size: 10.5))
+                                        .monospacedDigit()
+                                        .foregroundColor(.indigo)
+                                }
+                                Spacer()
+                                Image(systemName: isSel ? "checkmark.circle.fill" : "eye")
+                                    .foregroundColor(isSel ? .indigo : .secondary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(isSel ? Color.indigo.opacity(0.15) : Color.primary.opacity(0.03))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .studioInnerBox(tint: .indigo, paddingH: 10, paddingV: 10)
+    }
+
+    private func refreshDetectedCLITools() {
+        var overrides: [ProteinDockingBridgeEngine.LocalComputeToolKind: String] = [:]
+        for (raw, val) in customPathTextByTool {
+            if let kind = ProteinDockingBridgeEngine.LocalComputeToolKind(rawValue: raw),
+               !val.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                overrides[kind] = val
+            }
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let found = ProteinDockingBridgeEngine.detectInstalledTools(customOverrides: overrides)
+            DispatchQueue.main.async {
+                self.detectedTools = found
+                if let current = found.first(where: { $0.kind == self.selectedDockingTool }), !current.isAvailable,
+                   let firstAvail = found.first(where: { $0.kind != .obabel && $0.isAvailable }) {
+                    self.selectedDockingTool = firstAvail.kind
+                }
+            }
+        }
+    }
+
+    private func pickLigandFile() {
+        let panel = NSOpenPanel()
+        panel.title = "选择小分子配体文件 (.pdbqt / .sdf / .mol2 / .pdb)"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        if panel.runModal() == .OK, let url = panel.url {
+            selectedLigandFileURL = url
+        }
+    }
+
+    private func importExternalDockingResult() {
+        let panel = NSOpenPanel()
+        panel.title = "导入对接输出构象文件 (.pdbqt / .sdf / .pdb)"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        if panel.runModal() == .OK, let url = panel.url,
+           let raw = (try? String(contentsOf: url, encoding: .utf8)) ?? (try? String(contentsOf: url, encoding: .ascii)) {
+            let poses = ProteinDockingBridgeEngine.parseDockingResults(
+                stdoutText: "",
+                outputFileText: raw,
+                tool: selectedDockingTool.isDockingEngine ? selectedDockingTool : .vina
+            )
+            if poses.isEmpty {
+                localComputeError = "未能在 \(url.lastPathComponent) 中解析出有效 Pose 构象。"
+            } else {
+                localComputeError = nil
+                dockingResult = nil
+                importedDockingPoses = poses
+                selectedPoseIndex = poses.first?.modeIndex
+                viewerMode = .molstar3D
+                appState.showToast("已导入 \(poses.count) 个对接 Pose，正在 Mol* 3D 中载入")
+            }
+        }
+    }
+
+    private func launchLocalCompute(report: ProteinBiophysicsReport, obabelPath: String?) {
+        guard let toolInfo = detectedTools.first(where: { $0.kind == selectedDockingTool }),
+              let exe = toolInfo.executablePath else {
+            localComputeError = "未在本机检测到 \(selectedDockingTool.displayName) 可执行文件。"
+            return
+        }
+        isRunningLocalCompute = true
+        localComputeError = nil
+
+        if selectedDockingTool == .boltz {
+            let yaml = ProteinDockingBridgeEngine.generateBoltzYAML(
+                proteinSequence: report.sequence,
+                ligandSMILES: ligandSMILESInput
+            )
+            Task {
+                do {
+                    let summary = try await ProteinDockingBridgeEngine.runLocalBoltz(
+                        yamlContent: yaml,
+                        boltzExecutable: exe
+                    )
+                    await MainActor.run {
+                        self.boltzSummary = summary
+                        if let st = summary.structureText, !st.isEmpty {
+                            self.importedPDBText = st
+                            let parsed = ProteinBiophysicsEngine.parsePDBResidues(st)
+                            if !parsed.isEmpty {
+                                self.rawSequence = parsed.map(\.oneLetter).joined()
+                            }
+                            self.onlineSourceNote = "Boltz 本地共折叠"
+                            self.viewerMode = .molstar3D
+                        }
+                        self.isRunningLocalCompute = false
+                        appState.showToast("Boltz 本地共折叠完成！")
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.localComputeError = error.localizedDescription
+                        self.isRunningLocalCompute = false
+                    }
+                }
+            }
+        } else {
+            let isCIF = importedPDBText.map { ProteinBiophysicsEngine.isMMCIFFormat($0) } ?? false
+            let receptorText = importedPDBText ?? ProteinBiophysicsEngine.exportPDB(report: report)
+            let receptorFormat = isCIF ? "mmcif" : "pdb"
+            let ligURL = selectedLigandFileURL
+            let ligSMILES = ligandSMILESInput
+            let box = report.dockingBox
+            let tool = selectedDockingTool
+            Task {
+                do {
+                    let res = try await ProteinDockingBridgeEngine.runLocalDocking(
+                        tool: tool,
+                        executablePath: exe,
+                        receptorText: receptorText,
+                        receptorFormat: receptorFormat,
+                        ligandFileURL: ligURL,
+                        ligandSMILES: ligSMILES,
+                        box: box,
+                        obabelExecutable: obabelPath
+                    )
+                    await MainActor.run {
+                        self.dockingResult = res
+                        self.importedDockingPoses = []
+                        self.selectedPoseIndex = res.poses.first?.modeIndex
+                        self.viewerMode = .molstar3D
+                        self.isRunningLocalCompute = false
+                        let bestAff = res.poses.first.map { String(format: "%.2f kcal/mol", $0.affinityKcalMol) } ?? "-"
+                        appState.showToast("\(tool.displayName) 对接完成：\(res.poses.count) 个构象（最优 \(bestAff)）")
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.localComputeError = error.localizedDescription
+                        self.isRunningLocalCompute = false
+                    }
+                }
+            }
+        }
+    }
+
+    private func stepSelectedPose(delta: Int) {
+        let poses = activeDockingPoses
+        guard !poses.isEmpty else { return }
+        guard let cur = selectedPoseIndex,
+              let pos = poses.firstIndex(where: { $0.modeIndex == cur }) else {
+            selectedPoseIndex = poses[0].modeIndex
+            return
+        }
+        let next = (pos + delta + poses.count) % poses.count
+        selectedPoseIndex = poses[next].modeIndex
+    }
+
+    private func togglePoseAutoPlay() {
+        if isPoseAutoPlaying {
+            poseAutoPlayTask?.cancel()
+            poseAutoPlayTask = nil
+            isPoseAutoPlaying = false
+            return
+        }
+        guard activeDockingPoses.count > 1 else { return }
+        isPoseAutoPlaying = true
+        poseAutoPlayTask = Task { @MainActor in
+            while !Task.isCancelled && isPoseAutoPlaying {
+                try? await Task.sleep(nanoseconds: 1_800_000_000)
+                if Task.isCancelled || !isPoseAutoPlaying { break }
+                stepSelectedPose(delta: 1)
+            }
         }
     }
 
@@ -962,24 +1576,44 @@ public struct ProteinWorkbenchView: View {
 
     private func importStructureOrSequenceFile() {
         let panel = NSOpenPanel()
-        panel.title = "选择 PDB 结构文件 (.pdb) 或 FASTA 氨基酸序列"
+        panel.title = "选择 PDB / mmCIF 结构文件 (.pdb / .cif) 或 FASTA 氨基酸序列"
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url,
            let content = (try? String(contentsOf: url, encoding: .utf8)) ?? (try? String(contentsOf: url, encoding: .ascii)) {
-            if url.pathExtension.lowercased() == "pdb" || content.contains("ATOM  ") {
+            let ext = url.pathExtension.lowercased()
+            if ["pdb", "cif", "ent"].contains(ext) || content.contains("ATOM  ") || ProteinBiophysicsEngine.isMMCIFFormat(content) {
                 importedPDBText = content
                 let parsed = ProteinBiophysicsEngine.parsePDBResidues(content)
                 if !parsed.isEmpty {
                     rawSequence = parsed.map(\.oneLetter).joined()
                 }
-                appState.showToast("已载入 PDB 三维结构：\(url.lastPathComponent) (\(parsed.count) 残基)")
+                onlineSourceNote = ProteinBiophysicsEngine.isMMCIFFormat(content) ? "mmCIF (.cif)" : "PDB (.pdb)"
+                appState.showToast("已载入三维结构：\(url.lastPathComponent) (\(parsed.count) 残基)")
             } else {
                 importedPDBText = nil
+                onlineSourceNote = nil
                 rawSequence = ProteinBiophysicsEngine.cleanProteinSequence(content)
                 appState.showToast("已导入氨基酸序列：\(url.lastPathComponent)")
             }
+        }
+    }
+
+    private func applyFetchedProteinResult(_ res: BioDatabaseFetchService.FetchedProteinStructureResult) {
+        if res.format == "cif" || res.format == "pdb" {
+            importedPDBText = res.contentText
+            let parsed = ProteinBiophysicsEngine.parsePDBResidues(res.contentText)
+            if !parsed.isEmpty {
+                rawSequence = parsed.map(\.oneLetter).joined()
+            }
+            onlineSourceNote = "\(res.source) · \(res.identifier)"
+            appState.showToast("已从 \(res.source) 载入 \(res.identifier) (\(parsed.count) 残基)")
+        } else {
+            importedPDBText = nil
+            rawSequence = ProteinBiophysicsEngine.cleanProteinSequence(res.contentText)
+            onlineSourceNote = "\(res.source) · \(res.identifier)"
+            appState.showToast("已从 \(res.source) 载入序列 \(res.identifier) (\(rawSequence.count) aa)")
         }
     }
 
@@ -1039,5 +1673,98 @@ public struct ProteinWorkbenchView: View {
             contentType: .plainText,
             toastPrefix: "已导出三维结构 PDB"
         )
+    }
+}
+
+private struct ProteinOnlineFetchSheet: View {
+    enum Source: String, CaseIterable, Identifiable {
+        case rcsb = "RCSB PDB (.cif)"
+        case alphafold = "AlphaFold DB / UniProt"
+        var id: String { rawValue }
+    }
+
+    @Environment(\.dismiss) private var dismiss
+    let onFetched: (BioDatabaseFetchService.FetchedProteinStructureResult) -> Void
+
+    @State private var source: Source = .rcsb
+    @State private var identifier: String = ""
+    @State private var isFetching: Bool = false
+    @State private var errorMessage: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("在线拉取蛋白三维结构 (RCSB PDB / AlphaFold DB / UniProt)")
+                        .font(.system(size: 15, weight: .bold))
+                    Text("自动优先拉取完整 mmCIF (.cif) 坐标，保留实验配体或 AlphaFold 逐残基 pLDDT 置信度")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("关闭") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+            }
+
+            Divider()
+
+            StudioSegmentedPicker(
+                selection: $source,
+                options: [
+                    StudioSegmentedOption(value: Source.rcsb, title: Source.rcsb.rawValue, tint: .blue),
+                    StudioSegmentedOption(value: Source.alphafold, title: Source.alphafold.rawValue, tint: .teal)
+                ]
+            )
+
+            HStack(spacing: 8) {
+                TextField(source == .rcsb ? "输入 4 位 PDB ID（如 1ATP、1UBQ）" : "输入 UniProt ID（如 P04637）", text: $identifier)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12.5, design: .monospaced))
+                StudioCompactPillButton(title: "示例", icon: "sparkles", tint: .blue) {
+                    identifier = source == .rcsb ? "1ATP" : "P04637"
+                }
+            }
+
+            if let err = errorMessage {
+                Text(err)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(.red)
+                    .studioInnerBox(tint: .red, paddingH: 10, paddingV: 8)
+            }
+
+            StudioActionBar {
+                StudioPrimaryActionButton(
+                    title: isFetching ? "正在在线拉取..." : "拉取并载入工作台",
+                    icon: "arrow.down.circle.fill",
+                    tint: .indigo,
+                    isLoading: isFetching,
+                    isDisabled: identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isFetching
+                ) {
+                    isFetching = true
+                    errorMessage = nil
+                    let q = identifier
+                    let src = source
+                    Task {
+                        do {
+                            let res = src == .rcsb
+                                ? try await BioDatabaseFetchService.fetchRCSBStructure(pdbID: q)
+                                : try await BioDatabaseFetchService.fetchAlphaFoldOrUniProt(identifier: q)
+                            await MainActor.run {
+                                onFetched(res)
+                                isFetching = false
+                                dismiss()
+                            }
+                        } catch {
+                            await MainActor.run {
+                                errorMessage = error.localizedDescription
+                                isFetching = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .frame(width: 560)
     }
 }

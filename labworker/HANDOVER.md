@@ -10,7 +10,7 @@
 - **项目名称**：Labworker 20261120（SwiftPM Package / Target 名称：`CloneStudio`、`CloneStudioCore`、`CloneStudioVerify`）
 - **形态与定位**：macOS 原生干湿实验与生物信息学一体化科研桌面工作台（Wet-Lab & Bioinformatics Native Workbench）
 - **目录结构**：
-  - 仓库根目录：`<repo-root>/`（包含 `.gitignore`、`.github/workflows/ci.yml`、`LICENSE`、`NOTICE`、`README.md`、`docs/` 及 `labworker/`）
+  - 仓库根目录：`<repo-root>/`（包含 `.gitignore`、`.github/workflows/ci.yml`、`Casks/labworker.rb`、`LICENSE`、`NOTICE`、`README.md`、`docs/` 及 `labworker/`）
   - Swift Package 主目录：`<repo-root>/labworker`
 - **许可协议**：`PolyForm Noncommercial License 1.0.0`（SPDX: `PolyForm-Noncommercial-1.0.0`，详见 `LICENSE` 与 `NOTICE`；允许个人学习与非营利性学术科研使用，禁止任何商业用途）
 - **远程仓库**：`https://github.com/xin67/Labworker.git`（分支：`main`，已全局脱敏个人隐私、本地用户名路径与实验室私有质粒记录）
@@ -18,7 +18,7 @@
   - `本地个人备份_勿上传/`（用户个人本地 `.dna` / 备份数据与私人订购模板）
   - `*.dna`, `*.ab1`, `*.seq`, `*.gb`, `*.gbk`, `plasmid_pool.json`, `.clonestudio_plasmid_pool.json`, `.clonestudio_mcp_sync.json`, `workspace_autosave.json`, `analysis_runs_index.json`, `*_MCP_*.xlsx`, `*订购表_*.xlsx`, `*.bak*`
 - **技术栈与编译要求**：
-  - **语言与平台**：Swift 6.4+ / **macOS 27.0+ (原生 Liquid Glass UI SDK)**（见 `labworker/Package.swift` `platforms: [.macOS(.v27)]`）
+  - **语言与平台**：Swift 6.0+ / **最低支持 `macOS 14.0+` (Sonoma)**，在 macOS 26/27 SDK 下通过 `#if compiler(>=6.2)` + `@available(macOS 26.0, *)` 渐进增强原生 Liquid Glass，在 macOS 14–15 平滑回退系统材质（见 `labworker/Package.swift` `platforms: [.macOS(.v14)]`）
   - **零第三方 Swift Package 依赖**：100% 基于 Apple 原生框架（`SwiftUI`, `AppKit`, `Accelerate`, `SQLite3`, `CryptoKit`, `ImageIO`, `WebKit`, `Charts`, `UniformTypeIdentifiers`）
   - **Python 桥接层**：系统 `/usr/bin/python3`（MCP 与核心测试向量仅依赖 Python 标准库，无强制第三方依赖；可选增强包：`primer3-py`, `biopython`, `snapgene_reader`, `openpyxl`, `scipy`, `PySide6`, `pyqtgraph`）
 
@@ -28,9 +28,9 @@
 
 自动化门禁脚本 `labworker/Scripts/check_doc_counts.sh` 强制校验以下核心契约指标。**除非你同步更新了代码、测试和 `README.md` / `ARCHITECTURE.md` 中的声明，否则严禁让这些计数发生漂移**：
 
-1. **自动化验证测试数 (`tests=50`)**：`Tests/CloneStudioVerify/main.swift` 执行并输出 **50** 项 `✅` 通过记录（无桌面外部私有文件时跳过 3 项本地路径测试），运行结束输出 `COUNTS tests=50 tools=23 modules=19`。
+1. **自动化验证测试数 (`tests=57`)**：`Tests/CloneStudioVerify/main.swift` 执行并输出 **57** 项 `✅` 通过记录（无桌面外部私有文件时跳过 3 项本地路径测试），运行结束输出 `COUNTS tests=57 tools=23 modules=18`。
 2. **MCP 全栈工具数 (`tools=23`)**：Python 端 `Sources/CloneStudioCore/Resources/clonestudio_mcp_server.py`（`--count-tools` 验证）与 Swift 端 `PlasmidPoolManager.mcpToolsCatalog` 严格保持 **23** 个工具 1:1 对齐。
-3. **UI 导航模块总数 (`modules=19`)**：`Sources/CloneStudioCore/ViewModels/AppState.swift` 中的 `NavItem` 枚举共 **19** 个模块（5 大侧边栏分类下的 **18** 个科研业务模块 + **1** 个固定常驻 `.settings` 系统设置模块）。
+3. **UI 导航模块总数 (`modules=18`)**：`Sources/CloneStudioCore/ViewModels/AppState.swift` 中的 `NavItem` 枚举共 **18** 个模块（含 5 大侧边栏分类功能模块及常驻 `.settings` 系统设置模块，在线靶点对比已分别内嵌 `sgRNA 设计` 与 `shRNA 设计`）。
 4. **跨语言共享测试向量 (`10 files, 50 cases`)**：`Tests/vectors/*.json` 共 **10** 个 JSON 标准测试向量文件、**50** 个跨语言测试用例，由 Swift (`Test 48`) 与 Python (`Tests/vectors/run_python_vectors.py`) 双向对齐校验；`run_python_vectors.py --tamper-check` 验证篡改任一期望值必须触发非零退出码（exit code 2）。
 
 ---
@@ -40,18 +40,24 @@
 ```text
 <repo-root>/
 ├── .gitignore                                  # 严格拦截 .dna/.ab1/.gb、私有质粒池、本地个人备份及生成物
-├── .github/workflows/ci.yml                    # macOS-14 CI：Python 共享向量 + 防篡改检查 + check_doc_counts.sh
+├── .github/workflows/ci.yml                    # macOS-15 CI：swift build + Python 共享向量 + 防篡改检查 + check_doc_counts.sh
+├── Casks/labworker.rb                          # 自托管 Homebrew Cask（免公证，postflight 自动清除 quarantine）
 ├── LICENSE                                     # PolyForm Noncommercial License 1.0.0（禁止商用）
 ├── NOTICE                                      # Required Notice 版权与商业授权联系声明
 ├── README.md                                   # GitHub 项目主页图文展示与禁止商用声明
 ├── docs/images/                                # README 实机界面截图集
 └── labworker/                                  # Swift Package 主目录
     ├── LICENSE / NOTICE                        # 同步许可协议与 Required Notice 声明
-    ├── Package.swift                           # macOS 27+，3 Targets: CloneStudioCore, CloneStudio, CloneStudioVerify
+    ├── Package.swift                           # macOS 14.0+，3 Targets: CloneStudioCore, CloneStudio, CloneStudioVerify
     ├── README.md / ARCHITECTURE.md / HANDOVER.md
     ├── Scripts/
-    │   ├── check_doc_counts.sh                 # 【核心门禁】校验 50 测试 + 23 MCP 工具 + 19 UI 模块 + 文档一致性
-    │   ├── build_app.sh                        # Release 编译并签名 labworker/Labworker.app
+    │   ├── check_doc_counts.sh                 # 【核心门禁】校验 57 测试 + 23 MCP 工具 + 18 UI 模块 + 文档一致性
+    │   ├── build_app.sh                        # Release 编译并签名 labworker/Labworker.app (LSMinimumSystemVersion=14.0)
+    │   ├── package_dmg.sh                      # 打包可分发 DMG + .sha256 + Gatekeeper 一键修复工具 + --update-cask
+    │   ├── install.sh                          # 免开发者账号一键下载、校验签名与清除 quarantine 安装脚本
+    │   ├── harvest_ncbi_plasmid_features.py    # NCBI GenBank + FPbase 质粒元件抓取与黄金向量防冲突脚本
+    │   ├── plasmid_features_catalog.json       # 1,400 个经校验的公共质粒特征离线词典
+    │   ├── seed_plasmid_features.py            # 幂等写入 1,415 条标准质粒元件至 Libraries.sqlite
     │   ├── generate_icon.py                    # 亮/暗色 AppIcon 与状态栏模板图标生成
     │   └── build_libraries_db.py               # 离线全基因组 sgRNA/shRNA 靶点 SQLite 编译脚本
     ├── Samples/WB/gapdh_*.tif                  # 真实 16-bit 化学发光图、明场 Marker 与叠加图回归样本
@@ -73,17 +79,17 @@
         │   │                                   # CHOPCHOPResult, ConstructHistory, PlateLayoutModels, OrderFormProfile,
         │   │                                   # CloneStudioIconProvider, AnalysisRun (Schema v2 + AnalysisRunIndexStore)
         │   ├── Geometry/                       # SequenceRowLayout, CircularOVELayout, CircularGeometry
-        │   ├── Engine/                         # 20 个核心算法引擎 (见下文清单)
+        │   ├── Engine/                         # 27 个核心算法引擎 (见下文清单)
         │   ├── Services/                       # WorkspaceSessionManager, PlasmidPoolManager, SnapGeneService,
         │   │                                   # ExcelOrderExporter, GenomicLibraryService, CHOPCHOPService,
-        │   │                                   # CloneOnlineAPIClient, CloneStudioResourceLocator
+        │   │                                   # BroadGPPService, BioDatabaseFetchService, CloneOnlineAPIClient, CloneStudioResourceLocator
         │   ├── ViewModels/                     # 模块化 ViewModel 状态机：
         │   │                                   # AppState, CloningViewModels, MultiFragmentViewModel,
         │   │                                   # MutagenesisViewModel, FragmentDeletionViewModel,
         │   │                                   # BenchCalculatorViewModels, SgRNADesignViewModel, ShRNADesignViewModel,
         │   │                                   # CHOPCHOPCompareViewModel, OrderExportViewModel
         │   └── Resources/                      # clonestudio_mcp_server.py (23 工具), snapgene_bridge.py,
-        │                                       # export_order.py, chopchop_query.py, Libraries.sqlite, *.xlsx, 图标
+        │                                       # export_order.py, chopchop_query.py, molstar.*, Libraries.sqlite, *.xlsx, 图标
         └── CloneStudio/                        # SwiftUI + AppKit 原生桌面 UI 层
             ├── CloneStudioApp.swift
             └── Views/                          # Main/ContentView, Components/* (含 DesignSystem.swift),
@@ -96,30 +102,29 @@
 
 ---
 
-## 4. 19 个 UI 导航模块 (`NavItem`) 与核心引擎对照表（含固定常驻 `.settings`，共 19 项）
+## 4. 18 个 UI 导航模块 (`NavItem`) 与核心引擎对照表（含固定常驻 `.settings`，共 18 项）
 
-定义于 `Sources/CloneStudioCore/ViewModels/AppState.swift` 的 `NavItem` 与 `SidebarSectionKind`：
+定义于 `Sources/CloneStudioCore/ViewModels/AppState.swift` 的 `NavItem` 与 `SidebarSectionKind`（原在线靶点对比已分别内嵌至 `.sgRNADesign` 与 `.shRNADesign`）：
 
 | 分组 | `NavItem` 枚举值 | 界面名称 | 核心 UI 视图 (`Sources/CloneStudio/`) | 核心引擎 / 服务 (`Sources/CloneStudioCore/`) |
 | :--- | :--- | :--- | :--- | :--- |
-| 分子克隆与质粒 | `.plasmidPool` | 质粒池 | `Views/Pool/PlasmidPoolView.swift` | `Services/PlasmidPoolManager.swift`, `Models/ConstructHistory.swift` |
+| 分子克隆与质粒 | `.plasmidPool` | 质粒池 | `Views/Pool/PlasmidPoolView.swift`, `Views/Pool/OnlineDatabaseFetchSheet.swift`, `Views/Pool/PlasmidAutoAnnotationSheet.swift`, `Views/Components/DiagnosticDigestSheet.swift` | `Engine/PlasmidAnnotationEngine.swift`, `Engine/SequenceFormatEngine.swift`, `Engine/DiagnosticDigestEngine.swift`, `Services/PlasmidPoolManager.swift`, `Services/BioDatabaseFetchService.swift`, `Models/ConstructHistory.swift` |
 | 分子克隆与质粒 | `.entryClone` | 入门克隆 | `Views/Cloning/EntryCloneView.swift`, `Views/Components/HomologousPCRGelView.swift` | `Engine/HomologyArmDesigner.swift`, `Engine/HomologousPCRGelSimulator.swift`, `Engine/TmCalculator.swift` |
 | 分子克隆与质粒 | `.singleFragment` | 单片段克隆 | `Views/Cloning/SingleFragmentCloneView.swift`, `Views/Components/HomologousPCRGelView.swift` | `Engine/HomologyArmDesigner.swift`, `Engine/HomologousPCRGelSimulator.swift`, `Engine/PrimerQualityEngine.swift` |
-| 分子克隆与质粒 | `.multiFragment` | 多片段克隆 | `Views/Cloning/MultiFragmentCloneView.swift`, `Views/Components/HomologousPCRGelView.swift` | `Engine/HomologyArmDesigner.swift`, `Engine/HomologousPCRGelSimulator.swift`, `ViewModels/MultiFragmentViewModel.swift` |
+| 分子克隆与质粒 | `.multiFragment` | 多片段克隆 | `Views/Cloning/MultiFragmentCloneView.swift`, `Views/Cloning/GoldenGatePanelView.swift`, `Views/Components/HomologousPCRGelView.swift` | `Engine/HomologyArmDesigner.swift`, `Engine/GoldenGateEngine.swift`, `Engine/HomologousPCRGelSimulator.swift`, `ViewModels/MultiFragmentViewModel.swift` |
 | 分子克隆与质粒 | `.mutagenesis` | 定点突变 | `Views/Mutagenesis/MutationView.swift` | `Engine/HomologyArmDesigner.swift`, `ViewModels/MutagenesisViewModel.swift` |
 | 分子克隆与质粒 | `.fragmentDeletion` | 片段删除 | `Views/Cloning/FragmentDeletionView.swift`, `Views/Components/HomologousPCRGelView.swift` | `Engine/HomologyArmDesigner.swift`, `Engine/HomologousPCRGelSimulator.swift`, `ViewModels/FragmentDeletionViewModel.swift` |
-| 分子克隆与质粒 | `.sangerVerify` | 测序验证 | `Views/Cloning/SangerVerificationView.swift` | `Engine/SangerAlignmentEngine.swift`, `Engine/SangerBatchEngine.swift` |
-| 基因编辑与靶点 | `.sgRNADesign` | sgRNA 设计 | `Views/CRISPR/SgRNADesignView.swift` | `Engine/CRISPRDesigner.swift`, `Engine/SgRNAScoringEngine.swift`, `Services/GenomicLibraryService.swift` |
-| 基因编辑与靶点 | `.shRNADesign` | shRNA 设计 | `Views/RNAi/ShRNADesignView.swift` | `Engine/ShRNADesigner.swift`, `Engine/ShRNAScoringEngine.swift` |
-| 基因编辑与靶点 | `.chopchopCompare` | 靶点对比 | `Views/Compare/CHOPCHOPWebView.swift` | `Services/CHOPCHOPService.swift`, `ViewModels/CHOPCHOPCompareViewModel.swift` |
+| 分子克隆与质粒 | `.sangerVerify` | 测序验证 | `Views/Cloning/SangerVerificationView.swift`, `Views/Cloning/CRISPRDeconvolutionPanelView.swift`, `Views/Cloning/WholePlasmidVerifyPanelView.swift` | `Engine/SangerAlignmentEngine.swift`, `Engine/SangerBatchEngine.swift`, `Engine/CRISPRDeconvolutionEngine.swift`, `Engine/PlasmidSequencingAssemblyEngine.swift` |
+| 基因编辑与靶点 | `.sgRNADesign` | sgRNA 设计 | `Views/CRISPR/SgRNADesignView.swift`, `Views/CRISPR/HDRDonorPanelView.swift`, `Views/Compare/TargetOnlineComparePanels.swift` | `Engine/CRISPRDesigner.swift`, `Engine/HDRDonorEngine.swift`, `Engine/SgRNAScoringEngine.swift`, `Services/GenomicLibraryService.swift`, `Services/CHOPCHOPService.swift` |
+| 基因编辑与靶点 | `.shRNADesign` | shRNA 设计 | `Views/RNAi/ShRNADesignView.swift`, `Views/Compare/TargetOnlineComparePanels.swift` | `Engine/ShRNADesigner.swift`, `Engine/ShRNAScoringEngine.swift`, `Services/BroadGPPService.swift` |
 | 电泳与图像定量 | `.westernBlot` | WB 灰度定量 | `Views/BenchTools/WesternBlotView.swift` | `Engine/WesternBlotEngine.swift`, `Models/AnalysisRun.swift` |
-| 电泳与图像定量 | `.gelFigure` | 凝胶分子量 | `Views/BenchTools/GelFigureEditorView.swift` | `Engine/GelAnalysisEngine.swift`, `Models/AnalysisRun.swift` |
-| 定量与蛋白工具 | `.plateDesigner` | 微孔板设计 | `Views/BenchTools/PlateDesignerView.swift` | `Engine/PlateLayoutEngine.swift`, `Models/PlateLayoutModels.swift` |
-| 定量与蛋白工具 | `.qpcrAnalysis` | qPCR 定量 | `Views/BenchTools/QPCRAnalysisView.swift` | `Engine/QPCRAnalysisEngine.swift`, `Models/AnalysisRun.swift` |
-| 定量与蛋白工具 | `.proteinWorkbench` | 蛋白质工作台 | `Views/BenchTools/ProteinWorkbenchView.swift` | `Engine/ProteinBiophysicsEngine.swift` |
+| 电泳与图像定量 | `.gelFigure` | 凝胶分子量 | `Views/BenchTools/GelFigureEditorView.swift`, `Views/Components/DiagnosticDigestSheet.swift` | `Engine/GelAnalysisEngine.swift`, `Engine/DiagnosticDigestEngine.swift`, `Models/AnalysisRun.swift` |
+| 定量与蛋白工具 | `.plateDesigner` | 微孔板设计 | `Views/BenchTools/PlateDesignerView.swift`, `Views/BenchTools/PlateReaderAssayView.swift` | `Engine/PlateLayoutEngine.swift`, `Engine/PlateReaderAssayEngine.swift`, `Models/PlateLayoutModels.swift` |
+| 定量与蛋白工具 | `.qpcrAnalysis` | qPCR 定量 | `Views/BenchTools/QPCRAnalysisView.swift` | `Engine/QPCRAnalysisEngine.swift`, `Engine/QPCRInstrumentAndRDMLEngine.swift`, `Models/AnalysisRun.swift` |
+| 定量与蛋白工具 | `.proteinWorkbench` | 蛋白质工作台 | `Views/BenchTools/ProteinWorkbenchView.swift`, `Views/BenchTools/MolstarWebView.swift` | `Engine/ProteinBiophysicsEngine.swift`, `Engine/ProteinDockingBridgeEngine.swift`, `Services/BioDatabaseFetchService.swift` |
 | 定量与蛋白工具 | `.dnaCalculator` | 生物计算器 | `Views/Calculator/RestructureCalculatorView.swift`, `Views/Calculator/LabBioCalculatorsView.swift` | `Engine/DNAMolarCalculator.swift`, `Engine/LabBioCalculatorsEngine.swift`, `ViewModels/BenchCalculatorViewModels.swift` |
-| 定量与蛋白工具 | `.sequenceTools` | 序列工具 | `Views/Tools/SequenceToolsView.swift` | `Engine/TmCalculator.swift`, `Engine/PrimerQualityEngine.swift` |
-| 合成订购与设置 | `.orderCenter` | 订购中心 | `Views/Order/OrderExportView.swift` | `Services/ExcelOrderExporter.swift`, `Models/OrderFormProfile.swift` |
+| 定量与蛋白工具 | `.sequenceTools` | 序列工具 | `Views/Tools/SequenceToolsView.swift`, `Views/Tools/CodonOptimizationPanelView.swift` | `Engine/TmCalculator.swift`, `Engine/PrimerQualityEngine.swift`, `Engine/CodonOptimizationEngine.swift` |
+| 合成订购与设置 | `.orderCenter` | 订购中心 | `Views/Order/OrderExportView.swift` | `Engine/OrderTemplateEngine.swift`, `Services/ExcelOrderExporter.swift`, `Models/OrderFormProfile.swift`, `ViewModels/OrderExportViewModel.swift` |
 | 合成订购与设置 | `.settings` | 系统设置 | `Views/Settings/SettingsView.swift` | `ViewModels/AppState.swift` |
 
 ---
@@ -177,12 +182,15 @@
 /usr/bin/python3 Tests/vectors/run_python_vectors.py
 /usr/bin/python3 Tests/vectors/run_python_vectors.py --tamper-check; echo "tamper_exit=$?"
 
-# 2. Swift 编译 + 50 项回归测试 + 文档数字单一真值门禁
+# 2. Swift 编译 + 57 项回归测试 + 文档数字单一真值门禁
 bash Scripts/check_doc_counts.sh
 
-# 3. Release 编译 (0 warnings) 并重新打包签名 Labworker.app，生成可分发 .dmg
+# 3. Release 编译 (0 warnings) 并重新打包签名 Labworker.app，生成可分发 .dmg + .sha256 并同步 Cask
 bash Scripts/build_app.sh
-bash Scripts/package_dmg.sh --skip-build
+bash Scripts/package_dmg.sh --skip-build --update-cask
+
+# 4. 或使用零成本一键免拦截脚本本地测试安装
+bash Scripts/install.sh --local-dmg Labworker-20261120.dmg --dry-run
 ```
 
 > **开发规范提示**：

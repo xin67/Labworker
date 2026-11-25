@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+  <title>Labworker Offline Mol* 3D Viewer</title>
+  <link rel="stylesheet" type="text/css" href="./molstar.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #111827;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    #app {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="text/javascript" src="./molstar.js"></script>
+  <script type="text/javascript">
+    (function () {
+      let viewerInstance = null;
+      let loadSerial = 0;
+
+      function postSwiftMessage(payload) {
+        try {
+          if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.labworkerMolstar) {
+            window.webkit.messageHandlers.labworkerMolstar.postMessage(payload);
+          }
+        } catch (_) {}
+      }
+
+      function decodeBase64UTF8(b64) {
+        if (!b64) return "";
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return new TextDecoder("utf-8").decode(bytes);
+      }
+
+      function mapColorTheme(colorMode) {
+        switch (colorMode) {
+          case "secondary": return "secondary-structure";
+          case "hydrophobicity": return "hydrophobicity";
+          case "chain": return "chain-id";
+          case "plddt":
+          default:
+            return "uncertainty";
+        }
+      }
+
+      async function applyStyleAndColor(plugin, style, colorMode, showInteractions) {
+        const mgr = plugin.managers && plugin.managers.structure;
+        if (!mgr || !mgr.hierarchy || !mgr.component) return;
+        const structures = mgr.hierarchy.current.structures || [];
+        const colorName = mapColorTheme(colorMode);
+
+        for (let i = 0; i < structures.length; i++) {
+          const s = structures[i];
+          const components = s.components || [];
+          const isLigandStruct = (i > 0);
+
+          if (!isLigandStruct) {
+            // 1. 更新蛋白骨架/多聚体着色主题与样式
+            try {
+              if (components.length > 0) {
+                await mgr.component.updateRepresentationsTheme(components, { color: colorName });
+              }
+            } catch (_) {}
+
+            if (style === "cartoon_surface" || style === "surface_electrostatic") {
+              const polymerComps = components.filter(function (c) {
+                const label = ((c.cell && c.cell.obj && c.cell.obj.label) || "").toLowerCase();
+                return label.includes("polymer") || components.length === 1;
+              });
+              const targets = polymerComps.length > 0 ? polymerComps : components;
+              const surfColor = (style === "surface_electrostatic") ? "formal-charge" : colorName;
+              const surfAlpha = (style === "surface_electrostatic") ? 0.92 : 0.36;
+              for (const comp of targets) {
+                try {
+                  await plugin.builders.structure.representation.addRepresentation(comp.cell, {
+                    type: "molecular-surface",
+                    color: surfColor,
+                    typeParams: { alpha: surfAlpha }
+                  });
+                } catch (_) {
+                  try {
+                    await plugin.builders.structure.representation.addRepresentation(comp.cell, {
+                      type: "molecular-surface",
+                      color: "hydrophobicity",
+                      typeParams: { alpha: surfAlpha }
+                    });
+                  } catch (_) {}
+                }
+              }
+            } else if (style === "ball_and_stick") {
+              for (const comp of components) {
+                try {
+                  await plugin.builders.structure.representation.addRepresentation(comp.cell, {
+                    type: "ball-and-stick",
+                    color: colorName
+                  });
+                } catch (_) {}
+              }
+            }
+          }
+
+          if (showInteractions) {
+            const targetComps = isLigandStruct ? components : components.filter(function (c) {
+              const label = ((c.cell && c.cell.obj && c.cell.obj.label) || "").toLowerCase();
+              return label.includes("ligand") || label.includes("non-standard") || components.length === 1;
+            });
+            for (const comp of targetComps) {
+              try {
+                await plugin.builders.structure.representation.addRepresentation(comp.cell, {
+                  type: "interactions"
+                });
+              } catch (_) {}
+            }
+          }
+        }
+      }
+
+      window.LabworkerMolstar = {
+        setControlsVisible: function (visible) {
+          if (!viewerInstance || !viewerInstance.plugin) return;
+          try {
+            if (viewerInstance.plugin.layout && typeof viewerInstance.plugin.layout.setProps === "function") {
+              viewerInstance.plugin.layout.setProps({ showControls: !!visible });
+            }
+          } catch (_) {}
+        },
+
+        resetCamera: function () {
+          if (!viewerInstance || !viewerInstance.plugin || !viewerInstance.plugin.canvas3d) return;
+          try {
+            viewerInstance.plugin.canvas3d.requestCameraReset();
+          } catch (_) {}
+        },
+
+        loadComplex: async function (payload) {
+          if (!viewerInstance) return;
+          const mySerial = ++loadSerial;
+          try {
+            const plugin = viewerInstance.plugin;
+            const bgColor = payload.darkBackground ? 0x111827 : 0xF8FAFC;
+            document.documentElement.style.background = payload.darkBackground ? "#111827" : "#F8FAFC";
+            document.body.style.background = payload.darkBackground ? "#111827" : "#F8FAFC";
+
+            if (plugin.canvas3d && typeof plugin.canvas3d.setProps === "function") {
+              plugin.canvas3d.setProps({ renderer: { backgroundColor: bgColor } });
+            }
+
+            await plugin.clear();
+            if (mySerial !== loadSerial) return;
+
+            const receptorText = decodeBase64UTF8(payload.receptorData);
+            if (!receptorText.trim()) {
+              postSwiftMessage({ type: "loaded", message: "当前无三维坐标可渲染" });
+              return;
+            }
+            const recFmt = (payload.receptorFormat || "pdb").toLowerCase();
+            await viewerInstance.loadStructureFromData(receptorText, recFmt, {
+              dataLabel: payload.receptorLabel || "Receptor"
+            });
+            if (mySerial !== loadSerial) return;
+
+            let msg = "Mol* 已离线载入受体结构";
+            if (payload.ligandData) {
+              const ligText = decodeBase64UTF8(payload.ligandData);
+              if (ligText.trim()) {
+                const ligFmt = (payload.ligandFormat || "pdb").toLowerCase();
+                await viewerInstance.loadStructureFromData(ligText, ligFmt, {
+                  dataLabel: payload.ligandLabel || "Docked_Pose"
+                });
+                msg = "Mol* 已载入复合物：" + (payload.ligandLabel || "Docked Pose");
+              }
+            }
+            if (mySerial !== loadSerial) return;
+
+            await applyStyleAndColor(
+              plugin,
+              payload.style || "cartoon",
+              payload.colorMode || "plddt",
+              payload.showInteractions !== false
+            );
+
+            if (plugin.canvas3d && typeof plugin.canvas3d.requestCameraReset === "function") {
+              plugin.canvas3d.requestCameraReset();
+            }
+
+            postSwiftMessage({ type: "loaded", message: msg });
+          } catch (err) {
+            postSwiftMessage({
+              type: "error",
+              message: "Mol* 渲染异常：" + (err && err.message ? err.message : String(err))
+            });
+          }
+        }
+      };
+
+      molstar.Viewer.create("app", {
+        layoutIsExpanded: false,
+        layoutShowControls: false,
+        layoutShowRemoteState: false,
+        layoutShowSequence: false,
+        layoutShowLog: false,
+        layoutShowLeftPanel: false,
+        viewportShowExpand: false,
+        viewportShowSelectionMode: false,
+        viewportShowAnimation: true,
+        viewportShowSettings: false,
+        viewportShowToggleFullscreen: false,
+        powerPreference: "high-performance",
+        viewportBackgroundColor: "#111827"
+      }).then(function (viewer) {
+        viewerInstance = viewer;
+        postSwiftMessage({ type: "ready" });
+      }).catch(function (err) {
+        postSwiftMessage({
+          type: "error",
+          message: "Mol* 初始化失败：" + (err && err.message ? err.message : String(err))
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

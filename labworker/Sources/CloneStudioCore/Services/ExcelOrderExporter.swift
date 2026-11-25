@@ -58,12 +58,18 @@ public enum OrderCategory: String, CaseIterable, Identifiable {
     public var id: String { rawValue }
 }
 
-/// 支持的 4 套商业 Excel 母版
-public enum OrderFormTemplate: String, CaseIterable, Identifiable, Codable {
+/// 支持的商业订购模板 (擎科 / 生工 / IDT / Twist / GenScript / Eurofins / BGI / 自定义 JSON)
+public enum OrderFormTemplate: String, CaseIterable, Identifiable, Codable, Sendable, Hashable {
     case tsingkePrimer = "tsingke_primer"
     case tsingkeSeq    = "tsingke_seq"
     case sangonSeq     = "sangon_seq"
     case sangonV9Seq   = "sangon_v9_seq"
+    case idtBulk       = "idt_bulk"
+    case twistBulk     = "twist_bulk"
+    case genscriptBulk = "genscript_bulk"
+    case eurofinsBulk  = "eurofins_bulk"
+    case bgiBulk       = "bgi_bulk"
+    case customJSON    = "custom_json"
     
     public var id: String { rawValue }
     
@@ -73,6 +79,12 @@ public enum OrderFormTemplate: String, CaseIterable, Identifiable, Codable {
         case .tsingkeSeq:    return "擎科DNA测序订购表 (专属电子订单)"
         case .sangonSeq:     return "生工DNA测序订购表 (专属版)"
         case .sangonV9Seq:   return "生工DNA测序订购表 (官方通用V9版)"
+        case .idtBulk:       return "IDT Bulk Input (引物 / Ultramer 批量订购)"
+        case .twistBulk:     return "Twist Bioscience (基因片段 / Oligo 批量订购)"
+        case .genscriptBulk: return "GenScript 金斯瑞 (GenSmart 批量订购)"
+        case .eurofinsBulk:  return "Eurofins Genomics (96孔板引物批量订购)"
+        case .bgiBulk:       return "华大基因 BGI (引物 / 基因批量订购)"
+        case .customJSON:    return "自定义列映射模板 (.json)"
         }
     }
     
@@ -82,14 +94,35 @@ public enum OrderFormTemplate: String, CaseIterable, Identifiable, Codable {
         case .tsingkeSeq:    return "擎科测序订购表专属电子订单.xlsx"
         case .sangonSeq:     return "生工DNA测序订购表.xlsx"
         case .sangonV9Seq:   return "DNA测序订购表_V9(1).xlsx"
+        case .idtBulk:       return "IDT_Bulk_Input_Order.xlsx"
+        case .twistBulk:     return "Twist_Bioscience_Order.csv"
+        case .genscriptBulk: return "GenScript_Bulk_Order.xlsx"
+        case .eurofinsBulk:  return "Eurofins_Plate_Order.csv"
+        case .bgiBulk:       return "BGI_Synthesis_Order.xlsx"
+        case .customJSON:    return "Labworker_Custom_Order.csv"
         }
     }
     
     public var category: OrderCategory {
         switch self {
-        case .tsingkePrimer: return .primerSynthesis
-        case .tsingkeSeq, .sangonSeq, .sangonV9Seq: return .dnaSequencing
+        case .tsingkePrimer, .idtBulk, .twistBulk, .genscriptBulk, .eurofinsBulk, .bgiBulk, .customJSON:
+            return .primerSynthesis
+        case .tsingkeSeq, .sangonSeq, .sangonV9Seq:
+            return .dnaSequencing
         }
+    }
+
+    public var requiresBundledXLSXTemplate: Bool {
+        switch self {
+        case .tsingkePrimer, .tsingkeSeq, .sangonSeq, .sangonV9Seq:
+            return true
+        case .idtBulk, .twistBulk, .genscriptBulk, .eurofinsBulk, .bgiBulk, .customJSON:
+            return false
+        }
+    }
+
+    public var supportedFormats: [OrderOutputFileFormat] {
+        requiresBundledXLSXTemplate ? [.xlsx] : [.xlsx, .csv]
     }
 }
 
@@ -144,45 +177,63 @@ public final class ExcelOrderExporter {
         )
     }
     
-    /// 通用模板导出调度核心
+    /// 通用模板导出调度核心（支持内置母版、国际批量合成模板与自定义 JSON 列映射）
     public func exportOrder(
         template: OrderFormTemplate,
         primers: [PrimerItem],
         samples: [SequencingSampleItem],
         profile: OrderFormProfile = OrderFormProfile(),
-        targetDir: String? = nil
+        targetDir: String? = nil,
+        fileFormat: OrderOutputFileFormat = .xlsx,
+        customTemplate: CustomOrderTemplateSpec? = nil
     ) throws -> String {
-        guard let templatePath = locateTemplate(name: template.filename) else {
-            throw NSError(domain: "ExcelExport", code: -1, userInfo: [NSLocalizedDescriptionKey: "未找到母版文件：\(template.filename)"])
+        var templatePath = "-"
+        if template.requiresBundledXLSXTemplate {
+            guard let bundled = locateTemplate(name: template.filename) else {
+                throw NSError(domain: "ExcelExport", code: -1, userInfo: [NSLocalizedDescriptionKey: "未找到母版文件：\(template.filename)"])
+            }
+            templatePath = bundled
+        } else if template == .customJSON && customTemplate == nil {
+            throw NSError(domain: "ExcelExport", code: -4, userInfo: [NSLocalizedDescriptionKey: "自定义列映射导出需要提供有效的 CustomOrderTemplateSpec 配置。"])
         }
         guard let scriptPath = locateScript() else {
             throw NSError(domain: "ExcelExport", code: -2, userInfo: [NSLocalizedDescriptionKey: "未找到导出脚本 export_order.py"])
         }
         
+        let resolvedFormat: OrderOutputFileFormat = template.requiresBundledXLSXTemplate ? .xlsx : fileFormat
         let defaultDir: String = {
-            let parent = (templatePath as NSString).deletingLastPathComponent
-            if parent.contains(".app/") || parent.contains(".bundle") {
-                let projRoot = CloneStudioResourceLocator.projectRootDirectory
-                for cand in [projRoot.path, projRoot.deletingLastPathComponent().path] {
-                    if FileManager.default.fileExists(atPath: cand) {
-                        return cand
-                    }
+            if templatePath != "-" {
+                let parent = (templatePath as NSString).deletingLastPathComponent
+                if !parent.contains(".app/") && !parent.contains(".bundle") {
+                    return parent
                 }
-                return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first?.path ?? NSTemporaryDirectory()
             }
-            return parent
+            let projRoot = CloneStudioResourceLocator.projectRootDirectory
+            for cand in [projRoot.path, projRoot.deletingLastPathComponent().path] {
+                if FileManager.default.fileExists(atPath: cand) {
+                    return cand
+                }
+            }
+            return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first?.path ?? NSTemporaryDirectory()
         }()
         let outputDir = targetDir ?? defaultDir
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd_HHmmss"
         let timestamp = formatter.string(from: Date())
         
-        let baseStem = (template.filename as NSString).deletingPathExtension
-        let outputPath = (outputDir as NSString).appendingPathComponent("\(baseStem)_\(timestamp).xlsx")
+        let baseStem: String = {
+            if template == .customJSON, let ct = customTemplate, !ct.name.isEmpty {
+                let cleaned = ct.name.replacingOccurrences(of: " ", with: "_").replacingOccurrences(of: "/", with: "_")
+                return cleaned
+            }
+            return (template.filename as NSString).deletingPathExtension
+        }()
+        let outputPath = (outputDir as NSString).appendingPathComponent("\(baseStem)_\(timestamp).\(resolvedFormat.rawValue)")
         
-        let payload: [String: Any]
+        var payload: [String: Any]
         if template.category == .primerSynthesis {
             payload = [
+                "fileFormat": resolvedFormat.rawValue,
                 "profile": [
                     "customerName": profile.customerName,
                     "piName": profile.piName,
@@ -203,8 +254,14 @@ public final class ExcelOrderExporter {
                     "notes": $0.notes
                 ]}
             ]
+            if let ct = customTemplate,
+               let ctData = try? JSONEncoder().encode(ct),
+               let ctObj = try? JSONSerialization.jsonObject(with: ctData) {
+                payload["customTemplate"] = ctObj
+            }
         } else {
             payload = [
+                "fileFormat": "xlsx",
                 "profile": [
                     "customerName": profile.customerName,
                     "piName": profile.piName,

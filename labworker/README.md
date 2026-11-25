@@ -5,7 +5,7 @@
 
 ## 1. 项目定位与技术栈概览
 
-**Labworker** 是一款运行于 macOS 27+（Apple Silicon 原生优化，全栈基于 macOS 27 SDK 原生 Liquid Glass 液态玻璃交互设计）的干湿实验一体化科研桌面软件，采用 **SwiftUI 声明式响应式界面 + Swift 核心生物计算引擎 + Python 科学计算/SnapGene 桥接 + SQLite 离线基因组库 + MCP 智能体协议** 的混合架构：
+**Labworker** 是一款运行于 **macOS 14.0+ (Sonoma 及以上)**（Apple Silicon 原生优化，macOS 26/27 渐进增强原生 Liquid Glass 液态玻璃交互，macOS 14/15 平滑回退系统材质）的干湿实验一体化科研桌面软件，采用 **SwiftUI 声明式响应式界面 + Swift 核心生物计算引擎 + Python 科学计算/SnapGene 桥接 + SQLite 离线基因组库 + MCP 智能体协议** 的混合架构：
 
 - **UI 与交互层 (`Sources/CloneStudio/`)**：原生 SwiftUI + AppKit 混合架构，具备 120Hz 微观双链序列虚拟化画布、OVE 同心多轨质粒环图、三维 Cα 蛋白质与对接盒视窗、16-bit 科学图像画布及 macOS 菜单栏极简托盘速算器。
 - **核心算法与服务层 (`Sources/CloneStudioCore/`)**：纯 Swift 实现的同源重组引物设计、SantaLucia & Hicks 2004 最近邻热力学 $T_m$ 解算、对齐 `primer3-py` (`calc_hairpin` / `calc_homodimer` / `calc_dimer`) 的 **引物二级结构热力学 $\Delta G$ 与配对拓扑质检引擎 (`PrimerQualityEngine`，支持自定义 $\text{Mg}^{2+}$ 与 dNTP 浓度校正)**、原生 Applied Biosystems ABIF (`.ab1` / `.abi`) **Sanger 四色毛细管电泳峰图解析与环状质粒比对验证引擎 (`SangerAlignmentEngine`)**、CRISPR/RNAi 靶点评分、16-bit Western Blot 滚球背景扣除、qPCR $2^{-\Delta\Delta C_t}$ 相对定量、微孔板防边缘效应排布、以及对齐 [IBN-Spring/DockFlowLab](https://github.com/IBN-Spring/DockFlowLab) 源码的 **LIGSITE 七方向 P-S-P 口袋探测与共晶配体共识 AutoDock Vina 对接盒推荐引擎**。
@@ -14,7 +14,7 @@
   - `export_order.py`：灌装导出擎科（Tsingke）、生工（Sangon）商业引物合成与测序 Excel 订单。
   - `clonestudio_mcp_server.py`：**Labworker MCP Server 20261120**（JSON-RPC 2.0 协议，暴露 23 个全栈实验工具，算法与 Swift 核心引擎 100% 统一并支持实时同步回写 GUI 画布）。
   - `python/wbquant/`：16-bit TIFF 化学发光与明场 Marker 科学图像处理包（支持 CLI 与 PySide6 高级查看器）。
-- **自动化回归测试 (`Tests/CloneStudioVerify/main.swift`)**：内置 **50 项端到端自动化验证测试**，覆盖全部核心算法、生物科研全能计算与换算引擎、引物二级结构热力学质检、Sanger `.ab1` 二进制峰图与质粒比对、Swift-Python 跨引擎共享测试向量（`Tests/vectors/*.json`）一致性、真实质粒与 16-bit WB 样本、UI 偏好状态机、多曝光线性检查及跨模块 `AnalysisRun` 质粒溯源；
+- **自动化回归测试 (`Tests/CloneStudioVerify/main.swift`)**：内置 **57 项端到端自动化验证测试**，覆盖全部核心算法、多宿主密码子优化、全质粒 Nanopore 环状 SV 与多 Sanger Contig 拼接、GenBank/OpenCloning/SBOL3/完整 `mmCIF` 解析、qPCR 四仪器嗅探与 RDML 往返、酶标仪 BCA/4PL-5PL/IC50/CCK-8 曲线拟合、离线 Mol* 3D 与本地 Vina/Smina/Gnina/Boltz 桥接、国际订购批量模板/自定义 JSON 映射、生物科研全能计算与换算引擎、引物二级结构热力学质检、Sanger `.ab1` 二进制峰图与质粒比对、Swift-Python 跨引擎共享测试向量（`Tests/vectors/*.json`）一致性、真实质粒与 16-bit WB 样本、UI 偏好状态机、多曝光线性检查及跨模块 `AnalysisRun` 质粒溯源；
 
 ## 2. AI 协作与工程治理铁律（修改代码前必读）
 
@@ -37,12 +37,12 @@
    # 0. 校验测试数、MCP 工具数与模块数单一真值来源，并运行 Python 共享测试向量
    bash Scripts/check_doc_counts.sh && /usr/bin/python3 Tests/vectors/run_python_vectors.py
 
-   # 1. 编译并运行全部 50 项自动化验证测试
+   # 1. 编译并运行全部 57 项自动化验证测试
    swift build --disable-sandbox && swift run --disable-sandbox CloneStudioVerify
 
-   # 2. 更新构建并签名 labworker/Labworker.app（及打包 Labworker-20261120.dmg）
+   # 2. 更新构建并签名 labworker/Labworker.app（及打包 Labworker-20261120.dmg + Cask 同步）
    bash Scripts/build_app.sh
-   bash Scripts/package_dmg.sh --skip-build
+   bash Scripts/package_dmg.sh --skip-build --update-cask
 
    # 3. 使用清晰中文提交 Git 记录
    git add <修改文件> && git commit -m "清晰的中文提交说明"
@@ -56,19 +56,19 @@
 
 | 模块枚举 (`NavItem`) | 界面名称 | 核心源码文件 | 核心算法与业务功能说明 | 支持快导格式 |
 | :--- | :--- | :--- | :--- | :--- |
-| `.plasmidPool` | **质粒池** | `Views/Pool/PlasmidPoolView.swift`<br>`Services/PlasmidPoolManager.swift` | 集中管理本地 `.dna` / `.fasta` 质粒库，自动提取载体骨架、抗性标签、CDS 特征与唯一酶切位点；支持构建谱系树追踪与一键送入克隆或蛋白质翻译。 | `.dna`, `.fa`, `.fasta`, `.gb` |
+| `.plasmidPool` | **质粒池** | `Views/Pool/PlasmidPoolView.swift`<br>`Views/Pool/OnlineDatabaseFetchSheet.swift`<br>`Views/Pool/PlasmidAutoAnnotationSheet.swift`<br>`Views/Components/DiagnosticDigestSheet.swift`<br>`Engine/PlasmidAnnotationEngine.swift`<br>`Engine/SequenceFormatEngine.swift`<br>`Engine/DiagnosticDigestEngine.swift`<br>`Services/PlasmidPoolManager.swift`<br>`Services/BioDatabaseFetchService.swift` | 集中管理本地 `.dna` / `.fasta` / `.gb` / OpenCloning JSON / SBOL3 JSON-LD 质粒库，支持 **NCBI GenBank/RefSeq 与 Addgene ID 一键在线拉取入库**，自动提取载体骨架、抗性标签、CDS 特征与唯一酶切位点；内置 **纯离线 FASTA 自动注释**（1,415 个真实公共元件与 k-mer 索引）、**诊断性限制酶切推荐**（联动 `凝胶分子量`）及 GenBank/OpenCloning/SBOL3 多格式互转导出，支持构建谱系树追踪与一键送入克隆或蛋白质翻译。 | `.dna`, `.fa`, `.fasta`, `.gb`, `.gbk`, `.json`, `.jsonld` |
 | `.entryClone` | **入门克隆** | `Views/Cloning/EntryCloneView.swift`<br>`Views/Components/HomologousPCRGelView.swift`<br>`Engine/HomologyArmDesigner.swift`<br>`Engine/HomologousPCRGelSimulator.swift` | 针对 pCE2 等线性化入门载体的一步法快速克隆引物设计，自动匹配退火温度 $T_m$ 与 5' 同源序列，并提供同源重组 PCR 凝胶电泳片段模拟（0.8%–2.0% 琼脂糖梯度、Marker 标尺对比与 CSV 导出）。 | `.dna`, `.fa`, `.fasta`, `.seq` |
 | `.singleFragment` | **单片段克隆** | `Views/Cloning/SingleFragmentCloneView.swift`<br>`Views/Components/HomologousPCRGelView.swift`<br>`Engine/HomologyArmDesigner.swift`<br>`Engine/HomologousPCRGelSimulator.swift`<br>`Engine/PrimerQualityEngine.swift` | 支持按载体特征、按已有引物对、按限制性内切酶切点、按自定义坐标四维定位线性化位点；基于 18 bp 黄金同源臂与 SantaLucia 最近邻热力学模型设计引物，内置对齐 `primer3-py` 的发夹/自二聚体/异二聚体 $\Delta G$ 质检与配对示意图，支持同源重组 PCR 与载体线性化琼脂糖凝胶电泳模拟，自动校验 3n 阅读框并生成重组 `.dna` 文件。 | `.dna`, `.fa`, `.fasta`, `.seq` |
-| `.multiFragment` | **多片段克隆** | `Views/Cloning/MultiFragmentCloneView.swift`<br>`Views/Components/HomologousPCRGelView.swift`<br>`Engine/HomologyArmDesigner.swift`<br>`Engine/HomologousPCRGelSimulator.swift`<br>`Engine/PrimerQualityEngine.swift` | 支持 2–10 个插入片段的 Gibson / In-Fusion 无缝同源拼接，各片段可独立载入供体 `.dna` 截取特征，自动优化相邻重叠区 $T_m$ 并执行 `calc_hairpin` / `calc_homodimer` / `calc_dimer` 二级结构风险评估，支持多片段扩增子与混泳同源重组凝胶电泳分辨模拟。 | `.dna`, `.fa`, `.fasta`, `.seq` |
+| `.multiFragment` | **多片段克隆** | `Views/Cloning/MultiFragmentCloneView.swift`<br>`Views/Cloning/GoldenGatePanelView.swift`<br>`Views/Components/HomologousPCRGelView.swift`<br>`Engine/HomologyArmDesigner.swift`<br>`Engine/GoldenGateEngine.swift`<br>`Engine/HomologousPCRGelSimulator.swift`<br>`Engine/PrimerQualityEngine.swift` | 支持 **Gibson / In-Fusion 同源重组**（2–10 片段，独立载入供体 `.dna` 截取特征、自动优化相邻重叠区 $T_m$ 与二级结构质检）及 **Type IIS Golden Gate**（基于 NEB T4 保真度矩阵，支持 `BsaI / BsmBI / BbsI / SapI` 2–6 片段零交叉错配接头规划与同义 Domestication）双模式切换。 | `.dna`, `.fa`, `.fasta`, `.seq` |
 | `.mutagenesis` | **定点突变** | `Views/Mutagenesis/MutationView.swift`<br>`Engine/HomologyArmDesigner.swift` | 支持在微观序列画布点选密码子或直接输入 `S42A` / `K15R` / `K15Δ` 简写，自动核对野生型氨基酸、选择宿主偏好密码子并生成反向 PCR 或重叠延伸突变引物。 | `.dna`, `.fa`, `.fasta`, `.seq` |
 | `.fragmentDeletion` | **片段删除** | `Views/Cloning/FragmentDeletionView.swift`<br>`Views/Components/HomologousPCRGelView.swift`<br>`Engine/HomologyArmDesigner.swift`<br>`Engine/HomologousPCRGelSimulator.swift` | 精准跨区域同源环化敲除或结构域截短，自动设计跨越删除边界的反向 PCR 桥接引物、模拟环化扩增条带对比对照载体电泳并重映射下游质粒图谱特征坐标。 | `.dna`, `.fa`, `.fasta`, `.seq` |
-| `.sangerVerify` | **测序验证** | `Views/Cloning/SangerVerificationView.swift`<br>`Engine/SangerAlignmentEngine.swift`<br>`Engine/SangerBatchEngine.swift` | 原生解析 Applied Biosystems ABIF (`.ab1` / `.abi`) 四色毛细管电泳荧光色谱（`DATA` 9–12、`PBAS`、`PLOC`、`PCON`）、滑动窗口修剪 5'/3' 低质量端，并与环状质粒双向带状 DP 比对，自动识别 SNP 点突变、移码 Indel 与杂合双峰（次峰 $\ge 30\%$），支持多文件/文件夹批量克隆分组合并看板、正反向覆盖并集统计与点击变异胶囊一键滚动定位峰图。 | `.ab1`, `.abi`, `.seq`, `.fasta` |
+| `.sangerVerify` | **测序验证** | `Views/Cloning/SangerVerificationView.swift`<br>`Views/Cloning/CRISPRDeconvolutionPanelView.swift`<br>`Views/Cloning/WholePlasmidVerifyPanelView.swift`<br>`Engine/SangerAlignmentEngine.swift`<br>`Engine/SangerBatchEngine.swift`<br>`Engine/CRISPRDeconvolutionEngine.swift`<br>`Engine/PlasmidSequencingAssemblyEngine.swift` | 原生解析 Applied Biosystems ABIF (`.ab1` / `.abi`) 四色毛细管电泳荧光色谱，滑动窗口修剪并双向带状 DP 比对，支持批量克隆看板；内置 **CRISPR 编辑效率 (ICE 反卷积)** 工作台（`Accelerate vDSP` NNLS 量化 `Indel%`、`KO Score` 与 `HDR%`），以及 **全质粒 Nanopore 环状验证与多 Sanger 双向拼接 Contig**（`.fasta`/`.fastq` k-mer Origin 自动旋转、SNP/Indel/SV 倒位与串联重复检测，FASTA/FASTQ 导出）。 | `.ab1`, `.abi`, `.seq`, `.fasta`, `.fastq`, `.fq` |
 
 ### 3.2 基因编辑与靶点 (`SidebarSectionKind.targeting`)
 
 | 模块枚举 (`NavItem`) | 界面名称 | 核心源码文件 | 核心算法与业务功能说明 | 支持快导格式 |
 | :--- | :--- | :--- | :--- | :--- |
-| `.sgRNADesign` | **sgRNA 设计** | `Views/CRISPR/SgRNADesignView.swift`<br>`Views/Compare/TargetOnlineComparePanels.swift`<br>`Engine/CRISPRDesigner.swift`<br>`Services/GenomicLibraryService.swift`<br>`Services/CHOPCHOPService.swift` | 支持离线 `Libraries.sqlite`（`hg38` / `mm39`）与内嵌 **VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源并发在线对比（20bp 共识合并与全基因组脱靶核验），一键生成 `lentiCRISPRv2` (BsmBI) 或 `pX459` (BbsI) 退火 Oligo。 | `.fa`, `.fasta`, `.dna` |
+| `.sgRNADesign` | **sgRNA 设计** | `Views/CRISPR/SgRNADesignView.swift`<br>`Views/CRISPR/HDRDonorPanelView.swift`<br>`Views/Compare/TargetOnlineComparePanels.swift`<br>`Engine/CRISPRDesigner.swift`<br>`Engine/HDRDonorEngine.swift`<br>`Services/GenomicLibraryService.swift`<br>`Services/CHOPCHOPService.swift` | 支持离线 `Libraries.sqlite`（`hg38` / `mm39`）与内嵌 **VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源并发在线对比（20bp 共识合并与全基因组脱靶核验），一键生成 `lentiCRISPRv2` / `pX459` 退火 Oligo；内置 **HDR Knock-in 供体设计**子工作台（ssODN/dsDNA、PAM/Seed 同义阻断突变、可选 RFLP 与 Out-Out PCR 分型引物）。 | `.fa`, `.fasta`, `.dna` |
 | `.shRNADesign` | **shRNA 设计** | `Views/RNAi/ShRNADesignView.swift`<br>`Views/Compare/TargetOnlineComparePanels.swift`<br>`Engine/ShRNADesigner.swift`<br>`Services/BroadGPPService.swift` | 支持本地 TRC 文库与内嵌 **Broad GPP Public Portal** 官方 shRNA 克隆检索对比（Adjusted / Intrinsic Score、SDR Match %、他基因脱靶核验及多载体 `pLKO.1`/`pLKO_005` 归并），一键生成 `pLKO.1` (AgeI / EcoRI) 正义与反义发夹引物。 | `.fa`, `.fasta`, `.dna` |
 
 ### 3.3 电泳与图像定量 (`SidebarSectionKind.bioImaging`)
@@ -76,23 +76,23 @@
 | 模块枚举 (`NavItem`) | 界面名称 | 核心源码文件 | 核心算法与业务功能说明 | 支持快导格式 |
 | :--- | :--- | :--- | :--- | :--- |
 | `.westernBlot` | **WB 灰度定量** | `Views/BenchTools/WesternBlotView.swift`<br>`Engine/WesternBlotEngine.swift`<br>`Models/AnalysisRun.swift`<br>`python/wbquant/` | 深度整合 `WBStudio` 原生 16-bit TIFF 无损解析与 Swift 原生双引擎：支持同批次化学发光图与明场 Marker 自动配对、Active Strip 膜条定位、一维 Rolling-ball 滚球背景扣除、高斯加权四边收紧框、可拖拽微调泳道框、内参（GAPDH/ACTB）归一化、过曝像素红色遮罩与自动剔除、双组 Welch's t 检验及带 `AnalysisRun`（`<basename>.run.json` + SHA256 指纹）的 CSV/离线 HTML 报告导出。 | `.tif`, `.tiff` (16-bit), `.png`, `.jpg` |
-| `.gelFigure` | **凝胶分子量** | `Views/BenchTools/GelFigureEditorView.swift`<br>`Engine/GelAnalysisEngine.swift`<br>`Models/AnalysisRun.swift` | 琼脂糖/SDS-PAGE 电泳胶图泳道自动寻峰与 $\log_{10}(\text{MW}) = a \cdot y + b$ 最小二乘标准曲线拟合，支持未知条带分子量插值测算、联动质粒酶切/单多片段克隆/入门克隆/片段删除/定点突变/自定义条带的多泳道虚拟电泳预测叠加（Marker 切换自动同步重算位置）及 `AnalysisRun` v2 (`.run.json` + 质粒关联索引) 溯源导出。 | `.tif`, `.tiff`, `.png`, `.jpg` |
+| `.gelFigure` | **凝胶分子量** | `Views/BenchTools/GelFigureEditorView.swift`<br>`Views/Components/DiagnosticDigestSheet.swift`<br>`Engine/GelAnalysisEngine.swift`<br>`Engine/DiagnosticDigestEngine.swift`<br>`Models/AnalysisRun.swift` | 琼脂糖/SDS-PAGE 电泳胶图泳道自动寻峰与 $\log_{10}(\text{MW}) = a \cdot y + b$ 最小二乘标准曲线拟合，支持未知条带分子量插值测算、联动 **智能推荐鉴定酶切** / 质粒酶切 / 单多片段克隆 / 入门克隆 / 片段删除 / 定点突变 / 自定义条带的多泳道虚拟电泳预测叠加（Marker 切换自动同步重算位置）及 `AnalysisRun` v2 溯源导出。 | `.tif`, `.tiff`, `.png`, `.jpg` |
 
 ### 3.4 定量与蛋白工具 (`SidebarSectionKind.benchTools`)
 
 | 模块枚举 (`NavItem`) | 界面名称 | 核心源码文件 | 核心算法与业务功能说明 | 支持快导格式 |
 | :--- | :--- | :--- | :--- | :--- |
-| `.plateDesigner` | **微孔板设计** | `Views/BenchTools/PlateDesignerView.swift`<br>`Engine/PlateLayoutEngine.swift` | 支持 6 / 12 / 24 / 48 / 96 / 384 孔板可视化涂刷分配、防边缘蒸发效应自动避开最外圈孔（Outer-edge Avoidance）、Mulberry32 确定性随机盲法排布、正交相邻冲突检测及 CSV / qPCR 模板双向联动。 | `.csv`, `.tsv` |
-| `.qpcrAnalysis` | **qPCR 定量** | `Views/BenchTools/QPCRAnalysisView.swift`<br>`Engine/QPCRAnalysisEngine.swift` | 支持 $2^{-\Delta\Delta C_t}$ 相对表达量解算、多内参几何平均归一化、扩增效率标准曲线回归（$E = 10^{-1/\text{slope}} - 1$）、**NTC / no-RT 阴性对照污染告警与熔解曲线 $T_m$ 偏离自动排除**、样品级 Welch's t 检验、**Holm–Bonferroni 多组比较校正** 与 $\Delta\Delta C_t$ / Fold Change **95% 置信区间**（支持 SD / SEM / 95% CI 误差线切换）。 | `.csv`, `.tsv` |
-| `.proteinWorkbench` | **蛋白质工作台** | `Views/BenchTools/ProteinWorkbenchView.swift`<br>`Engine/ProteinBiophysicsEngine.swift` | **极简声明式窗口响应式工作台**：<br>1. **理化与 SPICE 五维指标**：分子量、二分法等电点 pI、消光系数 $\varepsilon_{280}$、GRAVY 疏水剖面、不稳定指数 II 与 M1–M5 折叠质量评分。<br>2. **对齐 `DockFlowLab` 源码的口袋与对接盒引擎**：严格实现 `first_model=True`（`ENDMDL` 截断）、非氢重原子过滤、七方向 `LIGSITE P-S-P` 空腔扫描，以及 `CONSENSUS_COVERAGE = 0.35`（共晶配体）与 `SITE_CONSENSUS_COVERAGE = 0.50`（PDB `SITE` 记录）的 **共识融合盒（Consensus Box）**、`_sanitize_box` `18–60 Å` 尺寸钳制、体积告警（`<1,500` 或 `>40,000 Å³`）与近端可旋转柔性侧链（`--flex`）推荐，一键复制 `vina_config.txt`。<br>3. **点突变 $\Delta\Delta G$ 快速初筛 (`empirical_heuristic`)**：基于 Kyte-Doolittle 疏水性差异、残基质量位阻与脯氨酸罚分的经验启发式模型进行单点/组合突变初筛，并显式标注 `model_type="empirical_heuristic"`（不等同于 FoldX / Rosetta 全原子能量计算）。 | `.pdb`, `.cif`, `.ent`, `.fasta` |
+| `.plateDesigner` | **微孔板设计** | `Views/BenchTools/PlateDesignerView.swift`<br>`Views/BenchTools/PlateReaderAssayView.swift`<br>`Engine/PlateLayoutEngine.swift`<br>`Engine/PlateReaderAssayEngine.swift` | 支持 6 / 12 / 24 / 48 / 96 / 384 孔板可视化涂刷分配、防边缘蒸发效应避让与 Mulberry32 随机盲法排布；内置 **酶标仪定量与非线性拟合工作台**（8×12 矩阵解析配对 `PlateLayoutStore`、BCA 线性/二次拟合与 WB 上样体积配方、多起点 Levenberg-Marquardt ELISA 4PL/5PL 与 IC50 Hill 曲线反演、CCK-8/MTT 细胞活力 Welch/Holm + 单因素方差分析 ANOVA）。 | `.csv`, `.tsv` |
+| `.qpcrAnalysis` | **qPCR 定量** | `Views/BenchTools/QPCRAnalysisView.swift`<br>`Engine/QPCRAnalysisEngine.swift`<br>`Engine/QPCRInstrumentAndRDMLEngine.swift` | 支持 **QuantStudio / StepOne、Bio-Rad CFX Maestro、Roche LightCycler 480、Agilent MxPro/AriaMx** 原始导出自动识别与双向 **`.rdml` (ZIP/XML v1.3)** 读写；提供 $2^{-\Delta\Delta C_t}$ 定量、多内参几何平均、扩增效率回归、**NTC/no-RT 污染与 $T_m$ QC**、Welch's t 检验、Holm–Bonferroni 校正、95% CI 及 **8 项 MIQE 合规自动检查与 Markdown 报告导出**。 | `.csv`, `.tsv`, `.rdml`, `.xml` |
+| `.proteinWorkbench` | **蛋白质工作台** | `Views/BenchTools/ProteinWorkbenchView.swift`<br>`Views/BenchTools/MolstarWebView.swift`<br>`Engine/ProteinBiophysicsEngine.swift`<br>`Engine/ProteinDockingBridgeEngine.swift`<br>`Services/BioDatabaseFetchService.swift` | **极简声明式窗口响应式工作台**：<br>1. **Canvas 极速 & 离线 Mol* 3D 双视窗**：保留原生 `Canvas` 极速渲染，可选切换内置离线 **`Mol*` 全原子 3D**（Cartoon / 半透明表面 / 电荷表面 / 非共价氢键与疏水相互作用），零外网请求。<br>2. **本地计算桥接 (`vina` / `smina` / `gnina` / `boltz`)**：自动探测本机安装的对接入与共折叠 CLI，支持 `.pdbqt`/`.sdf`/SMILES 一键本地对接、导入集群 Pose 构象回放与 Boltz YAML/置信度解析。<br>3. **在线拉取、完整 `mmCIF` & 对接盒**：支持 RCSB PDB/AlphaFold/UniProt 直连、七方向 `LIGSITE P-S-P` 空腔扫描与 `empirical_heuristic` 点突变 $\Delta\Delta G$ 初筛。 | `.pdb`, `.cif`, `.mmcif`, `.ent`, `.fasta` |
 | `.dnaCalculator` | **生物计算器** | `Views/Calculator/RestructureCalculatorView.swift`<br>`Views/Calculator/LabBioCalculatorsView.swift`<br>`Engine/DNAMolarCalculator.swift`<br>`Engine/LabBioCalculatorsEngine.swift` | 四合一全能科研计算工作台：① 克隆与经典摩尔比 (0.03 pmol, `1:1–1:5`) 20 μL 配液与单/多片段一键同步；② dsDNA (`µg⇄pmol`)、ssDNA (`µg/mL⇄pmol/µL`)、Linear DNA 末端摩尔及 $\text{OD}_{260}$ 核酸定量；③ 蛋白质摩尔转换 (`kDa⇄µg⇄pmol`) 与 DNA 编码容量三向互算；④ 溶液摩尔配制、$C_1V_1=C_2V_2$ 稀释计算与 °F/°C/K 温标换算。 | 内置交互面板 |
-| `.sequenceTools` | **序列工具** | `Views/Tools/SequenceToolsView.swift`<br>`Engine/TmCalculator.swift`<br>`Engine/PrimerQualityEngine.swift` | DNA/RNA 序列格式化清洗、反向互补、三阅读框密码子翻译、GC% 分布、SantaLucia 最近邻热力学 $T_m$ 速算及 `primer3` 发夹/自二聚体 $\Delta G$ 与配对拓扑评估。 | `.fa`, `.fasta`, `.seq`, 纯文本 |
+| `.sequenceTools` | **序列工具** | `Views/Tools/SequenceToolsView.swift`<br>`Views/Tools/CodonOptimizationPanelView.swift`<br>`Engine/TmCalculator.swift`<br>`Engine/PrimerQualityEngine.swift`<br>`Engine/CodonOptimizationEngine.swift` | DNA/RNA 序列格式化清洗、反向互补、三阅读框翻译、SantaLucia $T_m$ 速算及 `primer3` 发夹/二聚体 $\Delta G$ 评估；内置 **五宿主多约束密码子优化器**（Human / Mouse / E. coli / Yeast / Insect，支持 Twist / IDT / 擎科合成预设、Type IIS/MCS 酶切位点清除、同聚物与串联重复消解、50 bp 滑窗 GC 图谱、5' 发夹 $\Delta G$ 优化及一键送入单片段克隆）。 | `.fa`, `.fasta`, `.seq`, 纯文本 |
 
 ### 3.5 合成订购与设置 (`SidebarSectionKind.orderAndSettings`)
 
 | 模块枚举 (`NavItem`) | 界面名称 | 核心源码文件 | 核心算法与业务功能说明 |
 | :--- | :--- | :--- | :--- |
-| `.orderCenter` | **订购中心** | `Views/Order/OrderExportView.swift`<br>`Services/ExcelOrderExporter.swift` | 汇总各模块加入订购池的引物与测序样品，支持成对重命名、批量写回 `.dna` 质粒文件，并一键导出符合擎科（Tsingke）、生工（Sangon）官方模板格式的 `.xlsx` 订购表。 |
+| `.orderCenter` | **订购中心** | `Views/Order/OrderExportView.swift`<br>`Engine/OrderTemplateEngine.swift`<br>`Services/ExcelOrderExporter.swift`<br>`ViewModels/OrderExportViewModel.swift` | 汇总各模块加入订购池的引物、手动合成基因片段与测序样品，支持成对重命名、批量写回 `.dna` 质粒文件，支持导出 **擎科 / 生工 / IDT Bulk Input / Twist Bioscience / GenScript 金斯瑞 / Eurofins Genomics / 华大基因 BGI** 及 **自定义 JSON 列映射**（`.xlsx` / `.csv`）批量订购表。 |
 | `.settings` | **系统设置** | `Views/Settings/SettingsView.swift`<br>`ViewModels/AppState.swift` | **四段式极简响应式设置中心**：<br>① **参数与外观**：浅色/深色/跟随系统主题、画布底色、强调色、状态栏图标开关，以及分子克隆、WB/微孔板/qPCR、蛋白质工作台与订购人档案默认参数。<br>② **侧边栏定制**：提供 3 个一键预设（显示全部 / 仅分子克隆与基因编辑 / 仅图像定量与蛋白工具）及 5 大分类自适应开关矩阵。<br>③ **MCP 服务**：集中管理 `labworker-mcp` 20261120，支持一键注入 Claude Desktop / Cursor / Windsurf、复制标准 JSON、查看跨进程同步记录与 23 项工具清单。<br>④ **全局说明书**：支持按名称/算法/文件格式实时检索全部 18 个模块的功能定位、支持格式与实操提示，并提供 `直达功能` 与 `恢复显示` 按钮。 |
 
 ## 4. Finder 多格式智能快导与状态栏极简工作台

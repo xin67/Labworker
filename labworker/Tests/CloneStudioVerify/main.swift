@@ -10,7 +10,7 @@ func pass(_ name: String) {
 print("🚀 Starting CloneStudio Verification Suite...")
 
 // 1. 验证 BioSequence
-print("🧪 [1/52] Testing BioSequence...")
+print("🧪 [1/59] Testing BioSequence...")
 let cleaned = BioSequence.clean("  atg  cga tcg  123 \n !? ")
 assert(cleaned == "ATGCGATCG", "Clean sequence mismatch: \(cleaned)")
 assert(BioSequence.reverse("ATGC") == "CGTA", "Reverse mismatch")
@@ -20,7 +20,7 @@ assert(BioSequence.gcContent("GGCC") == 100.0, "GC% mismatch")
 pass("BioSequence passed.")
 
 // 2. 验证限制性内切酶数据库与 IUPAC 模糊匹配
-print("🧪 [2/52] Testing RestrictionEnzyme Database & IUPAC...")
+print("🧪 [2/59] Testing RestrictionEnzyme Database & IUPAC...")
 let db = RestrictionEnzymeDatabase.shared
 assert(db.enzymes.count >= 200, "Enzyme DB should contain 200+ enzymes, found: \(db.enzymes.count)")
 guard let bamhi = db.find(name: "BamHI") else { fatalError("BamHI not found") }
@@ -32,14 +32,14 @@ assert(acci.isIn(sequence: "AAAGTATACCCC"))
 pass("RestrictionEnzyme passed (\(db.enzymes.count) enzymes loaded).")
 
 // 3. 验证 TmCalculator
-print("🧪 [3/52] Testing TmCalculator...")
+print("🧪 [3/59] Testing TmCalculator...")
 let tmRes = TmCalculator.calculate(sequence: "ATGCGATCGATCGATCGATCGATC")
 assert(tmRes.length == 24)
 assert(tmRes.tm > 55.0 && tmRes.tm < 75.0, "Tm out of expected range: \(tmRes.tm)")
 pass("TmCalculator passed (Tm = \(tmRes.tm)℃, Ta = \(tmRes.recommendedTa)℃).")
 
 // 4. 验证 DNAMolarCalculator (与官方及经典摩尔比连接对齐)
-print("🧪 [4/52] Testing DNAMolarCalculator...")
+print("🧪 [4/59] Testing DNAMolarCalculator...")
 let vecRes = DNAMolarCalculator.calculate(cloneType: .single, isVector: true, lengthKb: 5.0, concentrationNgPerUl: 50.0)
 assert(vecRes.recommendedNg == 100.0, "Vector ng mismatch")
 assert(vecRes.volFormatted == "2.00", "Vector vol mismatch")
@@ -65,7 +65,7 @@ assert(lowLig?.lowInsertSingleWarning == true && lowLig?.lowInsertMultiWarning =
 pass("DNAMolarCalculator passed (Vector: 100ng/2μL, Insert: 40ng/2μL & Ligation 0.03 pmol 1:3 verified).")
 
 // 5. 验证 HomologyArmDesigner
-print("🧪 [5/52] Testing HomologyArmDesigner (18bp Laboratory Golden Preference & Custom Arm Length)...")
+print("🧪 [5/59] Testing HomologyArmDesigner (18bp Laboratory Golden Preference & Custom Arm Length)...")
 let testSeq = "ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG"
 let localDesign = HomologyArmDesigner.designEntryClone(
     insertSeq: testSeq,
@@ -122,7 +122,7 @@ assert(mut20.primerR.homologyArm.count == 20, "Mutagenesis homology arm must be 
 pass("HomologyArmDesigner passed (Clone & Mutagenesis 18 bp/20 bp verified).")
 
 // 6. 验证 ExcelOrderExporter (自动灌装当前项目真实表单)
-print("🧪 [6/52] Testing ExcelOrderExporter with user templates...")
+print("🧪 [6/59] Testing ExcelOrderExporter with user templates...")
 let exporter = ExcelOrderExporter.shared
 let tsingkeTpl = exporter.locateTemplate(name: ExcelOrderExporter.defaultTsingkeTemplateName)
 assert(tsingkeTpl != nil, "Must locate 擎科引物合成订购表.xlsx")
@@ -138,7 +138,7 @@ try? FileManager.default.removeItem(atPath: tempOut)
 pass("ExcelOrderExporter passed.")
 
 // 7. 验证 GenomicLibraryService SQLite 数据库与人/鼠源检索
-print("🧪 [7/52] Testing GenomicLibraryService (SQLite3 Human vs Mouse)...")
+print("🧪 [7/59] Testing GenomicLibraryService (SQLite3 Human vs Mouse)...")
 let libService = GenomicLibraryService.shared
 // 人源 sgRNA 检索 TP53
 let humanSg = libService.search(query: "TP53", species: .human, type: .sgRNA)
@@ -159,7 +159,7 @@ assert(humanSh.first?.species == .human)
 pass("Human shRNA search CDH17 found: \(humanSh.count) targets")
 
 // 8. 验证 CRISPRDesigner
-print("🧪 [8/52] Testing CRISPRDesigner (lentiCRISPR v2 overhangs)...")
+print("🧪 [8/59] Testing CRISPRDesigner (lentiCRISPR v2 overhangs)...")
 let sgTarget = "GTCGCTGAGCTCCGATTCGA"
 let sgPair = CRISPRDesigner.designPair(
     target: sgTarget,
@@ -177,7 +177,7 @@ assert(sgPair.revPrimer.name == "P1_sg1-REV")
 pass("CRISPRDesigner passed.")
 
 // 9. 验证 ShRNADesigner
-print("🧪 [9/52] Testing ShRNADesigner (pLKO.1 hairpin assembly)...")
+print("🧪 [9/59] Testing ShRNADesigner (pLKO.1 hairpin assembly)...")
 let shTarget = "CCAGTCCCTATCACCATAGAA"
 let shPair = ShRNADesigner.designPair(
     target: shTarget,
@@ -197,7 +197,7 @@ assert(shPair.revPrimer.name == "P1_sh1-R")
 pass("ShRNADesigner passed.")
 
 // 10. 验证 CHOPCHOPService URL 构建与 Python 异步直连
-print("🧪 [10/52] Testing CHOPCHOPService (URL & Python Pipeline)...")
+print("🧪 [10/59] Testing CHOPCHOPService (URL & Python Pipeline)...")
 let chopURLHuman = CHOPCHOPService.shared.makeWebURL(gene: "TP53", species: .human)
 assert(chopURLHuman.absoluteString.contains("target=TP53"))
 assert(chopURLHuman.absoluteString.contains("organism=hg38"))
@@ -273,7 +273,7 @@ if ProcessInfo.processInfo.environment["CLONESTUDIO_ONLINE_TEST"] == "1" {
 }
 
 // 11. 验证 SgRNAScoringEngine (Doench RS2 & TTTT Pol III 终止拦截)
-print("🧪 [11/52] Testing SgRNAScoringEngine (Reliability & Termination Filter)...")
+print("🧪 [11/59] Testing SgRNAScoringEngine (Reliability & Termination Filter)...")
 // 优质靶点：5' G, 3' G, GC 50%
 let idealSg = "GACGATCGATCGATCGATCG"
 let idealSgScore = SgRNAScoringEngine.evaluate(sequence: idealSg)
@@ -295,7 +295,7 @@ assert(poorSgScore.score < 50.0, "sgRNA with Pos 20 T and extreme GC should be l
 pass("SgRNAScoringEngine passed (Ideal: \(idealSgScore.score), Fatal TTTT: \(fatalSgScore.score), Poor: \(poorSgScore.score)).")
 
 // 12. 验证 ShRNAScoringEngine (Reynolds / Ui-Tei 热力学不对称性与排序)
-print("🧪 [12/52] Testing ShRNAScoringEngine (Thermodynamic Asymmetry & RISC Loading)...")
+print("🧪 [12/59] Testing ShRNAScoringEngine (Thermodynamic Asymmetry & RISC Loading)...")
 // 优质 shRNA: 5' C, 3' A, Pos 10 A, GC 42%
 let idealSh = "CCAGTCCCTATCACCATAGAA" // 21nt
 let idealShScore = ShRNAScoringEngine.evaluate(sequence: idealSh)
@@ -315,7 +315,7 @@ assert(dummyTargetHigh.score > dummyTargetLow.score, "High target score must exc
 pass("ShRNAScoringEngine passed (Ideal: \(idealShScore.score), Fatal TTTT: \(fatalShScore.score)).")
 
 // 13. SnapGeneService 真实文件解析与安全原位注入测试
-print("🧪 [13/52] Testing SnapGeneService (parse & in-place primer injection with backup)...")
+print("🧪 [13/59] Testing SnapGeneService (parse & in-place primer injection with backup)...")
 let testSrcPath = "/tmp/nonexistent_optional_bench_sample.dna"
 if FileManager.default.fileExists(atPath: testSrcPath) {
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("snapgene_test_\(UUID().uuidString)")
@@ -343,11 +343,11 @@ if FileManager.default.fileExists(atPath: testSrcPath) {
     try? FileManager.default.removeItem(at: tmpDir)
     pass("SnapGene parse & in-place inject passed (backup created & primers verified).")
 } else {
-    print("   ⚠️ Skipped [13/52] (Desktop sample file not found)")
+    print("   ⚠️ Skipped [13/59] (Desktop sample file not found)")
 }
 
 // 14. SnapGeneService 双质粒重组装配测试
-print("🧪 [14/52] Testing SnapGeneService (dual-plasmid recombinant assembly)...")
+print("🧪 [14/59] Testing SnapGeneService (dual-plasmid recombinant assembly)...")
 if FileManager.default.fileExists(atPath: testSrcPath) {
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recomb_test_\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -378,11 +378,11 @@ if FileManager.default.fileExists(atPath: testSrcPath) {
     try? FileManager.default.removeItem(at: tmpDir)
     pass("SnapGene dual-plasmid recombinant assembly passed (Length: \(expectedLen) bp, Feature & Primers embedded).")
 } else {
-    print("   ⚠️ Skipped [14/52] (Desktop sample file not found)")
+    print("   ⚠️ Skipped [14/59] (Desktop sample file not found)")
 }
 
 // 15. HomologyArmDesigner 质粒片段删除与反向 PCR 环化引物设计测试
-print("🧪 [15/52] Testing HomologyArmDesigner.designFragmentDeletion (18bp Golden Homology Arm)...")
+print("🧪 [15/59] Testing HomologyArmDesigner.designFragmentDeletion (18bp Golden Homology Arm)...")
 let mockPlasmid = "ATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTGGTCGAGCTGGACGGCGACGTAAACGGCCACAAGTTCAGCGTGTCCGGCGAGGGCGAGGGCGATGCCACCTACGGCAAGCTGACCCTGAAGTTCATCTGCACCACCGGCAAGCTGCCCGTGCCCTGGCCCACCCTCGTGACCACCCTGACCTACGGCGTGCAGTGCTTCAGCCGCTACCCCGACCACATGAAGCAGCACGACTTCTTCAAGTCCGCCATGCCCGAAGGCTACGTCCAGGAGCGCACCATCTTCTTCAAGGACGACGGCAACTACAAGACCCGCGCCGAGGTGAAGTTCGAGGGCGACACCCTGGTGAACCGCATCGAGCTGAAGGGCATCGACTTCAAGGAGGACGGCAACATCCTGGGGCACAAGCTGGAGTACAACTACAACAGCCACAACGTCTATATCATGGCCGACAAGCAGAAGAACGGCATCAAGGTGAACTTCAAGATCCGCCACAACATCGAGGACGGCAGCGTGCAGCTCGCCGACCACTACCAGCAGAACACCCCCATCGGCGACGGCCCCGTGCTGCTGCCCGACAACCACTACCTGAGCACCCAGTCCGCCCTGAGCAAAGACCCCAACGAGAAGCGCGATCACATGGTCCTGCTGGAGTTCGTGACCGCCGCCGGGATCACTCTCGGCATGGACGAGCTGTACAAGTAA"
 let delRes18 = HomologyArmDesigner.designFragmentDeletion(
     plasmidSeq: mockPlasmid,
@@ -399,7 +399,7 @@ assert((delRes18.primerR.tm ?? 0) >= 55.0, "Primer R Tm must be >= 55℃")
 pass("designFragmentDeletion passed (18 bp homology arm verified).")
 
 // 16. SnapGeneService 真实质粒片段敲除与新产物重构测试
-print("🧪 [16/52] Testing SnapGeneService.deleteFragment (Plasmid Fragment Deletion & Feature Re-mapping)...")
+print("🧪 [16/59] Testing SnapGeneService.deleteFragment (Plasmid Fragment Deletion & Feature Re-mapping)...")
 if FileManager.default.fileExists(atPath: testSrcPath) {
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("del_test_\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -427,11 +427,11 @@ if FileManager.default.fileExists(atPath: testSrcPath) {
     try? FileManager.default.removeItem(at: tmpDir)
     pass("SnapGene deleteFragment passed (Deleted: 201 bp, New Length: \(knockoutInfo.length) bp, Features re-mapped).")
 } else {
-    print("   ⚠️ Skipped [16/52] (Desktop sample file not found)")
+    print("   ⚠️ Skipped [16/59] (Desktop sample file not found)")
 }
 
 // 17. CloneCanvas 纯数学几何层测试 (CircularGeometry + CircularOVELayout)
-print("🧪 [17/52] Testing CircularGeometry & CircularOVELayout (Polar math, Concentric Y-Offsets & 4-Quadrant Label Relaxation)...")
+print("🧪 [17/59] Testing CircularGeometry & CircularOVELayout (Polar math, Concentric Y-Offsets & 4-Quadrant Label Relaxation)...")
 let testCenter = CartesianPoint(x: 200, y: 200)
 let pt12 = CircularGeometry.polarToCartesian(radius: 100, angleRadians: 0, center: testCenter)
 assert(abs(pt12.x - 200.0) < 1e-6 && abs(pt12.y - 100.0) < 1e-6, "12 o'clock polarToCartesian mismatch")
@@ -463,7 +463,7 @@ assert(sortedY[1] - sortedY[0] >= 13.5 && sortedY[2] - sortedY[1] >= 13.5, "Rela
 pass("CircularGeometry & CircularOVELayout passed (Concentric tracks & label collision relaxation verified).")
 
 // 18. 微观单碱基双链与氨基酸密码子翻译引擎测试 (SequenceRowLayout + CodonTranslator)
-print("🧪 [18/52] Testing SequenceRowLayout & CodonTranslator (36bp row slicing, complement & codon ribbon)...")
+print("🧪 [18/59] Testing SequenceRowLayout & CodonTranslator (36bp row slicing, complement & codon ribbon)...")
 let testCDS = "ATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTGGTCGAGCTGGACGGCGACGTCTAA"
 let codons = CodonTranslator.translateSequence(testCDS, readingFrameOffset: 0)
 assert(codons.first?.aminoAcid == "M" && codons.first?.isStartCodon == true, "First codon must be Start (M)")
@@ -483,7 +483,7 @@ assert(rowSlices[0].codons.count == 12, "36bp slice must contain 12 translated c
 pass("SequenceRowLayout & CodonTranslator passed (2 rows, 12 codons/row, Start M & Stop * verified).")
 
 // 19. 质粒构建谱系树与改造前后 Feature 坐标位移测试 (ConstructHistoryManager)
-print("🧪 [19/52] Testing ConstructHistoryManager (Multi-step genealogy & FeatureShiftItem diff calculation)...")
+print("🧪 [19/59] Testing ConstructHistoryManager (Multi-step genealogy & FeatureShiftItem diff calculation)...")
 let wtFeatures: [(String, Int, Int)] = [
     ("Promoter", 100, 500),
     ("ExcisedTag", 600, 750),
@@ -503,7 +503,7 @@ assert(shiftItems.contains { $0.featureName == "AmpR" && $0.status == .shifted &
 pass("ConstructHistoryManager & FeatureShiftItem passed (Upstream unchanged, Deleted, Inserted, Downstream +569bp shift verified).")
 
 // 20. 精细质粒工作台引擎测试 (scanConstructCutsites + NEB Buffer 活性矩阵 + 动态每行碱基数 + 选区 Tm)
-print("🧪 [20/52] Testing Fine-Grained Plasmid Workbench Engine (ConstructCutsite scanner, NEB Buffer matrix & dynamic row layout)...")
+print("🧪 [20/59] Testing Fine-Grained Plasmid Workbench Engine (ConstructCutsite scanner, NEB Buffer matrix & dynamic row layout)...")
 let testConstructSeq = "ATGCAAGGCCTGGCCTAATGCAGCTGGGAATTCGGATCCAAGCTTGGTCTCAAATTTAAACTCGAGCATATG"
 let scannedSites = RestrictionEnzymeDatabase.shared.scanConstructCutsites(
     sequence: testConstructSeq,
@@ -532,7 +532,7 @@ AppState.shared.showPlasmidPreview = true
 pass("Fine-Grained Plasmid Workbench Engine passed (\(scannedSites.count) cut sites, NEB Buffer matrix, \(opt36)->\(opt60)bp/row, Tm=\(selTm)°C verified).")
 
 // 21. 验证简化版浅色/深色应用图标、系统深浅色自动跟随与 macOS 状态栏模板图标
-print("🧪 [21/52] Testing CloneStudioIconProvider (Light/Dark simplified icons & macOS status bar template icon)...")
+print("🧪 [21/59] Testing CloneStudioIconProvider (Light/Dark simplified icons & macOS status bar template icon)...")
 let lightAppIcon = CloneStudioIconProvider.iconImage(isLight: true)
 let darkAppIcon = CloneStudioIconProvider.iconImage(isLight: false)
 let statusTplIcon = CloneStudioIconProvider.statusBarTemplateImage
@@ -546,7 +546,7 @@ await MainActor.run {
 pass("CloneStudioIconProvider passed (Light icon, Dark icon & StatusBar template icon verified).")
 
 // 22. 验证 CHOPCHOP 全维综合评分 (combinedScore) 与本地 SG/SH 序列三级高亮匹配算法
-print("🧪 [22/52] Testing CHOPCHOP combinedScore & Local SG/SH Highlighting Comparison...")
+print("🧪 [22/59] Testing CHOPCHOP combinedScore & Local SG/SH Highlighting Comparison...")
 let chopTarget1 = CHOPCHOPTarget(
     rank: 15,
     targetSequence: "CCATTGTTCAATATCGTCCGGGG",
@@ -725,7 +725,7 @@ assert(decodedConsensus.isMultiSourceConsensus)
 pass("CHOPCHOP combinedScore, Local SG/SH 3-tier matching & cross-tab persistence passed (Score: \(chopTarget1.combinedScore.score) vs \(chopTargetLowEff.combinedScore.score)).")
 
 // 23. 验证状态栏图标显隐开关、PlasmidPoolManager 质粒池解析入库与 CloneStudio MCP Server 一键设计引物
-print("🧪 [23/52] Testing StatusBarIcon toggle, PlasmidPoolManager & CloneStudio MCP Server...")
+print("🧪 [23/59] Testing StatusBarIcon toggle, PlasmidPoolManager & CloneStudio MCP Server...")
 await MainActor.run {
     let orig = AppState.shared.showStatusBarIcon
     AppState.shared.showStatusBarIcon = false
@@ -850,7 +850,7 @@ assert(strandProbe.terminationStatus == 0 && strandOut.contains("STRAND_OK"), "s
 pass("StatusBarIcon toggle, PlasmidPoolManager (\(poolCount) plasmids), SnapGene reverse-primer strand='1' & Labworker MCP Server 20261120 (23 tools) passed.")
 
 // 24. 验证 Phase 1 实验台工具引擎 (PlateLayoutEngine + QPCRAnalysisEngine)
-print("🧪 [24/52] Testing Phase 1 Bench Engines (PlateLayoutEngine & QPCRAnalysisEngine)...")
+print("🧪 [24/59] Testing Phase 1 Bench Engines (PlateLayoutEngine & QPCRAnalysisEngine)...")
 let demoSamples = PlateLayoutEngine.parseSampleTable("Sample\tGroup\tReplicates\nWT\tControl\t3\nTP53-OE\tTreatment\t3\nTP53-KO\tTreatment\t3")
 assert(demoSamples.count == 3, "Must parse 3 sample definitions")
 let autoPlate = PlateLayoutEngine.assignPlate(
@@ -877,7 +877,7 @@ pass("Phase 1 Bench Engines passed (Plate 96-well auto layout & qPCR ΔΔCt veri
 
 
 // 26. 验证 Western Blot 灰度积分定量与凝胶电泳分子量回归引擎 (WesternBlotEngine + GelAnalysisEngine)
-print("🧪 [26/52] Testing WesternBlotEngine & GelAnalysisEngine (Background subtraction, Normalization & Log10 MW Regression)...")
+print("🧪 [26/59] Testing WesternBlotEngine & GelAnalysisEngine (Background subtraction, Normalization & Log10 MW Regression)...")
 let demoBlotPlane = BioImageProcessor.generateDemoWesternBlotPlane(width: 400, height: 240)
 let blotLanes = WesternBlotEngine.autoDetectLanesAndBands(plane: demoBlotPlane)
 assert(blotLanes.count == 6, "Default Western Blot demo must detect 6 lanes")
@@ -967,7 +967,7 @@ do {
 pass("WesternBlotEngine & GelAnalysisEngine passed (6 lanes quantified, Gel R² = \(String(format: "%.4f", gelAuto.fit?.r2 ?? 0)), 5 multi-module virtual lanes verified).")
 
 // 27. 验证同源重组 PCR 扩增凝胶电泳片段模拟引擎 (HomologousPCRGelSimulator)
-print("🧪 [27/52] Testing HomologousPCRGelSimulator (Agarose Sieving Physics, Auto Ladder & Amplicon Sizes)...")
+print("🧪 [27/59] Testing HomologousPCRGelSimulator (Agarose Sieving Physics, Auto Ladder & Amplicon Sizes)...")
 // 27.1 物理迁移单调性与不同琼脂糖浓度筛分效应
 let y10k_10 = AgaroseGelConcentration.c1_0.migrationY(sizeBp: 10000)
 let y5k_10  = AgaroseGelConcentration.c1_0.migrationY(sizeBp: 5000)
@@ -1068,7 +1068,7 @@ assert(simShortFlankOnly.lanes.count == 2 && simShortFlankOnly.infoNotice?.conta
 pass("HomologousPCRGelSimulator passed (agarose sieving physics, 4 cloning workflows, auto ladder & resolution warnings verified).")
 
 // 28. 验证 WBStudio 16-bit 真实样本 (gapdh_*.tif) 自动配对、Rolling-Ball 圈定与双排内参归一化显著性统计
-print("🧪 [28/52] Testing Integrated WBStudio 16-bit Engine on real gapdh_*.tif samples...")
+print("🧪 [28/59] Testing Integrated WBStudio 16-bit Engine on real gapdh_*.tif samples...")
 let wbGroups = WesternBlotEngine.discoverSampleGroups()
 assert(wbGroups.count >= 2, "Must discover >= 2 WB sample groups from labworker/Samples/WB, found \(wbGroups.count)")
 let group16 = wbGroups.first(where: { $0.rawChemi != nil }) ?? wbGroups[0]
@@ -1100,7 +1100,7 @@ assert(grpStatsOut.groupStats.count == 3, "Dual-row WB group statistics must sum
 pass("Integrated WBStudio 16-bit Engine passed (Discovered \(wbGroups.count) real sample groups, 16-bit 6-lane IOD & Welch t-test verified).")
 
 // 29. 验证蛋白质生物物理、三维构象、Ramachandran 二面角与突变评估引擎 (ProteinBiophysicsEngine)
-print("🧪 [29/52] Testing ProteinBiophysicsEngine (pI, GRAVY, 3D Fold, Ramachandran & Mutant ΔΔG)...")
+print("🧪 [29/59] Testing ProteinBiophysicsEngine (pI, GRAVY, 3D Fold, Ramachandran & Mutant ΔΔG)...")
 let demoProt = ProteinBiophysicsEngine.builtinExamples[0]
 let protReport = ProteinBiophysicsEngine.analyzeProtein(sequence: demoProt.sequence)
 assert(protReport.length == demoProt.sequence.count, "Protein length mismatch")
@@ -1115,7 +1115,7 @@ assert(mutEvals.allSatisfy { $0.modelType == "empirical_heuristic" && $0.stabili
 pass("ProteinBiophysicsEngine passed (Length=\(protReport.length)aa, pI=\(String(format: "%.2f", protReport.isoelectricPoint)), Q=\(String(format: "%.1f", protReport.compositeQScore)), Contacts=\(protReport.contacts.count)).")
 
 // 30. 验证 Labworker 5 大直觉功能分组、新功能默认偏好设置与 Finder 多格式智能路由
-print("🧪 [30/52] Testing Labworker 5-Category Navigation, Custom Bench Defaults & Finder Routing...")
+print("🧪 [30/59] Testing Labworker 5-Category Navigation, Custom Bench Defaults & Finder Routing...")
 assert(SidebarSectionKind.allCases.count == 5, "SidebarSectionKind must have 5 intuitive sections")
 assert(NavItem.westernBlot.section == .bioImaging && NavItem.gelFigure.section == .bioImaging, "WB and Gel must be grouped under .bioImaging")
 assert(NavItem.proteinWorkbench.section == .benchTools && NavItem.qpcrAnalysis.section == .benchTools, "Protein and qPCR must be grouped under .benchTools")
@@ -1152,7 +1152,7 @@ if let wbSample = wbGroups.first {
 pass("Labworker 5-Category Navigation, Custom Bench Defaults & Finder Routing passed.")
 
 // 31. 验证对齐 DockFlowLab (boxes.py & pockets.py) 的 LIGSITE P-S-P 扫描、CONSENSUS_COVERAGE (0.35 / 0.50) 共识融合盒、first_model 截断与 18-60 Å 边界钳制
-print("🧪 [31/52] Testing DockFlowLab-aligned LIGSITE P-S-P Pocket, Consensus Vina Box & PDB Health Card...")
+print("🧪 [31/59] Testing DockFlowLab-aligned LIGSITE P-S-P Pocket, Consensus Vina Box & PDB Health Card...")
 assert(protReport.dockingBox.volumeA3 > 1000.0 && protReport.dockingBox.vinaConfigText.contains("center_x"), "Docking box must produce valid volume and AutoDock Vina config")
 assert(protReport.dockingBox.sizeX >= 18.0 && protReport.dockingBox.sizeX <= 60.0, "Docking box size must be clamped within [18.0, 60.0] Å")
 assert(!protReport.healthCard.isExperimentalOrAlphaFoldPDB && !protReport.healthCard.warnings.isEmpty, "Heuristic fold must transparently report non-experimental coordinate source")
@@ -1180,7 +1180,7 @@ assert(pdbLigReport.dockingBox.sourceTitle.contains("共识融合盒"), "Co-crys
 pass("DockFlowLab-aligned LIGSITE P-S-P Pocket, Vina Box (\(pdbLigReport.dockingBox.sourceTitle)) & PDB Health Card passed.")
 
 // 32. 验证侧边栏自定义显隐控制、系统设置常驻防呆保护与 18 模块（17 个业务模块 + 系统设置）全局功能说明书完整性
-print("🧪 [32/52] Testing Sidebar Visibility Customization & Global Feature Manual...")
+print("🧪 [32/59] Testing Sidebar Visibility Customization & Global Feature Manual...")
 for nav in NavItem.allCases {
     assert(!nav.summaryDescription.isEmpty && !nav.supportedFormats.isEmpty && !nav.workflowTip.isEmpty, "NavItem \(nav.rawValue) must provide complete manual metadata")
 }
@@ -1207,7 +1207,7 @@ assert(AppState.shared.hiddenSidebarItems.isEmpty && AppState.shared.isNavItemVi
 pass("Sidebar Visibility Customization & Global Feature Manual (\(totalModulesCount)/\(totalModulesCount) modules: \(businessModulesCount) 个业务模块 + 系统设置) passed.")
 
 // 33. 验证对齐 primer3-py (2.4.0) 的 PrimerQualityEngine (calcHairpin / calcHomodimer / calcDimer / Mg2+ & dNTP 校正 / ASCII 配对图)
-print("🧪 [33/52] Testing PrimerQualityEngine (primer3-py aligned Hairpin, Homodimer, Heterodimer & Mg2+/dNTP salt correction)...")
+print("🧪 [33/59] Testing PrimerQualityEngine (primer3-py aligned Hairpin, Homodimer, Heterodimer & Mg2+/dNTP salt correction)...")
 let stdCond = PrimerQualityEngine.Conditions.standard
 // 33.1 参照 primer3-py 2.4.0: GCGAATTCGC (50mM Mon+, 1.5mM Mg2+, 0.6mM dNTP, 50nM DNA, 37℃)
 // primer3-py: Hairpin dg = -1.70 kcal/mol, tm = 58.3℃; Homodimer dg = -10.50 kcal/mol, tm = 37.5℃, dh = -80.00 kcal/mol
@@ -1247,7 +1247,7 @@ assert(abs(AppState.shared.primerMgConc - 1.5) < 1e-6 && abs(AppState.shared.pri
 pass("PrimerQualityEngine passed (Hairpin dG=\(hp1.dg) kcal/mol, Homodimer dG=\(hd1.dg) kcal/mol, Heterodimer dG=\(het.dg) kcal/mol).")
 
 // 34. 验证 Swift 核心引擎与 Python MCP Server 双端算法 100% 一致性 (Tm / 5'悬垂末端 / 多片段 2-10 同源臂 / 蛋白质 pI & ΔΔG)
-print("🧪 [34/52] Testing Cross-Engine Consistency (Swift CloneStudioCore vs Python MCP Server)...")
+print("🧪 [34/59] Testing Cross-Engine Consistency (Swift CloneStudioCore vs Python MCP Server)...")
 do {
     let mcpScriptURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         .appendingPathComponent("Sources/CloneStudioCore/Resources/clonestudio_mcp_server.py")
@@ -1317,7 +1317,7 @@ do {
 }
 
 // 35. 验证 SangerAlignmentEngine 原生 .ab1 二进制峰图解析、四色荧光轨迹、正反向环状比对与 MCP verify_sanger_sequencing
-print("🧪 [35/52] Testing SangerAlignmentEngine (.ab1 ABIF Binary Parser, 4-Channel Traces & Circular Plasmid Alignment)...")
+print("🧪 [35/59] Testing SangerAlignmentEngine (.ab1 ABIF Binary Parser, 4-Channel Traces & Circular Plasmid Alignment)...")
 do {
     let refPlasmid =
         "GCTAGCGCTACCGGTCGCCACCATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTG" +
@@ -1381,7 +1381,7 @@ do {
 }
 
 // 36. 验证 P01 测试计数、MCP 工具数与模块数单一真值来源 (Single Source of Truth)
-print("🧪 [36/52] Testing Single Source of Truth for Test, Tool & Module Counts (P01)...")
+print("🧪 [36/59] Testing Single Source of Truth for Test, Tool & Module Counts (P01)...")
 do {
     let countProc = Process()
     countProc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
@@ -1404,7 +1404,7 @@ do {
 }
 
 // 37. 验证 P02 qPCR 伪重复统计修复（禁止将技术复孔当作生物学重复，验证 Swift 与 Python MCP 样品级 Welch t 检验一致性）
-print("🧪 [37/52] Testing qPCR Pseudo-Replication Fix & Biological Replicate Welch's t-test (P02)...")
+print("🧪 [37/59] Testing qPCR Pseudo-Replication Fix & Biological Replicate Welch's t-test (P02)...")
 do {
     // 场景 A：每组仅 1 个生物学样品 × 3 个技术复孔（伪重复场景 -> p 值必须为 nil，statNote == .insufficientBiologicalReplicates）
     let singleBioCSV = """
@@ -1545,7 +1545,7 @@ do {
 }
 
 // 38. 验证 P03 WB 饱和条带阻断统计 (excludeFromStats vs warnOnly)、逐像素红色遮罩计数与 MCP 同步
-print("🧪 [38/52] Testing WB Saturation Exclusion Policy, Pixel Mask & MCP Sync (P03)...")
+print("🧪 [38/59] Testing WB Saturation Exclusion Policy, Pixel Mask & MCP Sync (P03)...")
 do {
     let wbBaseGroup = wbGroups[0]
     guard let baseBuf = WesternBlotEngine.loadRawGrayBuffer(at: wbBaseGroup.primaryQuantPath) else {
@@ -1649,7 +1649,7 @@ do {
 }
 
 // 39. 验证 P04 MCP 同步原子写入、run_id 幂等消费归档与全仓库零个人硬编码路径
-print("🧪 [39/52] Testing MCP Atomic Sync Queue, Run ID Deduplication & Zero Hardcoded Paths (P04)...")
+print("🧪 [39/59] Testing MCP Atomic Sync Queue, Run ID Deduplication & Zero Hardcoded Paths (P04)...")
 do {
     let fm = FileManager.default
     let tempSyncDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p04_sync_\(UUID().uuidString)", isDirectory: true)
@@ -1720,7 +1720,7 @@ do {
 }
 
 // 40. 验证 P05 MCP 写操作 dry-run 预览 (confirm=false)、确认执行 (confirm=true)、覆盖写入自动生成 .bak 备份与工具 annotations
-print("🧪 [40/52] Testing MCP Write Confirmation Dry-Run Preview, Backup & Annotations (P05)...")
+print("🧪 [40/59] Testing MCP Write Confirmation Dry-Run Preview, Backup & Annotations (P05)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p05_\(UUID().uuidString)", isDirectory: true)
@@ -1806,7 +1806,7 @@ do {
 }
 
 // 41. 验证 P06 CRISPR 序列启发式评分语义、参考基因组版本标识与 MCP score_type/off_target_checked 字段
-print("🧪 [41/52] Testing CRISPR Sequence Heuristic Score Semantics & Off-Target Metadata (P06)...")
+print("🧪 [41/59] Testing CRISPR Sequence Heuristic Score Semantics & Off-Target Metadata (P06)...")
 do {
     assert(TargetSortOption.scoreDesc.rawValue == "序列启发式评分", "TargetSortOption.scoreDesc must be '序列启发式评分'")
     assert(TargetSpecies.human.chopchopGenome == "hg38" && TargetSpecies.mouse.chopchopGenome == "mm39", "Reference genome labels must be hg38 and mm39")
@@ -1846,7 +1846,7 @@ do {
 }
 
 // 42. 验证 P07 qPCR Holm–Bonferroni 多重比较校正、Welch 95% 置信区间 (与 R p.adjust / scipy 期望值比对) 与 Python MCP 同步
-print("🧪 [42/52] Testing qPCR Holm–Bonferroni Multiple Comparison & Welch 95% CI (P07)...")
+print("🧪 [42/59] Testing qPCR Holm–Bonferroni Multiple Comparison & Welch 95% CI (P07)...")
 do {
     // 1. 固定 p 值数组校验 Holm 输出（与 R p.adjust(c(0.01, 0.04, 0.03, 0.005), method="holm") 精确一致: [0.03, 0.06, 0.06, 0.02]）
     let rawPs: [Double] = [0.01, 0.04, 0.03, 0.005]
@@ -1933,7 +1933,7 @@ do {
 }
 
 // 43. 验证 P08 qPCR 对照孔 (NTC / no-RT) 污染告警、熔解曲线 Tm 偏离与 Undetermined 质控及计算隔离
-print("🧪 [43/52] Testing qPCR Control Wells (NTC / no-RT), Melt Curve Outlier & Undetermined QC (P08)...")
+print("🧪 [43/59] Testing qPCR Control Wells (NTC / no-RT), Melt Curve Outlier & Undetermined QC (P08)...")
 do {
     let qcTestCSV = """
     well,sample,group,target,task,ct,tm
@@ -1991,7 +1991,7 @@ do {
 }
 
 // 44. 验证 P09 AnalysisRun 溯源记录核心模型、CryptoKit SHA256 校验、WB 导出 .run.json 与原始图像零修改保证
-print("🧪 [44/52] Testing AnalysisRun Provenance Core Model & WB .run.json Sidecar Export (P09)...")
+print("🧪 [44/59] Testing AnalysisRun Provenance Core Model & WB .run.json Sidecar Export (P09)...")
 do {
     let fm = FileManager.default
     let wbSampleGroup = wbGroups[0]
@@ -2056,7 +2056,7 @@ do {
 }
 
 // 45. 验证 P10 (1/2): qPCR 导出 CSV 与 AnalysisRun (.run.json) 溯源记录（含输入 CSV SHA256、手动取消勾选孔 exclusions 与 Holm 校正参数）
-print("🧪 [45/52] Testing qPCR AnalysisRun Provenance .run.json Sidecar Export (P10-qPCR)...")
+print("🧪 [45/59] Testing qPCR AnalysisRun Provenance .run.json Sidecar Export (P10-qPCR)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p10_qpcr_\(UUID().uuidString)", isDirectory: true)
@@ -2113,7 +2113,7 @@ do {
 }
 
 // 46. 验证 P10 (2/2): Sanger 测序验证导出报告与 AnalysisRun (.run.json) 溯源记录（含 .ab1 SHA256、参考序列 SHA256、trimQualityThreshold、次峰阈值、方向与 verdict）
-print("🧪 [46/52] Testing Sanger Verification AnalysisRun Provenance .run.json Sidecar Export (P10-Sanger)...")
+print("🧪 [46/59] Testing Sanger Verification AnalysisRun Provenance .run.json Sidecar Export (P10-Sanger)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p10_sanger_\(UUID().uuidString)", isDirectory: true)
@@ -2178,7 +2178,7 @@ do {
 }
 
 // 47. 验证 P11 SangerBatchEngine 批量测序验证看板（6 条 .ab1 克隆分组合并、正反向覆盖并集、50 文件并发与取消测试、CSV + .run.json 导出及 MCP 批量模式）
-print("🧪 [47/52] Testing SangerBatchEngine Multi-Clone Grouping, Coverage, 50-File Concurrency & Cancellation (P11)...")
+print("🧪 [47/59] Testing SangerBatchEngine Multi-Clone Grouping, Coverage, 50-File Concurrency & Cancellation (P11)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p11_batch_\(UUID().uuidString)", isDirectory: true)
@@ -2294,7 +2294,7 @@ do {
 }
 
 // 48. 验证 P12 Swift–Python 共享测试向量 (Tests/vectors/*.json 全部 6 组 29 个用例双端比对 + 篡改期望值必触发失败保护)
-print("🧪 [48/52] Testing Swift–Python Shared JSON Test Vectors & Tamper Detection (P12)...")
+print("🧪 [48/59] Testing Swift–Python Shared JSON Test Vectors & Tamper Detection (P12)...")
 do {
     let fm = FileManager.default
     let projRoot = CloneStudioResourceLocator.projectRootDirectory
@@ -2331,7 +2331,7 @@ do {
     let nebMatrix = GoldenGateEngine.loadNEBFidelityMatrix()
     assert(nebMatrix.statsByOverhang.count == 256, "Expected 256 overhangs in NEB T4 matrix, found \(nebMatrix.statsByOverhang.count)")
 
-    // 验证 Libraries.sqlite plasmid_features 种子表加载 (15 个标准质粒元件)
+    // 验证 Libraries.sqlite plasmid_features 扩展特征库加载 (含 15 个核心种子 + 千级公有领域元件)
     let seededPlasmidFeatures = PlasmidAnnotationEngine.loadFeaturesFromSQLite()
     let expectedSeedNames: Set<String> = [
         "CMV promoter", "EF1a promoter", "U6 promoter", "T7 promoter",
@@ -2340,8 +2340,8 @@ do {
         "3xFLAG", "HA", "His",
         "EGFP", "mCherry"
     ]
-    assert(seededPlasmidFeatures.count == 15, "Expected 15 plasmid_features in Libraries.sqlite, found \(seededPlasmidFeatures.count)")
-    assert(Set(seededPlasmidFeatures.map(\.name)) == expectedSeedNames, "Seeded plasmid_features names mismatch")
+    assert(seededPlasmidFeatures.count >= 1000, "Expected >= 1000 plasmid_features in Libraries.sqlite, found \(seededPlasmidFeatures.count)")
+    assert(expectedSeedNames.isSubset(of: Set(seededPlasmidFeatures.map(\.name))), "Core seeded plasmid_features names missing")
 
     func checkSwiftVectorCase(functionName: String, caseDict: [String: Any]) throws {
         let cid = caseDict["id"] as? String ?? "unnamed"
@@ -2998,7 +2998,7 @@ do {
 }
 
 // 49. 验证 P13 OME-TIFF 物理像素尺寸读取、通道映射、自动比例尺换算与 AnalysisRun 溯源记录
-print("🧪 [49/52] Testing OME-TIFF Physical Pixel Size Parser, Channel Mapping & Auto Scale Bar (P13)...")
+print("🧪 [49/59] Testing OME-TIFF Physical Pixel Size Parser, Channel Mapping & Auto Scale Bar (P13)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p13_ometiff_\(UUID().uuidString)", isDirectory: true)
@@ -3041,7 +3041,7 @@ do {
 }
 
 // 50. 验证 P14 WB 多曝光线性范围检查（合成 1x / 2x / 4x 三张曝光图，第三张截断到 65535，被截断条带判为非线性，推荐第二张曝光并写入 AnalysisRun）
-print("🧪 [50/52] Testing WB Multi-Exposure Linearity Range & Best Exposure Recommendation (P14)...")
+print("🧪 [50/59] Testing WB Multi-Exposure Linearity Range & Best Exposure Recommendation (P14)...")
 do {
     assert(WesternBlotEngine.parseExposureSeconds(from: "gapdh_exp_10s.tif") == 10.0, "Must parse 10s from filename")
     assert(WesternBlotEngine.parseExposureSeconds(from: "blot_500ms.tif") == 0.5, "Must parse 500ms as 0.5s")
@@ -3081,7 +3081,7 @@ do {
 }
 
 // 51. 验证 P15 AnalysisRun v2 linkedPlasmidIDs 跨模块质粒关联、v1 旧版 .run.json 向后兼容解码与 AnalysisRunIndexStore 索引检索
-print("🧪 [51/52] Testing AnalysisRun v2 linkedPlasmidIDs, Index Store & v1 Backward Compatibility (P15)...")
+print("🧪 [51/59] Testing AnalysisRun v2 linkedPlasmidIDs, Index Store & v1 Backward Compatibility (P15)...")
 do {
     let fm = FileManager.default
     let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("labworker_p15_\(UUID().uuidString)", isDirectory: true)
@@ -3188,7 +3188,7 @@ do {
 }
 
 // 52. 验证 LabBioCalculatorsEngine（DNA 换算、蛋白质换算、生理生化公式）及 Swift–Python MCP 数值一致性
-print("🧪 [52/52] Testing LabBioCalculatorsEngine & Bio Calculator MCP Parity...")
+print("🧪 [52/59] Testing LabBioCalculatorsEngine & Bio Calculator MCP Parity...")
 do {
     // (1) DNA Conversions
     let p1 = LabDNAConverter.dsdnaUgToPmol(lengthBp: 5000, massUg: 1.0)
@@ -3270,6 +3270,439 @@ do {
     pass("LabBioCalculatorsEngine & Bio Calculator MCP parity verified (DNA/Protein/Biochem/Ligation Ratio).")
 } catch {
     fatalError("LabBioCalculatorsEngine verification failed: \(error)")
+}
+
+// 53. 验证 CodonOptimizationEngine 多宿主 CAI、禁区酶切/同聚物清零与 100% 氨基酸守恒
+print("🧪 [53/59] Testing CodonOptimizationEngine (Multi-Host & Constraint Solver)...")
+do {
+    // 构造含 BsaI(GGTCTC)、EcoRI(GAATTC) 与 AAAAAA 同聚物的测试序列
+    let dirtyCDS = "ATGGCTGCTGGTCTCAAAAAAGAATTCCCCGGGATGGACGCTTTTACTCTGCCTTAA"
+    let origProt = CodonOptimizationEngine.translateDNA(dirtyCDS)
+    let cfg = CodonOptimizationEngine.OptimizationConfig.presetConfig(.twist, host: .human)
+    let rep = CodonOptimizationEngine.optimize(inputSequence: dirtyCDS, isProteinInput: false, config: cfg)
+    assert(rep.optimizedDNA.count == dirtyCDS.count, "Optimized DNA length mismatch")
+    assert(CodonOptimizationEngine.translateDNA(rep.optimizedDNA) == origProt, "Optimized DNA changed translated protein!")
+    assert(!rep.optimizedDNA.contains("GGTCTC") && !rep.optimizedDNA.contains("GAGACC"), "BsaI site remained after optimization")
+    assert(!rep.optimizedDNA.contains("GAATTC"), "EcoRI site remained after optimization")
+    assert(!rep.optimizedDNA.contains("AAAAA"), "Homopolymer >=5bp remained after optimization")
+
+    let egfpRep = CodonOptimizationEngine.optimize(
+        inputSequence: CodonOptimizationEngine.demoEGFPFragmentDNA,
+        isProteinInput: false,
+        config: .presetConfig(.twist, host: .eColi)
+    )
+    assert(CodonOptimizationEngine.translateDNA(egfpRep.optimizedDNA) == egfpRep.proteinSequence, "EGFP protein translation must be 100% conserved")
+    assert(egfpRep.optimizedCAI > 0.70, "E. coli CAI expected > 0.70, got \(egfpRep.optimizedCAI)")
+    assert(egfpRep.constraintChecks.first(where: { $0.id == "motifs" })?.passed == true, "Motifs check must pass")
+    assert(egfpRep.constraintChecks.first(where: { $0.id == "homopolymer" })?.passed == true, "Homopolymer check must pass")
+
+    // 蛋白输入模式直推优化
+    let protInput = "MVSKGEELFTGVVPILVELDGDVNGHKFSVS*"
+    let protRep = CodonOptimizationEngine.optimize(inputSequence: protInput, isProteinInput: true, config: .presetConfig(.idt, host: .yeast))
+    assert(protRep.isProteinInput == true && CodonOptimizationEngine.translateDNA(protRep.optimizedDNA) == protInput, "Protein input codon optimization failed")
+
+    pass("CodonOptimizationEngine passed (CAI=\(String(format: "%.3f", egfpRep.optimizedCAI)), 100% AA conserved, motifs/homopolymers cleared).")
+}
+
+// 54. 验证 PlasmidSequencingAssemblyEngine（多 Sanger 双向 Contig 拼接 + 全质粒 Nanopore Origin 旋转与 SV 检测）
+print("🧪 [54/59] Testing PlasmidSequencingAssemblyEngine (Sanger Contig & Whole-Plasmid Nanopore SV)...")
+do {
+    let msFx = PlasmidSequencingAssemblyEngine.demoMultiSangerFixture()
+    let contig = PlasmidSequencingAssemblyEngine.assembleSangerContig(
+        reads: msFx.reads,
+        referenceSequence: msFx.refSeq,
+        referenceName: msFx.refName
+    )
+    assert(contig.readBriefs.count == 2, "Expected 2 reads in Sanger contig")
+    assert(contig.doubleStrandCoveredCount >= 40, "Expected >=40 bp double-strand overlap, got \(contig.doubleStrandCoveredCount)")
+    assert(contig.coveragePercent >= 90.0, "Expected >=90% coverage, got \(contig.coveragePercent)")
+    assert(contig.mismatchCount == 1, "Expected 1 consensus SNP vs reference, got \(contig.mismatchCount)")
+    assert(contig.meanConsensusPhred >= 40.0, "Expected high consensus Phred")
+    assert(contig.consensusFASTA.hasPrefix(">") && contig.consensusFASTQ.hasPrefix("@"))
+
+    // Nanopore Origin 旋转 + SNP + 40bp 缺失
+    let wpFx = PlasmidSequencingAssemblyEngine.demoWholePlasmidFixture()
+    let wpRecords = PlasmidSequencingAssemblyEngine.parseFastqOrFasta(wpFx.fastqText, defaultName: wpFx.queryName)
+    assert(wpRecords.count == 1 && wpRecords[0].isFastq && abs((wpRecords[0].meanPhred ?? 0) - 40.0) < 0.5)
+    let wpRep = PlasmidSequencingAssemblyEngine.verifyWholePlasmid(
+        querySequence: wpRecords[0].sequence,
+        queryName: wpRecords[0].name,
+        queryMeanPhred: wpRecords[0].meanPhred,
+        referenceSequence: wpFx.refSeq,
+        referenceName: wpFx.refName
+    )
+    assert(wpRep.rotatedOriginOffset0Based > 100, "Origin rotation offset should be detected, got \(wpRep.rotatedOriginOffset0Based)")
+    assert(wpRep.snpCount == 1, "Expected 1 SNP in whole plasmid demo, got \(wpRep.snpCount)")
+    assert(wpRep.variants.contains(where: { $0.kind == .largeDeletion && $0.sizeBp >= 35 }), "Expected 40bp large deletion SV")
+    assert(wpRep.verdict == .structuralVariantDetected, "Expected structuralVariantDetected verdict")
+
+    // 反向互补完美匹配验证
+    let rcPerfect = PlasmidSequencingAssemblyEngine.verifyWholePlasmid(
+        querySequence: BioSequence.reverseComplement(wpFx.refSeq),
+        queryName: "RC_Perfect",
+        referenceSequence: wpFx.refSeq,
+        referenceName: wpFx.refName
+    )
+    assert(rcPerfect.isReverseComplement == true && rcPerfect.verdict == .verifiedPass, "Reverse-complement whole plasmid verification failed")
+
+    // 串联重复验证 (插入第 100..220 片段副本)
+    let refChars = Array(wpFx.refSeq)
+    let dupBlock = Array(refChars[100..<220])
+    let tandemQuery = String(refChars[0..<220] + dupBlock + refChars[220..<refChars.count])
+    let dupRep = PlasmidSequencingAssemblyEngine.verifyWholePlasmid(
+        querySequence: tandemQuery,
+        queryName: "TandemDup",
+        referenceSequence: wpFx.refSeq,
+        referenceName: wpFx.refName
+    )
+    assert(dupRep.variants.contains(where: { $0.kind == .tandemDuplication || $0.kind == .largeInsertion }), "Expected tandem duplication/insertion detection")
+
+    pass("PlasmidSequencingAssemblyEngine passed (Sanger 2-strand Contig cov=\(String(format: "%.1f%%", contig.coveragePercent)), Nanopore Origin rotation + SNP + SV).")
+}
+
+// 55. 验证 SequenceFormatEngine (GenBank/OpenCloning/SBOL3) 与 ProteinBiophysicsEngine mmCIF 解析
+print("🧪 [55/59] Testing SequenceFormatEngine & ProteinBiophysicsEngine mmCIF Parser...")
+do {
+    let demoSeq = String(repeating: "ATGGTGAGCAAGGGCGAGGAGCTGTTCACC", count: 16) // 480 bp
+    let f1 = SnapGeneFeature(name: "CMV_Promoter", type: "promoter", directionality: "1", segments: [SnapGeneSegment(range: "10-150", start: 10, end: 150, color: "#f59e0b")])
+    let f2 = SnapGeneFeature(name: "EGFP_CDS", type: "CDS", directionality: "2", segments: [SnapGeneSegment(range: "180-450", start: 180, end: 450, color: "#3b82f6")])
+    let origInfo = SnapGeneFileInfo(
+        filePath: "verify://demo.dna",
+        fileName: "DemoVec.dna",
+        sequence: demoSeq,
+        length: demoSeq.count,
+        isCircular: true,
+        featuresCount: 2,
+        features: [f1, f2]
+    )
+
+    let gbText = SequenceFormatEngine.exportGenBank(info: origInfo, name: "DemoVec")
+    guard let parsedGB = SequenceFormatEngine.parseGenBank(gbText, fallbackName: "DemoVec") else {
+        fatalError("GenBank round-trip parse failed")
+    }
+    assert(parsedGB.sequence == demoSeq && parsedGB.isCircular == true, "GenBank sequence/topology mismatch")
+    assert(parsedGB.features.count == 2 && parsedGB.features[1].directionality == "2", "GenBank complement feature round-trip failed")
+
+    let ocJSON = try SequenceFormatEngine.exportOpenCloningJSON(info: origInfo, name: "DemoVec")
+    let parsedOC = SequenceFormatEngine.parseOpenCloningJSON(ocJSON)
+    assert(parsedOC.count == 1 && parsedOC[0].sequence == demoSeq && parsedOC[0].features.count == 2, "OpenCloning JSON round-trip failed")
+
+    let sbolJSON = try SequenceFormatEngine.exportSBOL3JSONLD(info: origInfo, name: "DemoVec")
+    let parsedSBOL = SequenceFormatEngine.parseSBOL3JSONLD(sbolJSON)
+    assert(parsedSBOL.count == 1 && parsedSBOL[0].sequence == demoSeq && parsedSBOL[0].isCircular == true && parsedSBOL[0].features.count == 2, "SBOL3 JSON-LD round-trip failed")
+
+    let mmcifFixture = """
+    data_TEST_CIF
+    loop_
+    _atom_site.group_PDB
+    _atom_site.id
+    _atom_site.type_symbol
+    _atom_site.label_atom_id
+    _atom_site.label_alt_id
+    _atom_site.label_comp_id
+    _atom_site.auth_asym_id
+    _atom_site.auth_seq_id
+    _atom_site.Cartn_x
+    _atom_site.Cartn_y
+    _atom_site.Cartn_z
+    _atom_site.B_iso_or_equiv
+    _atom_site.pdbx_PDB_model_num
+    ATOM 1 C CA . ALA A 1 1.000 2.000 3.000 95.4 1
+    ATOM 2 H HA . ALA A 1 1.500 2.200 3.100 95.4 1
+    ATOM 3 C CA . LYS A 2 4.800 2.100 3.200 91.2 1
+    ATOM 4 C CA . TRP A 3 8.600 2.300 3.500 88.7 1
+    ATOM 5 C CA . TYR A 4 12.400 2.600 3.900 84.1 1
+    HETATM 6 P PA . ATP A 101 5.000 5.000 5.000 60.0 1
+    HETATM 7 O O . HOH A 201 9.000 9.000 9.000 30.0 1
+    ATOM 8 C CA . GLY A 1 99.000 99.000 99.000 50.0 2
+    """
+    assert(ProteinBiophysicsEngine.isMMCIFFormat(mmcifFixture))
+    let protRep = ProteinBiophysicsEngine.analyzeProtein(sequence: "", pdbText: mmcifFixture)
+    assert(protRep.length == 4 && protRep.sequence == "AKWY", "mmCIF CA extraction mismatch: got \(protRep.sequence)")
+    assert(abs(protRep.residues[0].plddt - 95.4) < 0.1, "mmCIF B-factor/pLDDT mismatch")
+    assert(protRep.healthCard.coCrystalLigands == ["ATP"], "mmCIF coCrystalLigands mismatch: \(protRep.healthCard.coCrystalLigands)")
+    assert(!protRep.healthCard.coCrystalLigands.contains("HOH"), "Water must be excluded")
+
+    pass("SequenceFormatEngine (GenBank/OpenCloning/SBOL3) & mmCIF parser verified.")
+} catch {
+    fatalError("SequenceFormatEngine/mmCIF verification failed: \(error)")
+}
+
+// 56. 验证 QPCRInstrumentAndRDMLEngine（QuantStudio/CFX/LightCycler/MxPro 多仪器嗅探 + RDML 往返 + MIQE 清单）
+print("🧪 [56/59] Testing QPCRInstrumentAndRDMLEngine (4 Instrument Parsers, RDML ZIP/XML & MIQE)...")
+do {
+    let qsRaw = """
+    * Block Type = 96-Well 0.2-mL Block
+    * Instrument Name = QuantStudio 5
+    [Results]
+    Well Position\tSample Name\tTarget Name\tTask\tCT\tTm1
+    A1\tWT-Ctrl\tGAPDH\tUNKNOWN\t18.42\t84.1
+    A2\tNTC\tGAPDH\tNTC\tUndetermined\t
+    """
+    let qsRes = QPCRInstrumentAndRDMLEngine.parseRawExport(qsRaw)
+    assert(qsRes.format == .quantStudio && qsRes.skippedHeaderLines == 3 && qsRes.wells.count == 2)
+    assert(qsRes.wells[0].ct == 18.42 && qsRes.wells[0].tm == 84.1 && qsRes.wells[1].wellType == .ntc && qsRes.wells[1].ct == nil)
+
+    let cfxRaw = """
+    Run Information
+    File Name,experiment.pcrd
+    Well,Fluor,Target,Content,Sample,Cq,Starting Quantity (SQ)
+    B1,SYBR,TP53,Unkn,DrugA,22.15,
+    B2,SYBR,TP53,Std,STD1,16.50,1.00E+05
+    """
+    let cfxRes = QPCRInstrumentAndRDMLEngine.parseRawExport(cfxRaw)
+    assert(cfxRes.format == .cfxMaestro && cfxRes.wells.count == 2 && cfxRes.wells[1].wellType == .standard && cfxRes.wells[1].quantity == 100000.0)
+
+    let lcRaw = """
+    Experiment: LC480_Run\tSelected Filter: SYBR Green I (465-510)
+    Pos\tName\tCp\tConcentration\tStatus\tTm1
+    C1\tSample1\t20.41\t\t\t85.2
+    """
+    let lcRes = QPCRInstrumentAndRDMLEngine.parseRawExport(lcRaw)
+    assert(lcRes.format == .lightCycler480 && lcRes.wells.count == 1 && lcRes.wells[0].ct == 20.41 && lcRes.wells[0].tm == 85.2)
+
+    let mxRaw = """
+    Well,Well Name,Well Type,Target,Ct (dR),Tm1 (C)
+    D1,Treated-1,Unknown,MYC,19.85,82.6
+    """
+    let mxRes = QPCRInstrumentAndRDMLEngine.parseRawExport(mxRaw)
+    assert(mxRes.format == .mxPro && mxRes.wells.count == 1 && mxRes.wells[0].ct == 19.85)
+
+    // RDML .rdml ZIP 归档往返读写校验
+    let settings = QPCRSettings()
+    let baseWells = QPCRInstrumentAndRDMLEngine.parseRawExport(QPCRAnalysisEngine.defaultExampleCSV).wells
+    let rdmlTmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("verify_\(UUID().uuidString).rdml")
+    defer { try? FileManager.default.removeItem(at: rdmlTmpURL) }
+    try QPCRInstrumentAndRDMLEngine.writeRDMLArchive(wells: baseWells, settings: settings, experimentName: "VerifyRDML", to: rdmlTmpURL)
+    let rdmlBytes = try Data(contentsOf: rdmlTmpURL)
+    let rdmlParsed = try QPCRInstrumentAndRDMLEngine.parseRDMLData(rdmlBytes, fileName: rdmlTmpURL.lastPathComponent)
+    assert(rdmlParsed.format == .rdml && rdmlParsed.wells.count == baseWells.count, "RDML ZIP round-trip well count mismatch: \(rdmlParsed.wells.count) vs \(baseWells.count)")
+    assert(abs((rdmlParsed.wells[0].ct ?? 0) - (baseWells[0].ct ?? -1)) < 1e-3, "RDML Ct round-trip mismatch")
+
+    let qcMap = QPCRAnalysisEngine.computeQC(wells: baseWells, settings: settings)
+    let ddct = QPCRAnalysisEngine.computeDdct(wells: baseWells, settings: settings, qc: qcMap)
+    let stdOut = QPCRAnalysisEngine.computeStandardCurve(wells: baseWells, settings: settings, qc: qcMap)
+    let miqe = QPCRInstrumentAndRDMLEngine.evaluateMIQECompliance(
+        wells: baseWells,
+        settings: settings,
+        qc: qcMap,
+        ddctOut: ddct,
+        stdOut: stdOut,
+        detectedFormat: .genericCSV
+    )
+    assert(miqe.items.count == 8 && miqe.exportMarkdownChecklist().contains("MIQE"))
+
+    pass("QPCRInstrumentAndRDMLEngine verified (4 instrument formats, RDML archive round-trip & 8-item MIQE checklist).")
+} catch {
+    fatalError("QPCRInstrumentAndRDMLEngine verification failed: \(error)")
+}
+
+// 57. 验证 PlateReaderAssayEngine（8x12 矩阵解析、BCA WB 配液守恒、ELISA 4PL/5PL LM 拟合、IC50 & CCK-8 ANOVA）
+print("🧪 [57/59] Testing PlateReaderAssayEngine (Matrix Parser, BCA, ELISA 4PL/5PL, IC50 & One-Way ANOVA)...")
+do {
+    let matrixText = """
+    Instrument: BioTek Synergy
+    Read: 562nm
+    ,1,2,3,4
+    A,0.105,0.220,0.450,0.890
+    B,0.112,0.235,0.462,0.910
+    """
+    let mVals = PlateReaderAssayEngine.parsePlateReaderValues(matrixText)
+    assert(mVals.count == 8 && mVals["A1"] == 0.105 && mVals["B3"] == 0.462, "8x12 plate matrix parse failed")
+
+    let bcaFx = PlateReaderAssayEngine.demoBCAData()
+    guard let bcaRep = PlateReaderAssayEngine.analyzeBCA(
+        standards: bcaFx.standards,
+        samples: bcaFx.samples,
+        model: .linear,
+        blankOD: bcaFx.blankOD,
+        dilutionFactor: 1.0,
+        targetLoadUg: 20.0,
+        targetTotalVolUl: 20.0,
+        loadingBufferX: 5.0
+    ) else { fatalError("BCA analysis failed") }
+    assert(bcaRep.r2 > 0.999 && bcaRep.samples.count == 3, "BCA R² expected >0.999")
+    for s in bcaRep.samples {
+        let sumVol = s.proteinVolumeUl + s.lysisBufferVolumeUl + s.loadingBufferVolumeUl
+        assert(abs(sumVol - 20.0) < 1e-6, "WB loading volume must sum cleanly to 20 uL, got \(sumVol)")
+    }
+
+    // ELISA 4PL 精准还原检验 (a=0.10, b=1.2, c=80.0, d=2.5)
+    let trueA = 0.10, trueB = 1.2, trueC = 80.0, trueD = 2.5
+    let stdConcs = [5.0, 15.0, 40.0, 80.0, 160.0, 400.0, 1000.0]
+    let synth4PL = stdConcs.map { x in (x: x, y: trueD + (trueA - trueD) / (1.0 + pow(x / trueC, trueB))) }
+    guard let elisaFit = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: synth4PL, fiveParameter: false) else {
+        fatalError("4PL fit failed")
+    }
+    assert(elisaFit.r2 > 0.9999 && abs(elisaFit.paramC - trueC) / trueC < 0.02, "4PL recovery mismatch: c=\(elisaFit.paramC)")
+    let unknownY = trueD + (trueA - trueD) / (1.0 + pow(120.0 / trueC, trueB))
+    let qOut = PlateReaderAssayEngine.quantifyELISASamples(samples: [("Test", [unknownY])], fit: elisaFit)
+    assert(qOut.count == 1 && abs((qOut[0].interpolatedConc ?? 0) - 120.0) / 120.0 < 0.02 && qOut[0].status == .inRange)
+
+    // 5PL 测试
+    let synth5PL = stdConcs.map { x in (x: x, y: trueD + (trueA - trueD) / pow(1.0 + pow(x / trueC, trueB), 1.6)) }
+    guard let fit5 = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: synth5PL, fiveParameter: true) else {
+        fatalError("5PL fit failed")
+    }
+    assert(fit5.r2 > 0.999, "5PL R² mismatch: \(fit5.r2)")
+
+    // IC50 Hill 曲线还原验证
+    guard let icFit = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: PlateReaderAssayEngine.demoDoseResponseData(), fiveParameter: false) else {
+        fatalError("IC50 Hill fit failed")
+    }
+    assert(icFit.r2 > 0.998 && abs(icFit.paramC - 25.0) / 25.0 < 0.15, "IC50 expected ~25 nM, got \(icFit.paramC)")
+
+    // CCK-8 细胞活力 + Holm + One-Way ANOVA
+    guard let viaRep = PlateReaderAssayEngine.analyzeViability(groups: PlateReaderAssayEngine.demoViabilityData(), controlGroupName: "Control", blankMean: 0.08) else {
+        fatalError("CCK-8 viability failed")
+    }
+    assert(abs(viaRep.groups[0].meanViabilityPercent - 100.0) < 1e-6)
+    assert((viaRep.anova?.fStatistic ?? 0) > 100.0 && (viaRep.anova?.pValue ?? 1.0) < 0.0001, "One-Way ANOVA significance mismatch")
+    assert((viaRep.groups.last?.pAdjusted ?? 1.0) < 0.01, "Holm adjusted p-value expected < 0.01")
+
+    pass("PlateReaderAssayEngine verified (8x12 matrix, BCA, ELISA 4PL/5PL R²>0.999, IC50 & One-Way ANOVA).")
+}
+
+// 58. 验证离线 Mol* 资源包与 ProteinDockingBridgeEngine（CLI 探测 / PDBQT->PDB / Vina & Gnina 解析 / Boltz YAML）
+print("🧪 [58/59] Testing Offline Mol* Bundle & ProteinDockingBridgeEngine...")
+do {
+    guard let htmlPath = CloneStudioResourceLocator.path(forResource: "molstar_host", ofType: "html"),
+          let jsPath = CloneStudioResourceLocator.path(forResource: "molstar", ofType: "js"),
+          let cssPath = CloneStudioResourceLocator.path(forResource: "molstar", ofType: "css") else {
+        fatalError("Missing offline Mol* viewer assets in CloneStudioCore/Resources")
+    }
+    let htmlText = try String(contentsOfFile: htmlPath, encoding: .utf8)
+    let jsSize = (try FileManager.default.attributesOfItem(atPath: jsPath)[.size] as? NSNumber)?.intValue ?? 0
+    let cssSize = (try FileManager.default.attributesOfItem(atPath: cssPath)[.size] as? NSNumber)?.intValue ?? 0
+    assert(jsSize > 1_000_000 && cssSize > 10_000, "Bundled Mol* files unexpectedly small: js=\(jsSize), css=\(cssSize)")
+    assert(htmlText.contains("./molstar.js") && htmlText.contains("./molstar.css") && htmlText.contains("LabworkerMolstar"), "molstar_host.html invalid")
+    assert(!htmlText.contains("http://") && !htmlText.contains("https://"), "molstar_host.html must not contain any external HTTP/HTTPS URLs")
+
+    let detected = ProteinDockingBridgeEngine.detectInstalledTools(customOverrides: [.vina: "/usr/bin/env"])
+    assert(detected.count == ProteinDockingBridgeEngine.LocalComputeToolKind.allCases.count, "Expected 5 CLI tool probes")
+    let overrideVina = detected.first(where: { $0.kind == .vina })
+    assert(overrideVina?.isAvailable == true && overrideVina?.executablePath == "/usr/bin/env", "Custom override executable detection failed")
+
+    // PDBQT -> 标准 PDB 元素列转换校验
+    let samplePDBQT = """
+    MODEL 1
+    REMARK VINA RESULT:    -8.4      0.000      0.000
+    ATOM      1  C1  LIG     1      11.234  22.345  33.456  1.00  0.00     0.123 A
+    ATOM      2  O1  LIG     1      12.000  23.000  34.000  1.00  0.00    -0.450 OA
+    HETATM    3  BR1 LIG     1      13.100  24.200  35.100  1.00  0.00    -0.080 Br
+    ENDMDL
+    MODEL 2
+    REMARK VINA RESULT:    -7.9      1.425      2.810
+    ATOM      1  C1  LIG     1      10.100  21.200  32.300  1.00  0.00     0.123 C
+    ENDMDL
+    """
+    let vinaStdout = """
+    mode |   affinity | dist from best mode
+         | (kcal/mol) | rmsd l.b.| rmsd u.b.
+    -----+------------+----------+----------
+       1         -8.4      0.000      0.000
+       2         -7.9      1.425      2.810
+    """
+    let vinaPoses = ProteinDockingBridgeEngine.parseDockingResults(stdoutText: vinaStdout, outputFileText: samplePDBQT, tool: .vina)
+    assert(vinaPoses.count == 2 && abs(vinaPoses[0].affinityKcalMol - (-8.4)) < 1e-6 && abs(vinaPoses[1].rmsdUB - 2.81) < 1e-6)
+    let convertedPDB = vinaPoses[0].pdbBlock
+    assert(convertedPDB.contains("           C") || convertedPDB.hasSuffix("          BR") || convertedPDB.contains("           O"))
+    assert(!convertedPDB.contains("0.123 A") && convertedPDB.contains("          BR"))
+
+    // Gnina 5 列打分表 + 无 stdout 纯 PDBQT REMARK 解析校验
+    let gninaStdout = """
+    mode |  affinity  |  intramol  |    CNN     |   CNN
+         | (kcal/mol) | (kcal/mol) | pose score | affinity
+    -----+------------+------------+------------+----------
+       1       -7.42      -0.31       0.8812     7.145
+       2       -7.10      -0.12       0.7654     6.801
+    """
+    let gninaPoses = ProteinDockingBridgeEngine.parseDockingResults(stdoutText: gninaStdout, outputFileText: samplePDBQT, tool: .gnina)
+    assert(gninaPoses.count == 2 && abs((gninaPoses[0].cnnScore ?? 0) - 0.8812) < 1e-6 && abs((gninaPoses[0].cnnAffinity ?? 0) - 7.145) < 1e-6)
+    let standalonePoses = ProteinDockingBridgeEngine.parseDockingResults(stdoutText: "", outputFileText: samplePDBQT, tool: .vina)
+    assert(standalonePoses.count == 2 && abs(standalonePoses[1].rmsdLB - 1.425) < 1e-6)
+
+    // Boltz YAML 生成 & Confidence JSON 解析校验
+    let boltzYAML = ProteinDockingBridgeEngine.generateBoltzYAML(proteinSequence: "MKTVRQERLK", ligandSMILES: "CC(=O)OC1=CC=CC=C1C(=O)O")
+    assert(boltzYAML.contains("version: 1") && boltzYAML.contains("sequence: MKTVRQERLK") && boltzYAML.contains("smiles:"))
+    let confJSON = #"{"confidence_score": 0.874, "ptm": 0.91, "iptm": 0.84, "ligand_iptm": 0.86, "complex_plddt": 89.2}"#.data(using: .utf8)!
+    let bzSummary = ProteinDockingBridgeEngine.parseBoltzConfidenceJSON(confJSON)
+    assert(bzSummary != nil && abs((bzSummary?.confidenceScore ?? 0) - 0.874) < 1e-6 && abs((bzSummary?.iptm ?? 0) - 0.84) < 1e-6)
+
+    pass("Offline Mol* bundle & ProteinDockingBridgeEngine passed (0 CDN URLs, PDBQT->PDB, Vina/Gnina/Boltz verified).")
+}
+
+// 59. 验证 OrderTemplateEngine & ExcelOrderExporter（国际批量模板 IDT/Twist/GenScript/Eurofins/BGI 与自定义 JSON）
+print("🧪 [59/59] Testing International Order Templates & Custom JSON Column Mapping...")
+do {
+    let sampleItems = [
+        PrimerItem(name: "TP53/Exon1 <F> & 'Mut', ultra_long_primer_identifier", fullSequence: "ggatccATGGAGGAGCCGCAGTCAG", homologyArm: "ggatcc", specificSequence: "ATGGAGGAGCCGCAGTCAG", tm: 62.5, purity: "PAGE", od: 2.0, targetPurpose: "敲除验证"),
+        PrimerItem(name: "EGFP_GeneFrag_1", fullSequence: "ATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTG", homologyArm: "", specificSequence: "ATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTG", tm: 0.0, purity: "Desalt", od: 5.0, targetPurpose: "基因片段合成", notes: "CodonOpt")
+    ]
+    let idtWarnings = OrderTemplateEngine.validateSanitizationWarnings(template: .idtBulk, spec: nil, primers: sampleItems)
+    let eurofinsWarnings = OrderTemplateEngine.validateSanitizationWarnings(template: .eurofinsBulk, spec: nil, primers: sampleItems)
+    assert(!idtWarnings.isEmpty && !eurofinsWarnings.isEmpty, "Sanitization warnings expected for dirty primer names")
+
+    let tmpOutDir = FileManager.default.temporaryDirectory.appendingPathComponent("labworker_order_verify_\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: tmpOutDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tmpOutDir) }
+
+    // 1. IDT CSV & XLSX 验证
+    let idtCSV = try ExcelOrderExporter.shared.exportOrder(template: .idtBulk, primers: sampleItems, samples: [], targetDir: tmpOutDir.path, fileFormat: .csv)
+    let idtText = try String(contentsOfFile: idtCSV, encoding: .utf8)
+    assert(idtText.contains("Name,Sequence,Scale,Purification") && idtText.contains("25nm,PAGE") && idtText.contains("100nm,STD"))
+    assert(!idtText.contains("<F>"), "IDT disallowed chars should be sanitized")
+
+    let idtXLSX = try ExcelOrderExporter.shared.exportOrder(template: .idtBulk, primers: sampleItems, samples: [], targetDir: tmpOutDir.path, fileFormat: .xlsx)
+    let idtData = try Data(contentsOf: URL(fileURLWithPath: idtXLSX))
+    assert(idtData.prefix(2) == Data([0x50, 0x4B]), "IDT XLSX must be valid ZIP/PK archive")
+
+    // 2. Twist / GenScript / Eurofins / BGI 导出验证
+    let twistCSV = try ExcelOrderExporter.shared.exportOrder(template: .twistBulk, primers: sampleItems, samples: [], targetDir: tmpOutDir.path, fileFormat: .csv)
+    let twistText = try String(contentsOfFile: twistCSV, encoding: .utf8)
+    assert(twistText.contains("Sequence Name,Sequence,Well Position,Plate ID"))
+
+    let gsXLSX = try ExcelOrderExporter.shared.exportOrder(template: .genscriptBulk, primers: sampleItems, samples: [], targetDir: tmpOutDir.path, fileFormat: .xlsx)
+    assert(FileManager.default.fileExists(atPath: gsXLSX))
+
+    let euroCSV = try ExcelOrderExporter.shared.exportOrder(template: .eurofinsBulk, primers: sampleItems, samples: [], targetDir: tmpOutDir.path, fileFormat: .csv)
+    let euroLines = (try String(contentsOfFile: euroCSV, encoding: .utf8)).components(separatedBy: .newlines).filter { !$0.isEmpty }
+    assert(euroLines.count == 3 && euroLines[0].contains("Well,Oligo Name,Sequence"))
+    let row1Cols = euroLines[1].components(separatedBy: ",")
+    assert(row1Cols.count >= 2 && row1Cols[1].count <= 25 && !row1Cols[1].contains(" "), "Eurofins Oligo Name max 25 chars & no spaces")
+
+    let bgiXLSX = try ExcelOrderExporter.shared.exportOrder(template: .bgiBulk, primers: sampleItems, samples: [], targetDir: tmpOutDir.path, fileFormat: .xlsx)
+    assert(FileManager.default.fileExists(atPath: bgiXLSX))
+
+    // 3. Custom JSON 往返持久化 & 动态列导出
+    let storeURL = tmpOutDir.appendingPathComponent("custom_templates.json")
+    let customSpec = CustomOrderTemplateSpec(
+        id: "test_custom_1",
+        name: "Lab_Custom_Test",
+        preferredFormat: .csv,
+        columns: [
+            OrderColumnMapping(header: "WellID", field: .well96),
+            OrderColumnMapping(header: "ItemName", field: .name),
+            OrderColumnMapping(header: "Seq5to3", field: .sequence),
+            OrderColumnMapping(header: "Tag", field: .staticDefault, defaultValue: "CloningCore")
+        ]
+    )
+    try CustomOrderTemplateStore.saveTemplates([customSpec], to: storeURL)
+    let reloaded = CustomOrderTemplateStore.loadTemplates(from: storeURL)
+    assert(reloaded.count == 1 && reloaded[0].columns.count == 4 && reloaded[0].columns[3].defaultValue == "CloningCore")
+
+    let customCSV = try ExcelOrderExporter.shared.exportOrder(
+        template: .customJSON,
+        primers: sampleItems,
+        samples: [],
+        targetDir: tmpOutDir.path,
+        fileFormat: .csv,
+        customTemplate: customSpec
+    )
+    let customText = try String(contentsOfFile: customCSV, encoding: .utf8)
+    assert(customText.contains("WellID,ItemName,Seq5to3,Tag") && customText.contains(",CloningCore"))
+
+    pass("OrderTemplateEngine & ExcelOrderExporter verified (IDT/Twist/GenScript/Eurofins/BGI + Custom JSON XLSX/CSV).")
 }
 
 let finalPyToolCount = await MainActor.run { PlasmidPoolManager.mcpToolsCatalog.count }

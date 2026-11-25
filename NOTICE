@@ -21,3 +21,8 @@ Non-Commercial Use Only:
   衍生作品或内嵌算法/MCP 工具用于任何直接或间接商业用途（包括但不限于
   商业公司生产研发、闭源或商用集成、二次打包售卖、收费 SaaS 托管等）。
 - 商业授权联系：请通过 https://github.com/xin67/Labworker/issues 提交联系。
+
+Third-Party Bundled Assets / 随包内置第三方开源组件声明：
+- Mol* Viewer (`molstar.js` / `molstar.css`, v5.13.1): Copyright (c) 2018-2026 mol* contributors,
+  licensed under the MIT License (https://github.com/molstar/molstar). Bundled in
+  `Sources/CloneStudioCore/Resources/` for 100% offline local 3D biomolecular visualization.

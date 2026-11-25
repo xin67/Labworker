@@ -2239,14 +2239,27 @@ def tool_manage_primer_cart_and_export(args: dict) -> dict:
         if not primers_to_export:
             raise ValueError("当前引物池为空，请先设计引物或传入 primers 数组")
         confirm = bool(args.get("confirm", False))
+        vendor = (args.get("vendor") or "tsingke_primer").strip().lower()
+        allowed_vendors = {"tsingke_primer", "idt_bulk", "twist_bulk", "genscript_bulk", "eurofins_bulk", "bgi_bulk"}
+        if vendor not in allowed_vendors:
+            raise ValueError(f"不支持的 vendor '{vendor}'，可选: {', '.join(sorted(allowed_vendors))}")
+        req_fmt = (args.get("file_format") or "").strip().lower()
+        if vendor == "tsingke_primer":
+            file_fmt = "xlsx"
+        elif req_fmt in ("xlsx", "csv"):
+            file_fmt = req_fmt
+        else:
+            file_fmt = "csv" if vendor in ("twist_bulk", "eurofins_bulk") else "xlsx"
+
         tpl_candidates = [
             os.path.join(SCRIPT_DIR, "擎科引物合成订购表.xlsx"),
             os.path.join(PROJECT_DIR, "Sources/CloneStudioCore/Resources/擎科引物合成订购表.xlsx"),
             os.path.join(PROJECT_DIR, "擎科引物合成订购表.xlsx"),
             os.path.join(os.path.dirname(PROJECT_DIR), "擎科引物合成订购表.xlsx"),
         ]
-        tpl_path = next((p for p in tpl_candidates if os.path.exists(p)), tpl_candidates[0])
-        out_name = f"擎科引物合成订购表_MCP_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        tpl_path = next((p for p in tpl_candidates if os.path.exists(p)), tpl_candidates[0]) if vendor == "tsingke_primer" else "-"
+        ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        out_name = f"擎科引物合成订购表_MCP_{ts}.xlsx" if vendor == "tsingke_primer" else f"{vendor}_MCP_{ts}.{file_fmt}"
         out_path = (args.get("output_path") or "").strip() or os.path.join(PROJECT_DIR, out_name)
         write_action = "overwrite" if os.path.exists(out_path) else "create"
         if not confirm:
@@ -2255,13 +2268,14 @@ def tool_manage_primer_cart_and_export(args: dict) -> dict:
                 "planned_writes": [{
                     "path": out_path,
                     "action": write_action,
-                    "summary": f"导出《擎科引物合成订购表》Excel 文件，共包含 {len(primers_to_export)} 条引物"
+                    "summary": f"导出 {vendor} ({file_fmt.upper()}) 订购单文件，共包含 {len(primers_to_export)} 条引物/基因"
                 }],
                 "confirm_hint": "请先以 confirm=false 预览 planned_writes，经用户同意后再以 confirm=true 执行落盘。"
             }
         backup_excel = _backup_if_exists(out_path)
         payload = {
-            "template_type": "tsingke_primer",
+            "template_type": vendor,
+            "fileFormat": file_fmt,
             "template_path": tpl_path,
             "output_path": out_path,
             "profile": {},
@@ -2272,11 +2286,11 @@ def tool_manage_primer_cart_and_export(args: dict) -> dict:
         with open(tmp_in, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False)
         try:
-            subprocess.run(["/usr/bin/python3", EXPORT_ORDER_SCRIPT, "tsingke_primer", tpl_path, out_path, tmp_in], check=True, capture_output=True, text=True)
+            subprocess.run(["/usr/bin/python3", EXPORT_ORDER_SCRIPT, vendor, tpl_path, out_path, tmp_in], check=True, capture_output=True, text=True)
         finally:
             if os.path.exists(tmp_in):
                 os.remove(tmp_in)
-        return {"status": "success", "exportedExcelPath": out_path, "backupPath": backup_excel, "primerCount": len(primers_to_export)}
+        return {"status": "success", "exportedExcelPath": out_path, "backupPath": backup_excel, "primerCount": len(primers_to_export), "vendor": vendor, "fileFormat": file_fmt}
     else:
         return {"count": len(cart), "primersCart": cart}
 
@@ -3747,18 +3761,30 @@ def deconvolve_sanger_crispr(args: dict) -> dict:
     }
 
 
+_PLASMID_FEATURES_CACHE = {"key": None, "records": None}
+
+
 def load_plasmid_features_from_sqlite(db_path: str = None) -> list:
-    """从 Libraries.sqlite 只读加载标准质粒元件表 plasmid_features"""
+    """从 Libraries.sqlite 只读加载标准质粒元件表 plasmid_features（带 mtime 缓存）"""
     import sqlite3
     resolved = db_path or os.path.join(SCRIPT_DIR, "Libraries.sqlite")
     if not os.path.exists(resolved):
         return []
-    conn = sqlite3.connect(f"file:{os.path.abspath(resolved)}?mode=ro", uri=True)
+    abs_path = os.path.abspath(resolved)
+    try:
+        mtime = os.path.getmtime(abs_path)
+    except OSError:
+        mtime = 0.0
+    cache_key = (abs_path, mtime)
+    if _PLASMID_FEATURES_CACHE["key"] == cache_key and _PLASMID_FEATURES_CACHE["records"] is not None:
+        return _PLASMID_FEATURES_CACHE["records"]
+
+    conn = sqlite3.connect(f"file:{abs_path}?mode=ro", uri=True)
     try:
         rows = conn.execute(
             "SELECT id, name, category, sequence, direction, color_hex FROM plasmid_features ORDER BY id ASC;"
         ).fetchall()
-        return [
+        records = [
             {
                 "id": int(r[0]),
                 "name": str(r[1]),
@@ -3769,6 +3795,10 @@ def load_plasmid_features_from_sqlite(db_path: str = None) -> list:
             }
             for r in rows
         ]
+        if records:
+            _PLASMID_FEATURES_CACHE["key"] = cache_key
+            _PLASMID_FEATURES_CACHE["records"] = records
+        return records
     finally:
         conn.close()
 
@@ -6636,13 +6666,15 @@ MCP_TOOLS = [
     },
     {
         "name": "manage_primer_cart_and_export",
-        "description": "查看当前引物订购池，或将引物一键导出为《擎科引物合成订购表.xlsx》Excel 文件（导出 Excel 时请先以 confirm=false 预览，经用户同意后再以 confirm=true 执行）。",
+        "description": "查看当前引物/基因订购池，或导出为擎科/IDT/Twist/GenScript/Eurofins/BGI 订购表 (.xlsx/.csv)（导出写操作请先以 confirm=false 预览，经用户同意后再以 confirm=true 执行）。",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "action": {"type": "string", "enum": ["list", "export_tsingke_excel"], "default": "list"},
-                "output_path": {"type": "string", "description": "可选：导出 Excel 目标路径"},
-                "confirm": {"type": "boolean", "default": False, "description": "导出 Excel 写操作确认：默认 false 仅返回 dry-run 预览 planned_writes，设为 true 时才执行导出并备份已存在文件"}
+                "vendor": {"type": "string", "enum": ["tsingke_primer", "idt_bulk", "twist_bulk", "genscript_bulk", "eurofins_bulk", "bgi_bulk"], "default": "tsingke_primer", "description": "可选：订购商模板类型"},
+                "file_format": {"type": "string", "enum": ["xlsx", "csv"], "description": "可选：非擎科母版支持选择 xlsx 或 csv 输出格式"},
+                "output_path": {"type": "string", "description": "可选：导出目标文件路径"},
+                "confirm": {"type": "boolean", "default": False, "description": "导出写操作确认：默认 false 仅返回 dry-run 预览 planned_writes，设为 true 时才执行导出并备份已存在文件"}
             }
         }
     },

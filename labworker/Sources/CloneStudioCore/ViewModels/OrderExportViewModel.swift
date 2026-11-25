@@ -5,6 +5,10 @@ import AppKit
 @MainActor
 public final class OrderExportViewModel: ObservableObject {
     @Published public var selectedCategory: OrderCategory = .primerSynthesis
+    @Published public var selectedPrimerTemplate: OrderFormTemplate = .tsingkePrimer
+    @Published public var selectedOutputFormat: OrderOutputFileFormat = .xlsx
+    @Published public var customTemplates: [CustomOrderTemplateSpec]
+    @Published public var selectedCustomTemplateID: String
     @Published public var selectedSeqTemplate: OrderFormTemplate = .tsingkeSeq
     @Published public var isExporting: Bool = false
     @Published public var exportedFilePath: String? = nil
@@ -12,13 +16,43 @@ public final class OrderExportViewModel: ObservableObject {
     @Published public var showSuccessAlert: Bool = false
     @Published public var showErrorAlert: Bool = false
     
-    public init() {}
-    
-    /// 执行引物合成表导出 (擎科)
+    public init() {
+        let loaded = CustomOrderTemplateStore.loadTemplates()
+        self.customTemplates = loaded
+        self.selectedCustomTemplateID = loaded.first?.id ?? "custom_default"
+    }
+
+    public var activeCustomTemplate: CustomOrderTemplateSpec? {
+        customTemplates.first(where: { $0.id == selectedCustomTemplateID }) ?? customTemplates.first
+    }
+
+    public var sanitizationWarnings: [String] {
+        let spec: CustomOrderTemplateSpec? = (selectedPrimerTemplate == .customJSON) ? activeCustomTemplate : nil
+        return OrderTemplateEngine.validateSanitizationWarnings(
+            template: selectedPrimerTemplate,
+            spec: spec,
+            primers: AppState.shared.primersCart
+        )
+    }
+
+    /// 切换供应商模板并同步推荐输出格式
+    public func selectPrimerTemplate(_ tpl: OrderFormTemplate, customTemplateID: String? = nil) {
+        selectedPrimerTemplate = tpl
+        if let customID = customTemplateID {
+            selectedCustomTemplateID = customID
+        }
+        if tpl == .tsingkePrimer {
+            selectedOutputFormat = .xlsx
+        } else if let spec = (tpl == .customJSON ? activeCustomTemplate : OrderTemplateEngine.builtinPreset(for: tpl)) {
+            selectedOutputFormat = spec.preferredFormat
+        }
+    }
+
+    /// 执行引物 / 基因合成订购表导出（支持擎科 / IDT / Twist / GenScript / Eurofins / BGI / 自定义 JSON）
     public func exportPrimersOrder() {
         let primers = AppState.shared.primersCart
         guard !primers.isEmpty else {
-            errorMessage = "待订购引物池为空，请先在克隆或突变设计界面生成引物并加入订购单。"
+            errorMessage = "待订购引物/基因池为空，请先在设计界面生成或手动添加条目。"
             showErrorAlert = true
             return
         }
@@ -27,17 +61,98 @@ public final class OrderExportViewModel: ObservableObject {
         defer { isExporting = false }
         
         do {
-            let path = try ExcelOrderExporter.shared.exportTsingkeOrder(
+            let customSpec = (selectedPrimerTemplate == .customJSON) ? activeCustomTemplate : nil
+            let format: OrderOutputFileFormat = selectedPrimerTemplate.requiresBundledXLSXTemplate ? .xlsx : selectedOutputFormat
+            let path = try ExcelOrderExporter.shared.exportOrder(
+                template: selectedPrimerTemplate,
                 primers: primers,
-                profile: AppState.shared.profile
+                samples: [],
+                profile: AppState.shared.profile,
+                targetDir: nil,
+                fileFormat: format,
+                customTemplate: customSpec
             )
             self.exportedFilePath = path
             self.showSuccessAlert = true
-            AppState.shared.showToast("已成功导出擎科引物合成订购单！")
+            let tplLabel = (selectedPrimerTemplate == .customJSON) ? (customSpec?.name ?? "自定义模板") : selectedPrimerTemplate.displayName
+            AppState.shared.showToast("已成功导出「\(tplLabel)」(\(format.rawValue.uppercased()))！")
         } catch {
             self.errorMessage = error.localizedDescription
             self.showErrorAlert = true
         }
+    }
+
+    /// 手动添加引物或基因合成片段到订购池
+    public func addManualOligoOrGene(
+        name: String,
+        sequence: String,
+        purity: String = "PAGE",
+        od: Double = 2.0,
+        purpose: String = "手动添加/基因合成",
+        notes: String = ""
+    ) {
+        let cleanSeq = BioSequence.clean(sequence)
+        guard !cleanSeq.isEmpty else {
+            AppState.shared.showToast("请输入有效的 A/C/G/T 核苷酸序列")
+            return
+        }
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalName = cleanName.isEmpty ? "Oligo-\(AppState.shared.primersCart.count + 1)" : cleanName
+        let item = PrimerItem(
+            name: finalName,
+            fullSequence: cleanSeq,
+            homologyArm: "",
+            specificSequence: cleanSeq,
+            tm: 0.0,
+            purity: purity.isEmpty ? "PAGE" : purity,
+            od: od > 0 ? od : 2.0,
+            tubes: 1,
+            targetPurpose: purpose,
+            notes: notes
+        )
+        AppState.shared.primersCart.append(item)
+        AppState.shared.showToast("已加入订购池：\(finalName) (\(cleanSeq.count) bp)")
+    }
+
+    public func saveCustomTemplate(_ spec: CustomOrderTemplateSpec) {
+        if let idx = customTemplates.firstIndex(where: { $0.id == spec.id }) {
+            customTemplates[idx] = spec
+        } else {
+            customTemplates.append(spec)
+        }
+        selectedCustomTemplateID = spec.id
+        selectedPrimerTemplate = .customJSON
+        selectedOutputFormat = spec.preferredFormat
+        try? CustomOrderTemplateStore.saveTemplates(customTemplates)
+        AppState.shared.showToast("已保存自定义列映射模板：\(spec.name)")
+    }
+
+    public func deleteCustomTemplate(id: String) {
+        guard customTemplates.count > 1 else {
+            AppState.shared.showToast("至少保留一套自定义模板")
+            return
+        }
+        customTemplates.removeAll { $0.id == id }
+        if selectedCustomTemplateID == id {
+            selectedCustomTemplateID = customTemplates.first?.id ?? "custom_default"
+        }
+        try? CustomOrderTemplateStore.saveTemplates(customTemplates)
+    }
+
+    public func importCustomTemplateJSON(from url: URL) throws {
+        let data = try Data(contentsOf: url)
+        let decoded = try JSONDecoder().decode(CustomOrderTemplateSpec.self, from: data)
+        var spec = decoded
+        if spec.id.isEmpty { spec.id = UUID().uuidString }
+        saveCustomTemplate(spec)
+    }
+
+    public func exportCustomTemplateJSON(_ spec: CustomOrderTemplateSpec, to url: URL) throws {
+        let enc = JSONEncoder()
+        enc.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try enc.encode(spec)
+        try data.write(to: url, options: .atomic)
+        AppState.shared.showToast("已导出列映射模板 JSON：\(url.lastPathComponent)")
     }
     
     /// 执行测序样品表导出 (支持擎科电子订单、生工专属版、生工V9通用版)
