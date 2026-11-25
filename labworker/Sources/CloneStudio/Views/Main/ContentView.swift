@@ -337,10 +337,9 @@ public struct ContentView: View {
             .padding(.top, 6)
             .padding(.bottom, 12)
         }
-        .scrollEdgeEffectStyle(.soft, for: .top)
-        .safeAreaBar(edge: .top, spacing: 0) {
-            // 顶部原生 macOS 27 Liquid Glass 搜索胶囊 + 等高 30pt 快导圆形按钮（无默认抢焦闪烁光标）
-            GlassEffectContainer(spacing: 8) {
+        .studioSafeAreaTopBarCompat {
+            // 顶部原生 macOS 26/27 Liquid Glass 搜索胶囊 + 等高 30pt 快导圆形按钮（无默认抢焦闪烁光标）
+            StudioGlassContainerCompat(spacing: 8) {
                 HStack(spacing: 8) {
                     HStack(spacing: 7) {
                         Image(systemName: "magnifyingglass")
@@ -375,13 +374,11 @@ public struct ContentView: View {
                     .onTapGesture {
                         searchFocusTrigger &+= 1
                     }
-                    .glassEffect(
-                        StudioGlassSupport.buttonGlass(
-                            appState: appState,
-                            tint: nil,
-                            selected: false,
-                            interactive: true
-                        ),
+                    .studioGlassSurfaceCompat(
+                        appState: appState,
+                        tint: nil,
+                        selected: false,
+                        interactive: true,
                         in: Capsule(style: .continuous)
                     )
                     .overlay(
@@ -584,13 +581,11 @@ public struct ContentView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .glassEffect(
-            StudioGlassSupport.buttonGlass(
-                appState: appState,
-                tint: .green,
-                selected: true,
-                interactive: true
-            ),
+        .studioGlassSurfaceCompat(
+            appState: appState,
+            tint: .green,
+            selected: true,
+            interactive: true,
             in: Capsule(style: .continuous)
         )
         .overlay(

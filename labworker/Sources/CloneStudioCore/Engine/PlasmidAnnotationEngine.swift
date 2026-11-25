@@ -118,11 +118,25 @@ public struct PlasmidAnnotationEngine: Sendable {
 
     // MARK: - 2. SQLite 特征库读取 & FASTA 解析
 
-    /// 从 Libraries.sqlite 只读加载标准质粒元件表 `plasmid_features`
+    private static let featureCacheLock = NSLock()
+    nonisolated(unsafe) private static var cachedLibraryKey: String? = nil
+    nonisolated(unsafe) private static var cachedLibraryRecords: [PlasmidFeatureRecord] = []
+
+    /// 从 Libraries.sqlite 只读加载标准质粒元件表 `plasmid_features`（按路径与 mtime 缓存）
     public static func loadFeaturesFromSQLite(dbPath: String? = nil) -> [PlasmidFeatureRecord] {
         guard let resolvedPath = dbPath ?? CloneStudioResourceLocator.path(forResource: "Libraries", ofType: "sqlite") else {
             return []
         }
+        let mtime = (try? FileManager.default.attributesOfItem(atPath: resolvedPath)[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+        let cacheKey = "\(resolvedPath)#\(mtime)"
+        featureCacheLock.lock()
+        if cachedLibraryKey == cacheKey, !cachedLibraryRecords.isEmpty {
+            let hit = cachedLibraryRecords
+            featureCacheLock.unlock()
+            return hit
+        }
+        featureCacheLock.unlock()
+
         var db: OpaquePointer? = nil
         guard sqlite3_open_v2(resolvedPath, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK, let openedDB = db else {
             if let db = db { sqlite3_close(db) }
@@ -157,6 +171,12 @@ public struct PlasmidAnnotationEngine: Sendable {
                     colorHex: String(cString: colorC)
                 )
             )
+        }
+        if !records.isEmpty {
+            featureCacheLock.lock()
+            cachedLibraryKey = cacheKey
+            cachedLibraryRecords = records
+            featureCacheLock.unlock()
         }
         return records
     }
@@ -264,19 +284,41 @@ public struct PlasmidAnnotationEngine: Sendable {
         let searchBytes = Array(searchSeq.utf8)
         let searchLen = searchBytes.count
 
-        // 按参考特征所需的不同 k 值按需缓存质粒 k-mer 倒排索引
-        var searchKmerCache: [Int: [String: [Int]]] = [:]
-        func getSearchKmerIndex(k: Int) -> [String: [Int]] {
+        @inline(__always)
+        func baseCode(_ b: UInt8) -> Int {
+            switch b {
+            case 65: return 0 // 'A'
+            case 67: return 1 // 'C'
+            case 71: return 2 // 'G'
+            case 84: return 3 // 'T'
+            default: return -1
+            }
+        }
+
+        // 按参考特征所需的不同 k 值按需缓存质粒 2-bit 滚动 UInt64 k-mer 倒排索引
+        var searchKmerCache: [Int: [UInt64: [Int]]] = [:]
+        func getSearchKmerIndex(k: Int) -> [UInt64: [Int]] {
             if let cached = searchKmerCache[k] {
                 return cached
             }
-            var index: [String: [Int]] = [:]
+            var index: [UInt64: [Int]] = [:]
             if searchLen >= k {
                 index.reserveCapacity(searchLen)
-                let chars = Array(searchSeq)
-                for sPos in 0...(searchLen - k) {
-                    let km = String(chars[sPos..<(sPos + k)])
-                    index[km, default: []].append(sPos)
+                let mask: UInt64 = (UInt64(1) << (2 * k)) - 1
+                var rolling: UInt64 = 0
+                var validRun = 0
+                for idx in 0..<searchLen {
+                    let code = baseCode(searchBytes[idx])
+                    if code < 0 {
+                        rolling = 0
+                        validRun = 0
+                    } else {
+                        rolling = ((rolling << 2) | UInt64(code)) & mask
+                        validRun += 1
+                        if validRun >= k {
+                            index[rolling, default: []].append(idx - k + 1)
+                        }
+                    }
                 }
             }
             searchKmerCache[k] = index
@@ -296,22 +338,32 @@ public struct PlasmidAnnotationEngine: Sendable {
             let effectiveMinCov = (refLen < 40) ? fullFeatureCoverageThreshold : minFragmentCoverage
             let minAlignedLen = (refLen < 40) ? min(refLen, 15) : 20
             let sKmers = getSearchKmerIndex(k: k)
+            let mask: UInt64 = (UInt64(1) << (2 * k)) - 1
 
             let refRev = BioSequence.reverseComplement(refFwd)
             let strands: [(strand: String, seq: String)] = [("+", refFwd), ("-", refRev)]
 
             for (strand, patternSeq) in strands {
-                let pChars = Array(patternSeq)
                 let pBytes = Array(patternSeq.utf8)
 
                 var diagSet = Set<Int>()
-                for pPos in 0...(refLen - k) {
-                    let km = String(pChars[pPos..<(pPos + k)])
-                    if let hits = sKmers[km] {
-                        for sPos in hits {
-                            let d = sPos - pPos
-                            if d < queryLen && (d + refLen) > 0 {
-                                diagSet.insert(d)
+                var pRolling: UInt64 = 0
+                var pValidRun = 0
+                for pIdx in 0..<refLen {
+                    let code = baseCode(pBytes[pIdx])
+                    if code < 0 {
+                        pRolling = 0
+                        pValidRun = 0
+                    } else {
+                        pRolling = ((pRolling << 2) | UInt64(code)) & mask
+                        pValidRun += 1
+                        if pValidRun >= k, let hits = sKmers[pRolling] {
+                            let pPos = pIdx - k + 1
+                            for sPos in hits {
+                                let d = sPos - pPos
+                                if d < queryLen && (d + refLen) > 0 {
+                                    diagSet.insert(d)
+                                }
                             }
                         }
                     }

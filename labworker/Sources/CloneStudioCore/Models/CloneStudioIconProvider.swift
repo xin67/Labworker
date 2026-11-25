@@ -364,8 +364,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                     }
                     .font(.system(size: 11, weight: .semibold))
                 }
-                .buttonStyle(.glassProminent)
-                .controlSize(.small)
+                .statusGlassButtonCompat(isProminent: true, controlSize: .small)
                 .help("从 Finder 导入 .dna / .tif / .pdb / .csv / .fasta 并自动直达对应模块")
             }
             
@@ -378,22 +377,20 @@ public struct CloneStudioStatusBarPopoverView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                     Spacer()
-                    GlassEffectContainer(spacing: 6) {
+                    StatusGlassContainerCompat(spacing: 6) {
                         HStack(spacing: 6) {
                             Button("粘贴") {
                                 if let str = NSPasteboard.general.string(forType: .string) {
                                     quickSequence = BioSequence.clean(str)
                                 }
                             }
-                            .buttonStyle(.glass)
-                            .controlSize(.mini)
+                            .statusGlassButtonCompat(isProminent: false, controlSize: .mini)
                             
                             if !quickSequence.isEmpty {
                                 Button("清空") {
                                     quickSequence = ""
                                 }
-                                .buttonStyle(.glass)
-                                .controlSize(.mini)
+                                .statusGlassButtonCompat(isProminent: false, controlSize: .mini)
                             }
                         }
                     }
@@ -432,16 +429,15 @@ public struct CloneStudioStatusBarPopoverView: View {
                         }
                         .font(.system(size: 10.5, weight: .semibold))
                     }
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.mini)
+                    .statusGlassButtonCompat(isProminent: true, controlSize: .mini)
                     .disabled(cleanedSeq.isEmpty)
                 }
             }
             .padding(9)
-            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .statusGlassSurfaceCompat(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             
             // 3. 高频工作台直达（语义化图标，去除旧数字编号）
-            GlassEffectContainer(spacing: 6) {
+            StatusGlassContainerCompat(spacing: 6) {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                     quickModuleButton(.plasmidPool, title: "质粒池", icon: "tray.2.fill", tint: .cyan)
                     quickModuleButton(.singleFragment, title: "单片段", icon: "scissors", tint: .teal)
@@ -462,7 +458,7 @@ public struct CloneStudioStatusBarPopoverView: View {
             Divider().opacity(0.5)
             
             // 4. 极简底栏：主窗口、系统设置、退出
-            GlassEffectContainer(spacing: 8) {
+            StatusGlassContainerCompat(spacing: 8) {
                 HStack(spacing: 8) {
                     Button(action: {
                         activateMainWindow()
@@ -473,8 +469,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                         }
                         .font(.system(size: 11, weight: .medium))
                     }
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.small)
+                    .statusGlassButtonCompat(isProminent: true, controlSize: .small)
                     
                     Button(action: {
                         appState.selectedNav = .settings
@@ -486,8 +481,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                         }
                         .font(.system(size: 11, weight: .medium))
                     }
-                    .buttonStyle(.glass)
-                    .controlSize(.small)
+                    .statusGlassButtonCompat(isProminent: false, controlSize: .small)
                     
                     Spacer()
                     
@@ -522,7 +516,7 @@ public struct CloneStudioStatusBarPopoverView: View {
         }
         .padding(.horizontal, 6.5)
         .padding(.vertical, 2.5)
-        .glassEffect(.clear.tint(tint.opacity(0.24)), in: .capsule)
+        .statusGlassSurfaceCompat(clearTint: tint.opacity(0.24), in: Capsule(style: .continuous))
     }
     
     private func quickModuleButton(_ nav: NavItem, title: String, icon: String, tint: Color) -> some View {
@@ -542,10 +536,9 @@ public struct CloneStudioStatusBarPopoverView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
-            .glassEffect(
-                isSelected
-                    ? .regular.tint(tint.opacity(0.82)).interactive()
-                    : .regular.interactive(),
+            .statusGlassSurfaceCompat(
+                tint: isSelected ? tint.opacity(0.82) : nil,
+                interactive: true,
                 in: RoundedRectangle(cornerRadius: 8, style: .continuous)
             )
         }
@@ -558,5 +551,102 @@ public struct CloneStudioStatusBarPopoverView: View {
             window.makeKeyAndOrderFront(nil)
             break
         }
+    }
+}
+
+private struct StatusGlassContainerCompat<Content: View>: View {
+    let spacing: CGFloat
+    let content: Content
+
+    init(spacing: CGFloat = 8, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    var body: some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) {
+                content
+            }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func statusGlassButtonCompat(isProminent: Bool, controlSize: ControlSize) -> some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            if isProminent {
+                self.buttonStyle(.glassProminent)
+                    .controlSize(controlSize)
+            } else {
+                self.buttonStyle(.glass)
+                    .controlSize(controlSize)
+            }
+        } else {
+            if isProminent {
+                self.buttonStyle(.borderedProminent)
+                    .controlSize(controlSize)
+            } else {
+                self.buttonStyle(.bordered)
+                    .controlSize(controlSize)
+            }
+        }
+        #else
+        if isProminent {
+            self.buttonStyle(.borderedProminent)
+                .controlSize(controlSize)
+        } else {
+            self.buttonStyle(.bordered)
+                .controlSize(controlSize)
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    func statusGlassSurfaceCompat<S: Shape>(
+        tint: Color? = nil,
+        clearTint: Color? = nil,
+        interactive: Bool = false,
+        in shape: S
+    ) -> some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            if let clearTint {
+                self.glassEffect(.clear.tint(clearTint), in: shape)
+            } else if let tint {
+                self.glassEffect(interactive ? .regular.tint(tint).interactive() : .regular.tint(tint), in: shape)
+            } else {
+                self.glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
+            }
+        } else {
+            self.background {
+                if let clearTint {
+                    shape.fill(clearTint.opacity(0.6))
+                } else if let tint {
+                    shape.fill(tint)
+                } else {
+                    shape.fill(.regularMaterial)
+                }
+            }
+        }
+        #else
+        self.background {
+            if let clearTint {
+                shape.fill(clearTint.opacity(0.6))
+            } else if let tint {
+                shape.fill(tint)
+            } else {
+                shape.fill(.regularMaterial)
+            }
+        }
+        #endif
     }
 }

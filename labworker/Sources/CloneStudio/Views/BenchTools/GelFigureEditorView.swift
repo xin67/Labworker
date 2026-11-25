@@ -31,6 +31,7 @@ public struct GelFigureEditorView: View {
     @State private var showBandSizeOverlay: Bool = true
     @State private var showLadderRuler: Bool = true
     @State private var sourceImageURL: URL? = nil
+    @State private var showDiagnosticDigestSheet: Bool = false
     
     public init() {}
     
@@ -62,7 +63,11 @@ public struct GelFigureEditorView: View {
     }
     
     private var commonDigestEnzymes: [String] {
-        ["BamHI", "EcoRI", "HindIII", "XhoI", "NdeI", "SalI", "KpnI", "XbaI", "NotI", "BsaI", "BsmBI", "NheI", "SpeI", "PstI", "SmaI"]
+        var base = DiagnosticDigestEngine.defaultDiagnosticEnzymeNames
+        for extra in ["BsaI", "BsmBI", "BbsI"] where !base.contains(extra) {
+            base.append(extra)
+        }
+        return base
     }
     
     private var virtualLaneCount: Int {
@@ -173,6 +178,24 @@ public struct GelFigureEditorView: View {
         }
         .onChange(of: plasmidPool.items.count) { _, _ in
             syncSelectedPlasmidID()
+        }
+        .sheet(isPresented: $showDiagnosticDigestSheet) {
+            DiagnosticDigestSheet(
+                initialEmptyPlasmidID: plasmidPool.items.first?.id,
+                initialRecombinantPlasmidID: (selectedPlasmidID == "__demo__" ? plasmidPool.items.dropFirst().first?.id : selectedPlasmidID),
+                onApplyToGel: { enzymeNames in
+                    if let e1 = enzymeNames.first {
+                        selectedEnzyme1 = e1
+                    }
+                    if enzymeNames.count >= 2 {
+                        selectedEnzyme2 = enzymeNames[1]
+                    } else {
+                        selectedEnzyme2 = Self.singleCutOption
+                    }
+                    predictionSource = .plasmidDigest
+                    injectVirtualDigestLaneFromPool()
+                }
+            )
         }
     }
     
@@ -393,6 +416,15 @@ public struct GelFigureEditorView: View {
                         help: "按当前质粒与内切酶叠加理论酶切预测道"
                     ) {
                         injectVirtualDigestLaneFromPool()
+                    }
+
+                    StudioActionPillButton(
+                        title: "智能推荐",
+                        icon: "wand.and.stars",
+                        tint: .purple,
+                        help: "对比空载与重组质粒，推荐最佳鉴定内切酶并套用到电泳对照"
+                    ) {
+                        showDiagnosticDigestSheet = true
                     }
                     
                     if plasmidPool.items.isEmpty {

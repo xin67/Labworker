@@ -695,7 +695,7 @@ public struct SettingsView: View {
                 liquidGlassScenicBackdrop
 
                 // 顶部悬浮 Liquid Glass 预览控件组（实时响应强度滑块与系统同步值）
-                GlassEffectContainer(spacing: 8) {
+                StudioGlassContainerCompat(spacing: 8) {
                     HStack(spacing: 8) {
                         HStack(spacing: 10) {
                             Image(systemName: "square.and.arrow.up")
@@ -706,12 +706,10 @@ public struct SettingsView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 12)
                         .frame(height: 28)
-                        .glassEffect(
-                            StudioGlassSupport.glassWithStrength(
-                                strength,
-                                appState: appState,
-                                interactive: false
-                            ),
+                        .studioGlassSurfaceCompat(
+                            appState: appState,
+                            interactive: false,
+                            rawStrengthOverride: strength,
                             in: Capsule(style: .continuous)
                         )
                         .overlay(
@@ -723,12 +721,10 @@ public struct SettingsView: View {
                             .font(.system(size: 11.5, weight: .medium))
                             .foregroundColor(.white)
                             .frame(width: 28, height: 28)
-                            .glassEffect(
-                                StudioGlassSupport.glassWithStrength(
-                                    strength,
-                                    appState: appState,
-                                    interactive: false
-                                ),
+                            .studioGlassSurfaceCompat(
+                                appState: appState,
+                                interactive: false,
+                                rawStrengthOverride: strength,
                                 in: Circle()
                             )
                             .overlay(
@@ -747,12 +743,10 @@ public struct SettingsView: View {
                         .padding(.horizontal, 10)
                         .frame(height: 28)
                         .frame(maxWidth: .infinity)
-                        .glassEffect(
-                            StudioGlassSupport.glassWithStrength(
-                                strength,
-                                appState: appState,
-                                interactive: false
-                            ),
+                        .studioGlassSurfaceCompat(
+                            appState: appState,
+                            interactive: false,
+                            rawStrengthOverride: strength,
                             in: Capsule(style: .continuous)
                         )
                         .overlay(

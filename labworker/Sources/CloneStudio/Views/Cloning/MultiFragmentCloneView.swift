@@ -1,10 +1,16 @@
 import CloneStudioCore
 import SwiftUI
 
-/// 多片段无缝克隆引物设计界面 (支持载体与每个片段分别载入 .dna 解析特征/酶切位点供选择)
+/// 多片段无缝克隆引物设计界面 (支持载体与每个片段分别载入 .dna 解析特征/酶切位点供选择，并支持 Type IIS Golden Gate 模式)
 public struct MultiFragmentCloneView: View {
+    private enum MultiAssemblyMode: String, CaseIterable {
+        case gibson = "同源重组 (Gibson / In-Fusion)"
+        case goldenGate = "Golden Gate (Type IIS)"
+    }
+
     @ObservedObject private var vm = WorkspaceSessionManager.shared.multiFragmentVM
     @ObservedObject private var appState = AppState.shared
+    @State private var assemblyMode: MultiAssemblyMode = .gibson
     
     public init() {}
     
@@ -71,8 +77,19 @@ public struct MultiFragmentCloneView: View {
                 .action(id: "clear_multi", title: "", icon: "trash", tint: .red, help: "清空当前多片段配置", action: vm.clear)
             ]
         ) {
-            AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {
+            AdaptiveTwoColumnWorkspace(hasRight: assemblyMode == .gibson && previewData != nil && appState.showPlasmidPreview) {
                 VStack(alignment: .leading, spacing: 12) {
+                    StudioSegmentedPicker(
+                        selection: $assemblyMode,
+                        options: [
+                            StudioSegmentedOption(value: MultiAssemblyMode.gibson, title: MultiAssemblyMode.gibson.rawValue, tint: .green),
+                            StudioSegmentedOption(value: MultiAssemblyMode.goldenGate, title: MultiAssemblyMode.goldenGate.rawValue, tint: .orange)
+                        ]
+                    )
+
+                    if assemblyMode == .goldenGate {
+                        GoldenGatePanelView(vm: vm)
+                    } else {
                     // 0. 多片段同源重组载体长度与各插入片段长度汇总栏
                     multiHomologousLengthSummaryBar
                         // 1. 载体解析与克隆位点选择面板
@@ -553,6 +570,7 @@ public struct MultiFragmentCloneView: View {
                             compareLaneTitle: "显示组装体系混合对照",
                             buildSimulation: multiGelSimulation
                         )
+                    }
                     }
                 } right: {
                     if let pData = previewData {

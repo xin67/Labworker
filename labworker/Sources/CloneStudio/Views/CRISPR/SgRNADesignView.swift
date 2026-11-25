@@ -1,13 +1,37 @@
 import SwiftUI
 import CloneStudioCore
 
-/// CRISPR/Cas9 sgRNA 文库检索、内嵌三源在线比对与引物设计界面
+/// CRISPR/Cas9 sgRNA 文库检索、内嵌三源在线比对、引物设计及 HDR Knock-in 供体工作台
 public struct SgRNADesignView: View {
+    private enum SgRNAWorkspaceMode: String, CaseIterable {
+        case targetDesign = "sgRNA 靶点检索与引物"
+        case hdrDonor = "HDR Knock-in 供体设计"
+    }
+
     @ObservedObject private var vm = WorkspaceSessionManager.shared.sgRNAVM
     @ObservedObject private var onlineVM = WorkspaceSessionManager.shared.chopchopVM
     @ObservedObject private var appState = AppState.shared
-    
+    @State private var workspaceMode: SgRNAWorkspaceMode = .targetDesign
+
     public init() {}
+
+    private var activeSpacerForHDR: String? {
+        switch vm.sourceMode {
+        case .custom:
+            let cleaned = BioSequence.clean(vm.customSequence)
+            return cleaned.isEmpty ? nil : cleaned
+        case .onlineCompare:
+            if let sel = onlineVM.sortedTargets.first(where: { onlineVM.selectedTargetIDs.contains($0.id) }) {
+                return sel.spacer
+            }
+            return onlineVM.sortedTargets.first?.spacer
+        case .library:
+            if let firstSel = vm.searchResults.first(where: { vm.selectedTargetIDs.contains($0.id) }) {
+                return firstSel.sequence
+            }
+            return vm.searchResults.first?.sequence
+        }
+    }
     
     private var previewTarget: (gene: String, seq: String)? {
         guard !vm.generatedPrimers.isEmpty else { return nil }
@@ -69,7 +93,7 @@ public struct SgRNADesignView: View {
         StudioPageLayout(
             title: "CRISPR/Cas9 sgRNA 设计",
             toolbar: [
-                .plasmidToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil),
+                .plasmidToggle(isOn: $appState.showPlasmidPreview, isAvailable: workspaceMode == .targetDesign && previewData != nil),
                 .picker(
                     id: "sgrna_species",
                     label: "物种",
@@ -126,8 +150,19 @@ public struct SgRNADesignView: View {
                 }
             ]
         ) {
-            AdaptiveTwoColumnWorkspace(hasRight: previewData != nil && appState.showPlasmidPreview) {
+            AdaptiveTwoColumnWorkspace(hasRight: workspaceMode == .targetDesign && previewData != nil && appState.showPlasmidPreview) {
                 VStack(alignment: .leading, spacing: 12) {
+                    StudioSegmentedPicker(
+                        selection: $workspaceMode,
+                        options: [
+                            StudioSegmentedOption(value: SgRNAWorkspaceMode.targetDesign, title: SgRNAWorkspaceMode.targetDesign.rawValue, tint: .cyan),
+                            StudioSegmentedOption(value: SgRNAWorkspaceMode.hdrDonor, title: SgRNAWorkspaceMode.hdrDonor.rawValue, tint: .indigo)
+                        ]
+                    )
+
+                    if workspaceMode == .hdrDonor {
+                        HDRDonorPanelView(externalSelectedSpacer: activeSpacerForHDR)
+                    } else {
                     // 1. 靶点筛选与在线对比
                     StudioCard(title: "靶点筛选与对比") {
                         StudioSegmentedPicker(
@@ -227,6 +262,7 @@ public struct SgRNADesignView: View {
                                 }
                             }
                         }
+                    }
                     }
                 }
             } right: {

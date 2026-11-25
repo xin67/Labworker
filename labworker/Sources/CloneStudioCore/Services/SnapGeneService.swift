@@ -137,6 +137,28 @@ public struct SnapGeneFileInfo: Codable, Sendable {
     public let features: [SnapGeneFeature]
     public let primersCount: Int
     public let primers: [SnapGenePrimer]
+
+    public init(
+        filePath: String,
+        fileName: String,
+        sequence: String,
+        length: Int,
+        isCircular: Bool,
+        featuresCount: Int,
+        features: [SnapGeneFeature],
+        primersCount: Int = 0,
+        primers: [SnapGenePrimer] = []
+    ) {
+        self.filePath = filePath
+        self.fileName = fileName
+        self.sequence = sequence
+        self.length = length
+        self.isCircular = isCircular
+        self.featuresCount = featuresCount
+        self.features = features
+        self.primersCount = primersCount
+        self.primers = primers
+    }
     
     /// 返回具有明确结合位点坐标的引物列表（按起始坐标升序）
     public var validBoundPrimers: [SnapGenePrimer] {

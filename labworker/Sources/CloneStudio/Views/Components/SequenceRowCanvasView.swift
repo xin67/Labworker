@@ -549,7 +549,7 @@ public struct SequenceRowCanvasView: View {
     @ViewBuilder
     private var viewportSwitcherCapsules: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            GlassEffectContainer(spacing: 4) {
+            StudioGlassContainerCompat(spacing: 4) {
                 HStack(spacing: 4) {
                     if !fullSequence.isEmpty {
                         let isFull = (selectedWindowIndex == -1)
@@ -596,7 +596,7 @@ public struct SequenceRowCanvasView: View {
     
     // MARK: - 左侧垂直工具栏
     private var leftVerticalToolbar: some View {
-        GlassEffectContainer(spacing: 6) {
+        StudioGlassContainerCompat(spacing: 6) {
             VStack(spacing: 6) {
             toolbarIconBtn(
                 icon: "cursorarrow.rays",

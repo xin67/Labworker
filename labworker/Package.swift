@@ -1,10 +1,10 @@
-// swift-tools-version: 6.4
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
     name: "CloneStudio",
     platforms: [
-        .macOS(.v27)
+        .macOS(.v14)
     ],
     products: [
         .library(

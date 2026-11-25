@@ -7,6 +7,7 @@ inside `Sources/CloneStudioCore/Resources/Libraries.sqlite` without touching
 the existing `sgrna` (123,434 rows) or `shrna` (81,537 rows) tables.
 """
 
+import json
 import os
 import sqlite3
 import sys
@@ -14,6 +15,8 @@ import sys
 sys.dont_write_bytecode = True
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CATALOG_PATH = os.path.join(SCRIPT_DIR, "plasmid_features_catalog.json")
 DB_PATH = os.path.join(BASE_DIR, "Sources/CloneStudioCore/Resources/Libraries.sqlite")
 
 CODON_TABLE = {
@@ -298,11 +301,41 @@ def validate_seed_catalog() -> None:
     assert len(diffs) == 1, f"Expected 1 canonical SNP between pUC ori and ColE1 ori, found {diffs}"
 
 
+def load_extended_catalog() -> list:
+    if not os.path.exists(CATALOG_PATH):
+        return []
+    with open(CATALOG_PATH, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    raw_items = payload.get("features", [])
+    seed_names_lower = {row[0].lower() for row in PLASMID_FEATURES_SEED}
+    used_names_lower = set(seed_names_lower)
+    rows = []
+    for item in raw_items:
+        name = str(item["name"]).strip()
+        cat = str(item["category"]).strip()
+        seq = str(item["sequence"]).strip().upper()
+        direction = int(item.get("direction", 1))
+        color_hex = str(item["color_hex"]).strip()
+        if not name or name.lower() in used_names_lower:
+            continue
+        if not seq or not (set(seq) <= {"A", "C", "G", "T"}):
+            continue
+        if direction not in (-1, 0, 1):
+            direction = 1
+        if not (color_hex.startswith("#") and len(color_hex) == 7):
+            color_hex = "#6B7280"
+        used_names_lower.add(name.lower())
+        rows.append((name, cat, seq, direction, color_hex))
+    return rows
+
+
 def seed_database(db_path: str = DB_PATH) -> int:
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"Libraries.sqlite not found at: {db_path}")
 
     validate_seed_catalog()
+    extended_rows = load_extended_catalog()
+    all_rows = list(PLASMID_FEATURES_SEED) + extended_rows
 
     conn = sqlite3.connect(db_path)
     try:
@@ -329,7 +362,7 @@ def seed_database(db_path: str = DB_PATH) -> int:
             INSERT INTO plasmid_features (name, category, sequence, direction, color_hex)
             VALUES (?, ?, ?, ?, ?);
             """,
-            PLASMID_FEATURES_SEED,
+            all_rows,
         )
         conn.commit()
 
@@ -338,7 +371,8 @@ def seed_database(db_path: str = DB_PATH) -> int:
         pf_cnt = cur.execute("SELECT COUNT(*) FROM plasmid_features;").fetchone()[0]
         assert sg_cnt == 123434, f"sgrna count altered unexpectedly: {sg_cnt}"
         assert sh_cnt == 81537, f"shrna count altered unexpectedly: {sh_cnt}"
-        assert pf_cnt == len(PLASMID_FEATURES_SEED)
+        assert pf_cnt == len(all_rows), f"plasmid_features count mismatch: {pf_cnt} != {len(all_rows)}"
+        assert pf_cnt >= len(PLASMID_FEATURES_SEED)
         return pf_cnt
     finally:
         conn.close()
@@ -346,4 +380,4 @@ def seed_database(db_path: str = DB_PATH) -> int:
 
 if __name__ == "__main__":
     count = seed_database()
-    print(f"✅ Seeded {count} standard plasmid features into {DB_PATH}")
+    print(f"✅ Seeded {count} plasmid features into {DB_PATH}")

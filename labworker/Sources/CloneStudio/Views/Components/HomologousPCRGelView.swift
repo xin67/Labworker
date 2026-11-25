@@ -775,7 +775,7 @@ private struct AgaroseSimulatedSlabCanvas: View {
         VStack(alignment: .leading, spacing: 0) {
             Color.clear
                 .frame(height: 0)
-                .onGeometryChange(for: CGFloat.self) { proxy in
+                .studioOnGeometryChangeCompat(for: CGFloat.self) { proxy in
                     proxy.size.width
                 } action: { w in
                     if w > 10 && abs(containerWidth - w) > 1 {

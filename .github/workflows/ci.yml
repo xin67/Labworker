@@ -9,15 +9,20 @@ on:
 jobs:
   verify:
     name: Swift + Python Cross-Engine Verification
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Show Swift and Python toolchains
         run: |
+          xcodebuild -version || true
           swift --version
           /usr/bin/python3 --version
+
+      - name: Build all Swift targets (CloneStudioCore, CloneStudio, CloneStudioVerify)
+        working-directory: labworker
+        run: swift build --disable-sandbox
 
       - name: Run Python shared test vectors and tamper check
         working-directory: labworker

@@ -1539,7 +1539,7 @@ public struct PlasmidPreviewPanel: View {
                     .foregroundColor(.secondary)
                 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    GlassEffectContainer(spacing: 4) {
+                    StudioGlassContainerCompat(spacing: 4) {
                         HStack(spacing: 4) {
                             ForEach(data.features) { feat in
                                 let isSel = (selectedFeatureID == feat.id)
@@ -1604,7 +1604,7 @@ public struct PlasmidPreviewPanel: View {
         .background {
             ZStack {
                 Color.clear
-                    .onGeometryChange(for: Int.self) { proxy in
+                    .studioOnGeometryChangeCompat(for: Int.self) { proxy in
                         Int(proxy.size.width.rounded())
                     } action: { width in
                         guard width > 80 else { return }
@@ -1773,7 +1773,7 @@ public struct PlasmidPreviewPanel: View {
 
     @ViewBuilder
     private func circularToolControls(compactCamera: Bool) -> some View {
-        GlassEffectContainer(spacing: 5) {
+        StudioGlassContainerCompat(spacing: 5) {
             HStack(spacing: 5) {
                 circularToolbarBtn(icon: "cursorarrow", isActive: toolMode == .select, tooltip: "Select Mode") {
                     toolMode = .select

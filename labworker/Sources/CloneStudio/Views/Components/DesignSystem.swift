@@ -61,7 +61,12 @@ public enum StudioGlassSupport {
     /// 支持 HDR 扩展动态范围的颜色暴露调节（开启 HDR 高光时提升高光余量，关闭时回归标准 SDR）
     public static func hdrColor(_ base: Color, exposure: Double = 0.28, appState: AppState) -> Color {
         guard appState.enableAmbientGlassGlow, exposure > 0.001 else { return base }
-        return base.exposureAdjust(exposure * hdrGain)
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            return base.exposureAdjust(exposure * hdrGain)
+        }
+        #endif
+        return base
     }
 
     /// 针对亮色/暗色工作区卡片优化的 HDR 玻璃高光描边（确保纯白/纯黑静卡上玻璃轮廓依然锐利通透）
@@ -88,7 +93,9 @@ public enum StudioGlassSupport {
         return Color.white.opacity(isLight ? 0.55 : 0.22)
     }
 
+    #if compiler(>=6.2)
     /// 构建遵循连续 Liquid Glass 强度 (`effectiveLiquidGlassStrength` 0.0~1.0)、系统设置同步及 HDR 浸染规则的原生 SwiftUI `Glass`
+    @available(macOS 26.0, *)
     public static func buttonGlass(
         appState: AppState,
         tint: Color? = nil,
@@ -108,6 +115,7 @@ public enum StudioGlassSupport {
         )
     }
 
+    @available(macOS 26.0, *)
     public static func glassWithStrength(
         _ rawStrength: Double,
         appState: AppState,
@@ -164,13 +172,100 @@ public enum StudioGlassSupport {
         }
         return (interactive && !disabled) ? configured.interactive() : configured
     }
+    #endif
 
     public static func dynamicRange(for appState: AppState) -> Image.DynamicRange {
         appState.enableAmbientGlassGlow ? .constrainedHigh : .standard
     }
 }
 
+/// macOS 14/15 磨砂玻璃按钮回退样式（macOS 26+ 自动使用原生 Liquid Glass）
+private struct StudioLegacyMaterialButtonStyle: ButtonStyle {
+    let appState: AppState
+    let tint: Color?
+    let isProminent: Bool
+    let isSelected: Bool
+    let isDisabled: Bool
+    let isCircle: Bool
+    let controlSize: ControlSize
+    let fillWidth: Bool
+    var showMenuIndicator: Bool = false
+
+    private var controlHeight: CGFloat {
+        switch controlSize {
+        case .mini: return 18
+        case .small: return 20
+        case .large: return 28
+        case .extraLarge: return 34
+        default: return 24
+        }
+    }
+
+    private var horizontalPadding: CGFloat {
+        switch controlSize {
+        case .mini: return 7
+        case .small: return 8
+        case .large: return isCircle ? 0 : 11
+        case .extraLarge: return 14
+        default: return 10
+        }
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        let isLight = appState.isLightAppearance
+        let isActiveHighlight = (isProminent || isSelected) && !isDisabled
+        let resolvedTint = tint ?? appState.accentTheme.color
+        let borderColor = StudioGlassSupport.specularRimColor(
+            isLight: isLight,
+            tint: isActiveHighlight ? resolvedTint : nil,
+            prominent: isActiveHighlight,
+            selected: false,
+            disabled: isDisabled,
+            appState: appState
+        )
+        let fgColor: Color = {
+            if isDisabled {
+                return .secondary.opacity(0.60)
+            } else if isActiveHighlight {
+                return .white
+            } else {
+                return tint ?? .primary
+            }
+        }()
+        let shape = isCircle ? AnyShape(Circle()) : AnyShape(Capsule(style: .continuous))
+
+        return HStack(spacing: isCircle ? 0 : (controlSize == .large ? 4.5 : 4)) {
+            configuration.label
+            if showMenuIndicator {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: controlSize == .small ? 8 : 8.5, weight: .bold))
+                    .opacity(0.7)
+            }
+        }
+        .font(.system(size: controlSize == .small ? 11 : 12, weight: isActiveHighlight ? .semibold : .medium))
+        .foregroundStyle(fgColor)
+        .padding(.horizontal, isCircle ? 0 : horizontalPadding)
+        .frame(minWidth: isCircle ? controlHeight : nil, maxWidth: fillWidth ? .infinity : nil)
+        .frame(height: controlHeight)
+        .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+        .background {
+            if isActiveHighlight {
+                shape.fill(resolvedTint.opacity(isLight ? 0.88 : 0.80))
+            } else {
+                shape.fill(.regularMaterial)
+            }
+        }
+        .overlay {
+            shape.stroke(borderColor, lineWidth: 0.75)
+        }
+        .contentShape(shape)
+        .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+#if compiler(>=6.2)
 /// 当用户手动脱离“跟随系统设置”调整 Liquid Glass 滑块时，或用于修复 macOS 27 `Menu` 忽略 `.buttonStyle(.glass)` 时的原生 Glass ButtonStyle
+@available(macOS 26.0, *)
 private struct StudioManualGlassButtonStyle: ButtonStyle {
     let appState: AppState
     let tint: Color?
@@ -262,6 +357,7 @@ private struct StudioManualGlassButtonStyle: ButtonStyle {
         .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
+#endif
 
 private struct StudioJoinedSegmentButtonStyle: ButtonStyle {
     let isLight: Bool
@@ -288,6 +384,31 @@ private struct StudioJoinedSegmentButtonStyle: ButtonStyle {
     }
 }
 
+/// 跨 macOS 14/15/26+ 兼容的玻璃组容器（macOS 26+ 使用原生 `GlassEffectContainer`，低版本直接透传布局）
+public struct StudioGlassContainerCompat<Content: View>: View {
+    public let spacing: CGFloat
+    public let content: Content
+
+    public init(spacing: CGFloat = 8, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    public var body: some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) {
+                content
+            }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
 private struct StudioNativeOrManualGlassButtonModifier: ViewModifier {
     @ObservedObject private var appState = AppState.shared
     let tint: Color?
@@ -299,41 +420,67 @@ private struct StudioNativeOrManualGlassButtonModifier: ViewModifier {
     let fillWidth: Bool
 
     func body(content: Content) -> some View {
-        if appState.followSystemLiquidGlass {
-            let isActiveHighlight = (isProminent || isSelected) && !isDisabled
-            Group {
-                if isActiveHighlight {
-                    content
-                        .buttonStyle(.glassProminent)
-                        .tint(tint ?? appState.accentTheme.color)
-                } else {
-                    // 非高亮按钮统一保持通透中性 `.glass`，禁止传彩色 `.tint` 淹没前景色
-                    content
-                        .buttonStyle(.glass)
-                        .tint(nil)
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            if appState.followSystemLiquidGlass {
+                let isActiveHighlight = (isProminent || isSelected) && !isDisabled
+                Group {
+                    if isActiveHighlight {
+                        content
+                            .buttonStyle(.glassProminent)
+                            .tint(tint ?? appState.accentTheme.color)
+                    } else {
+                        // 非高亮按钮统一保持通透中性 `.glass`，禁止传彩色 `.tint` 淹没前景色
+                        content
+                            .buttonStyle(.glass)
+                            .tint(nil)
+                    }
                 }
-            }
-            .controlSize(controlSize)
-            .buttonBorderShape(isCircle ? .circle : .capsule)
-            .disabled(isDisabled)
-            .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
-        } else {
-            content
-                .buttonStyle(
-                    StudioManualGlassButtonStyle(
-                        appState: appState,
-                        tint: tint,
-                        isProminent: isProminent,
-                        isSelected: isSelected,
-                        isDisabled: isDisabled,
-                        isCircle: isCircle,
-                        controlSize: controlSize,
-                        fillWidth: fillWidth
-                    )
-                )
+                .controlSize(controlSize)
+                .buttonBorderShape(isCircle ? .circle : .capsule)
                 .disabled(isDisabled)
                 .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
+            } else {
+                content
+                    .buttonStyle(
+                        StudioManualGlassButtonStyle(
+                            appState: appState,
+                            tint: tint,
+                            isProminent: isProminent,
+                            isSelected: isSelected,
+                            isDisabled: isDisabled,
+                            isCircle: isCircle,
+                            controlSize: controlSize,
+                            fillWidth: fillWidth
+                        )
+                    )
+                    .disabled(isDisabled)
+                    .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
+            }
+        } else {
+            legacyBody(content: content)
         }
+        #else
+        legacyBody(content: content)
+        #endif
+    }
+
+    private func legacyBody(content: Content) -> some View {
+        content
+            .buttonStyle(
+                StudioLegacyMaterialButtonStyle(
+                    appState: appState,
+                    tint: tint,
+                    isProminent: isProminent,
+                    isSelected: isSelected,
+                    isDisabled: isDisabled,
+                    isCircle: isCircle,
+                    controlSize: controlSize,
+                    fillWidth: fillWidth
+                )
+            )
+            .disabled(isDisabled)
+            .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
     }
 }
 
@@ -346,11 +493,42 @@ private struct StudioNativeOrManualGlassMenuModifier: ViewModifier {
     let hideIndicator: Bool
 
     func body(content: Content) -> some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            content
+                // macOS 27 `Menu` 会忽略 `.buttonStyle(.glass)` 并回退为不透明灰底，改用 `.menuStyle(.button)` + 原生 `.glassEffect` ButtonStyle 确保材质与命中区域一致
+                .menuStyle(.button)
+                .buttonStyle(
+                    StudioManualGlassButtonStyle(
+                        appState: appState,
+                        tint: tint,
+                        isProminent: false,
+                        isSelected: false,
+                        isDisabled: isDisabled,
+                        isCircle: isCircle,
+                        controlSize: controlSize,
+                        fillWidth: false,
+                        usePureSystemGlass: appState.followSystemLiquidGlass,
+                        showMenuIndicator: !hideIndicator
+                    )
+                )
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .disabled(isDisabled)
+                .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
+        } else {
+            legacyMenuBody(content: content)
+        }
+        #else
+        legacyMenuBody(content: content)
+        #endif
+    }
+
+    private func legacyMenuBody(content: Content) -> some View {
         content
-            // macOS 27 `Menu` 会忽略 `.buttonStyle(.glass)` 并回退为不透明灰底，改用 `.menuStyle(.button)` + 原生 `.glassEffect` ButtonStyle 确保材质与命中区域一致
             .menuStyle(.button)
             .buttonStyle(
-                StudioManualGlassButtonStyle(
+                StudioLegacyMaterialButtonStyle(
                     appState: appState,
                     tint: tint,
                     isProminent: false,
@@ -359,7 +537,6 @@ private struct StudioNativeOrManualGlassMenuModifier: ViewModifier {
                     isCircle: isCircle,
                     controlSize: controlSize,
                     fillWidth: false,
-                    usePureSystemGlass: appState.followSystemLiquidGlass,
                     showMenuIndicator: !hideIndicator
                 )
             )
@@ -384,24 +561,46 @@ private struct StudioJoinedGlassCapsuleModifier: ViewModifier {
             selected: selected,
             appState: appState
         )
-        GlassEffectContainer(spacing: 0) {
-            content
-                .glassEffect(
-                    StudioGlassSupport.buttonGlass(
-                        appState: appState,
-                        tint: tint,
-                        selected: selected,
-                        interactive: true
-                    ),
-                    in: Capsule(style: .continuous)
-                )
-                .overlay(
-                    Capsule(style: .continuous)
-                        .stroke(rimColor, lineWidth: strokeWidth)
-                        .allowsHitTesting(false)
-                )
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer(spacing: 0) {
+                content
+                    .glassEffect(
+                        StudioGlassSupport.buttonGlass(
+                            appState: appState,
+                            tint: tint,
+                            selected: selected,
+                            interactive: true
+                        ),
+                        in: Capsule(style: .continuous)
+                    )
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(rimColor, lineWidth: strokeWidth)
+                            .allowsHitTesting(false)
+                    )
+            }
+            .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
+        } else {
+            legacyCapsule(content: content, rimColor: rimColor)
         }
-        .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
+        #else
+        legacyCapsule(content: content, rimColor: rimColor)
+        #endif
+    }
+
+    private func legacyCapsule(content: Content, rimColor: Color) -> some View {
+        content
+            .background(
+                Capsule(style: .continuous)
+                    .fill(.regularMaterial)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(rimColor, lineWidth: strokeWidth)
+                    .allowsHitTesting(false)
+            )
+            .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
     }
 }
 
@@ -416,7 +615,7 @@ public extension View {
         }
     }
 
-    /// 统一采用 macOS 27 原生 `.buttonStyle(.glass / .glassProminent)`；当用户在设置中手动覆写玻璃强度滑块时自动叠加对应光学强度
+    /// 统一采用 macOS 26+ 原生 `.buttonStyle(.glass / .glassProminent)`；macOS 14/15 自动降级为 `.regularMaterial` 胶囊按钮
     func studioGlassButton(
         tint: Color? = nil,
         isProminent: Bool = false,
@@ -439,7 +638,7 @@ public extension View {
         )
     }
 
-    /// 统一采用 macOS 27 原生 `.buttonStyle(.glass)` 驱动下拉菜单；手动滑块模式下自动衔接对应光学强度
+    /// 统一采用 macOS 26+ 原生 `.glassEffect` 驱动下拉菜单；macOS 14/15 自动回退磨砂材质
     func studioGlassMenu(
         tint: Color? = nil,
         isDisabled: Bool = false,
@@ -458,7 +657,7 @@ public extension View {
         )
     }
 
-    /// 连体胶囊组件（工具栏合并按钮、质粒文件控件等）统一的 macOS 27 Liquid Glass 容器包裹
+    /// 连体胶囊组件（工具栏合并按钮、质粒文件控件等）统一的玻璃容器包裹
     func studioJoinedGlassCapsule(
         tint: Color? = nil,
         selected: Bool = false,
@@ -471,6 +670,119 @@ public extension View {
                 strokeWidth: strokeWidth
             )
         )
+    }
+
+    /// 跨版本玻璃表面修饰符：macOS 26+ 使用原生 `.glassEffect`，macOS 14/15 回退 `.regularMaterial`
+    @ViewBuilder
+    func studioGlassSurfaceCompat<S: Shape>(
+        appState: AppState,
+        tint: Color? = nil,
+        prominent: Bool = false,
+        selected: Bool = false,
+        disabled: Bool = false,
+        interactive: Bool = true,
+        rawStrengthOverride: Double? = nil,
+        in shape: S
+    ) -> some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            if let override = rawStrengthOverride {
+                self.glassEffect(
+                    StudioGlassSupport.glassWithStrength(
+                        override,
+                        appState: appState,
+                        tint: tint,
+                        prominent: prominent,
+                        selected: selected,
+                        disabled: disabled,
+                        interactive: interactive
+                    ),
+                    in: shape
+                )
+            } else {
+                self.glassEffect(
+                    StudioGlassSupport.buttonGlass(
+                        appState: appState,
+                        tint: tint,
+                        prominent: prominent,
+                        selected: selected,
+                        disabled: disabled,
+                        interactive: interactive
+                    ),
+                    in: shape
+                )
+            }
+        } else {
+            self.background {
+                if (prominent || selected), !disabled {
+                    shape.fill((tint ?? appState.accentTheme.color).opacity(appState.isLightAppearance ? 0.85 : 0.78))
+                } else {
+                    shape.fill(.regularMaterial)
+                }
+            }
+        }
+        #else
+        self.background {
+            if (prominent || selected), !disabled {
+                shape.fill((tint ?? appState.accentTheme.color).opacity(appState.isLightAppearance ? 0.85 : 0.78))
+            } else {
+                shape.fill(.regularMaterial)
+            }
+        }
+        #endif
+    }
+
+    /// 跨版本顶部吸顶模糊顶栏：macOS 26+ 使用 `.scrollEdgeEffectStyle(.soft)` + `.safeAreaBar`，macOS 14/15 回退 `.safeAreaInset`
+    @ViewBuilder
+    func studioSafeAreaTopBarCompat<BarContent: View>(
+        @ViewBuilder bar: @escaping () -> BarContent
+    ) -> some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            self
+                .scrollEdgeEffectStyle(.soft, for: .top)
+                .safeAreaBar(edge: .top, spacing: 0) {
+                    bar()
+                }
+        } else {
+            self.safeAreaInset(edge: .top, spacing: 0) {
+                bar()
+                    .background(.bar)
+                    .overlay(alignment: .bottom) {
+                        Divider().opacity(0.6)
+                    }
+            }
+        }
+        #else
+        self.safeAreaInset(edge: .top, spacing: 0) {
+            bar()
+                .background(.bar)
+                .overlay(alignment: .bottom) {
+                    Divider().opacity(0.6)
+                }
+        }
+        #endif
+    }
+
+    /// 跨版本几何尺寸监听：macOS 15+ 使用 `.onGeometryChange`，macOS 14 使用 `GeometryReader` 回退
+    @ViewBuilder
+    func studioOnGeometryChangeCompat<T: Equatable & Sendable>(
+        for type: T.Type,
+        of transform: @escaping @Sendable (GeometryProxy) -> T,
+        action: @escaping (T) -> Void
+    ) -> some View {
+        if #available(macOS 15.0, *) {
+            self.onGeometryChange(for: type, of: transform, action: action)
+        } else {
+            self.background {
+                GeometryReader { proxy in
+                    let val = transform(proxy)
+                    Color.clear
+                        .onAppear { action(val) }
+                        .onChange(of: val) { _, newVal in action(newVal) }
+                }
+            }
+        }
     }
 }
 
@@ -1401,7 +1713,7 @@ public struct StudioOverflowToolbar: View {
         
         Color.clear
             .frame(minWidth: 34, maxWidth: .infinity, minHeight: 30, maxHeight: 30)
-            .onGeometryChange(for: CGFloat.self) { proxy in
+            .studioOnGeometryChangeCompat(for: CGFloat.self) { proxy in
                 ceil(proxy.size.width)
             } action: { newWidth in
                 let clamped = max(0, newWidth)
@@ -1413,7 +1725,7 @@ public struct StudioOverflowToolbar: View {
                 measurementOverlay(for: list)
             }
             .overlay(alignment: .trailing) {
-                GlassEffectContainer(spacing: 8) {
+                StudioGlassContainerCompat(spacing: 8) {
                     HStack(spacing: 8) {
                         ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
                             renderRun(run)
@@ -1435,7 +1747,7 @@ public struct StudioOverflowToolbar: View {
             ForEach(list) { item in
                 intrinsicItemView(item)
                     .fixedSize(horizontal: true, vertical: false)
-                    .onGeometryChange(for: CGFloat.self) { proxy in
+                    .studioOnGeometryChangeCompat(for: CGFloat.self) { proxy in
                         ceil(proxy.size.width)
                     } action: { w in
                         guard w > 1 else { return }
@@ -1825,8 +2137,7 @@ public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
             .padding(.top, 8)
             .padding(.bottom, 18)
         }
-        .scrollEdgeEffectStyle(.soft, for: .top)
-        .safeAreaBar(edge: .top, spacing: 0) {
+        .studioSafeAreaTopBarCompat {
             HStack(alignment: .center, spacing: 12) {
                 Text(title)
                     .font(.system(size: 17, weight: .bold))

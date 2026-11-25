@@ -158,13 +158,11 @@ public struct RestrictionEnzymeInspectorView: View {
             .padding(.horizontal, 9)
             .frame(height: 24)
             .contentShape(Capsule(style: .continuous))
-            .glassEffect(
-                StudioGlassSupport.buttonGlass(
-                    appState: appState,
-                    tint: nil,
-                    selected: false,
-                    interactive: true
-                ),
+            .studioGlassSurfaceCompat(
+                appState: appState,
+                tint: nil,
+                selected: false,
+                interactive: true,
                 in: Capsule(style: .continuous)
             )
             .overlay(

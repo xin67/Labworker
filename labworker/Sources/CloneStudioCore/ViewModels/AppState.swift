@@ -394,7 +394,9 @@ public enum LiquidGlassStyleMode: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    #if compiler(>=6.2)
     /// 返回对应的原生 SwiftUI `Glass` 材质配置
+    @available(macOS 26.0, *)
     public func resolvedGlass(accentColor: Color, interactive: Bool = false) -> Glass {
         let base: Glass
         switch self {
@@ -407,6 +409,7 @@ public enum LiquidGlassStyleMode: String, CaseIterable, Identifiable, Sendable {
         }
         return interactive ? base.interactive() : base
     }
+    #endif
 }
 
 /// 构建产物 .dna 默认保存目录
