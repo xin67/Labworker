@@ -26,6 +26,13 @@ public struct PlateReaderAssayView: View {
     @State private var showRawEditor: Bool = true
     @State private var ccK8ControlGroup: String = "Control"
 
+    // 缓存曲线拟合与统计分析结果，避免每次界面重绘/点击在主线程重复求解
+    @State private var cachedBCAReport: PlateReaderAssayEngine.BCAAnalysisReport? = nil
+    @State private var cachedELISAFit: PlateReaderAssayEngine.LogisticFitResult? = nil
+    @State private var cachedELISAQuants: [PlateReaderAssayEngine.ELISASampleQuantItem] = []
+    @State private var cachedDoseFit: PlateReaderAssayEngine.LogisticFitResult? = nil
+    @State private var cachedViabilityReport: PlateReaderAssayEngine.ViabilityAnalysisReport? = nil
+
     public init() {}
 
     public var body: some View {
@@ -40,8 +47,20 @@ public struct PlateReaderAssayView: View {
         .onAppear {
             if stdInputText.isEmpty && sampleInputText.isEmpty {
                 loadModeDemo(assayMode)
+            } else {
+                recomputeActiveAssay()
             }
         }
+        .onChange(of: bcaModel) { _, _ in recomputeActiveAssay() }
+        .onChange(of: elisaModel) { _, _ in recomputeActiveAssay() }
+        .onChange(of: stdInputText) { _, _ in recomputeActiveAssay() }
+        .onChange(of: sampleInputText) { _, _ in recomputeActiveAssay() }
+        .onChange(of: blankODText) { _, _ in recomputeActiveAssay() }
+        .onChange(of: dilutionText) { _, _ in recomputeActiveAssay() }
+        .onChange(of: targetLoadUgText) { _, _ in recomputeActiveAssay() }
+        .onChange(of: targetTotalVolText) { _, _ in recomputeActiveAssay() }
+        .onChange(of: loadingBufferX) { _, _ in recomputeActiveAssay() }
+        .onChange(of: ccK8ControlGroup) { _, _ in recomputeActiveAssay() }
     }
 
     // MARK: - 顶部模式切换与快捷工具
@@ -197,20 +216,7 @@ public struct PlateReaderAssayView: View {
     // --- BCA Right ---
     @ViewBuilder
     private var bcaRightColumn: some View {
-        let stdPts = parseTwoColumnPairs(stdInputText).map { (concUgPerMl: $0.0, od: $0.1) }
-        let samps = parseSampleRows(sampleInputText)
-        let rep = PlateReaderAssayEngine.analyzeBCA(
-            standards: stdPts,
-            samples: samps,
-            model: bcaModel,
-            blankOD: Double(blankODText) ?? 0.0,
-            dilutionFactor: Double(dilutionText) ?? 1.0,
-            targetLoadUg: Double(targetLoadUgText) ?? 20.0,
-            targetTotalVolUl: Double(targetTotalVolText) ?? 20.0,
-            loadingBufferX: loadingBufferX
-        )
-
-        if let rep {
+        if let rep = cachedBCAReport {
             StudioCard(title: "BCA 标准曲线线性/二次回归") {
                 StudioActionPillButton(title: "导出上样表 CSV", icon: "square.and.arrow.up", tint: .blue) {
                     exportBCACSV(rep)
@@ -281,16 +287,9 @@ public struct PlateReaderAssayView: View {
     // --- ELISA Right ---
     @ViewBuilder
     private var elisaRightColumn: some View {
-        let stdPts = parseTwoColumnPairs(stdInputText)
         let isFive = (elisaModel == .fivePL)
-        let fit = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: stdPts, fiveParameter: isFive)
-        if let fit {
-            let samps = parseSampleRows(sampleInputText)
-            let quants = PlateReaderAssayEngine.quantifyELISASamples(
-                samples: samps,
-                fit: fit,
-                dilutionFactor: Double(dilutionText) ?? 1.0
-            )
+        if let fit = cachedELISAFit {
+            let quants = cachedELISAQuants
             StudioCard(title: "ELISA \(isFive ? "5PL" : "4PL") 非线性标准曲线 (Levenberg-Marquardt)") {
                 VStack(alignment: .leading, spacing: 10) {
                     StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
@@ -345,8 +344,7 @@ public struct PlateReaderAssayView: View {
     // --- IC50 / EC50 Right ---
     @ViewBuilder
     private var doseResponseRightColumn: some View {
-        let stdPts = parseTwoColumnPairs(stdInputText)
-        if let fit = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: stdPts, fiveParameter: false) {
+        if let fit = cachedDoseFit {
             StudioCard(title: "剂量-效应曲线拟合 (4 参数 Hill 方程)") {
                 VStack(alignment: .leading, spacing: 10) {
                     StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
@@ -383,12 +381,7 @@ public struct PlateReaderAssayView: View {
     // --- CCK-8 Viability Right ---
     @ViewBuilder
     private var viabilityRightColumn: some View {
-        let groups = parseSampleRows(sampleInputText).map { (name: $0.name, values: $0.replicates) }
-        if let rep = PlateReaderAssayEngine.analyzeViability(
-            groups: groups,
-            controlGroupName: ccK8ControlGroup,
-            blankMean: Double(blankODText) ?? 0.0
-        ) {
+        if let rep = cachedViabilityReport {
             StudioCard(title: "CCK-8 / MTT 相对细胞活力统计 (One-Way ANOVA + Welch / Holm)") {
                 if let anova = rep.anova {
                     StudioMetricBadge(
@@ -510,6 +503,50 @@ public struct PlateReaderAssayView: View {
             ccK8ControlGroup = "Control"
             let fx = PlateReaderAssayEngine.demoViabilityData()
             sampleInputText = fx.map { "\($0.0)," + $0.1.map { String($0) }.joined(separator: ",") }.joined(separator: "\n")
+        }
+        recomputeActiveAssay(for: mode)
+    }
+
+    private func recomputeActiveAssay(for targetMode: PlateReaderAssayMode? = nil) {
+        let active = targetMode ?? assayMode
+        switch active {
+        case .bca:
+            let stdPts = parseTwoColumnPairs(stdInputText).map { (concUgPerMl: $0.0, od: $0.1) }
+            let samps = parseSampleRows(sampleInputText)
+            cachedBCAReport = PlateReaderAssayEngine.analyzeBCA(
+                standards: stdPts,
+                samples: samps,
+                model: bcaModel,
+                blankOD: Double(blankODText) ?? 0.0,
+                dilutionFactor: Double(dilutionText) ?? 1.0,
+                targetLoadUg: Double(targetLoadUgText) ?? 20.0,
+                targetTotalVolUl: Double(targetTotalVolText) ?? 20.0,
+                loadingBufferX: loadingBufferX
+            )
+        case .elisa:
+            let stdPts = parseTwoColumnPairs(stdInputText)
+            let fit = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: stdPts, fiveParameter: elisaModel == .fivePL)
+            cachedELISAFit = fit
+            if let fit {
+                let samps = parseSampleRows(sampleInputText)
+                cachedELISAQuants = PlateReaderAssayEngine.quantifyELISASamples(
+                    samples: samps,
+                    fit: fit,
+                    dilutionFactor: Double(dilutionText) ?? 1.0
+                )
+            } else {
+                cachedELISAQuants = []
+            }
+        case .doseResponse:
+            let stdPts = parseTwoColumnPairs(stdInputText)
+            cachedDoseFit = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: stdPts, fiveParameter: false)
+        case .viability:
+            let groups = parseSampleRows(sampleInputText).map { (name: $0.name, values: $0.replicates) }
+            cachedViabilityReport = PlateReaderAssayEngine.analyzeViability(
+                groups: groups,
+                controlGroupName: ccK8ControlGroup,
+                blankMean: Double(blankODText) ?? 0.0
+            )
         }
     }
 

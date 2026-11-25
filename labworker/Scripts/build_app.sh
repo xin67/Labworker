@@ -20,6 +20,30 @@ package_app_bundle() {
     cp -f "$DIR/.build/release/CloneStudio" "$MACOS_DIR/CloneStudio"
     chmod +x "$MACOS_DIR/CloneStudio"
 
+    # 保持 minos=14.0（兼容 macOS 14/15），同时将 LC_BUILD_VERSION.sdk 对齐当前原生 macOS SDK 版本（如 27.2），
+    # 避免 SwiftPM 在 macOS 14 最低部署目标下将 sdk 误写为 14.0 从而丢失 macOS 26/27 原生 Liquid Glass、红绿灯与状态栏模糊特性。
+    local SDK_VER
+    SDK_VER="$(xcrun --show-sdk-version 2>/dev/null || true)"
+    if command -v vtool >/dev/null 2>&1 && [[ "$SDK_VER" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+        local BUILD_INFO MINOS_VER LD_VER
+        BUILD_INFO="$(vtool -show-build "$MACOS_DIR/CloneStudio" 2>/dev/null || true)"
+        MINOS_VER="$(printf '%s\n' "$BUILD_INFO" | awk '$1 == "minos" { print $2; exit }')"
+        LD_VER="$(printf '%s\n' "$BUILD_INFO" | awk '$1 == "tool" && $2 == "LD" { getline; if ($1 == "version") print $2; exit }')"
+        MINOS_VER="${MINOS_VER:-14.0}"
+        if [ -n "$LD_VER" ]; then
+            vtool -set-build-version macos "$MINOS_VER" "$SDK_VER" -tool ld "$LD_VER" -replace -output "$MACOS_DIR/CloneStudio" "$MACOS_DIR/CloneStudio"
+        else
+            vtool -set-build-version macos "$MINOS_VER" "$SDK_VER" -replace -output "$MACOS_DIR/CloneStudio" "$MACOS_DIR/CloneStudio"
+        fi
+        local PATCHED_SDK
+        PATCHED_SDK="$(vtool -show-build "$MACOS_DIR/CloneStudio" | awk '$1 == "sdk" { print $2; exit }')"
+        echo "🧬 LC_BUILD_VERSION: minos=$MINOS_VER, sdk=$PATCHED_SDK (host SDK=$SDK_VER)"
+        if [ "$PATCHED_SDK" != "$SDK_VER" ]; then
+            echo "❌ Failed to stamp LC_BUILD_VERSION sdk=$SDK_VER (got $PATCHED_SDK)" >&2
+            exit 1
+        fi
+    fi
+
     for icon_file in "AppIcon.icns" "AppIcon_Light.icns" "AppIcon_Dark.icns" "AppIcon_1024.png" "AppIcon_Light_1024.png" "AppIcon_Dark_1024.png" "StatusBarIcon.png" "StatusBarIcon@2x.png"; do
         if [ -f "$DIR/Sources/CloneStudioCore/Resources/$icon_file" ]; then
             cp -f "$DIR/Sources/CloneStudioCore/Resources/$icon_file" "$RESOURCES_DIR/"
@@ -84,6 +108,8 @@ package_app_bundle() {
     <string>$GIT_COMMIT</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
+    <key>DTSDKName</key>
+    <string>macosx${SDK_VER:-27.2}</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSAppTransportSecurity</key>

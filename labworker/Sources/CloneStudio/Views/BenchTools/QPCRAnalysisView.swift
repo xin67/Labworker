@@ -4,6 +4,32 @@ import AppKit
 import UniformTypeIdentifiers
 import CloneStudioCore
 
+private struct QPCRAnalysisSnapshot {
+    let qcMap: [String: QPCRWellQCResult]
+    let ddctOut: QPCRDdctAnalysisOut
+    let stdOut: QPCRStandardAnalysisOut
+    let miqeReport: MIQEComplianceReport
+
+    static func compute(
+        wells: [QPCRWellRecord],
+        settings: QPCRSettings,
+        detectedFormat: QPCRInstrumentFormat
+    ) -> QPCRAnalysisSnapshot {
+        let qc = QPCRAnalysisEngine.computeQC(wells: wells, settings: settings)
+        let ddct = QPCRAnalysisEngine.computeDdct(wells: wells, settings: settings, qc: qc)
+        let std = QPCRAnalysisEngine.computeStandardCurve(wells: wells, settings: settings, qc: qc)
+        let miqe = QPCRInstrumentAndRDMLEngine.evaluateMIQECompliance(
+            wells: wells,
+            settings: settings,
+            qc: qc,
+            ddctOut: ddct,
+            stdOut: std,
+            detectedFormat: detectedFormat
+        )
+        return QPCRAnalysisSnapshot(qcMap: qc, ddctOut: ddct, stdOut: std, miqeReport: miqe)
+    }
+}
+
 /// qPCR 定量分析与统计图表主视图 (纯声明式响应式 UI：任意拉动窗口自动折行与自适应滚动表格)
 public struct QPCRAnalysisView: View {
     @ObservedObject private var appState = AppState.shared
@@ -23,28 +49,34 @@ public struct QPCRAnalysisView: View {
     @State private var detectedInstrumentFormat: QPCRInstrumentFormat = .genericCSV
     @State private var importMetaSummary: String = ""
     @State private var isMIQEExpanded: Bool = true
+    @State private var analysisSnapshot: QPCRAnalysisSnapshot = .compute(
+        wells: [],
+        settings: QPCRSettings(),
+        detectedFormat: .genericCSV
+    )
     
     public init() {}
     
     private var qcMap: [String: QPCRWellQCResult] {
-        QPCRAnalysisEngine.computeQC(wells: wells, settings: settings)
+        analysisSnapshot.qcMap
     }
     
     private var ddctOut: QPCRDdctAnalysisOut {
-        QPCRAnalysisEngine.computeDdct(wells: wells, settings: settings, qc: qcMap)
+        analysisSnapshot.ddctOut
     }
     
     private var stdOut: QPCRStandardAnalysisOut {
-        QPCRAnalysisEngine.computeStandardCurve(wells: wells, settings: settings, qc: qcMap)
+        analysisSnapshot.stdOut
     }
 
     private var miqeReport: MIQEComplianceReport {
-        QPCRInstrumentAndRDMLEngine.evaluateMIQECompliance(
+        analysisSnapshot.miqeReport
+    }
+
+    private func refreshAnalysisSnapshot() {
+        analysisSnapshot = QPCRAnalysisSnapshot.compute(
             wells: wells,
             settings: settings,
-            qc: qcMap,
-            ddctOut: ddctOut,
-            stdOut: stdOut,
             detectedFormat: detectedInstrumentFormat
         )
     }
@@ -108,6 +140,16 @@ public struct QPCRAnalysisView: View {
                 settings.referenceTargets = [prefRef]
             }
             consumePendingFinderQPCRFileIfNeeded()
+            refreshAnalysisSnapshot()
+        }
+        .onChange(of: wells) { _, _ in
+            refreshAnalysisSnapshot()
+        }
+        .onChange(of: settings) { _, _ in
+            refreshAnalysisSnapshot()
+        }
+        .onChange(of: detectedInstrumentFormat) { _, _ in
+            refreshAnalysisSnapshot()
         }
         .onChange(of: appState.pendingFinderOpenedFileURL) { _, _ in
             consumePendingFinderQPCRFileIfNeeded()
@@ -435,7 +477,7 @@ public struct QPCRAnalysisView: View {
                                                 .font(.system(size: 9.5, weight: .bold))
                                                 .padding(.horizontal, 4)
                                                 .padding(.vertical, 1)
-                                                .background(Capsule().fill(Color.indigo.opacity(0.14)))
+                                                .background(Capsule(style: .continuous).fill(Color.indigo.opacity(0.14)))
                                                 .foregroundColor(.indigo)
                                         }
                                     }
@@ -476,7 +518,7 @@ public struct QPCRAnalysisView: View {
                                             .foregroundColor(isRed ? .red : .orange)
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 2)
-                                            .background(Capsule().fill((isRed ? Color.red : Color.orange).opacity(0.14)))
+                                            .background(Capsule(style: .continuous).fill((isRed ? Color.red : Color.orange).opacity(0.14)))
                                             .lineLimit(1)
                                     } else if well.wellType == .standard {
                                         Text("标准品")
@@ -484,7 +526,7 @@ public struct QPCRAnalysisView: View {
                                             .foregroundColor(.blue)
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 2)
-                                            .background(Capsule().fill(Color.blue.opacity(0.12)))
+                                            .background(Capsule(style: .continuous).fill(Color.blue.opacity(0.12)))
                                     } else if well.wellType == .ntc || well.wellType == .noRT {
                                         Text("阴性合格")
                                             .font(.system(size: 10, weight: .medium))
@@ -882,13 +924,15 @@ public struct QPCRAnalysisView: View {
     }
     
     private func syncDefaultRefAndControlIfNeeded() {
-        let out = QPCRAnalysisEngine.computeDdct(wells: wells, settings: settings, qc: qcMap)
+        let qc = QPCRAnalysisEngine.computeQC(wells: wells, settings: settings)
+        let out = QPCRAnalysisEngine.computeDdct(wells: wells, settings: settings, qc: qc)
         if settings.referenceTargets.isEmpty, let first = out.targets.first {
             settings.referenceTargets = [first]
         }
         if settings.controlGroup.isEmpty, let firstGrp = out.groups.first {
             settings.controlGroup = firstGrp
         }
+        refreshAnalysisSnapshot()
     }
     
     private func toggleReferenceTarget(_ target: String) {

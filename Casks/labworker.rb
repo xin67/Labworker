@@ -1,6 +1,6 @@
 cask "labworker" do
   version "20261120"
-  sha256 "25d01580fe7c7f5b505841f3db33b90f8b36f50df4a456a4915ada85868d8732"
+  sha256 "a39d65dfbffb746fb4ab11fa092fc86a92b8493829c9a48703b3f406c6366e3f"
 
   url "https://github.com/xin67/Labworker/releases/download/v#{version}/Labworker-#{version}.dmg",
       verified: "github.com/xin67/Labworker/"

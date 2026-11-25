@@ -239,7 +239,7 @@ public struct WholePlasmidVerifyPanelView: View {
                                         .foregroundStyle(.white)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
-                                        .background(Capsule().fill(v.isStructuralVariant ? Color.red : Color.orange))
+                                        .background(Capsule(style: .continuous).fill(v.isStructuralVariant ? Color.red : Color.orange))
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(v.summary)
                                             .font(.system(size: 12, weight: .semibold))

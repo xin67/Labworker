@@ -239,7 +239,7 @@ public struct PlasmidAutoAnnotationSheet: View {
                                 LazyVStack(spacing: 6) {
                                     ForEach(filteredFeatures) { feat in
                                         HStack(spacing: 8) {
-                                            RoundedRectangle(cornerRadius: 2)
+                                            RoundedRectangle(cornerRadius: 3, style: .continuous)
                                                 .fill(Color(hexString: feat.colorHex))
                                                 .frame(width: 4, height: 28)
 
@@ -251,7 +251,7 @@ public struct PlasmidAutoAnnotationSheet: View {
                                                         .font(.system(size: 10, weight: .semibold))
                                                         .padding(.horizontal, 6)
                                                         .padding(.vertical, 1.5)
-                                                        .background(Capsule().fill(Color.primary.opacity(0.07)))
+                                                        .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.07)))
                                                     if feat.isFragment {
                                                         StudioMetricBadge(label: "Fragment", value: "\(Int(round(feat.coverage * 100)))%", color: .orange)
                                                     }

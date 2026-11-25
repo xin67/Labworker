@@ -327,10 +327,10 @@ public struct HDRDonorPanelView: View {
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(NSColor.textBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                            .stroke(StudioPalette.controlBorder(isLight: appState.isLightAppearance), lineWidth: 1)
                     )
 
                 StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 4) {

@@ -468,7 +468,7 @@ public struct OrderExportView: View {
                                     .font(.system(size: 10.5, weight: .medium))
                                     .padding(.horizontal, 7)
                                     .padding(.vertical, 2)
-                                    .background(Capsule().fill(Color.secondary.opacity(0.12)))
+                                    .background(Capsule(style: .continuous).fill(Color.secondary.opacity(0.12)))
                                 
                                 Text(sample.vectorName)
                                     .font(.system(size: 11))
@@ -517,6 +517,7 @@ public struct OrderExportView: View {
 
 private struct CustomOrderTemplateEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var appState = AppState.shared
     @ObservedObject var vm: OrderExportViewModel
 
     @State private var draft: CustomOrderTemplateSpec
@@ -677,7 +678,11 @@ private struct CustomOrderTemplateEditorSheet: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(8)
                     .background(Color(NSColor.textBackgroundColor).opacity(0.8))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                            .stroke(StudioPalette.controlBorder(isLight: appState.isLightAppearance), lineWidth: 1)
+                    )
             }
 
             StudioActionBar {

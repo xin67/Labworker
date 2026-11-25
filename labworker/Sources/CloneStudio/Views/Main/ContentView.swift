@@ -10,7 +10,7 @@ private struct ImmersiveWindowConfigurator: NSViewRepresentable {
     }
     
     func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? WindowConfigNSView)?.scheduleTitlebarSanitization()
+        (nsView as? WindowConfigNSView)?.configureWindowIfNeeded()
     }
     
     private final class WindowConfigNSView: NSView {
@@ -22,39 +22,38 @@ private struct ImmersiveWindowConfigurator: NSViewRepresentable {
             configureWindowIfNeeded()
         }
         
-        private func configureWindowIfNeeded() {
+        func configureWindowIfNeeded() {
             guard let window = self.window else { return }
-            if configuredWindow !== window {
-                configuredWindow = window
-                if !window.styleMask.contains(.fullSizeContentView) {
-                    window.styleMask.insert(.fullSizeContentView)
-                }
-                window.titlebarAppearsTransparent = true
-                window.titlebarSeparatorStyle = .none
-                window.titleVisibility = .hidden
-                window.toolbar = nil
-                window.isOpaque = false
-                window.backgroundColor = .clear
-                window.isMovableByWindowBackground = false
-                // 确保新开/恢复窗口时默认不存在被自动强抢的 TextField 光标闪烁
-                window.autorecalculatesKeyViewLoop = false
-                if window.firstResponder is NSText || window.firstResponder is NSTextField {
-                    window.makeFirstResponder(nil)
-                }
-                
-                NotificationCenter.default.addObserver(
-                    self,
-                    selector: #selector(handleWindowEvent(_:)),
-                    name: NSWindow.didResizeNotification,
-                    object: window
-                )
-                NotificationCenter.default.addObserver(
-                    self,
-                    selector: #selector(handleWindowEvent(_:)),
-                    name: NSWindow.didBecomeKeyNotification,
-                    object: window
-                )
+            guard configuredWindow !== window else { return }
+            configuredWindow = window
+            if !window.styleMask.contains(.fullSizeContentView) {
+                window.styleMask.insert(.fullSizeContentView)
             }
+            window.titlebarAppearsTransparent = true
+            window.titlebarSeparatorStyle = .none
+            window.titleVisibility = .hidden
+            window.toolbar = nil
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.isMovableByWindowBackground = false
+            // 确保新开/恢复窗口时默认不存在被自动强抢的 TextField 光标闪烁
+            window.autorecalculatesKeyViewLoop = false
+            if window.firstResponder is NSText || window.firstResponder is NSTextField {
+                window.makeFirstResponder(nil)
+            }
+            
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(handleWindowEvent(_:)),
+                name: NSWindow.didResizeNotification,
+                object: window
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(handleWindowEvent(_:)),
+                name: NSWindow.didBecomeKeyNotification,
+                object: window
+            )
             scheduleTitlebarSanitization()
         }
         

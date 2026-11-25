@@ -62,6 +62,9 @@ public struct ProteinWorkbenchView: View {
     @State private var isPoseAutoPlaying: Bool = false
     @State private var poseAutoPlayTask: Task<Void, Never>? = nil
 
+    @State private var cachedReport: ProteinBiophysicsReport
+    @State private var cachedMutants: [ProteinMutantEvaluation]
+
     public enum StructureViewerMode: String, CaseIterable, Identifiable, Hashable {
         case nativeCanvas = "Native Canvas (极速)"
         case molstar3D = "Mol* 3D (离线)"
@@ -103,20 +106,47 @@ public struct ProteinWorkbenchView: View {
         }
     }
 
-    public init() {}
+    public init() {
+        let initialEnv = ProteinEnvironmentParams()
+        let initialSeq = ProteinBiophysicsEngine.builtinExamples[0].sequence
+        let initialReport = ProteinBiophysicsEngine.analyzeProtein(
+            sequence: initialSeq,
+            pdbText: nil,
+            env: initialEnv
+        )
+        let initialMutants = ProteinBiophysicsEngine.evaluateMutantsBatch(
+            wildTypeSequence: initialReport.sequence,
+            mutationSpecs: ["V13A", "I15L + L19M", "K27R", "F42W", "T48P"],
+            env: initialEnv
+        )
+        _cachedReport = State(initialValue: initialReport)
+        _cachedMutants = State(initialValue: initialMutants)
+    }
 
     private var report: ProteinBiophysicsReport {
-        ProteinBiophysicsEngine.analyzeProtein(
+        cachedReport
+    }
+
+    private var mutantResults: [ProteinMutantEvaluation] {
+        cachedMutants
+    }
+
+    private func recomputeProteinReport() {
+        let nextReport = ProteinBiophysicsEngine.analyzeProtein(
             sequence: rawSequence,
             pdbText: importedPDBText,
             env: env
         )
+        cachedReport = nextReport
+        if analysisTab == .mutants {
+            recomputeMutants(wildTypeSequence: nextReport.sequence)
+        }
     }
 
-    private var mutantResults: [ProteinMutantEvaluation] {
+    private func recomputeMutants(wildTypeSequence: String? = nil) {
         let lines = mutantInputText.components(separatedBy: .newlines)
-        return ProteinBiophysicsEngine.evaluateMutantsBatch(
-            wildTypeSequence: report.sequence,
+        cachedMutants = ProteinBiophysicsEngine.evaluateMutantsBatch(
+            wildTypeSequence: wildTypeSequence ?? cachedReport.sequence,
             mutationSpecs: lines,
             env: env
         )
@@ -143,7 +173,7 @@ public struct ProteinWorkbenchView: View {
             ]
         ) {
             // 1. 极简样本切换与按需展开的序列/环境参数抽屉
-            compactPresetAndSourceBar
+            compactPresetAndSourceBar(report: currentReport)
 
             // 2. 声明式窗口响应式主工作区：宽屏左右双栏，窄屏 (<860pt) 自动切换为上下堆叠
             StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.50) {
@@ -167,12 +197,32 @@ public struct ProteinWorkbenchView: View {
             env.ph = appState.defaultProteinPH
             env.temperatureK = appState.defaultProteinTempK
             consumePendingFinderProteinFileIfNeeded()
+            recomputeProteinReport()
             refreshDetectedCLITools()
         }
         .onDisappear {
             poseAutoPlayTask?.cancel()
             poseAutoPlayTask = nil
             isPoseAutoPlaying = false
+        }
+        .onChange(of: rawSequence) { _, _ in
+            recomputeProteinReport()
+        }
+        .onChange(of: importedPDBText) { _, _ in
+            recomputeProteinReport()
+        }
+        .onChange(of: env) { _, _ in
+            recomputeProteinReport()
+        }
+        .onChange(of: mutantInputText) { _, _ in
+            if analysisTab == .mutants {
+                recomputeMutants()
+            }
+        }
+        .onChange(of: analysisTab) { _, newTab in
+            if newTab == .mutants {
+                recomputeMutants()
+            }
         }
         .onChange(of: appState.pendingFinderOpenedFileURL) { _, _ in
             consumePendingFinderProteinFileIfNeeded()
@@ -207,9 +257,8 @@ public struct ProteinWorkbenchView: View {
 
     // MARK: - 1. 极简样本切换条 + 按需展开的序列/环境抽屉
 
-    private var compactPresetAndSourceBar: some View {
-        let currentReport = report
-        return StudioCard(title: "样本选择与生理环境参数") {
+    private func compactPresetAndSourceBar(report currentReport: ProteinBiophysicsReport) -> some View {
+        StudioCard(title: "样本选择与生理环境参数") {
             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 4) {
                 StudioMetricBadge(
                     label: "",
@@ -430,7 +479,7 @@ public struct ProteinWorkbenchView: View {
 
                     // 纯净 3D 画布（无右下角黑色胶囊浮层遮挡）
                     ZStack(alignment: .topLeading) {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
                             .fill(
                                 LinearGradient(
                                     colors: [
@@ -469,7 +518,7 @@ public struct ProteinWorkbenchView: View {
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(Capsule().fill(Color.black.opacity(0.55)))
+                                .background(Capsule(style: .continuous).fill(Color.black.opacity(0.55)))
                                 .padding(8)
                         }
                     }
@@ -556,10 +605,10 @@ public struct ProteinWorkbenchView: View {
                         isMolstarRendering = loading
                     }
                     .frame(minHeight: 330, idealHeight: 370)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                            .stroke(StudioPalette.cardBorder(isLight: appState.isLightAppearance), lineWidth: 1)
                     )
 
                     if isMolstarRendering || (molstarStatusNote?.isEmpty == false) {
@@ -803,9 +852,9 @@ public struct ProteinWorkbenchView: View {
                         }
                         GeometryReader { barGeo in
                             ZStack(alignment: .leading) {
-                                Capsule()
+                                Capsule(style: .continuous)
                                     .fill(Color.primary.opacity(0.08))
-                                Capsule()
+                                Capsule(style: .continuous)
                                     .fill(item.color.gradient)
                                     .frame(width: barGeo.size.width * CGFloat(min(1.0, max(0.0, item.val / 100.0))))
                             }
@@ -1056,8 +1105,16 @@ public struct ProteinWorkbenchView: View {
             // 工具链可用状态徽章条
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 5) {
                 ForEach(detectedTools) { tool in
-                    let color: Color = tool.isAvailable ? .green : .secondary
-                    Button {
+                    let isSelectedTool = (selectedDockingTool == tool.kind)
+                    StudioCompactPillButton(
+                        title: "\(tool.kind.cliName)\(tool.isAvailable ? " ✓" : "")",
+                        dotColor: tool.isAvailable ? .green : .orange.opacity(0.75),
+                        tint: isSelectedTool ? .indigo : (tool.isAvailable ? .green : nil),
+                        isSelected: isSelectedTool,
+                        help: tool.isAvailable
+                            ? "\(tool.kind.displayName)\n路径：\(tool.executablePath ?? "")\n版本：\(tool.versionText ?? "已就绪")"
+                            : "未在本机检测到 \(tool.kind.cliName)\n安装建议：\(tool.installHint)"
+                    ) {
                         if tool.kind != .obabel {
                             selectedDockingTool = tool.kind
                         } else {
@@ -1065,29 +1122,7 @@ public struct ProteinWorkbenchView: View {
                             NSPasteboard.general.setString(tool.installHint, forType: .string)
                             appState.showToast("已复制安装命令：\(tool.installHint)")
                         }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(tool.isAvailable ? Color.green : Color.orange.opacity(0.6))
-                                .frame(width: 6, height: 6)
-                            Text("\(tool.kind.cliName)\(tool.isAvailable ? " ✓" : "")")
-                                .font(.system(size: 10.5, weight: .semibold))
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3.5)
-                        .background(
-                            Capsule()
-                                .fill(color.opacity(selectedDockingTool == tool.kind ? 0.22 : 0.10))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(selectedDockingTool == tool.kind ? Color.indigo : color.opacity(0.25), lineWidth: 1)
-                        )
                     }
-                    .buttonStyle(.plain)
-                    .help(tool.isAvailable
-                          ? "\(tool.kind.displayName)\n路径：\(tool.executablePath ?? "")\n版本：\(tool.versionText ?? "已就绪")"
-                          : "未在本机检测到 \(tool.kind.cliName)\n安装建议：\(tool.installHint)")
                 }
             }
 
@@ -1233,12 +1268,7 @@ public struct ProteinWorkbenchView: View {
                                 Image(systemName: isSel ? "checkmark.circle.fill" : "eye")
                                     .foregroundColor(isSel ? .indigo : .secondary)
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(isSel ? Color.indigo.opacity(0.15) : Color.primary.opacity(0.03))
-                            )
+                            .studioInnerBox(tint: isSel ? .indigo : nil, isHighlighted: isSel, paddingH: 8, paddingV: 6)
                         }
                         .buttonStyle(.plain)
                     }
@@ -1625,6 +1655,7 @@ public struct ProteinWorkbenchView: View {
     }
 
     private func exportHTMLReport(report: ProteinBiophysicsReport) {
+        recomputeMutants(wildTypeSequence: report.sequence)
         let box = report.dockingBox
         let html = FinderFileDropHelper.buildOfflineHTMLReport(
             title: "蛋白质三维结构、LIGSITE 结合口袋与 Vina 对接盒子报告",

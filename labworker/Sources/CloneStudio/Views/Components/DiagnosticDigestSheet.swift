@@ -287,7 +287,7 @@ public struct DiagnosticDigestSheet: View {
 
         return StudioCard(title: "虚拟电泳对照 (#\(rec.rank) · \(rec.recommendedGelConcentration))") {
             Canvas { ctx, size in
-                let bg = Path(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 8)
+                let bg = Path(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: StudioRadius.inner)
                 ctx.fill(bg, with: .color(Color(red: 0.06, green: 0.08, blue: 0.12)))
 
                 let lanesData: [(title: String, bands: [Int], color: Color)] = [
@@ -330,6 +330,11 @@ public struct DiagnosticDigestSheet: View {
                 }
             }
             .allowedDynamicRange(.standard)
+            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioRadius.inner, style: .continuous)
+                    .stroke(StudioPalette.cardBorder(isLight: appState.isLightAppearance), lineWidth: 1)
+            )
             .frame(minHeight: 240, maxHeight: 300)
         }
     }
