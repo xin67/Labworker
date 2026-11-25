@@ -20,6 +20,9 @@ public struct QPCRAnalysisView: View {
     @State private var showCSVEditor: Bool = false
     @State private var showHeatmap: Bool = true
     @State private var linkedPlasmidIDs: Set<String> = []
+    @State private var detectedInstrumentFormat: QPCRInstrumentFormat = .genericCSV
+    @State private var importMetaSummary: String = ""
+    @State private var isMIQEExpanded: Bool = true
     
     public init() {}
     
@@ -33,6 +36,17 @@ public struct QPCRAnalysisView: View {
     
     private var stdOut: QPCRStandardAnalysisOut {
         QPCRAnalysisEngine.computeStandardCurve(wells: wells, settings: settings, qc: qcMap)
+    }
+
+    private var miqeReport: MIQEComplianceReport {
+        QPCRInstrumentAndRDMLEngine.evaluateMIQECompliance(
+            wells: wells,
+            settings: settings,
+            qc: qcMap,
+            ddctOut: ddctOut,
+            stdOut: stdOut,
+            detectedFormat: detectedInstrumentFormat
+        )
     }
     
     private var modeOptions: [StudioSegmentedOption<QPCRAnalysisMode>] {
@@ -72,7 +86,8 @@ public struct QPCRAnalysisView: View {
                     reloadFromRawCSV()
                     appState.showToast("已载入 TP53 / MYC 标准 qPCR 示范数据集")
                 },
-                .action(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出 qPCR ΔΔCt 与显著性统计 CSV", action: exportResultsCSV)
+                .action(title: "导出", icon: "square.and.arrow.up", tint: .teal, help: "导出 qPCR ΔΔCt 与显著性统计 CSV", action: exportResultsCSV),
+                .action(title: "导出 RDML", icon: "doc.zipper", tint: .indigo, help: "导出符合 MIQE 标准的 RDML v1.3 归档 (.rdml)", action: exportRDMLFile)
             ]
         ) {
             StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.40) {
@@ -113,12 +128,9 @@ public struct QPCRAnalysisView: View {
     
     private func consumePendingFinderQPCRFileIfNeeded() {
         guard let url = appState.pendingFinderOpenedFileURL,
-              ["csv", "tsv"].contains(url.pathExtension.lowercased()),
-              let text = (try? String(contentsOf: url, encoding: .utf8)) ?? (try? String(contentsOf: url, encoding: .ascii)) else { return }
+              ["csv", "tsv", "rdml", "xml", "txt"].contains(url.pathExtension.lowercased()) else { return }
         appState.pendingFinderOpenedFileURL = nil
-        sourceFileURL = url
-        rawCSVText = text
-        reloadFromRawCSV()
+        loadQPCRFile(from: url)
     }
     
     // MARK: - 左栏：定量参数设置 + 反应孔 QC 数据表
@@ -317,6 +329,7 @@ public struct QPCRAnalysisView: View {
             title: "反应孔原始数据与 QC 质控 (\(wells.count) 孔)",
             headerTrailing: {
                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
+                    StudioMetricBadge(label: "格式", value: detectedInstrumentFormat.shortTitle, color: .teal)
                     if flaggedCount > 0 {
                         StudioMetricBadge(label: "QC提醒", value: "\(flaggedCount)", color: .orange)
                     }
@@ -504,6 +517,7 @@ public struct QPCRAnalysisView: View {
                 standardCurveChartCard
                 standardCurveTableCard
             }
+            miqeComplianceCard
         }
     }
     
@@ -813,12 +827,56 @@ public struct QPCRAnalysisView: View {
         }
     }
     
+    @ViewBuilder
+    private var miqeComplianceCard: some View {
+        let rep = miqeReport
+        StudioCard(title: "MIQE 指南合规性自检清单 (\(rep.detectedFormat))") {
+            StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
+                StudioMetricBadge(label: "合规", value: "\(rep.passCount)/\(rep.items.count)", color: rep.failCount == 0 ? .green : .orange)
+                if rep.failCount > 0 {
+                    StudioMetricBadge(label: "告警", value: "\(rep.failCount)", color: .red)
+                }
+                StudioActionPillButton(title: "复制清单", icon: "doc.on.doc", tint: .blue, compact: true) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(rep.exportMarkdownChecklist(), forType: .string)
+                    appState.showToast("已复制 MIQE 自检 Markdown 清单")
+                }
+                StudioCompactPillButton(title: isMIQEExpanded ? "收起" : "展开", icon: isMIQEExpanded ? "chevron.up" : "chevron.down") {
+                    isMIQEExpanded.toggle()
+                }
+            }
+        } content: {
+            if isMIQEExpanded {
+                VStack(spacing: 6) {
+                    ForEach(rep.items) { item in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: item.status == .pass ? "checkmark.circle.fill" : (item.status == .warning ? "exclamationmark.triangle.fill" : "xmark.octagon.fill"))
+                                .foregroundStyle(item.status == .pass ? .green : (item.status == .warning ? .orange : .red))
+                                .font(.system(size: 12.5))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(item.itemNumber). \(item.title)")
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                Text(item.evidence)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .studioInnerBox(tint: item.status == .pass ? .green : (item.status == .warning ? .orange : .red), paddingH: 9, paddingV: 6)
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - 辅助逻辑
     
     private func reloadFromRawCSV() {
-        let parsed = QPCRAnalysisEngine.parseQPCRTable(rawCSVText)
-        if !parsed.isEmpty {
-            wells = parsed
+        let res = QPCRInstrumentAndRDMLEngine.parseRawExport(rawCSVText)
+        if !res.wells.isEmpty {
+            detectedInstrumentFormat = res.format
+            importMetaSummary = res.metadataSummary
+            wells = res.wells
             syncDefaultRefAndControlIfNeeded()
         }
     }
@@ -846,11 +904,55 @@ public struct QPCRAnalysisView: View {
     
     private func importQPCRFile() {
         FinderFileDropHelper.presentOpenPanel { url in
-            if let text = (try? String(contentsOf: url, encoding: .utf8)) ?? (try? String(contentsOf: url, encoding: .ascii)) {
+            loadQPCRFile(from: url)
+        }
+    }
+
+    private func loadQPCRFile(from url: URL) {
+        let ext = url.pathExtension.lowercased()
+        if ext == "rdml" || ext == "xml" {
+            if let data = try? Data(contentsOf: url),
+               let res = try? QPCRInstrumentAndRDMLEngine.parseRDMLData(data, fileName: url.lastPathComponent),
+               !res.wells.isEmpty {
                 sourceFileURL = url
-                rawCSVText = text
-                reloadFromRawCSV()
-                appState.showToast("已导入 qPCR 数据：\(url.lastPathComponent)")
+                detectedInstrumentFormat = res.format
+                importMetaSummary = res.metadataSummary
+                wells = res.wells
+                syncDefaultRefAndControlIfNeeded()
+                appState.showToast("已解析 RDML 实验归档：\(url.lastPathComponent) (\(res.wells.count) 条反应孔)")
+                return
+            }
+        }
+        if let text = (try? String(contentsOf: url, encoding: .utf8)) ?? (try? String(contentsOf: url, encoding: .ascii)) {
+            sourceFileURL = url
+            rawCSVText = text
+            let res = QPCRInstrumentAndRDMLEngine.parseRawExport(text)
+            if !res.wells.isEmpty {
+                detectedInstrumentFormat = res.format
+                importMetaSummary = res.metadataSummary
+                wells = res.wells
+                syncDefaultRefAndControlIfNeeded()
+                let skippedTip = res.skippedHeaderLines > 0 ? " · 自动跳过 \(res.skippedHeaderLines) 行仪器头" : ""
+                appState.showToast("已识别 \(res.format.shortTitle) 格式\(skippedTip)：\(url.lastPathComponent)")
+            }
+        }
+    }
+
+    private func exportRDMLFile() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "Labworker_qPCR_Experiment.rdml"
+        panel.canCreateDirectories = true
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                try QPCRInstrumentAndRDMLEngine.writeRDMLArchive(
+                    wells: wells,
+                    settings: settings,
+                    experimentName: url.deletingPathExtension().lastPathComponent,
+                    to: url
+                )
+                appState.showToast("已导出 RDML 归档：\(url.lastPathComponent)")
+            } catch {
+                appState.showToast("导出 RDML 失败：\(error.localizedDescription)")
             }
         }
     }

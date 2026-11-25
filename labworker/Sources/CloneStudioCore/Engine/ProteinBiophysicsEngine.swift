@@ -671,9 +671,202 @@ public enum ProteinBiophysicsEngine {
         return (rx, ry, rz, sx, sy, sz, sx * sy * sz)
     }
     
+    public static func isMMCIFFormat(_ text: String) -> Bool {
+        let head = text.prefix(16000)
+        return head.contains("_atom_site.") || (text.contains("data_") && text.contains("_atom_site."))
+    }
+
+    private static func tokenizeMMCIFLine(_ line: String) -> [String] {
+        var tokens: [String] = []
+        let chars = Array(line)
+        var i = 0
+        let n = chars.count
+        while i < n {
+            while i < n && (chars[i] == " " || chars[i] == "\t") { i += 1 }
+            if i >= n { break }
+            let ch = chars[i]
+            if ch == "#" { break }
+            if ch == "'" || ch == "\"" {
+                let quote = ch
+                i += 1
+                let start = i
+                while i < n && chars[i] != quote { i += 1 }
+                tokens.append(String(chars[start..<i]))
+                if i < n { i += 1 }
+            } else {
+                let start = i
+                while i < n && chars[i] != " " && chars[i] != "\t" { i += 1 }
+                tokens.append(String(chars[start..<i]))
+            }
+        }
+        return tokens
+    }
+
+    private static func parseMMCIFCore(_ cifText: String) -> (residues: [ProteinResidue3D], meta: ParsedPDBMetadata) {
+        var meta = ParsedPDBMetadata()
+        var residues: [ProteinResidue3D] = []
+
+        let waterAndBufferSet: Set<String> = ["HOH", "WAT", "DOD", "SO4", "PO4", "GOL", "EDO", "PEG", "DMS", "ACT", "CL", "NA", "K", "IOD"]
+        let metalSet: Set<String> = ["ZN", "MG", "FE", "MN", "CU", "CA", "CO", "NI"]
+
+        var chains = Set<String>()
+        var nonStd = Set<String>()
+        var metals = Set<String>()
+        var ligands = Set<String>()
+        var seenCA = Set<String>()
+        var seenCASeqNums = Set<Int>()
+        var prevSeqNum: Int? = nil
+        var firstModelTag: String? = nil
+
+        let lines = cifText.components(separatedBy: .newlines)
+        var idx = 0
+        while idx < lines.count {
+            let trimmed = lines[idx].trimmingCharacters(in: .whitespaces)
+            if trimmed == "loop_" {
+                idx += 1
+                var colNames: [String] = []
+                while idx < lines.count {
+                    let t = lines[idx].trimmingCharacters(in: .whitespaces)
+                    if t.hasPrefix("_") {
+                        colNames.append(t)
+                        idx += 1
+                    } else if t.isEmpty || t.hasPrefix("#") {
+                        idx += 1
+                    } else {
+                        break
+                    }
+                }
+
+                if colNames.contains(where: { $0.hasPrefix("_atom_site.") }) {
+                    var colIdx: [String: Int] = [:]
+                    for (cIndex, cName) in colNames.enumerated() {
+                        colIdx[cName] = cIndex
+                    }
+                    let cGroup = colIdx["_atom_site.group_PDB"]
+                    let cAtom = colIdx["_atom_site.label_atom_id"] ?? colIdx["_atom_site.auth_atom_id"]
+                    let cComp = colIdx["_atom_site.auth_comp_id"] ?? colIdx["_atom_site.label_comp_id"]
+                    let cChain = colIdx["_atom_site.auth_asym_id"] ?? colIdx["_atom_site.label_asym_id"]
+                    let cSeq = colIdx["_atom_site.auth_seq_id"] ?? colIdx["_atom_site.label_seq_id"]
+                    let cAlt = colIdx["_atom_site.label_alt_id"]
+                    let cX = colIdx["_atom_site.Cartn_x"]
+                    let cY = colIdx["_atom_site.Cartn_y"]
+                    let cZ = colIdx["_atom_site.Cartn_z"]
+                    let cB = colIdx["_atom_site.B_iso_or_equiv"]
+                    let cElem = colIdx["_atom_site.type_symbol"]
+                    let cModel = colIdx["_atom_site.pdbx_PDB_model_num"]
+
+                    while idx < lines.count {
+                        let rowRaw = lines[idx].trimmingCharacters(in: .whitespaces)
+                        if rowRaw.isEmpty || rowRaw.hasPrefix("#") {
+                            idx += 1
+                            continue
+                        }
+                        if rowRaw == "loop_" || rowRaw.hasPrefix("_") || rowRaw.hasPrefix("data_") {
+                            break
+                        }
+                        let toks = tokenizeMMCIFLine(rowRaw)
+                        idx += 1
+                        guard !toks.isEmpty, toks.count >= 6 else { continue }
+
+                        func tok(_ pos: Int?) -> String {
+                            guard let p = pos, p >= 0, p < toks.count else { return "" }
+                            return toks[p]
+                        }
+
+                        let modelTag = tok(cModel)
+                        if !modelTag.isEmpty && modelTag != "." && modelTag != "?" {
+                            if firstModelTag == nil {
+                                firstModelTag = modelTag
+                            } else if modelTag != firstModelTag {
+                                meta.stoppedAtFirstModel = true
+                                continue
+                            }
+                        }
+
+                        let alt = tok(cAlt)
+                        if !alt.isEmpty && alt != "." && alt != "?" && alt != "A" && alt != "1" {
+                            meta.hasAltLoc = true
+                            continue
+                        }
+
+                        let group = tok(cGroup).uppercased()
+                        let atomName = tok(cAtom).uppercased()
+                        let elem = tok(cElem).uppercased()
+                        if elem == "H" || elem == "D" || atomName.hasPrefix("H") || atomName.hasPrefix("1H") || atomName.hasPrefix("2H") {
+                            continue
+                        }
+
+                        guard let x = Double(tok(cX)), let y = Double(tok(cY)), let z = Double(tok(cZ)) else { continue }
+                        let resName = tok(cComp).uppercased()
+                        let chainID = tok(cChain)
+                        let seqStr = tok(cSeq)
+
+                        if group == "HETATM" && resName != "MSE" {
+                            guard !waterAndBufferSet.contains(resName) else { continue }
+                            if metalSet.contains(resName) {
+                                metals.insert(resName)
+                            } else if !resName.isEmpty {
+                                ligands.insert(resName)
+                                meta.coCrystalCoords.append((x, y, z))
+                            }
+                        } else if group == "ATOM" || group.isEmpty || resName == "MSE" {
+                            if !chainID.isEmpty && chainID != "." && chainID != "?" { chains.insert(chainID) }
+                            if !resName.isEmpty && threeLetterMap.values.contains(resName) == false {
+                                nonStd.insert(resName)
+                            }
+                            meta.heavyAtomCoords.append((x, y, z))
+
+                            if atomName == "CA" {
+                                let seqKey = "\(chainID):\(seqStr)"
+                                if !seenCA.contains(seqKey) {
+                                    seenCA.insert(seqKey)
+                                    let bVal = min(100.0, max(25.0, Double(tok(cB)) ?? 85.0))
+                                    let oneChar = oneLetterFromThree[resName] ?? "A"
+                                    residues.append(
+                                        ProteinResidue3D(
+                                            index: residues.count + 1,
+                                            oneLetter: String(oneChar),
+                                            threeLetter: resName.isEmpty ? "ALA" : resName,
+                                            x: x, y: y, z: z,
+                                            plddt: bVal,
+                                            secondary: .coil,
+                                            hydropathy: kyteDoolittle[oneChar] ?? 0.0,
+                                            phi: nil, psi: nil,
+                                            isPocketResidue: false
+                                        )
+                                    )
+                                    if let seqNum = Int(seqStr), !seenCASeqNums.contains(seqNum) {
+                                        seenCASeqNums.insert(seqNum)
+                                        meta.seqNumToIndex[seqNum] = residues.count
+                                        if let prev = prevSeqNum, seqNum - prev > 1 {
+                                            meta.missingResidueGapCount += 1
+                                        }
+                                        prevSeqNum = seqNum
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break
+                }
+            } else {
+                idx += 1
+            }
+        }
+
+        meta.chainIDs = chains.sorted()
+        meta.nonStandardResidues = nonStd.sorted()
+        meta.metalIons = metals.sorted()
+        meta.coCrystalLigands = ligands.sorted()
+        return (residues, meta)
+    }
+
     private static func inspectPDBMetadata(pdbText: String?, residueCount: Int) -> ParsedPDBMetadata {
         var meta = ParsedPDBMetadata()
         guard let pdb = pdbText, !pdb.isEmpty else { return meta }
+        if isMMCIFFormat(pdb) {
+            return parseMMCIFCore(pdb).meta
+        }
         
         let waterAndBufferSet: Set<String> = ["HOH", "WAT", "DOD", "SO4", "PO4", "GOL", "EDO", "PEG", "DMS", "ACT", "CL", "NA", "K", "IOD"]
         let metalSet: Set<String> = ["ZN", "MG", "FE", "MN", "CU", "CA", "CO", "NI"]
@@ -766,6 +959,9 @@ public enum ProteinBiophysicsEngine {
     }
     
     public static func parsePDBResidues(_ pdbText: String) -> [ProteinResidue3D] {
+        if isMMCIFFormat(pdbText) {
+            return parseMMCIFCore(pdbText).residues
+        }
         var parsed: [ProteinResidue3D] = []
         var seenChainSeq = Set<String>()
         for line in pdbText.components(separatedBy: .newlines) {

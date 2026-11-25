@@ -1226,80 +1226,10 @@ public enum QPCRAnalysisEngine {
         return QPCRStandardAnalysisOut(fits: fits, samples: outSamples)
     }
     
-    // MARK: - 4. CSV / TSV 解析、微孔板联动与结果导出
+    // MARK: - 4. CSV / TSV / 原厂导出表 / RDML 解析、微孔板联动与结果导出
     
     public static func parseQPCRTable(_ rawText: String) -> [QPCRWellRecord] {
-        let cleaned = rawText
-            .replacingOccurrences(of: "\u{FEFF}", with: "")
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
-        let lines = cleaned
-            .components(separatedBy: "\n")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
-        guard lines.count >= 2 else { return [] }
-        
-        let delim = PlateLayoutEngine.detectDelimiter(in: lines[0])
-        let headers = PlateLayoutEngine.splitDelimitedLine(lines[0], delimiter: delim).map { $0.lowercased() }
-        
-        func findCol(_ candidates: Set<String>) -> Int? {
-            headers.firstIndex { candidates.contains($0) }
-        }
-        
-        let wellCol = findCol(["well", "well position", "pos", "position", "孔位", "反应孔"]) ?? 0
-        let sampleCol = findCol(["sample", "sample name", "samplename", "sample_name", "样品", "样本"]) ?? 1
-        let targetCol = findCol(["target", "target name", "targetname", "gene", "detector", "目的基因", "基因", "靶标"]) ?? 2
-        let ctCol = findCol(["ct", "cq", "cp", "c_t", "ct value", "cq value", "ct值"]) ?? 3
-        let groupCol = findCol(["group", "condition", "treatment", "分组", "组别"])
-        let taskCol = findCol(["task", "type", "well_type", "well type", "role", "类型", "孔类型", "任务"])
-        let tmCol = findCol(["tm", "melt", "melting", "tm value", "tm1", "熔解温度", "tm值"])
-        let repCol = findCol(["replicate", "rep", "replicates", "复孔"])
-        let qtyCol = findCol(["quantity", "qty", "conc", "concentration", "standard", "浓度", "标准品浓度"])
-        let effCol = findCol(["efficiency", "eff", "扩增效率"])
-        
-        var records: [QPCRWellRecord] = []
-        for idx in 1..<lines.count {
-            let cells = PlateLayoutEngine.splitDelimitedLine(lines[idx], delimiter: delim)
-            func cellAt(_ col: Int?) -> String {
-                guard let c = col, c >= 0, c < cells.count else { return "" }
-                return cells[c].trimmingCharacters(in: .whitespaces)
-            }
-            let well = cellAt(wellCol)
-            let sample = cellAt(sampleCol)
-            let target = cellAt(targetCol)
-            if sample.isEmpty && target.isEmpty { continue }
-            
-            let ctRaw = cellAt(ctCol).lowercased()
-            let ctVal: Double? = (ctRaw.isEmpty || ctRaw == "undetermined" || ctRaw == "na" || ctRaw == "nan" || ctRaw == "-")
-                ? nil
-                : Double(ctRaw)
-            let group = cellAt(groupCol)
-            let taskRaw = cellAt(taskCol)
-            let tmVal = Double(cellAt(tmCol))
-            let rep = Int(cellAt(repCol))
-            let qty = Double(cellAt(qtyCol))
-            let eff = Double(cellAt(effCol))
-            let wellType = QPCRWellType.infer(sample: sample, group: group, taskRaw: taskRaw, quantity: qty)
-            
-            records.append(
-                QPCRWellRecord(
-                    id: "row_\(idx)_\(well)",
-                    row: idx - 1,
-                    well: well.isEmpty ? "W\(idx)" : well,
-                    sample: sample,
-                    target: target,
-                    group: group,
-                    wellType: wellType,
-                    replicate: rep,
-                    ct: ctVal,
-                    tm: tmVal,
-                    efficiency: eff,
-                    quantity: qty,
-                    include: true
-                )
-            )
-        }
-        return records
+        return QPCRInstrumentAndRDMLEngine.parseRawExport(rawText).wells
     }
     
     /// 将微孔板设计器的孔位分配一键合并或生成 qPCR 数据表

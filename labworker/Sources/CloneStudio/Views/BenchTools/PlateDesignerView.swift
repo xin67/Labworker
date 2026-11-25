@@ -24,12 +24,18 @@ private enum PlatePaintToolMode: String, CaseIterable, Identifiable {
     }
 }
 
-/// 微孔板布局设计器主视图 (纯声明式响应式 UI：任意拉动窗口自动折行与自适应缩放孔位画布)
+private enum PlateWorkspaceMode: String, CaseIterable {
+    case layoutDesigner = "孔板排布与防边缘设计"
+    case readerAssay = "酶标仪定量 (BCA·ELISA·IC50·CCK-8)"
+}
+
+/// 微孔板布局设计器与酶标仪定量工作台主视图 (纯声明式响应式 UI：任意拉动窗口自动折行与自适应缩放孔位画布)
 public struct PlateDesignerView: View {
     @ObservedObject private var store = PlateLayoutStore.shared
     @ObservedObject private var appState = AppState.shared
     @ObservedObject private var plasmidPool = PlasmidPoolManager.shared
-    
+
+    @State private var workspaceMode: PlateWorkspaceMode = .layoutDesigner
     @State private var selectedWellID: String? = "A1"
     @State private var activeSampleIDForPaint: String = ""
     @State private var paintTool: PlatePaintToolMode = .inspect
@@ -93,9 +99,23 @@ public struct PlateDesignerView: View {
                 }
             ]
         ) {
-            StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.37) {
-                leftColumn
-                rightColumn
+            VStack(alignment: .leading, spacing: 14) {
+                StudioSegmentedPicker(
+                    selection: $workspaceMode,
+                    options: [
+                        StudioSegmentedOption(value: PlateWorkspaceMode.layoutDesigner, title: PlateWorkspaceMode.layoutDesigner.rawValue, tint: .blue),
+                        StudioSegmentedOption(value: PlateWorkspaceMode.readerAssay, title: PlateWorkspaceMode.readerAssay.rawValue, tint: .teal)
+                    ]
+                )
+
+                if workspaceMode == .readerAssay {
+                    PlateReaderAssayView()
+                } else {
+                    StudioResponsiveSplitLayout(breakpoint: 860, spacing: 14, leftRatio: 0.37) {
+                        leftColumn
+                        rightColumn
+                    }
+                }
             }
         }
         .onChange(of: store.format) { _, _ in

@@ -668,17 +668,18 @@ public final class WorkspaceSessionManager: ObservableObject {
         guard !validURLs.isEmpty else { return }
         
         let dnaURLs = validURLs.filter { $0.pathExtension.lowercased() == "dna" }
-        let ab1URLs = validURLs.filter { ["ab1", "abi"].contains($0.pathExtension.lowercased()) }
+        let ab1URLs = validURLs.filter { ["ab1", "abi", "fastq", "fq"].contains($0.pathExtension.lowercased()) }
         let pdbURLs = validURLs.filter { ["pdb", "cif", "ent"].contains($0.pathExtension.lowercased()) }
         let imageURLs = validURLs.filter { ["tif", "tiff", "png", "jpg", "jpeg"].contains($0.pathExtension.lowercased()) }
-        let csvURLs = validURLs.filter { ["csv", "tsv"].contains($0.pathExtension.lowercased()) }
+        let csvURLs = validURLs.filter { ["csv", "tsv", "rdml", "xml"].contains($0.pathExtension.lowercased()) }
         let seqURLs = validURLs.filter { ["fa", "fasta", "gb", "gbk", "seq", "txt"].contains($0.pathExtension.lowercased()) }
         
-        // 0. Sanger 测序 .ab1 / .abi 四色峰图文件 -> 自动跳转「测序验证」并载入峰图
+        // 0. Sanger 测序 .ab1 / .abi 与全质粒 Nanopore .fastq / .fq -> 自动跳转「测序验证」并载入
         if let firstAB1 = ab1URLs.first {
             AppState.shared.pendingFinderOpenedFileURL = firstAB1
             AppState.shared.selectedNav = .sangerVerify
-            AppState.shared.showToast("已从 Finder 载入 Sanger 测序峰图 \(firstAB1.lastPathComponent) 至「测序验证」")
+            let label = ["fastq", "fq"].contains(firstAB1.pathExtension.lowercased()) ? "全质粒测序" : "Sanger 测序峰图"
+            AppState.shared.showToast("已从 Finder 载入\(label) \(firstAB1.lastPathComponent) 至「测序验证」")
             return
         }
         

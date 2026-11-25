@@ -660,7 +660,7 @@ public final class PlasmidPoolManager: ObservableObject {
         let builtItems: [PlasmidPoolItem] = await Task.detached(priority: .utility) {
             var candidateFiles: [URL] = []
             let fm = FileManager.default
-            let allowedExts: Set<String> = ["dna", "fa", "fasta", "gb", "gbk", "seq"]
+            let allowedExts: Set<String> = ["dna", "fa", "fasta", "gb", "gbk", "seq", "json", "jsonld", "sbol"]
             
             func collectFiles(in url: URL, depth: Int) {
                 guard depth <= maxDepth else { return }
@@ -701,6 +701,21 @@ public final class PlasmidPoolManager: ObservableObject {
                             dnaInfo: info
                         )
                         parsedList.append(newItem)
+                    }
+                } else if ext == "gb" || ext == "gbk" {
+                    if let rawText = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? (try? String(contentsOf: fileURL, encoding: .ascii)),
+                       let gbInfo = SequenceFormatEngine.parseGenBank(rawText, fallbackName: fileURL.deletingPathExtension().lastPathComponent, filePath: fileURL.path) {
+                        let cleanName = fileURL.deletingPathExtension().lastPathComponent
+                        parsedList.append(PlasmidPoolItem(id: fileURL.path, name: cleanName, dnaInfo: gbInfo))
+                    }
+                } else if ext == "json" || ext == "jsonld" || ext == "sbol" {
+                    if let rawText = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? (try? String(contentsOf: fileURL, encoding: .ascii)) {
+                        let oc = SequenceFormatEngine.parseOpenCloningJSON(rawText, filePath: fileURL.path)
+                        let sbol = oc.isEmpty ? SequenceFormatEngine.parseSBOL3JSONLD(rawText, filePath: fileURL.path) : oc
+                        for (idx, info) in sbol.enumerated() {
+                            let cleanName = fileURL.deletingPathExtension().lastPathComponent + (idx > 0 ? "_\(idx + 1)" : "")
+                            parsedList.append(PlasmidPoolItem(id: idx == 0 ? fileURL.path : "\(fileURL.path)#\(idx + 1)", name: cleanName, dnaInfo: info))
+                        }
                     }
                 } else {
                     if let rawText = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? (try? String(contentsOf: fileURL, encoding: .ascii)) {
@@ -761,6 +776,84 @@ public final class PlasmidPoolManager: ObservableObject {
         } else {
             items.insert(item, at: 0)
         }
+    }
+
+    @discardableResult
+    public func importFetchedDNAInfo(_ info: SnapGeneFileInfo, displayName: String) -> PlasmidPoolItem {
+        let cleanName = displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Fetched_Plasmid"
+            : displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let item = PlasmidPoolItem(id: info.filePath, name: cleanName, dnaInfo: info)
+        upsertItem(item)
+        selectedItemID = item.id
+        savePoolToDisk()
+        return item
+    }
+
+    /// 将离线自动注释得到的特征写入既有质粒或新建质粒池条目并持久化
+    @discardableResult
+    public func upsertAnnotatedPlasmid(
+        existingItemID: String?,
+        name: String,
+        sequence: String,
+        isCircular: Bool,
+        features: [SnapGeneFeature]
+    ) -> PlasmidPoolItem {
+        let cleanSeq = BioSequence.clean(sequence)
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Annotated_Plasmid"
+            : name.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let eid = existingItemID,
+           let idx = items.firstIndex(where: { $0.id == eid }) {
+            let old = items[idx]
+            let updatedInfo = SnapGeneFileInfo(
+                filePath: old.dnaInfo.filePath,
+                fileName: old.dnaInfo.fileName,
+                sequence: cleanSeq,
+                length: cleanSeq.count,
+                isCircular: isCircular,
+                featuresCount: features.count,
+                features: features,
+                primersCount: old.dnaInfo.primersCount,
+                primers: old.dnaInfo.primers
+            )
+            let updatedItem = PlasmidPoolItem(
+                id: old.id,
+                name: cleanName,
+                aliasName: old.aliasName,
+                categoryTag: old.categoryTag,
+                notes: old.notes,
+                addedAt: old.addedAt,
+                dnaInfo: updatedInfo
+            )
+            items[idx] = updatedItem
+            selectedItemID = updatedItem.id
+            savePoolToDisk()
+            return updatedItem
+        }
+
+        let syntheticID = "annotated://\(cleanName)_\(UUID().uuidString.prefix(8))"
+        let newInfo = SnapGeneFileInfo(
+            filePath: syntheticID,
+            fileName: "\(cleanName).fasta",
+            sequence: cleanSeq,
+            length: cleanSeq.count,
+            isCircular: isCircular,
+            featuresCount: features.count,
+            features: features,
+            primersCount: 0,
+            primers: []
+        )
+        let newItem = PlasmidPoolItem(
+            id: syntheticID,
+            name: cleanName,
+            dnaInfo: newInfo
+        )
+        upsertItem(newItem)
+        selectedItemID = newItem.id
+        savePoolToDisk()
+        return newItem
     }
     
     public func removeItem(_ item: PlasmidPoolItem) {

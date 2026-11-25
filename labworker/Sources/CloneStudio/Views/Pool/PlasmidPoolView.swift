@@ -9,6 +9,10 @@ public struct PlasmidPoolView: View {
     @ObservedObject private var appState = AppState.shared
     @State private var isDropTargeted: Bool = false
     @State private var inspectorFeatureFilter: PlasmidFeatureFilter = .targetGenes
+    @State private var showAnnotationSheet: Bool = false
+    @State private var annotationInitialItem: PlasmidPoolItem? = nil
+    @State private var showDiagnosticDigestSheet: Bool = false
+    @State private var showOnlineFetchSheet: Bool = false
     
     public init() {}
     
@@ -21,9 +25,34 @@ public struct PlasmidPoolView: View {
                     icon: "folder.badge.plus",
                     tint: .blue,
                     isProminent: true,
-                    help: "从 Finder 导入质粒或扫描文件夹",
+                    help: "从 Finder 导入 .dna / .gb / .fasta / OpenCloning / SBOL3 或扫描文件夹",
                     action: presentImportFilesOrFolderPanel
                 ),
+                .action(
+                    title: "在线拉取",
+                    icon: "arrow.down.circle",
+                    tint: .indigo,
+                    help: "输入 Addgene ID 或 NCBI GenBank/RefSeq 登录号一键导入"
+                ) {
+                    showOnlineFetchSheet = true
+                },
+                .action(
+                    title: "注释 FASTA",
+                    icon: "wand.and.stars",
+                    tint: .purple,
+                    help: "使用本地千级元件库离线自动注释未知 FASTA / 质粒序列"
+                ) {
+                    annotationInitialItem = nil
+                    showAnnotationSheet = true
+                },
+                .action(
+                    title: "鉴定酶切",
+                    icon: "scissors",
+                    tint: .teal,
+                    help: "对比空载与重组质粒，推荐 Top 3 诊断性限制酶切方案"
+                ) {
+                    showDiagnosticDigestSheet = true
+                },
                 .action(
                     id: "clear_pool",
                     title: "",
@@ -42,6 +71,18 @@ public struct PlasmidPoolView: View {
                     plasmidInspectorCard(selected)
                 }
             }
+        }
+        .sheet(isPresented: $showAnnotationSheet) {
+            PlasmidAutoAnnotationSheet(initialItem: annotationInitialItem)
+        }
+        .sheet(isPresented: $showDiagnosticDigestSheet) {
+            DiagnosticDigestSheet(
+                initialEmptyPlasmidID: pool.selectedItem?.id ?? pool.items.first?.id,
+                initialRecombinantPlasmidID: pool.items.first(where: { $0.id != (pool.selectedItem?.id ?? pool.items.first?.id) })?.id
+            )
+        }
+        .sheet(isPresented: $showOnlineFetchSheet) {
+            OnlineDatabaseFetchSheet()
         }
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
             FinderFileDropHelper.extractAllFileURLs(from: providers) { urls in
@@ -330,8 +371,53 @@ public struct PlasmidPoolView: View {
         let displayedFeatures = filteredFeatures.isEmpty ? item.dnaInfo.features.filter { !$0.segments.isEmpty } : filteredFeatures
         
         return StudioCard(title: "选中质粒详情") {
-            HStack(spacing: 8) {
+            StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                 FinderRevealButton(filePath: item.dnaInfo.filePath, label: "Finder")
+                StudioMenuPillButton(
+                    title: "导出格式",
+                    icon: "square.and.arrow.up",
+                    tint: .teal,
+                    help: "导出标准 GenBank (.gb)、OpenCloning (.json) 或 SBOL3 (.jsonld)"
+                ) {
+                    Button("导出 GenBank (.gb)") {
+                        let gb = SequenceFormatEngine.exportGenBank(info: item.dnaInfo, name: item.name)
+                        FinderFileDropHelper.saveTextToFile(
+                            content: gb,
+                            defaultFileName: "\(item.name).gb",
+                            contentType: .plainText,
+                            toastPrefix: "已导出 GenBank 文件"
+                        )
+                    }
+                    Button("导出 OpenCloning (.json)") {
+                        if let json = try? SequenceFormatEngine.exportOpenCloningJSON(info: item.dnaInfo, name: item.name) {
+                            FinderFileDropHelper.saveTextToFile(
+                                content: json,
+                                defaultFileName: "\(item.name).opencloning.json",
+                                contentType: .json,
+                                toastPrefix: "已导出 OpenCloning JSON"
+                            )
+                        }
+                    }
+                    Button("导出 SBOL3 JSON-LD (.jsonld)") {
+                        if let jsonld = try? SequenceFormatEngine.exportSBOL3JSONLD(info: item.dnaInfo, name: item.name) {
+                            FinderFileDropHelper.saveTextToFile(
+                                content: jsonld,
+                                defaultFileName: "\(item.name).sbol3.jsonld",
+                                contentType: .json,
+                                toastPrefix: "已导出 SBOL3 JSON-LD"
+                            )
+                        }
+                    }
+                }
+                StudioActionPillButton(
+                    title: "离线注释",
+                    icon: "wand.and.stars",
+                    tint: .purple,
+                    help: "使用本地 Libraries.sqlite 自动重新注释该质粒特征"
+                ) {
+                    annotationInitialItem = item
+                    showAnnotationSheet = true
+                }
                 StudioActionPillButton(
                     title: "查看图谱",
                     icon: "eye.fill",

@@ -3,10 +3,17 @@ import AppKit
 import UniformTypeIdentifiers
 import CloneStudioCore
 
-/// Sanger 测序 (.ab1 / .abi / .seq) 四色荧光峰图解析、环状质粒比对与批量克隆验证看板
+/// Sanger 测序 (.ab1 / .abi / .seq) 四色荧光峰图解析、环状质粒比对与批量克隆验证看板（内置 CRISPR 编辑池 ICE 反卷积与全质粒 Nanopore / 多读段拼接模式）
 public struct SangerVerificationView: View {
+    private enum SangerWorkspaceMode: String, CaseIterable {
+        case alignment = "测序比对与批量质检"
+        case crisprDeconvolution = "CRISPR 编辑效率 (ICE 反卷积)"
+        case wholePlasmidAndContig = "全质粒与多读段拼接"
+    }
+
     @ObservedObject private var appState = AppState.shared
     @ObservedObject private var poolManager = PlasmidPoolManager.shared
+    @State private var workspaceMode: SangerWorkspaceMode = .alignment
 
     // MARK: - 状态属性
     @State private var chromatogram: SangerAlignmentEngine.ChromatogramRecord?
@@ -98,31 +105,50 @@ public struct SangerVerificationView: View {
             ]
         ) {
             VStack(alignment: .leading, spacing: 14) {
-                // 0. 批量克隆验证看板（拖入多文件或文件夹时自动展开 P11）
-                if isBatchRunning || batchResult != nil {
-                    batchKanbanCard
-                }
+                StudioSegmentedPicker(
+                    selection: $workspaceMode,
+                    options: [
+                        StudioSegmentedOption(value: SangerWorkspaceMode.alignment, title: SangerWorkspaceMode.alignment.rawValue, tint: .blue),
+                        StudioSegmentedOption(value: SangerWorkspaceMode.crisprDeconvolution, title: SangerWorkspaceMode.crisprDeconvolution.rawValue, tint: .purple),
+                        StudioSegmentedOption(value: SangerWorkspaceMode.wholePlasmidAndContig, title: SangerWorkspaceMode.wholePlasmidAndContig.rawValue, tint: .indigo)
+                    ]
+                )
 
-                // 1. 顶部 KPI 指标自适应网格
-                if let rep = report {
-                    metricsSummaryGrid(rep)
-                }
+                if workspaceMode == .crisprDeconvolution {
+                    CRISPRDeconvolutionPanelView()
+                } else if workspaceMode == .wholePlasmidAndContig {
+                    WholePlasmidVerifyPanelView()
+                } else {
+                    // 0. 批量克隆验证看板（拖入多文件或文件夹时自动展开 P11）
+                    if isBatchRunning || batchResult != nil {
+                        batchKanbanCard
+                    }
 
-                // 2. 主工作区：左侧四色峰图与工具栏 + 右侧参考质粒选择与变异位点清单
-                StudioResponsiveSplitLayout(breakpoint: 960, spacing: 14, leftRatio: 0.58) {
-                    chromatogramWorkspaceCard
-                    rightInspectorColumn
-                }
+                    // 1. 顶部 KPI 指标自适应网格
+                    if let rep = report {
+                        metricsSummaryGrid(rep)
+                    }
 
-                // 3. 底部可展开逐碱基比对文本抽屉
-                if let rep = report, !rep.columns.isEmpty {
-                    alignmentDetailDrawer(rep)
+                    // 2. 主工作区：左侧四色峰图与工具栏 + 右侧参考质粒选择与变异位点清单
+                    StudioResponsiveSplitLayout(breakpoint: 960, spacing: 14, leftRatio: 0.58) {
+                        chromatogramWorkspaceCard
+                        rightInspectorColumn
+                    }
+
+                    // 3. 底部可展开逐碱基比对文本抽屉
+                    if let rep = report, !rep.columns.isEmpty {
+                        alignmentDetailDrawer(rep)
+                    }
                 }
             }
         }
         .onAppear {
             if let pending = appState.pendingFinderOpenedFileURL {
                 let ext = pending.pathExtension.lowercased()
+                if ["fastq", "fq"].contains(ext) {
+                    workspaceMode = .wholePlasmidAndContig
+                    return
+                }
                 if ["ab1", "abi", "seq", "fa", "fasta", "txt"].contains(ext) {
                     appState.pendingFinderOpenedFileURL = nil
                     loadSangerFile(from: pending)
@@ -136,6 +162,10 @@ public struct SangerVerificationView: View {
         .onChange(of: appState.pendingFinderOpenedFileURL) { _, newURL in
             guard let url = newURL else { return }
             let ext = url.pathExtension.lowercased()
+            if ["fastq", "fq"].contains(ext) {
+                workspaceMode = .wholePlasmidAndContig
+                return
+            }
             if ["ab1", "abi", "seq", "fa", "fasta", "txt"].contains(ext) {
                 appState.pendingFinderOpenedFileURL = nil
                 loadSangerFile(from: url)

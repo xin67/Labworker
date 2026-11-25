@@ -1,12 +1,18 @@
 import CloneStudioCore
 import SwiftUI
 
-/// DNA 序列处理与引物 Tm 测算工具箱（参考图2层次化胶囊按钮组 + 清晰大字号）
+/// DNA 序列处理、引物 Tm 测算与宿主密码子约束优化工作台
 public struct SequenceToolsView: View {
+    private enum SequenceToolMode: String, CaseIterable {
+        case basicAndTm = "序列转换与 Tm 测算"
+        case codonOptimization = "密码子与合成优化"
+    }
+
     @ObservedObject private var vm = WorkspaceSessionManager.shared.sequenceToolVM
-    
+    @State private var toolMode: SequenceToolMode = .basicAndTm
+
     public init() {}
-    
+
     public var body: some View {
         StudioPageLayout(
             title: "序列工具与 Tm 测算",
@@ -17,7 +23,7 @@ public struct SequenceToolsView: View {
                     title: "",
                     icon: "trash",
                     tint: .red,
-                    isDisabled: vm.inputSeq.isEmpty && vm.outputSeq.isEmpty && vm.tmResult == nil,
+                    isDisabled: toolMode == .basicAndTm && vm.inputSeq.isEmpty && vm.outputSeq.isEmpty && vm.tmResult == nil,
                     help: "清空序列工具输入与计算结果"
                 ) {
                     vm.inputSeq = ""
@@ -26,7 +32,17 @@ public struct SequenceToolsView: View {
                 }
             ]
         ) {
-                
+                StudioSegmentedPicker(
+                    selection: $toolMode,
+                    options: [
+                        StudioSegmentedOption(value: SequenceToolMode.basicAndTm, title: SequenceToolMode.basicAndTm.rawValue, tint: .blue),
+                        StudioSegmentedOption(value: SequenceToolMode.codonOptimization, title: SequenceToolMode.codonOptimization.rawValue, tint: .mint)
+                    ]
+                )
+
+                if toolMode == .codonOptimization {
+                    CodonOptimizationPanelView()
+                } else {
                 StudioCard(title: "输入序列 (5' → 3')") {
                     HStack(spacing: 8) {
                         StudioMetricBadge(label: "长度", value: "\(vm.cleanLength) bp", color: .blue)
@@ -98,6 +114,7 @@ public struct SequenceToolsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .studioInnerBox(paddingH: 10, paddingV: 10)
                     }
+                }
                 }
         }
     }
