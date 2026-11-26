@@ -149,14 +149,14 @@ public struct PrimerQualityEngine {
         public var summaryBadgeText: String {
             switch overallRisk {
             case .safe:
-                return "二级结构安全"
+                return L10n.t("二级结构安全")
             case .moderate:
                 let minDg = min(hairpin.dg, homodimer.dg)
-                return String(format: "中风险 (%.1f kcal/mol)", minDg)
+                return String(format: L10n.tr("中风险 (%.1f kcal/mol)", "Moderate Risk (%.1f kcal/mol)"), minDg)
             case .high:
                 let minDg = min(hairpin.dg, homodimer.dg)
-                let tag = (hairpin.threePrimeAnchored || homodimer.threePrimeAnchored) ? "3'端配对 " : ""
-                return String(format: "高风险 %@(%.1f kcal/mol)", tag, minDg)
+                let tag = (hairpin.threePrimeAnchored || homodimer.threePrimeAnchored) ? L10n.t("3'端配对 ") : ""
+                return String(format: L10n.tr("高风险 %@(%.1f kcal/mol)", "High Risk %@(%.1f kcal/mol)"), tag, minDg)
             }
         }
     }

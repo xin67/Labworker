@@ -3,6 +3,7 @@ import CloneStudioCore
 
 /// 靶点可靠性评分胶囊微徽章与诊断悬浮窗 (TargetScoreBadge)
 public struct TargetScoreBadge: View {
+    @Environment(\.appLanguage) private var appLanguage
     public let score: TargetScore
     public var compact: Bool = false
     
@@ -14,6 +15,7 @@ public struct TargetScoreBadge: View {
     }
     
     public var body: some View {
+        let _ = appLanguage
         Button(action: {
             showPopover.toggle()
         }) {
@@ -38,7 +40,10 @@ public struct TargetScoreBadge: View {
             .foregroundColor(score.tier.color)
         }
         .buttonStyle(.plain)
-        .help("序列启发式评分组成：GC 含量、二级结构/自互补、Poly-T 终止信号与位置权重（未包含全基因组脱靶搜索，当前: \(score.formattedScore)分）")
+        .help(L10n.tr(
+            "序列启发式评分组成：GC 含量、二级结构/自互补、Poly-T 终止信号与位置权重（未包含全基因组脱靶搜索，当前: \(score.formattedScore)分）",
+            "Sequence heuristic score breakdown: GC%, secondary structure/self-complementarity, Poly-T terminator & positional weights (excludes genome-wide off-target scan; score: \(score.formattedScore))"
+        ))
         .popover(isPresented: $showPopover, arrowEdge: .trailing) {
             scoreDetailPopover
         }
@@ -48,7 +53,7 @@ public struct TargetScoreBadge: View {
         VStack(alignment: .leading, spacing: 8) {
             // 顶栏：评分与评级
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("\(score.formattedScore) 分")
+                Text(L10n.tr("\(score.formattedScore) 分", "\(score.formattedScore) pts"))
                     .font(.system(size: 18, weight: .bold))
                     .monospacedDigit()
                     .foregroundColor(score.tier.color)
@@ -91,7 +96,7 @@ public struct TargetScoreBadge: View {
             
             // 规则诊断标签明细
             VStack(alignment: .leading, spacing: 4) {
-                Text("序列启发式评分明细（GC / 二级结构 / Poly-T / 位置权重）：")
+                Text(L10n.t("序列启发式评分明细（GC / 二级结构 / Poly-T / 位置权重）："))
                     .font(.system(size: 10.5, weight: .semibold))
                     .foregroundColor(.secondary)
                 
@@ -119,7 +124,7 @@ public struct TargetScoreBadge: View {
             Divider()
             
             HStack {
-                Text("基于序列启发式规则（Doench RS2 / Reynolds 与 U6 转录特征，未含全基因组脱靶搜索）")
+                Text(L10n.t("基于序列启发式规则（Doench RS2 / Reynolds 与 U6 转录特征，未含全基因组脱靶搜索）"))
                     .font(.system(size: 9.5))
                     .foregroundColor(.secondary.opacity(0.8))
                 Spacer()

@@ -47,16 +47,16 @@ public enum BioDatabaseFetchService {
     public static func fetchNCBIGenBank(accession rawAcc: String) async throws -> FetchedPlasmidResult {
         let cleanedAcc = rawAcc.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanedAcc.isEmpty else {
-            throw FetchError.invalidIdentifier("请输入有效的 NCBI GenBank / RefSeq 登录号（如 NM_000546 或 L09137）。")
+            throw FetchError.invalidIdentifier(L10n.t("请输入有效的 NCBI GenBank / RefSeq 登录号（如 NM_000546 或 L09137）。"))
         }
         guard let encoded = cleanedAcc.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
               let url = URL(string: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=\(encoded)&rettype=gbwithparts&retmode=text") else {
-            throw FetchError.invalidIdentifier("登录号格式无效：\(cleanedAcc)")
+            throw FetchError.invalidIdentifier(L10n.tr("登录号格式无效：\(cleanedAcc)", "Invalid accession format: \(cleanedAcc)"))
         }
 
         let rawText = try await fetchText(url: url, context: "NCBI E-utilities (\(cleanedAcc))")
         guard var parsed = SequenceFormatEngine.parseGenBank(rawText, fallbackName: cleanedAcc, filePath: "ncbi://\(cleanedAcc)") else {
-            throw FetchError.parseFailure("NCBI 返回的内容未能解析为 GenBank 序列，请确认登录号 \(cleanedAcc) 是否存在。")
+            throw FetchError.parseFailure(L10n.tr("NCBI 返回的内容未能解析为 GenBank 序列，请确认登录号 \(cleanedAcc) 是否存在。", "Failed to parse NCBI GenBank response; verify accession \(cleanedAcc)."))
         }
 
         var autoCount = 0
@@ -90,11 +90,11 @@ public enum BioDatabaseFetchService {
             .replacingOccurrences(of: "addgene", with: "", options: .caseInsensitive)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !digits.isEmpty, digits.allSatisfy(\.isNumber) else {
-            throw FetchError.invalidIdentifier("请输入纯数字 Addgene 质粒编号（如 52961 或 #52961）。")
+            throw FetchError.invalidIdentifier(L10n.t("请输入纯数字 Addgene 质粒编号（如 52961 或 #52961）。"))
         }
 
         guard let pageURL = URL(string: "https://www.addgene.org/\(digits)/sequences/") else {
-            throw FetchError.invalidIdentifier("无效 Addgene 编号：\(digits)")
+            throw FetchError.invalidIdentifier(L10n.tr("无效 Addgene 编号：\(digits)", "Invalid Addgene ID: \(digits)"))
         }
         let html = try await fetchText(url: pageURL, context: "Addgene #\(digits)")
 
@@ -130,7 +130,7 @@ public enum BioDatabaseFetchService {
             }
         }
 
-        throw FetchError.parseFailure("在 Addgene #\(digits) 页面未检测到公开的 Full/SnapGene GenBank 或 FASTA 序列资源（可能仅含部分 Sanger 测序读段或无全长序列）。")
+        throw FetchError.parseFailure(L10n.tr("在 Addgene #\(digits) 页面未检测到公开的 Full/SnapGene GenBank 或 FASTA 序列资源（可能仅含部分 Sanger 测序读段或无全长序列）。", "No public Full/SnapGene GenBank or FASTA sequence found on Addgene #\(digits)."))
     }
 
     // MARK: - 3. RCSB PDB 结构抓取 (.cif 优先，回退 .pdb)
@@ -138,7 +138,7 @@ public enum BioDatabaseFetchService {
     public static func fetchRCSBStructure(pdbID rawID: String) async throws -> FetchedProteinStructureResult {
         let pid = rawID.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard pid.count == 4, pid.allSatisfy({ $0.isLetter || $0.isNumber }) else {
-            throw FetchError.invalidIdentifier("请输入标准 4 位 RCSB PDB ID（如 1ATP、1UBQ、6LU7）。")
+            throw FetchError.invalidIdentifier(L10n.t("请输入标准 4 位 RCSB PDB ID（如 1ATP、1UBQ、6LU7）。"))
         }
         if let cifURL = URL(string: "https://files.rcsb.org/download/\(pid).cif"),
            let cifText = try? await fetchText(url: cifURL, context: "RCSB mmCIF (\(pid))"),
@@ -146,7 +146,7 @@ public enum BioDatabaseFetchService {
             return FetchedProteinStructureResult(source: "RCSB PDB (mmCIF)", identifier: pid, format: "cif", contentText: cifText)
         }
         guard let pdbURL = URL(string: "https://files.rcsb.org/download/\(pid).pdb") else {
-            throw FetchError.invalidIdentifier("无效 PDB ID：\(pid)")
+            throw FetchError.invalidIdentifier(L10n.tr("无效 PDB ID：\(pid)", "Invalid PDB ID: \(pid)"))
         }
         let pdbText = try await fetchText(url: pdbURL, context: "RCSB PDB (\(pid))")
         return FetchedProteinStructureResult(source: "RCSB PDB", identifier: pid, format: "pdb", contentText: pdbText)
@@ -161,7 +161,7 @@ public enum BioDatabaseFetchService {
             if parts.count >= 2 { acc = String(parts[1]) }
         }
         guard acc.count >= 4, acc.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) else {
-            throw FetchError.invalidIdentifier("请输入标准 UniProt 登录号（如 P04637）或 AlphaFold ID（如 AF-P04637-F1）。")
+            throw FetchError.invalidIdentifier(L10n.t("请输入标准 UniProt 登录号（如 P04637）或 AlphaFold ID（如 AF-P04637-F1）。"))
         }
 
         // 先尝试 AlphaFold EBI API 获取最新 mmCIF 下载链接
@@ -183,13 +183,13 @@ public enum BioDatabaseFetchService {
 
         // 回退至 UniProt REST FASTA
         guard let uniURL = URL(string: "https://rest.uniprot.org/uniprotkb/\(acc).fasta") else {
-            throw FetchError.invalidIdentifier("无效 UniProt 登录号：\(acc)")
+            throw FetchError.invalidIdentifier(L10n.tr("无效 UniProt 登录号：\(acc)", "Invalid UniProt accession: \(acc)"))
         }
         let fastaText = try await fetchText(url: uniURL, context: "UniProt (\(acc))")
         guard !ProteinBiophysicsEngine.cleanProteinSequence(fastaText).isEmpty else {
-            throw FetchError.parseFailure("未在 AlphaFold DB 与 UniProt 找到 \(acc) 的结构或序列数据。")
+            throw FetchError.parseFailure(L10n.tr("未在 AlphaFold DB 与 UniProt 找到 \(acc) 的结构或序列数据。", "Structure or sequence for \(acc) not found in AlphaFold DB or UniProt."))
         }
-        return FetchedProteinStructureResult(source: "UniProt FASTA (无 AlphaFold 结构)", identifier: acc, format: "fasta", contentText: fastaText)
+        return FetchedProteinStructureResult(source: L10n.t("UniProt FASTA (无 AlphaFold 结构)"), identifier: acc, format: "fasta", contentText: fastaText)
     }
 
     // MARK: - 网络与正则是辅助
@@ -198,15 +198,15 @@ public enum BioDatabaseFetchService {
         do {
             let (data, resp) = try await session.data(from: url)
             if let http = resp as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
-                throw FetchError.networkFailure("\(context) 请求失败（HTTP \(http.statusCode)）。")
+                throw FetchError.networkFailure(L10n.tr("\(context) 请求失败（HTTP \(http.statusCode)）。", "\(context) request failed (HTTP \(http.statusCode))."))
             }
             if let utf8 = String(data: data, encoding: .utf8) { return utf8 }
             if let ascii = String(data: data, encoding: .ascii) { return ascii }
-            throw FetchError.parseFailure("\(context) 响应编码无法读取。")
+            throw FetchError.parseFailure(L10n.tr("\(context) 响应编码无法读取。", "Unable to decode \(context) response encoding."))
         } catch let e as FetchError {
             throw e
         } catch {
-            throw FetchError.networkFailure("\(context) 网络请求失败：\(error.localizedDescription)")
+            throw FetchError.networkFailure(L10n.tr("\(context) 网络请求失败：\(error.localizedDescription)", "\(context) network error: \(error.localizedDescription)"))
         }
     }
 

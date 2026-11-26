@@ -93,9 +93,9 @@ public struct PlasmidAutoAnnotationSheet: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(.purple)
             VStack(alignment: .leading, spacing: 2) {
-                Text("离线质粒 FASTA 自动注释")
+                Text(L10n.t("离线质粒 FASTA 自动注释"))
                     .font(.system(size: 15, weight: .bold))
-                Text("基于本地 Libraries.sqlite 元件库（已载入 \(libraryFeatureCount) 条标准质粒特征），支持双链扫描、跨 Origin 与 Fragment 预警")
+                Text(L10n.tr("基于本地 Libraries.sqlite 元件库（已载入 \(libraryFeatureCount) 条标准质粒特征），支持双链扫描、跨 Origin 与 Fragment 预警", "Powered by local Libraries.sqlite feature database (\(libraryFeatureCount) curated features); supports dual-strand scan, Origin-spanning & remnant fragment warnings."))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -122,21 +122,21 @@ public struct PlasmidAutoAnnotationSheet: View {
             VStack(alignment: .leading, spacing: 10) {
                 StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 8) {
                     HStack(spacing: 6) {
-                        Text("质粒名称:")
+                        Text(L10n.t("质粒名称:"))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
-                        TextField("质粒名称", text: $plasmidName)
+                        TextField(L10n.t("质粒名称"), text: $plasmidName)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
                             .frame(width: 210)
                     }
 
-                    Toggle("环状质粒 (跨 Origin 扫描)", isOn: $isCircular)
+                    Toggle(L10n.t("环状质粒 (跨 Origin 扫描)"), isOn: $isCircular)
                         .toggleStyle(.switch)
                         .controlSize(.small)
 
                     HStack(spacing: 6) {
-                        Text("最低一致率:")
+                        Text(L10n.t("最低一致率:"))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                         Slider(value: $minIdentity, in: 0.75...0.98, step: 0.01)
@@ -150,7 +150,7 @@ public struct PlasmidAutoAnnotationSheet: View {
 
                 SequenceEditorBox(
                     text: $rawFastaText,
-                    placeholder: "粘贴 >FASTA 文本或纯 DNA 序列（ATGCG...）",
+                    placeholder: L10n.t("粘贴 >FASTA 文本或纯 DNA 序列（ATGCG...）"),
                     minHeight: 100
                 )
             }
@@ -182,21 +182,21 @@ public struct PlasmidAutoAnnotationSheet: View {
 
     @ViewBuilder
     private func resultSection(_ rep: PlasmidAnnotationEngine.PlasmidAnnotationReport) -> some View {
-        StudioCard(title: "注释结果：\(rep.plasmidName)") {
+        StudioCard(title: L10n.tr("注释结果：\(rep.plasmidName)", "Annotation Report: \(rep.plasmidName)")) {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
-                StudioMetricBadge(label: "命中特征", value: "\(rep.featuresCount) 个", color: .purple)
+                StudioMetricBadge(label: L10n.t("命中特征"), value: L10n.tr("\(rep.featuresCount) 个", "\(rep.featuresCount)"), color: .purple)
                 StudioMetricBadge(
-                    label: "覆盖率",
+                    label: L10n.t("覆盖率"),
                     value: String(format: "%.1f%%", rep.annotatedCoveragePercent),
                     color: .blue
                 )
                 StudioMetricBadge(
-                    label: "跨零点",
+                    label: L10n.t("跨零点"),
                     value: "\(rep.originSpanningCount)",
                     color: rep.originSpanningCount > 0 ? .teal : .secondary
                 )
                 StudioMetricBadge(
-                    label: "残留片段",
+                    label: L10n.t("残留片段"),
                     value: "\(rep.fragmentCount)",
                     color: rep.fragmentCount > 0 ? .orange : .green
                 )
@@ -220,7 +220,7 @@ public struct PlasmidAutoAnnotationSheet: View {
                         StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                             ForEach(categories, id: \.self) { cat in
                                 StudioCompactPillButton(
-                                    title: cat,
+                                    title: cat == "全部" ? L10n.t("全部") : cat,
                                     tint: .purple,
                                     isSelected: categoryFilter == cat
                                 ) {
@@ -230,7 +230,7 @@ public struct PlasmidAutoAnnotationSheet: View {
                         }
 
                         if filteredFeatures.isEmpty {
-                            Text("当前筛选条件下未命中特征元件")
+                            Text(L10n.t("当前筛选条件下未命中特征元件"))
                                 .font(.system(size: 12))
                                 .foregroundStyle(.secondary)
                                 .padding(.vertical, 12)
@@ -259,7 +259,7 @@ public struct PlasmidAutoAnnotationSheet: View {
                                                         StudioMetricBadge(label: "", value: "跨 Origin", color: .teal)
                                                     }
                                                 }
-                                                Text("\(feat.start1Based)..\(feat.end1Based) (\(feat.strand)链) · 长度 \(feat.matchedLength)/\(feat.referenceLength) bp · 一致率 \(String(format: "%.1f%%", feat.identity * 100))")
+                                                Text(L10n.tr("\(feat.start1Based)..\(feat.end1Based) (\(feat.strand)链) · 长度 \(feat.matchedLength)/\(feat.referenceLength) bp · 一致率 \(String(format: "%.1f%%", feat.identity * 100))", "\(feat.start1Based)..\(feat.end1Based) (\(feat.strand) strand) · Length \(feat.matchedLength)/\(feat.referenceLength) bp · Identity \(String(format: "%.1f%%", feat.identity * 100))"))
                                                     .font(.system(size: 11))
                                                     .monospacedDigit()
                                                     .foregroundStyle(.secondary)
@@ -323,13 +323,13 @@ public struct PlasmidAutoAnnotationSheet: View {
             isCircular: rep.isCircular,
             features: rep.toSnapGeneFeatures()
         )
-        appState.showToast("已将「\(saved.name)」(\(rep.featuresCount) 个注释特征) 保存至质粒池")
+        appState.showToast(L10n.tr("已将「\(saved.name)」(\(rep.featuresCount) 个注释特征) 保存至质粒池", "Saved \"\(saved.name)\" (\(rep.featuresCount) annotated features) to Plasmid Pool"))
         dismiss()
     }
 
     private func openFASTAFile() {
         let panel = NSOpenPanel()
-        panel.title = "选择 FASTA / 序列文件 (.fa / .fasta / .seq / .txt)"
+        panel.title = L10n.t("选择 FASTA / 序列文件 (.fa / .fasta / .seq / .txt)")
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
         var types: [UTType] = [.plainText]

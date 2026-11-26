@@ -263,7 +263,7 @@ public struct QPCRGroupSummary: Identifiable, Sendable {
     
     public var significanceLabel: String {
         if isControl { return "Ref" }
-        guard let p = effectivePValueForSignificance, statNote == .ok else { return "n<2，未检验" }
+        guard let p = effectivePValueForSignificance, statNote == .ok else { return L10n.t("n<2，未检验") }
         if p < 0.001 { return "***" }
         if p < 0.01  { return "**" }
         if p < 0.05  { return "*" }
@@ -1349,16 +1349,16 @@ public enum QPCRAnalysisEngine {
         for w in wells {
             let itemID = "\(w.well) (\(w.sample)/\(w.target))"
             if !w.include {
-                exclusions.append(AnalysisRun.Exclusion(itemID: w.id, reason: "用户手动取消勾选 (\(itemID))"))
+                exclusions.append(AnalysisRun.Exclusion(itemID: w.id, reason: L10n.tr("用户手动取消勾选 (\(itemID))", "Manually unchecked (\(itemID))")))
             } else if w.wellType == .ntc || w.wellType == .noRT {
-                exclusions.append(AnalysisRun.Exclusion(itemID: w.id, reason: "对照孔 (\(w.wellType.rawValue)) 不进入 ΔΔCt 计算"))
+                exclusions.append(AnalysisRun.Exclusion(itemID: w.id, reason: L10n.tr("对照孔 (\(w.wellType.rawValue)) 不进入 ΔΔCt 计算", "Control well (\(w.wellType.rawValue)) excluded from ΔΔCt")))
             } else if let flags = qc[w.id]?.flags {
                 if flags.contains(.meltOutlier) {
-                    exclusions.append(AnalysisRun.Exclusion(itemID: w.id, reason: "熔解曲线 Tm 偏离中位数超过容差 (meltOutlier)"))
+                    exclusions.append(AnalysisRun.Exclusion(itemID: w.id, reason: L10n.t("熔解曲线 Tm 偏离中位数超过容差 (meltOutlier)")))
                 } else if flags.contains(.undetermined) {
-                    exclusions.append(AnalysisRun.Exclusion(itemID: w.id, reason: "未检出 Ct (Undetermined)"))
+                    exclusions.append(AnalysisRun.Exclusion(itemID: w.id, reason: L10n.t("未检出 Ct (Undetermined)")))
                 } else if settings.excludeOutliers && flags.contains(.outlier) {
-                    exclusions.append(AnalysisRun.Exclusion(itemID: w.id, reason: "复孔离群值自动剔除 (outlier)"))
+                    exclusions.append(AnalysisRun.Exclusion(itemID: w.id, reason: L10n.t("复孔离群值自动剔除 (outlier)")))
                 }
             }
         }

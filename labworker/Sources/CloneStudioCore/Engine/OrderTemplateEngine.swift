@@ -301,14 +301,14 @@ public enum OrderTemplateEngine {
         for p in primers {
             let trimmed = p.name.trimmingCharacters(in: .whitespacesAndNewlines)
             if !badChars.isEmpty && trimmed.contains(where: { badChars.contains($0) }) {
-                warnings.append("「\(trimmed)」含受限特殊字符，导出时将自动清洗")
+                warnings.append(L10n.tr("「\(trimmed)」含受限特殊字符，导出时将自动清洗", "\"\(trimmed)\" contains restricted characters and will be sanitized on export"))
             }
             if maxLen > 0 && trimmed.count > maxLen {
-                warnings.append("「\(trimmed)」超过 \(maxLen) 字符限制，导出时将截断")
+                warnings.append(L10n.tr("「\(trimmed)」超过 \(maxLen) 字符限制，导出时将截断", "\"\(trimmed)\" exceeds \(maxLen)-character limit and will be truncated"))
             }
             let cleanSeq = BioSequence.clean(p.fullSequence)
             if cleanSeq.count < p.fullSequence.trimmingCharacters(in: .whitespacesAndNewlines).count {
-                warnings.append("「\(trimmed)」含非标准碱基或空白符，已自动规范化")
+                warnings.append(L10n.tr("「\(trimmed)」含非标准碱基或空白符，已自动规范化", "\"\(trimmed)\" contains non-standard bases or whitespace and was normalized"))
             }
         }
         return Array(warnings.prefix(6))

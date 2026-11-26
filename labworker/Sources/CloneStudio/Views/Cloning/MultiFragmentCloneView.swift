@@ -100,16 +100,16 @@ public struct MultiFragmentCloneView: View {
                                     HStack(spacing: 6) {
                                         Image(systemName: "doc.text.magnifyingglass")
                                             .foregroundColor(.blue)
-                                        Text("已解析载体: \(vec.fileName)")
+                                        Text(L10n.tr("已解析载体: \(vec.fileName)", "Parsed Vector: \(vec.fileName)"))
                                             .font(.system(size: 12, weight: .bold))
                                             .lineLimit(1)
                                             .truncationMode(.middle)
-                                        Text("(\(vec.length) bp · \(vec.featuresCount) 特征)")
+                                        Text(L10n.tr("(\(vec.length) bp · \(vec.featuresCount) 特征)", "(\(vec.length) bp · \(vec.featuresCount) features)"))
                                             .font(.system(size: 11))
                                             .foregroundColor(.secondary)
                                             .lineLimit(1)
                                         Spacer()
-                                        Text(delLen > 0 ? "替换区间: \(vm.cutStart)..\(vm.cutEnd) (Δ\(delLen)bp)" : "插入位点: @\(vm.cutStart) bp")
+                                        Text(delLen > 0 ? L10n.tr("替换区间: \(vm.cutStart)..\(vm.cutEnd) (Δ\(delLen)bp)", "Replace Range: \(vm.cutStart)..\(vm.cutEnd) (Δ\(delLen) bp)") : L10n.tr("插入位点: @\(vm.cutStart) bp", "Insertion Site: @\(vm.cutStart) bp"))
                                             .font(.system(size: 11, weight: .semibold))
                                             .monospacedDigit()
                                             .foregroundColor(.blue)
@@ -130,23 +130,23 @@ public struct MultiFragmentCloneView: View {
                                                 highlightRange: nil
                                             )
                                         }
-                                        StudioSectionClearButton(label: "一键清除载体", action: vm.clearVectorSection)
+                                        StudioSectionClearButton(label: L10n.t("一键清除载体"), action: vm.clearVectorSection)
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 4) {
                                         HStack(spacing: 6) {
                                             Image(systemName: "doc.text.magnifyingglass")
                                                 .foregroundColor(.blue)
-                                            Text("已解析载体: \(vec.fileName)")
+                                            Text(L10n.tr("已解析载体: \(vec.fileName)", "Parsed Vector: \(vec.fileName)"))
                                                 .font(.system(size: 12, weight: .bold))
                                                 .lineLimit(1)
                                                 .truncationMode(.middle)
                                             Spacer()
                                             FinderRevealButton(filePath: vec.filePath, label: "")
-                                            StudioSectionClearButton(label: "一键清除载体", action: vm.clearVectorSection)
+                                            StudioSectionClearButton(label: L10n.t("一键清除载体"), action: vm.clearVectorSection)
                                         }
                                         HStack(spacing: 6) {
-                                            Text(delLen > 0 ? "替换区间: \(vm.cutStart)..\(vm.cutEnd) (Δ\(delLen)bp)" : "插入位点: @\(vm.cutStart) bp")
+                                            Text(delLen > 0 ? L10n.tr("替换区间: \(vm.cutStart)..\(vm.cutEnd) (Δ\(delLen)bp)", "Replace Range: \(vm.cutStart)..\(vm.cutEnd) (Δ\(delLen) bp)") : L10n.tr("插入位点: @\(vm.cutStart) bp", "Insertion Site: @\(vm.cutStart) bp"))
                                                 .font(.system(size: 11, weight: .semibold))
                                                 .monospacedDigit()
                                                 .foregroundColor(.blue)
@@ -169,7 +169,7 @@ public struct MultiFragmentCloneView: View {
                                 
                                 ViewThatFits(in: .horizontal) {
                                     HStack(spacing: 8) {
-                                        Text("定位至载体特征:")
+                                        Text(L10n.t("定位至载体特征:"))
                                             .font(.system(size: 11.5))
                                             .foregroundColor(.secondary)
                                             .fixedSize()
@@ -191,7 +191,7 @@ public struct MultiFragmentCloneView: View {
                                             set: { act in vm.selectVectorFeature(id: vm.selectedVectorFeatureID, action: act) }
                                         )) {
                                             ForEach(SingleFragmentViewModel.VectorInsertAction.allCases) { act in
-                                                Text(act.rawValue).tag(act)
+                                                Text(L10n.t(act.rawValue)).tag(act)
                                             }
                                         }
                                         .labelsHidden()
@@ -201,7 +201,7 @@ public struct MultiFragmentCloneView: View {
                                     
                                     VStack(alignment: .leading, spacing: 6) {
                                         HStack(spacing: 6) {
-                                            Text("定位至载体特征:")
+                                            Text(L10n.t("定位至载体特征:"))
                                                 .font(.system(size: 11.5))
                                                 .foregroundColor(.secondary)
                                                 .fixedSize()
@@ -223,7 +223,7 @@ public struct MultiFragmentCloneView: View {
                                             set: { act in vm.selectVectorFeature(id: vm.selectedVectorFeatureID, action: act) }
                                         )) {
                                             ForEach(SingleFragmentViewModel.VectorInsertAction.allCases) { act in
-                                                Text(act.rawValue).tag(act)
+                                                Text(L10n.t(act.rawValue)).tag(act)
                                             }
                                         }
                                         .labelsHidden()
@@ -234,7 +234,7 @@ public struct MultiFragmentCloneView: View {
                                 if !vm.availableVectorCutSites.isEmpty {
                                     ViewThatFits(in: .horizontal) {
                                         HStack(spacing: 8) {
-                                            Text("或按载体真实酶切位点:")
+                                            Text(L10n.t("或按载体真实酶切位点:"))
                                                 .font(.system(size: 11.5))
                                                 .foregroundColor(.secondary)
                                                 .fixedSize()
@@ -252,7 +252,7 @@ public struct MultiFragmentCloneView: View {
                                         }
                                         
                                         HStack(spacing: 6) {
-                                            Text("真实酶切位点:")
+                                            Text(L10n.t("真实酶切位点:"))
                                                 .font(.system(size: 11.5))
                                                 .foregroundColor(.secondary)
                                                 .fixedSize()
@@ -278,13 +278,13 @@ public struct MultiFragmentCloneView: View {
                             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                                 if vm.effectiveVectorBackboneLengthBp > 0 {
                                     StudioMetricBadge(
-                                        label: "载体长度",
+                                        label: L10n.t("载体长度"),
                                         value: "\(vm.effectiveVectorBackboneLengthBp) bp (\(String(format: "%.2f", Double(vm.effectiveVectorBackboneLengthBp) / 1000.0)) kb)",
                                         color: .blue
                                     )
                                 }
                                 HStack(spacing: 4) {
-                                    Text("酶切位点：").font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
+                                    Text(L10n.t("酶切位点：")).font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
                                     Picker("", selection: $vm.enzymeSingle) {
                                         ForEach(RestrictionEnzymeDatabase.shared.enzymes) { enzyme in
                                             Text("\(enzyme.name) (\(enzyme.site))").tag(Optional(enzyme))
@@ -293,18 +293,18 @@ public struct MultiFragmentCloneView: View {
                                     .labelsHidden()
                                     .frame(width: 180)
                                 }
-                                StudioSectionClearButton(label: "一键清除载体", action: vm.clearVectorSection)
+                                StudioSectionClearButton(label: L10n.t("一键清除载体"), action: vm.clearVectorSection)
                             }
                         } content: {
-                            SequenceEditorBox(text: $vm.vectorSeq, placeholder: "输入或拖入载体序列", minHeight: 60)
+                            SequenceEditorBox(text: $vm.vectorSeq, placeholder: L10n.t("输入或拖入载体序列"), minHeight: 60)
                         }
                         
                         // 3. 插入片段列表 (每个片段均支持独立载入供体 .dna 并选择特征/坐标)
-                        StudioCard(title: "插入片段 (\(vm.fragments.count))") {
+                        StudioCard(title: L10n.tr("插入片段 (\(vm.fragments.count))", "Insert Fragments (\(vm.fragments.count))")) {
                             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                                 if vm.totalInsertLengthBp > 0 {
                                     StudioMetricBadge(
-                                        label: "插入总长",
+                                        label: L10n.t("插入总长"),
                                         value: "\(vm.totalInsertLengthBp) bp (\(String(format: "%.2f", Double(vm.totalInsertLengthBp) / 1000.0)) kb)",
                                         color: .green
                                     )
@@ -316,7 +316,7 @@ public struct MultiFragmentCloneView: View {
                                     isDisabled: vm.fragments.count >= 10,
                                     action: vm.addFragment
                                 )
-                                StudioSectionClearButton(label: "一键清除全部片段", action: vm.clearAllFragmentsSection)
+                                StudioSectionClearButton(label: L10n.t("一键清除全部片段"), action: vm.clearAllFragmentsSection)
                             }
                         } content: {
                             VStack(spacing: 10) {
@@ -325,8 +325,8 @@ public struct MultiFragmentCloneView: View {
                                     VStack(alignment: .leading, spacing: 6) {
                                         ViewThatFits(in: .horizontal) {
                                             HStack(spacing: 8) {
-                                                Text("片段 \(idx + 1)").font(.system(size: 12, weight: .bold))
-                                                StudioMetricBadge(label: "长度", value: "\(count) bp", color: count >= 50 ? .green : .orange)
+                                                Text(L10n.tr("片段 \(idx + 1)", "Fragment \(idx + 1)")).font(.system(size: 12, weight: .bold))
+                                                StudioMetricBadge(label: L10n.t("长度"), value: "\(count) bp", color: count >= 50 ? .green : .orange)
                                                 
                                                 StudioActionPillButton(
                                                     title: "载入 .dna",
@@ -339,7 +339,7 @@ public struct MultiFragmentCloneView: View {
                                                 }
 
                                                 Spacer()
-                                                StudioSectionClearButton(label: "一键清除本片段") {
+                                                StudioSectionClearButton(label: L10n.t("一键清除本片段")) {
                                                     vm.clearFragment(at: idx)
                                                 }
                                                 if vm.fragments.count > 2 {
@@ -351,10 +351,10 @@ public struct MultiFragmentCloneView: View {
                                             
                                             VStack(alignment: .leading, spacing: 4) {
                                                 HStack {
-                                                    Text("片段 \(idx + 1)").font(.system(size: 12, weight: .bold))
-                                                    StudioMetricBadge(label: "长度", value: "\(count) bp", color: count >= 50 ? .green : .orange)
+                                                    Text(L10n.tr("片段 \(idx + 1)", "Fragment \(idx + 1)")).font(.system(size: 12, weight: .bold))
+                                                    StudioMetricBadge(label: L10n.t("长度"), value: "\(count) bp", color: count >= 50 ? .green : .orange)
                                                     Spacer()
-                                                    StudioSectionClearButton(label: "一键清除本片段") {
+                                                    StudioSectionClearButton(label: L10n.t("一键清除本片段")) {
                                                         vm.clearFragment(at: idx)
                                                     }
                                                     if vm.fragments.count > 2 {
@@ -380,7 +380,7 @@ public struct MultiFragmentCloneView: View {
                                             let donorFeats = donorInfo.features.filter { !$0.segments.isEmpty }
                                             ViewThatFits(in: .horizontal) {
                                                 HStack(spacing: 8) {
-                                                    Text("供体: \(donorInfo.fileName)")
+                                                    Text(L10n.tr("供体: \(donorInfo.fileName)", "Donor: \(donorInfo.fileName)"))
                                                         .font(.system(size: 11, weight: .semibold))
                                                         .foregroundColor(.green)
                                                         .lineLimit(1)
@@ -399,14 +399,14 @@ public struct MultiFragmentCloneView: View {
                                                         .labelsHidden()
                                                         .frame(maxWidth: 240)
                                                     }
-                                                    TextField("起", text: Binding(
+                                                    TextField(L10n.t("起"), text: Binding(
                                                         get: { vm.fragmentStartTexts[idx] ?? "1" },
                                                         set: { vm.fragmentStartTexts[idx] = $0 }
                                                     ))
                                                     .textFieldStyle(.roundedBorder)
                                                     .frame(width: 55)
                                                     Text("~")
-                                                    TextField("止", text: Binding(
+                                                    TextField(L10n.t("止"), text: Binding(
                                                         get: { vm.fragmentEndTexts[idx] ?? "1" },
                                                         set: { vm.fragmentEndTexts[idx] = $0 }
                                                     ))
@@ -424,7 +424,7 @@ public struct MultiFragmentCloneView: View {
                                                     ) {
                                                         PlasmidWindowPresenter.shared.openPreviewWindow(
                                                             for: donorInfo,
-                                                            roleLabel: "片段\(idx + 1)原始供体质粒预览",
+                                                            roleLabel: L10n.tr("片段\(idx + 1)原始供体质粒预览", "Fragment \(idx + 1) Source Donor Preview"),
                                                             highlightRange: nil
                                                         )
                                                     }
@@ -433,7 +433,7 @@ public struct MultiFragmentCloneView: View {
                                                 
                                                 VStack(alignment: .leading, spacing: 6) {
                                                     HStack(spacing: 6) {
-                                                        Text("供体: \(donorInfo.fileName)")
+                                                        Text(L10n.tr("供体: \(donorInfo.fileName)", "Donor: \(donorInfo.fileName)"))
                                                             .font(.system(size: 11, weight: .semibold))
                                                             .foregroundColor(.green)
                                                             .lineLimit(1)
@@ -454,17 +454,17 @@ public struct MultiFragmentCloneView: View {
                                                         }
                                                     }
                                                     HStack(spacing: 6) {
-                                                        Text("起止坐标:")
+                                                        Text(L10n.t("起止坐标:"))
                                                             .font(.system(size: 11))
                                                             .foregroundColor(.secondary)
-                                                        TextField("起", text: Binding(
+                                                        TextField(L10n.t("起"), text: Binding(
                                                             get: { vm.fragmentStartTexts[idx] ?? "1" },
                                                             set: { vm.fragmentStartTexts[idx] = $0 }
                                                         ))
                                                         .textFieldStyle(.roundedBorder)
                                                         .frame(width: 55)
                                                         Text("~")
-                                                        TextField("止", text: Binding(
+                                                        TextField(L10n.t("止"), text: Binding(
                                                             get: { vm.fragmentEndTexts[idx] ?? "1" },
                                                             set: { vm.fragmentEndTexts[idx] = $0 }
                                                         ))
@@ -479,7 +479,7 @@ public struct MultiFragmentCloneView: View {
                                             .studioInnerBox(tint: .green, paddingH: 8, paddingV: 6)
                                         }
                                         
-                                        SequenceEditorBox(text: $vm.fragments[idx], placeholder: "第 \(idx + 1) 个片段序列 (≥ 50 bp)...", minHeight: 55)
+                                        SequenceEditorBox(text: $vm.fragments[idx], placeholder: L10n.tr("第 \(idx + 1) 个片段序列 (≥ 50 bp)...", "Fragment #\(idx + 1) sequence (>= 50 bp)..."), minHeight: 55)
                                         
                                         fragmentExtraBasesRow(at: idx)
                                     }
@@ -524,8 +524,8 @@ public struct MultiFragmentCloneView: View {
                         if !vm.primers.isEmpty {
                             StudioCard(title: "生成的引物结果") {
                                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                                    StudioMetricBadge(label: "数量", value: "\(vm.primers.count) 条", color: .green)
-                                    StudioSectionClearButton(label: "一键清除引物", action: vm.clearPrimersSection)
+                                    StudioMetricBadge(label: L10n.t("数量"), value: L10n.tr("\(vm.primers.count) 条", "\(vm.primers.count)"), color: .green)
+                                    StudioSectionClearButton(label: L10n.t("一键清除引物"), action: vm.clearPrimersSection)
                                 }
                             } content: {
                                 VStack(spacing: 10) {
@@ -533,7 +533,7 @@ public struct MultiFragmentCloneView: View {
                                         let fIndex = pairIdx * 2
                                         if fIndex + 1 < vm.primers.count {
                                             PrimerPairQuickRenameBar(
-                                                pairLabel: "片段 \(pairIdx + 1) 引物对",
+                                                pairLabel: L10n.tr("片段 \(pairIdx + 1) 引物对", "Fragment \(pairIdx + 1) Primer Pair"),
                                                 currentPrefix: PrimerItem.extractPairPrefix(from: vm.primers[fIndex].name),
                                                 suggestedPrefix: "Multi-Frag\(pairIdx + 1)"
                                             ) { prefix in
@@ -581,8 +581,8 @@ public struct MultiFragmentCloneView: View {
                     }
                 }
         }
-        .alert("提示", isPresented: $vm.showAlert) {
-            Button("好的", role: .cancel) {}
+        .alert(L10n.t("提示"), isPresented: $vm.showAlert) {
+            Button(L10n.t("好的"), role: .cancel) {}
         } message: {
             Text(vm.alertMessage ?? "")
         }
@@ -602,11 +602,11 @@ public struct MultiFragmentCloneView: View {
         
         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
             HStack(spacing: 6) {
-                Text("5' 附加:")
+                Text(L10n.t("5' 附加:"))
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundColor(.secondary)
                     .fixedSize()
-                TextField("正向 5'→3'", text: Binding(
+                TextField(L10n.t("正向 5'→3'"), text: Binding(
                     get: { vm.fragmentExtra5Bases[idx] ?? "" },
                     set: { vm.fragmentExtra5Bases[idx] = $0 }
                 ))
@@ -617,11 +617,11 @@ public struct MultiFragmentCloneView: View {
             
             if isLast {
                 HStack(spacing: 6) {
-                    Text("3' 附加:")
+                    Text(L10n.t("3' 附加:"))
                         .font(.system(size: 12.5, weight: .medium))
                         .foregroundColor(.secondary)
                         .fixedSize()
-                    TextField("正向 5'→3'", text: $vm.terminalExtra3Bases)
+                    TextField(L10n.t("正向 5'→3'"), text: $vm.terminalExtra3Bases)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 12.5))
                         .frame(width: 125)
@@ -631,7 +631,7 @@ public struct MultiFragmentCloneView: View {
             if effCount > 0 {
                 StudioMetricBadge(
                     label: "",
-                    value: rem == 0 ? "3n (\(effCount / 3) aa)" : "余 \(rem) bp",
+                    value: rem == 0 ? L10n.tr("3n (\(effCount / 3) aa)", "3n (\(effCount / 3) aa)") : L10n.tr("余 \(rem) bp", "Rem \(rem) bp"),
                     color: rem == 0 ? .green : .orange
                 )
             }
@@ -640,7 +640,7 @@ public struct MultiFragmentCloneView: View {
                 var items: [StudioPillGroupItem] = []
                 if effCount > 0 && rem != 0 {
                     items.append(
-                        StudioPillGroupItem(title: "补 +\(padSeq)", tint: .orange) {
+                        StudioPillGroupItem(title: L10n.tr("补 +\(padSeq)", "Pad +\(padSeq)"), tint: .orange) {
                             vm.fragmentExtra5Bases[idx] = ex5 + padSeq
                         }
                     )
@@ -676,18 +676,18 @@ public struct MultiFragmentCloneView: View {
         let padSeq = vm.suggestedTotalPaddingBases
         if totalLen > 0 {
             HStack(spacing: 8) {
-                StudioMetricBadge(label: "拼接总长", value: "\(totalLen) bp", color: .blue)
+                StudioMetricBadge(label: L10n.t("拼接总长"), value: "\(totalLen) bp", color: .blue)
                 StudioMetricBadge(
-                    label: "阅读框",
-                    value: rem == 0 ? "3n (\(totalLen / 3) aa)" : "非 3n (余 \(rem) bp)",
+                    label: L10n.t("阅读框"),
+                    value: rem == 0 ? "3n (\(totalLen / 3) aa)" : L10n.tr("非 3n (余 \(rem) bp)", "Non-3n (rem \(rem) bp)"),
                     color: rem == 0 ? .green : .orange
                 )
                 Spacer()
                 if rem != 0 {
-                    StudioCompactPillButton(title: "+5' 补 \(padSeq)", tint: .orange, isProminent: true) {
+                    StudioCompactPillButton(title: L10n.tr("+5' 补 \(padSeq)", "+5' Pad \(padSeq)"), tint: .orange, isProminent: true) {
                         vm.fragmentExtra5Bases[0] = BioSequence.clean(vm.fragmentExtra5Bases[0] ?? "") + padSeq
                     }
-                    StudioCompactPillButton(title: "+3' 补 \(padSeq)") {
+                    StudioCompactPillButton(title: L10n.tr("+3' 补 \(padSeq)", "+3' Pad \(padSeq)")) {
                         vm.terminalExtra3Bases = BioSequence.clean(vm.terminalExtra3Bases) + padSeq
                     }
                 }
@@ -706,18 +706,18 @@ public struct MultiFragmentCloneView: View {
         
         return StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
             StudioMetricBadge(
-                label: "载体长度",
+                label: L10n.t("载体长度"),
                 value: vecBp > 0
-                    ? "\(vecBp) bp (\(String(format: "%.2f", Double(vecBp) / 1000.0)) kb)" + (delBp > 0 && rawVecBp > vecBp ? " · 切除 \(delBp)bp" : "")
-                    : "未载入",
+                    ? "\(vecBp) bp (\(String(format: "%.2f", Double(vecBp) / 1000.0)) kb)" + (delBp > 0 && rawVecBp > vecBp ? L10n.tr(" · 切除 \(delBp)bp", " · Δ\(delBp) bp") : "")
+                    : L10n.t("未载入"),
                 color: .blue
             )
             
             StudioMetricBadge(
-                label: "插入片段 (\(fragLens.count))",
+                label: L10n.tr("插入片段 (\(fragLens.count))", "Inserts (\(fragLens.count))"),
                 value: totalInsBp > 0
                     ? "\(fragLens.enumerated().map { "F\($0.offset + 1):\($0.element)bp" }.joined(separator: "+")) = \(totalInsBp) bp (\(String(format: "%.2f", Double(totalInsBp) / 1000.0)) kb)"
-                    : "未输入",
+                    : L10n.t("未输入"),
                 color: .green
             )
             

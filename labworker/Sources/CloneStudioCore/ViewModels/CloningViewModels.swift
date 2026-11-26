@@ -26,19 +26,19 @@ public final class EntryCloneViewModel: ObservableObject {
     public func design() async {
         let clean = BioSequence.clean(sequence)
         guard clean.count >= 50 else {
-            alertMessage = "插入片段长度必须大于等于 50 bp（当前有效长度：\(clean.count) bp）"
+            alertMessage = L10n.tr("插入片段长度必须大于等于 50 bp（当前有效长度：\(clean.count) bp）", "Insert fragment must be >= 50 bp (current valid length: \(clean.count) bp)")
             showAlert = true
             return
         }
         
         if hasEnzymes {
             guard let e5 = enzyme5, let e3 = enzyme3 else {
-                alertMessage = "请先选择 5' 端和 3' 端的酶切位点"
+                alertMessage = L10n.t("请先选择 5' 端和 3' 端的酶切位点")
                 showAlert = true
                 return
             }
             if e5.name == e3.name {
-                alertMessage = "两端添加的酶切位点不能相同（\(e5.name)）"
+                alertMessage = L10n.tr("两端添加的酶切位点不能相同（\(e5.name)）", "5' and 3' restriction sites cannot be identical (\(e5.name))")
                 showAlert = true
                 return
             }
@@ -88,8 +88,8 @@ public final class EntryCloneViewModel: ObservableObject {
                 productLengthBp: 3957 + clean.count + 30,
                 homologyArmLength: 15,
                 junctionOverhangs: [
-                    JunctionOverhangDetail(title: "5' URS 同源接头", topStrandSnippet: "GGATCTTCCAGAGAT" + String(clean.prefix(9)), bottomStrandSnippet: BioSequence.complement("GGATCTTCCAGAGAT" + String(clean.prefix(9))), enzymeOrArmName: "5' URS", homologyLength: 15),
-                    JunctionOverhangDetail(title: "3' DRS 同源接头", topStrandSnippet: String(clean.suffix(9)) + "ATCGTCGAACGGCAG", bottomStrandSnippet: BioSequence.complement(String(clean.suffix(9)) + "ATCGTCGAACGGCAG"), enzymeOrArmName: "3' DRS", homologyLength: 15)
+                    JunctionOverhangDetail(title: L10n.t("5' URS 同源接头"), topStrandSnippet: "GGATCTTCCAGAGAT" + String(clean.prefix(9)), bottomStrandSnippet: BioSequence.complement("GGATCTTCCAGAGAT" + String(clean.prefix(9))), enzymeOrArmName: "5' URS", homologyLength: 15),
+                    JunctionOverhangDetail(title: L10n.t("3' DRS 同源接头"), topStrandSnippet: String(clean.suffix(9)) + "ATCGTCGAACGGCAG", bottomStrandSnippet: BioSequence.complement(String(clean.suffix(9)) + "ATCGTCGAACGGCAG"), enzymeOrArmName: "3' DRS", homologyLength: 15)
                 ],
                 featureShifts: shifts,
                 primers: [result.primerF, result.primerR],
@@ -659,12 +659,12 @@ public final class SingleFragmentViewModel: ObservableObject {
                 self.insertStartText = "\(effS)"
                 self.insertEndText = "\(effE)"
                 self.insertSeq = String(rawSub.dropLast(3))
-                self.terminalCodonStatusText = "已去终止子 \(tail3) (-3bp)"
+                self.terminalCodonStatusText = L10n.tr("已去终止子 \(tail3) (-3bp)", "Trimmed Stop \(tail3) (-3 bp)")
             } else {
                 self.insertStartText = "\(rawS)"
                 self.insertEndText = "\(rawE)"
                 self.insertSeq = rawSub
-                self.terminalCodonStatusText = "检测到3'终止子 \(tail3)"
+                self.terminalCodonStatusText = L10n.tr("检测到3'终止子 \(tail3)", "Detected 3' Stop \(tail3)")
             }
         } else {
             self.detectedTerminalStopCodon = nil
@@ -674,9 +674,9 @@ public final class SingleFragmentViewModel: ObservableObject {
             self.insertSeq = rawSub
             if tail3.count == 3 {
                 let (_, three) = CodonTranslator.translateTriplet(tail3)
-                self.terminalCodonStatusText = "末端无终止子 (3'端: \(tail3)/\(three))"
+                self.terminalCodonStatusText = L10n.tr("末端无终止子 (3'端: \(tail3)/\(three))", "No Terminal Stop (3': \(tail3)/\(three))")
             } else {
-                self.terminalCodonStatusText = "末端无终止子"
+                self.terminalCodonStatusText = L10n.t("末端无终止子")
             }
         }
     }
@@ -690,16 +690,16 @@ public final class SingleFragmentViewModel: ObservableObject {
         removeTerminalStopCodon.toggle()
         syncDonorExtractWithStopCodonRule()
         if removeTerminalStopCodon {
-            AppState.shared.showToast("已自动去除 3' 末端终止子 \(stop) (-3 bp)")
+            AppState.shared.showToast(L10n.tr("已自动去除 3' 末端终止子 \(stop) (-3 bp)", "Trimmed 3' terminal stop codon \(stop) (-3 bp)"))
         } else {
-            AppState.shared.showToast("已恢复 3' 末端终止子 \(stop) (+3 bp)")
+            AppState.shared.showToast(L10n.tr("已恢复 3' 末端终止子 \(stop) (+3 bp)", "Restored 3' terminal stop codon \(stop) (+3 bp)"))
         }
     }
     
     public func design() async {
         let cleanInsert = BioSequence.clean(insertSeq)
         guard cleanInsert.count >= 50 else {
-            alertMessage = "插入片段长度必须大于等于 50 bp"
+            alertMessage = L10n.t("插入片段长度必须大于等于 50 bp")
             showAlert = true
             return
         }
@@ -723,7 +723,7 @@ public final class SingleFragmentViewModel: ObservableObject {
                 switch mode {
                 case .single:
                     guard let e = enzymeSingle else {
-                        throw NSError(domain: "Clone", code: -1, userInfo: [NSLocalizedDescriptionKey: "请先选择单酶切位点"])
+                        throw NSError(domain: "Clone", code: -1, userInfo: [NSLocalizedDescriptionKey: L10n.t("请先选择单酶切位点")])
                     }
                     let res = HomologyArmDesigner.designSingleEnzymeClone(
                         vectorSeq: vectorSeq.isEmpty ? (vectorDNAInfo?.sequence ?? "") : vectorSeq,
@@ -743,7 +743,7 @@ public final class SingleFragmentViewModel: ObservableObject {
                     self.primers = [res.primerF, res.primerR]
                 case .double:
                     guard let e5 = enzyme5, let e3 = enzyme3 else {
-                        throw NSError(domain: "Clone", code: -1, userInfo: [NSLocalizedDescriptionKey: "请选择双酶切 5' 与 3' 位点"])
+                        throw NSError(domain: "Clone", code: -1, userInfo: [NSLocalizedDescriptionKey: L10n.t("请选择双酶切 5' 与 3' 位点")])
                     }
                     let res = HomologyArmDesigner.designDoubleEnzymeClone(
                         vectorSeq: vectorSeq.isEmpty ? (vectorDNAInfo?.sequence ?? "") : vectorSeq,
@@ -783,8 +783,8 @@ public final class SingleFragmentViewModel: ObservableObject {
                 if let warn = warnPrompt, !warn.isEmpty {
                     AppState.shared.showToast(warn)
                 } else {
-                    let extraTag = (!cleanEx5.isEmpty || !cleanEx3.isEmpty) ? "，含接头附加碱基 +\(cleanEx5.count + cleanEx3.count) bp" : ""
-                    AppState.shared.showToast("已生成引物（同源臂: \(homologyLength) bp\(extraTag)，目标位点: \(cutStart)..\(cutEnd)）")
+                    let extraTag = (!cleanEx5.isEmpty || !cleanEx3.isEmpty) ? L10n.tr("，含接头附加碱基 +\(cleanEx5.count + cleanEx3.count) bp", ", +\(cleanEx5.count + cleanEx3.count) bp linker bases") : ""
+                    AppState.shared.showToast(L10n.tr("已生成引物（同源臂: \(homologyLength) bp\(extraTag)，目标位点: \(cutStart)..\(cutEnd)）", "Designed primers (Homology Arm: \(homologyLength) bp\(extraTag), site: \(cutStart)..\(cutEnd))"))
                 }
             } else {
                 // 在线官方请求 (15 bp 国标模式)
@@ -813,9 +813,9 @@ public final class SingleFragmentViewModel: ObservableObject {
                         homologyArm: armF,
                         specificSequence: specF,
                         tm: tmF,
-                        targetPurpose: "单片段克隆插入正向引物",
-                        notes: "5' 载体同源臂 (\(armF.count)bp) + 特异性序列 (Tm: \(tmF)℃)",
-                        sourceTool: "单片段克隆"
+                        targetPurpose: L10n.t("单片段克隆插入正向引物"),
+                        notes: L10n.tr("5' 载体同源臂 (\(armF.count)bp) + 特异性序列 (Tm: \(tmF)℃)", "5' Vector Arm (\(armF.count) bp) + Specific (Tm: \(tmF) °C)"),
+                        sourceTool: L10n.t("单片段克隆")
                     ))
                 }
                 if let rVal = res.PrimerRvalue, !rVal.isEmpty {
@@ -828,9 +828,9 @@ public final class SingleFragmentViewModel: ObservableObject {
                         homologyArm: armR,
                         specificSequence: specR,
                         tm: tmR,
-                        targetPurpose: "单片段克隆插入反向引物",
-                        notes: "3' 载体同源臂 (\(armR.count)bp) + 特异性序列 (Tm: \(tmR)℃)",
-                        sourceTool: "单片段克隆"
+                        targetPurpose: L10n.t("单片段克隆插入反向引物"),
+                        notes: L10n.tr("3' 载体同源臂 (\(armR.count)bp) + 特异性序列 (Tm: \(tmR)℃)", "3' Vector Arm (\(armR.count) bp) + Specific (Tm: \(tmR) °C)"),
+                        sourceTool: L10n.t("单片段克隆")
                     ))
                 }
                 if let cfVal = res.ClonePrimerFvalue, !cfVal.isEmpty {
@@ -842,9 +842,9 @@ public final class SingleFragmentViewModel: ObservableObject {
                         fullSequence: rawCF,
                         specificSequence: cleanCF,
                         tm: tmCF,
-                        targetPurpose: "载体反向PCR扩增正向引物",
-                        notes: "结合于目标替换位点 3' 下游载体骨架 (Tm: \(tmCF)℃)",
-                        sourceTool: "单片段克隆"
+                        targetPurpose: L10n.t("载体反向PCR扩增正向引物"),
+                        notes: L10n.tr("结合于目标替换位点 3' 下游载体骨架 (Tm: \(tmCF)℃)", "Binds downstream of 3' replacement junction on vector (Tm: \(tmCF) °C)"),
+                        sourceTool: L10n.t("单片段克隆")
                     ))
                 }
                 if let crVal = res.ClonePrimerRvalue, !crVal.isEmpty {
@@ -856,9 +856,9 @@ public final class SingleFragmentViewModel: ObservableObject {
                         fullSequence: rawCR,
                         specificSequence: cleanCR,
                         tm: tmCR,
-                        targetPurpose: "载体反向PCR扩增反向引物",
-                        notes: "结合于目标替换位点 5' 上游载体骨架 (Tm: \(tmCR)℃)",
-                        sourceTool: "单片段克隆"
+                        targetPurpose: L10n.t("载体反向PCR扩增反向引物"),
+                        notes: L10n.tr("结合于目标替换位点 5' 上游载体骨架 (Tm: \(tmCR)℃)", "Binds upstream of 5' replacement junction on vector (Tm: \(tmCR) °C)"),
+                        sourceTool: L10n.t("单片段克隆")
                     ))
                 }
                 self.primers = list
@@ -912,12 +912,12 @@ public final class SingleFragmentViewModel: ObservableObject {
                     operationType: .singleFragment,
                     parentVectorName: parentName,
                     parentLengthBp: vecBp,
-                    insertOrActionSummary: delLen > 0 ? "替换 \(cStart)..\(cEnd) (Δ\(delLen)bp) → \(insName) (+\(effIns.count)bp)" : "插入 @\(cStart) → \(insName) (+\(effIns.count)bp)",
+                    insertOrActionSummary: delLen > 0 ? L10n.tr("替换 \(cStart)..\(cEnd) (Δ\(delLen)bp) → \(insName) (+\(effIns.count)bp)", "Replace \(cStart)..\(cEnd) (Δ\(delLen) bp) → \(insName) (+\(effIns.count) bp)") : L10n.tr("插入 @\(cStart) → \(insName) (+\(effIns.count)bp)", "Insert @\(cStart) → \(insName) (+\(effIns.count) bp)"),
                     productLengthBp: vecBp - delLen + effIns.count,
                     homologyArmLength: homologyLength,
                     junctionOverhangs: [
-                        JunctionOverhangDetail(title: "5' 载体-片段同源接头 (@\(cStart))", topStrandSnippet: arm5 + String(cleanInsert.prefix(8)), bottomStrandSnippet: BioSequence.complement(arm5 + String(cleanInsert.prefix(8))), enzymeOrArmName: mode == .single ? (enzymeSingle?.name ?? "5'Arm") : "5'Arm", homologyLength: homologyLength),
-                        JunctionOverhangDetail(title: "3' 片段-载体同源接头 (@\(cEnd))", topStrandSnippet: String(cleanInsert.suffix(8)) + arm3, bottomStrandSnippet: BioSequence.complement(String(cleanInsert.suffix(8)) + arm3), enzymeOrArmName: mode == .double ? (enzyme3?.name ?? "3'Arm") : "3'Arm", homologyLength: homologyLength)
+                        JunctionOverhangDetail(title: L10n.tr("5' 载体-片段同源接头 (@\(cStart))", "5' Vector–Insert Junction (@\(cStart))"), topStrandSnippet: arm5 + String(cleanInsert.prefix(8)), bottomStrandSnippet: BioSequence.complement(arm5 + String(cleanInsert.prefix(8))), enzymeOrArmName: mode == .single ? (enzymeSingle?.name ?? "5'Arm") : "5'Arm", homologyLength: homologyLength),
+                        JunctionOverhangDetail(title: L10n.tr("3' 片段-载体同源接头 (@\(cEnd))", "3' Insert–Vector Junction (@\(cEnd))"), topStrandSnippet: String(cleanInsert.suffix(8)) + arm3, bottomStrandSnippet: BioSequence.complement(String(cleanInsert.suffix(8)) + arm3), enzymeOrArmName: mode == .double ? (enzyme3?.name ?? "3'Arm") : "3'Arm", homologyLength: homologyLength)
                     ],
                     featureShifts: shifts,
                     primers: self.primers,
@@ -980,9 +980,9 @@ public final class SingleFragmentViewModel: ObservableObject {
                 self.applyVectorTargetRange(start: 1, end: 0)
             }
             
-            AppState.shared.showToast("已解析载体 \(info.fileName)：\(info.featuresCount) 个特征、\(boundPrimers.count) 条引物、\(cutSites.filter { $0.isUnique }.count) 个唯一酶切位点")
+            AppState.shared.showToast(L10n.tr("已解析载体 \(info.fileName)：\(info.featuresCount) 个特征、\(boundPrimers.count) 条引物、\(cutSites.filter { $0.isUnique }.count) 个唯一酶切位点", "Parsed vector \(info.fileName): \(info.featuresCount) features, \(boundPrimers.count) primers, \(cutSites.filter { $0.isUnique }.count) unique cutters"))
         } catch {
-            self.alertMessage = "解析 SnapGene 载体失败: \(error.localizedDescription)"
+            self.alertMessage = L10n.tr("解析 SnapGene 载体失败: \(error.localizedDescription)", "Failed to parse SnapGene vector: \(error.localizedDescription)")
             self.showAlert = true
         }
     }
@@ -1021,9 +1021,9 @@ public final class SingleFragmentViewModel: ObservableObject {
                 self.insertGeneName = info.fileName.replacingOccurrences(of: ".dna", with: "")
             }
             
-            AppState.shared.showToast("已解析供体 \(info.fileName)：共 \(info.featuresCount) 个特征、\(boundPrimers.count) 条引物可供选择")
+            AppState.shared.showToast(L10n.tr("已解析供体 \(info.fileName)：共 \(info.featuresCount) 个特征、\(boundPrimers.count) 条引物可供选择", "Parsed donor \(info.fileName): \(info.featuresCount) features, \(boundPrimers.count) primers available"))
         } catch {
-            self.alertMessage = "解析供体质粒失败: \(error.localizedDescription)"
+            self.alertMessage = L10n.tr("解析供体质粒失败: \(error.localizedDescription)", "Failed to parse donor plasmid: \(error.localizedDescription)")
             self.showAlert = true
         }
     }
@@ -1031,12 +1031,12 @@ public final class SingleFragmentViewModel: ObservableObject {
     /// 仅将引物写入原载体 .dna (自动留备份，并在 SnapGene 中打开)
     public func injectPrimersToVectorDNA() async {
         guard let vecInfo = vectorDNAInfo else {
-            alertMessage = "请先选择需要写入的载体 .dna 文件"
+            alertMessage = L10n.t("请先选择需要写入的载体 .dna 文件")
             showAlert = true
             return
         }
         guard !primers.isEmpty else {
-            alertMessage = "请先生成引物后再执行写入"
+            alertMessage = L10n.t("请先生成引物后再执行写入")
             showAlert = true
             return
         }
@@ -1048,12 +1048,12 @@ public final class SingleFragmentViewModel: ObservableObject {
         do {
             let createBackup = AppState.shared.autoCreateSnapGeneBackup
             let res = try await SnapGeneService.shared.injectPrimers(primers, into: url, createBackup: createBackup)
-            AppState.shared.showToast("已成功将 \(res.primersAdded) 条引物写入原质粒\(createBackup ? "（已备份）" : "")")
+            AppState.shared.showToast(L10n.tr("已成功将 \(res.primersAdded) 条引物写入原质粒\(createBackup ? "（已备份）" : "")", "Injected \(res.primersAdded) primer(s) into plasmid\(createBackup ? " (backup saved)" : "")"))
             if AppState.shared.autoOpenInSnapGene {
                 SnapGeneService.shared.openInSnapGene(url: url)
             }
         } catch {
-            alertMessage = "写入 SnapGene 失败: \(error.localizedDescription)"
+            alertMessage = L10n.tr("写入 SnapGene 失败: \(error.localizedDescription)", "Failed to write SnapGene file: \(error.localizedDescription)")
             showAlert = true
         }
     }
@@ -1061,13 +1061,13 @@ public final class SingleFragmentViewModel: ObservableObject {
     /// 生成完整重组质粒 .dna 文件并在 SnapGene 中打开
     public func generateRecombinantDNAAndOpen() async {
         guard let vecInfo = vectorDNAInfo else {
-            alertMessage = "请先导入目的载体 .dna 文件"
+            alertMessage = L10n.t("请先导入目的载体 .dna 文件")
             showAlert = true
             return
         }
         let cleanIns = effectiveInsertSeq
         guard cleanIns.count >= 20 else {
-            alertMessage = "插入片段序列过短，无法生成重组质粒"
+            alertMessage = L10n.t("插入片段序列过短，无法生成重组质粒")
             showAlert = true
             return
         }
@@ -1099,12 +1099,12 @@ public final class SingleFragmentViewModel: ObservableObject {
                 primers: primers,
                 outputURL: outURL
             )
-            AppState.shared.showToast("已生成重组质粒：\(outName) (插入区间: \(res.insertRange), 总长: \(res.recombinantLength) bp)")
+            AppState.shared.showToast(L10n.tr("已生成重组质粒：\(outName) (插入区间: \(res.insertRange), 总长: \(res.recombinantLength) bp)", "Generated recombinant plasmid: \(outName) (Insert: \(res.insertRange), Total: \(res.recombinantLength) bp)"))
             if AppState.shared.autoOpenInSnapGene {
                 SnapGeneService.shared.openInSnapGene(url: outURL)
             }
         } catch {
-            alertMessage = "生成重组质粒失败: \(error.localizedDescription)"
+            alertMessage = L10n.tr("生成重组质粒失败: \(error.localizedDescription)", "Failed to generate recombinant plasmid: \(error.localizedDescription)")
             showAlert = true
         }
     }
@@ -1140,7 +1140,7 @@ extension EntryCloneViewModel {
             primerR = r
         }
         WorkspaceSessionManager.shared.autoSaveInBackground()
-        AppState.shared.showToast("已成对重命名引物为 \(pfx)-F / \(pfx)-R")
+        AppState.shared.showToast(L10n.tr("已成对重命名引物为 \(pfx)-F / \(pfx)-R", "Renamed primer pair to \(pfx)-F / \(pfx)-R"))
     }
     
     public func renameSinglePrimer(isForward: Bool, newName: String) {
@@ -1237,7 +1237,7 @@ extension SingleFragmentViewModel {
                 let e = eff.index(s, offsetBy: 3)
                 let codon = String(eff[s..<e]).uppercased()
                 if stops.contains(codon) {
-                    return "⛔ 5' 接头第 \(c + 1) 个密码子拼出了终止子 (\(codon))，会导致翻译提前终止！"
+                    return L10n.tr("⛔ 5' 接头第 \(c + 1) 个密码子拼出了终止子 (\(codon))，会导致翻译提前终止！", "⛔ Stop codon (\(codon)) formed at 5' junction codon #\(c + 1), causing premature termination!")
                 }
             }
         }
@@ -1250,7 +1250,7 @@ extension SingleFragmentViewModel {
                 let e = eff.index(s, offsetBy: 3)
                 let codon = String(eff[s..<e]).uppercased()
                 if stops.contains(codon) {
-                    return "⛔ 3' 接头区域拼出了终止密码子 (\(codon))，会导致 C 端融合标签无法翻译！"
+                    return L10n.tr("⛔ 3' 接头区域拼出了终止密码子 (\(codon))，会导致 C 端融合标签无法翻译！", "⛔ Stop codon (\(codon)) formed in 3' junction, preventing C-terminal tag translation!")
                 }
             }
         }
@@ -1283,7 +1283,7 @@ extension SingleFragmentViewModel {
         }
         primers = updated
         WorkspaceSessionManager.shared.autoSaveInBackground()
-        AppState.shared.showToast("已成对重命名引物为 \(pfx)-F / \(pfx)-R")
+        AppState.shared.showToast(L10n.tr("已成对重命名引物为 \(pfx)-F / \(pfx)-R", "Renamed primer pair to \(pfx)-F / \(pfx)-R"))
     }
     
     public func renameSinglePrimer(at index: Int, newName: String) {
@@ -1308,7 +1308,7 @@ extension EntryCloneViewModel {
             type: .simple,
             vectorName: "pCE2-TA/Blunt",
             vectorLengthBp: vectorLengthBp,
-            inserts: [("入门插入片段", insLen)],
+            inserts: [(L10n.t("入门插入片段"), insLen)],
             navigate: navigate
         )
     }
@@ -1352,9 +1352,9 @@ extension SingleFragmentViewModel {
     }
     
     public func sendLengthsToCalculator(navigate: Bool = true) {
-        let vecName = vectorDNAInfo?.fileName.replacingOccurrences(of: ".dna", with: "") ?? "线性化载体"
+        let vecName = vectorDNAInfo?.fileName.replacingOccurrences(of: ".dna", with: "") ?? L10n.t("线性化载体")
         let vecBp = effectiveVectorBackboneLengthBp > 0 ? effectiveVectorBackboneLengthBp : 5000
-        let insName = insertGeneName.trimmingCharacters(in: .whitespaces).isEmpty ? "插入基因" : insertGeneName
+        let insName = insertGeneName.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.t("插入基因") : insertGeneName
         let insBp = cleanInsertLengthBp > 0 ? cleanInsertLengthBp : 1000
         WorkspaceSessionManager.shared.calculatorVM.syncFromHomologousCloning(
             type: .single,

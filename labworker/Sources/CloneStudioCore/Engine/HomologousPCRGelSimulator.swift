@@ -373,13 +373,13 @@ public enum HomologousPCRGelSimulator {
             let vecSubtitle: String = {
                 switch linearizationMode {
                 case .pcr:
-                    return includeVectorPCRPrimers ? "反向 PCR 线性化载体" : "线性化载体骨架"
+                    return L10n.t(includeVectorPCRPrimers ? "反向 PCR 线性化载体" : "线性化载体骨架")
                 case .single:
-                    return "单酶切线性化载体"
+                    return L10n.t("单酶切线性化载体")
                 case .double:
                     return deletedVectorBp >= 50
-                        ? "双酶切骨架（另切下 \(deletedVectorBp) bp 片段）"
-                        : "双酶切线性化载体"
+                        ? L10n.tr("双酶切骨架（另切下 \(deletedVectorBp) bp 片段）", "Double-Digest Backbone (excises \(deletedVectorBp) bp)")
+                        : L10n.t("双酶切线性化载体")
                 }
             }()
             vecLaneBands.append(
@@ -402,7 +402,7 @@ public enum HomologousPCRGelSimulator {
                         role: .excisedDropout,
                         relativeBrightness: 0.62,
                         label: "\(excisedBp) bp",
-                        detail: "双酶切切落旧序列（胶回收时需避开此带，仅回收 \(validVectorBp) bp 主骨架）"
+                        detail: L10n.tr("双酶切切落旧序列（胶回收时需避开此带，仅回收 \(validVectorBp) bp 主骨架）", "Excised stuffer fragment (avoid during gel extraction; recover \(validVectorBp) bp backbone)")
                     )
                 )
             }
@@ -410,7 +410,7 @@ public enum HomologousPCRGelSimulator {
                 SimulatedGelLane(
                     id: "lane-vector",
                     index: lanes.count + 1,
-                    shortLabel: linearizationMode == .pcr ? "载体PCR" : "酶切载体",
+                    shortLabel: L10n.t(linearizationMode == .pcr ? "载体PCR" : "酶切载体"),
                     fullTitle: vecSubtitle,
                     subtitle: validVectorBp > 0 ? "\(validVectorBp) bp" : "",
                     bands: vecLaneBands
@@ -421,7 +421,7 @@ public enum HomologousPCRGelSimulator {
         var insertBand: SimulatedGelBand? = nil
         if insertAmpliconBp > 0 {
             let overTotal = insertAmpliconBp - effCore
-            let detailStr = "模板 \(effCore) bp + 5'/3' 同源臂及附加接头 \(overTotal) bp = \(insertAmpliconBp) bp"
+            let detailStr = L10n.tr("模板 \(effCore) bp + 5'/3' 同源臂及附加接头 \(overTotal) bp = \(insertAmpliconBp) bp", "Template \(effCore) bp + 5'/3' arms/linkers \(overTotal) bp = \(insertAmpliconBp) bp")
             let band = SimulatedGelBand(
                 id: "insert-pcr-\(insertAmpliconBp)",
                 sizeBp: insertAmpliconBp,
@@ -436,8 +436,8 @@ public enum HomologousPCRGelSimulator {
                 SimulatedGelLane(
                     id: "lane-insert",
                     index: lanes.count + 1,
-                    shortLabel: geneLabel.count <= 8 ? geneLabel : "目的PCR",
-                    fullTitle: "\(geneLabel) 同源重组 PCR 产物",
+                    shortLabel: geneLabel.count <= 8 ? geneLabel : L10n.t("目的PCR"),
+                    fullTitle: L10n.tr("\(geneLabel) 同源重组 PCR 产物", "\(geneLabel) Homologous Recombination PCR Amplicon"),
                     subtitle: "\(insertAmpliconBp) bp",
                     bands: [band]
                 )
@@ -454,16 +454,16 @@ public enum HomologousPCRGelSimulator {
                     role: insB.role,
                     relativeBrightness: 0.92,
                     label: insB.label,
-                    detail: "同泳道共迁移对照：\(insB.detail)"
+                    detail: L10n.tr("同泳道共迁移对照：\(insB.detail)", "Co-migration control: \(insB.detail)")
                 )
             )
             lanes.append(
                 SimulatedGelLane(
                     id: "lane-mix",
                     index: lanes.count + 1,
-                    shortLabel: "混合对照",
-                    fullTitle: "载体 + 插入产物同泳道对照",
-                    subtitle: "切胶分离检查",
+                    shortLabel: L10n.t("混合对照"),
+                    fullTitle: L10n.t("载体 + 插入产物同泳道对照"),
+                    subtitle: L10n.t("切胶分离检查"),
                     isMixedControl: true,
                     bands: mixBands.sorted { $0.sizeBp > $1.sizeBp }
                 )
@@ -481,11 +481,11 @@ public enum HomologousPCRGelSimulator {
             ? max(validVectorBp, insertAmpliconBp)
             : insertAmpliconBp
         let shortNotice: String? = (validVectorBp == 0 && omittedShortVectorBp > 0)
-            ? "当前仅输入 \(omittedShortVectorBp) bp 侧翼同源接头片段（未载入完整载体），仅模拟插入基因 PCR 条带；载入 .dna 或 ≥300 bp 载体后自动显示线性化载体泳道。"
+            ? L10n.tr("当前仅输入 \(omittedShortVectorBp) bp 侧翼同源接头片段（未载入完整载体），仅模拟插入基因 PCR 条带；载入 .dna 或 ≥300 bp 载体后自动显示线性化载体泳道。", "Only \(omittedShortVectorBp) bp flanking junctions entered; simulating insert PCR only. Load .dna or vector >= 300 bp to show vector lane.")
             : nil
 
         return HomologousPCRGelSimulationResult(
-            title: "单片段同源重组 PCR 模拟电泳",
+            title: L10n.t("单片段同源重组 PCR 模拟电泳"),
             concentration: conc,
             recommendedConcentration: recConc,
             ladder: ladderResolved.selected,
@@ -542,8 +542,8 @@ public enum HomologousPCRGelSimulator {
             }
             let ampBp = coreBp + fOv + rOv
             let note = rOv > 0
-                ? "模板 \(coreBp) bp + 5'接头 \(fOv) bp + 3'接头 \(rOv) bp = \(ampBp) bp"
-                : "模板 \(coreBp) bp + 5'单端同源臂 \(fOv) bp = \(ampBp) bp"
+                ? L10n.tr("模板 \(coreBp) bp + 5'接头 \(fOv) bp + 3'接头 \(rOv) bp = \(ampBp) bp", "Template \(coreBp) bp + 5' \(fOv) bp + 3' \(rOv) bp = \(ampBp) bp")
+                : L10n.tr("模板 \(coreBp) bp + 5'单端同源臂 \(fOv) bp = \(ampBp) bp", "Template \(coreBp) bp + 5' arm \(fOv) bp = \(ampBp) bp")
             fragAmplicons.append((i, coreBp, ampBp, note))
         }
 
@@ -571,7 +571,7 @@ public enum HomologousPCRGelSimulator {
                     role: .linearVector,
                     relativeBrightness: 0.94,
                     label: "\(validVectorBp) bp",
-                    detail: "线性化载体骨架 (\(validVectorBp) bp)"
+                    detail: L10n.tr("线性化载体骨架 (\(validVectorBp) bp)", "Linearized vector backbone (\(validVectorBp) bp)")
                 )
             ]
             vectorBand = vecBands[0]
@@ -584,7 +584,7 @@ public enum HomologousPCRGelSimulator {
                         role: .excisedDropout,
                         relativeBrightness: 0.62,
                         label: "\(excisedBp) bp",
-                        detail: "载体切除旧序列 (\(excisedBp) bp)"
+                        detail: L10n.tr("载体切除旧序列 (\(excisedBp) bp)", "Excised vector stuffer (\(excisedBp) bp)")
                     )
                 )
             }
@@ -592,8 +592,8 @@ public enum HomologousPCRGelSimulator {
                 SimulatedGelLane(
                     id: "multi-lane-vec",
                     index: lanes.count + 1,
-                    shortLabel: "载体",
-                    fullTitle: "线性化载体",
+                    shortLabel: L10n.t("载体"),
+                    fullTitle: L10n.t("线性化载体"),
                     subtitle: "\(validVectorBp) bp",
                     bands: vecBands
                 )
@@ -609,7 +609,7 @@ public enum HomologousPCRGelSimulator {
                 role: .pcrAmplicon,
                 relativeBrightness: 0.96,
                 label: "\(item.ampliconBp) bp",
-                detail: "片段 \(item.index + 1): \(item.overhangNote)"
+                detail: L10n.tr("片段 \(item.index + 1): \(item.overhangNote)", "Fragment \(item.index + 1): \(item.overhangNote)")
             )
             fragBands.append(b)
             lanes.append(
@@ -617,7 +617,7 @@ public enum HomologousPCRGelSimulator {
                     id: "multi-lane-f\(item.index + 1)",
                     index: lanes.count + 1,
                     shortLabel: "F\(item.index + 1)",
-                    fullTitle: "片段 \(item.index + 1) PCR 扩增产物",
+                    fullTitle: L10n.tr("片段 \(item.index + 1) PCR 扩增产物", "Fragment \(item.index + 1) PCR Amplicon"),
                     subtitle: "\(item.ampliconBp) bp",
                     bands: [b]
                 )
@@ -635,16 +635,16 @@ public enum HomologousPCRGelSimulator {
                     role: $0.role,
                     relativeBrightness: 0.88,
                     label: $0.label,
-                    detail: "同泳道组装混合参考 · \($0.detail)"
+                    detail: L10n.tr("同泳道组装混合参考 · \($0.detail)", "Co-migration mix reference · \($0.detail)")
                 )
             })
             lanes.append(
                 SimulatedGelLane(
                     id: "multi-lane-mix",
                     index: lanes.count + 1,
-                    shortLabel: "混合",
-                    fullTitle: "组装体系全组分共电泳对照",
-                    subtitle: "\(mixBands.count) 条带",
+                    shortLabel: L10n.t("混合"),
+                    fullTitle: L10n.t("组装体系全组分共电泳对照"),
+                    subtitle: L10n.tr("\(mixBands.count) 条带", "\(mixBands.count) bands"),
                     isMixedControl: true,
                     bands: mixBands.sorted { $0.sizeBp > $1.sizeBp }
                 )
@@ -660,11 +660,11 @@ public enum HomologousPCRGelSimulator {
         let longestPCR = fragAmplicons.map(\.ampliconBp).max() ?? 0
 
         let shortNotice: String? = (validVectorBp == 0 && omittedShortVectorBp > 0)
-            ? "当前仅输入 \(omittedShortVectorBp) bp 侧翼同源接头片段（未载入完整载体），仅模拟各插入片段 PCR 扩增条带；载入 .dna 或 ≥300 bp 载体后自动显示线性化载体泳道。"
+            ? L10n.tr("当前仅输入 \(omittedShortVectorBp) bp 侧翼同源接头片段（未载入完整载体），仅模拟各插入片段 PCR 扩增条带；载入 .dna 或 ≥300 bp 载体后自动显示线性化载体泳道。", "Only \(omittedShortVectorBp) bp flanking junctions entered; simulating insert PCR lanes only. Load .dna or vector >= 300 bp to show vector lane.")
             : nil
 
         return HomologousPCRGelSimulationResult(
-            title: "多片段同源组装 PCR 模拟电泳",
+            title: L10n.t("多片段同源组装 PCR 模拟电泳"),
             concentration: conc,
             recommendedConcentration: recConc,
             ladder: ladderResolved.selected,
@@ -725,15 +725,15 @@ public enum HomologousPCRGelSimulator {
                 role: .parentalPlasmid,
                 relativeBrightness: 0.86,
                 label: "\(validParental) bp",
-                detail: "删除前原始亲本模板线性质粒参比 (\(validParental) bp)"
+                detail: L10n.tr("删除前原始亲本模板线性质粒参比 (\(validParental) bp)", "Linearized parental plasmid reference before deletion (\(validParental) bp)")
             )
             parentBand = pb
             lanes.append(
                 SimulatedGelLane(
                     id: "lane-parent",
                     index: lanes.count + 1,
-                    shortLabel: "原质粒",
-                    fullTitle: "原始亲本质粒参比",
+                    shortLabel: L10n.t("原质粒"),
+                    fullTitle: L10n.t("原始亲本质粒参比"),
                     subtitle: "\(validParental) bp",
                     bands: [pb]
                 )
@@ -748,15 +748,15 @@ public enum HomologousPCRGelSimulator {
                 role: .deletionAmplicon,
                 relativeBrightness: 0.98,
                 label: "\(deletionAmpliconBp) bp",
-                detail: "保留骨架 \(coreRetained) bp + 5' 桥接同源臂 \(fArmLen) bp（较亲本净缩短 Δ\(validParental - deletionAmpliconBp) bp）"
+                detail: L10n.tr("保留骨架 \(coreRetained) bp + 5' 桥接同源臂 \(fArmLen) bp（较亲本净缩短 Δ\(validParental - deletionAmpliconBp) bp）", "Retained \(coreRetained) bp + 5' bridging arm \(fArmLen) bp (net -Δ\(validParental - deletionAmpliconBp) bp vs parental)")
             )
             delBand = db
             lanes.append(
                 SimulatedGelLane(
                     id: "lane-del-pcr",
                     index: lanes.count + 1,
-                    shortLabel: "缺失PCR",
-                    fullTitle: "反向 PCR 缺失扩增产物",
+                    shortLabel: L10n.t("缺失PCR"),
+                    fullTitle: L10n.t("反向 PCR 缺失扩增产物"),
                     subtitle: "Δ-\(clampedDel) bp",
                     bands: [db]
                 )
@@ -768,9 +768,9 @@ public enum HomologousPCRGelSimulator {
                 SimulatedGelLane(
                     id: "lane-del-compare",
                     index: lanes.count + 1,
-                    shortLabel: "大小对比",
-                    fullTitle: "亲本模板 vs 缺失产物同泳道对照",
-                    subtitle: "差异辨识检查",
+                    shortLabel: L10n.t("大小对比"),
+                    fullTitle: L10n.t("亲本模板 vs 缺失产物同泳道对照"),
+                    subtitle: L10n.t("差异辨识检查"),
                     isMixedControl: true,
                     bands: [
                         SimulatedGelBand(
@@ -804,7 +804,7 @@ public enum HomologousPCRGelSimulator {
         )
 
         return HomologousPCRGelSimulationResult(
-            title: "片段删除反向 PCR 迁移对比模拟",
+            title: L10n.t("片段删除反向 PCR 迁移对比模拟"),
             concentration: conc,
             recommendedConcentration: recConc,
             ladder: ladderResolved.selected,
@@ -854,14 +854,14 @@ public enum HomologousPCRGelSimulator {
             role: .linearVector,
             relativeBrightness: 0.90,
             label: "\(vectorLengthBp) bp",
-            detail: "pCE2-TA/Blunt 预线性化入门载体 (\(vectorLengthBp) bp)"
+            detail: L10n.tr("pCE2-TA/Blunt 预线性化入门载体 (\(vectorLengthBp) bp)", "pCE2-TA/Blunt pre-linearized entry vector (\(vectorLengthBp) bp)")
         )
         lanes.append(
             SimulatedGelLane(
                 id: "entry-lane-vec",
                 index: 2,
                 shortLabel: "pCE2",
-                fullTitle: "pCE2-TA/Blunt 线性载体",
+                fullTitle: L10n.t("pCE2-TA/Blunt 线性载体"),
                 subtitle: "\(vectorLengthBp) bp",
                 bands: [vecBand]
             )
@@ -870,7 +870,7 @@ public enum HomologousPCRGelSimulator {
         var insertBand: SimulatedGelBand? = nil
         if insertAmpliconBp > 0 {
             let enzNote = hasEnzymes
-                ? " + \(enzyme5?.name ?? "5'酶")/\(enzyme3?.name ?? "3'酶")位点"
+                ? L10n.tr(" + \(enzyme5?.name ?? "5'酶")/\(enzyme3?.name ?? "3'酶")位点", " + \(enzyme5?.name ?? "5' Enz")/\(enzyme3?.name ?? "3' Enz") sites")
                 : ""
             let ib = SimulatedGelBand(
                 id: "entry-insert-\(insertAmpliconBp)",
@@ -879,15 +879,15 @@ public enum HomologousPCRGelSimulator {
                 role: .pcrAmplicon,
                 relativeBrightness: 0.98,
                 label: "\(insertAmpliconBp) bp",
-                detail: "目的基因 \(cleanInsertLengthBp) bp + 5' URS/3' DRS 同源臂(\(fOv)+\(rOv) bp)\(enzNote)"
+                detail: L10n.tr("目的基因 \(cleanInsertLengthBp) bp + 5' URS/3' DRS 同源臂(\(fOv)+\(rOv) bp)\(enzNote)", "Insert \(cleanInsertLengthBp) bp + 5' URS/3' DRS arms (\(fOv)+\(rOv) bp)\(enzNote)")
             )
             insertBand = ib
             lanes.append(
                 SimulatedGelLane(
                     id: "entry-lane-insert",
                     index: lanes.count + 1,
-                    shortLabel: "目的PCR",
-                    fullTitle: "入门克隆 PCR 扩增产物",
+                    shortLabel: L10n.t("目的PCR"),
+                    fullTitle: L10n.t("入门克隆 PCR 扩增产物"),
                     subtitle: "\(insertAmpliconBp) bp",
                     bands: [ib]
                 )
@@ -899,9 +899,9 @@ public enum HomologousPCRGelSimulator {
                 SimulatedGelLane(
                     id: "entry-lane-mix",
                     index: lanes.count + 1,
-                    shortLabel: "混合对照",
-                    fullTitle: "pCE2 载体 + 目的 PCR 共电泳对照",
-                    subtitle: "重组大小对比",
+                    shortLabel: L10n.t("混合对照"),
+                    fullTitle: L10n.t("pCE2 载体 + 目的 PCR 共电泳对照"),
+                    subtitle: L10n.t("重组大小对比"),
                     isMixedControl: true,
                     bands: [vecBand, ib].sorted { $0.sizeBp > $1.sizeBp }
                 )
@@ -916,7 +916,7 @@ public enum HomologousPCRGelSimulator {
         )
 
         return HomologousPCRGelSimulationResult(
-            title: "入门克隆 PCR 扩增模拟电泳",
+            title: L10n.t("入门克隆 PCR 扩增模拟电泳"),
             concentration: conc,
             recommendedConcentration: recConc,
             ladder: ladderResolved.selected,
@@ -944,7 +944,7 @@ public enum HomologousPCRGelSimulator {
                 role: .marker,
                 relativeBrightness: isHL ? 1.0 : 0.64,
                 label: formatShortBp(bp),
-                detail: isHL ? "\(preset.name) · 加亮指示带 (\(bp) bp)" : "\(preset.name) (\(bp) bp)"
+                detail: isHL ? L10n.tr("\(preset.name) · 加亮指示带 (\(bp) bp)", "\(preset.name) · Bright reference band (\(bp) bp)") : "\(preset.name) (\(bp) bp)"
             )
         }
         return SimulatedGelLane(
@@ -974,7 +974,7 @@ public enum HomologousPCRGelSimulator {
                 GelResolutionWarning(
                     id: "warn-ladder-overflow",
                     severity: .warning,
-                    message: "最大条带 (\(maxBandBp) bp) 超出当前 Marker 上限 (\(ladderMaxBp) bp)，建议切换至 NEB 1 kb Plus 准确判读条带大小。",
+                    message: L10n.tr("最大条带 (\(maxBandBp) bp) 超出当前 Marker 上限 (\(ladderMaxBp) bp)，建议切换至 NEB 1 kb Plus 准确判读条带大小。", "Largest band (\(maxBandBp) bp) exceeds Marker upper limit (\(ladderMaxBp) bp); switch to NEB 1 kb Plus."),
                     suggestedConcentration: nil,
                     suggestedLadderID: "neb1kbplus"
                 )
@@ -993,7 +993,7 @@ public enum HomologousPCRGelSimulator {
                         GelResolutionWarning(
                             id: "warn-overlap-\(lane.id)-\(b1.sizeBp)-\(idx)",
                             severity: .warning,
-                            message: "「\(lane.fullTitle)」中存在两条长度完全相同 (\(b1.sizeBp) bp) 的条带，混合点样会完全重合，请分别单管 PCR 并在独立泳道上样验证。",
+                            message: L10n.tr("「\(lane.fullTitle)」中存在两条长度完全相同 (\(b1.sizeBp) bp) 的条带，混合点样会完全重合，请分别单管 PCR 并在独立泳道上样验证。", "\"\(lane.fullTitle)\" contains two identical-length bands (\(b1.sizeBp) bp); amplify separately and load in distinct lanes."),
                             suggestedConcentration: nil,
                             suggestedLadderID: nil
                         )
@@ -1005,12 +1005,12 @@ public enum HomologousPCRGelSimulator {
                             < abs(rhs.migrationY(sizeBp: b1.sizeBp) - rhs.migrationY(sizeBp: b2.sizeBp))
                     }
                     let suggest = (bestConc != currentConcentration) ? bestConc : nil
-                    let concHint = suggest.map { "建议改用 \($0.rawValue) 琼脂糖凝胶以提高分离度。" } ?? "条带尺寸极为接近，建议单管独立 PCR 并在不同泳道点样。"
+                    let concHint = suggest.map { L10n.tr("建议改用 \($0.rawValue) 琼脂糖凝胶以提高分离度。", "Switch to \($0.rawValue) agarose gel for better separation.") } ?? L10n.t("条带尺寸极为接近，建议单管独立 PCR 并在不同泳道点样。")
                     warnings.append(
                         GelResolutionWarning(
                             id: "warn-comigrate-\(lane.id)-\(b1.sizeBp)-\(b2.sizeBp)",
                             severity: .warning,
-                            message: "「\(lane.fullTitle)」中 \(b1.sizeBp) bp 与 \(b2.sizeBp) bp 条带在 \(currentConcentration.rawValue) 胶中迁移接近，\(concHint)",
+                            message: L10n.tr("「\(lane.fullTitle)」中 \(b1.sizeBp) bp 与 \(b2.sizeBp) bp 条带在 \(currentConcentration.rawValue) 胶中迁移接近，\(concHint)", "In \"\(lane.fullTitle)\", \(b1.sizeBp) bp and \(b2.sizeBp) bp migrate closely on \(currentConcentration.rawValue) gel; \(concHint)"),
                             suggestedConcentration: suggest,
                             suggestedLadderID: nil
                         )
@@ -1024,11 +1024,11 @@ public enum HomologousPCRGelSimulator {
     }
 
     private static func makeExtensionHint(longestBp: Int) -> String {
-        guard longestBp > 0 else { return "输入序列并选择同源臂后自动评估" }
+        guard longestBp > 0 else { return L10n.t("输入序列并选择同源臂后自动评估") }
         let kb = Double(longestBp) / 1000.0
         let lowSec = max(10, Int((kb * 15.0).rounded()))
         let highSec = max(15, Int((kb * 30.0).rounded()))
-        return "最长扩增 \(longestBp) bp (\(String(format: "%.2f", kb)) kb) · 参考延伸时间 ~\(lowSec)–\(highSec) s (按 15–30 s/kb 高保真酶估算)"
+        return L10n.tr("最长扩增 \(longestBp) bp (\(String(format: "%.2f", kb)) kb) · 参考延伸时间 ~\(lowSec)–\(highSec) s (按 15–30 s/kb 高保真酶估算)", "Max amplicon \(longestBp) bp (\(String(format: "%.2f", kb)) kb) · Est. extension ~\(lowSec)–\(highSec) s (15–30 s/kb Hi-Fi Pol)")
     }
 
     private static func cleanLaneTitle(_ raw: String, fallback: String) -> String {

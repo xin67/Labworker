@@ -81,7 +81,7 @@ public struct HDRDonorPanelView: View {
             VStack(alignment: .leading, spacing: 10) {
                 SequenceEditorBox(
                     text: $referenceSequence,
-                    placeholder: "输入或导入含 sgRNA 位点与侧翼同源臂的基因组/质粒序列...",
+                    placeholder: L10n.t("输入或导入含 sgRNA 位点与侧翼同源臂的基因组/质粒序列..."),
                     minHeight: 84
                 )
 
@@ -91,10 +91,10 @@ public struct HDRDonorPanelView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .fixedSize()
-                        TextField("输入 20 bp Spacer (不含 PAM)", text: $sgRNASequence)
+                        TextField(L10n.t("输入 20 bp Spacer (不含 PAM)"), text: $sgRNASequence)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
 
                         StudioSegmentedPicker(
                             selection: $strand,
@@ -106,10 +106,10 @@ public struct HDRDonorPanelView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
-                        TextField("输入 20 bp Spacer (不含 PAM)", text: $sgRNASequence)
+                        TextField(L10n.t("输入 20 bp Spacer (不含 PAM)"), text: $sgRNASequence)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
                         StudioSegmentedPicker(
                             selection: $strand,
                             options: [
@@ -136,37 +136,37 @@ public struct HDRDonorPanelView: View {
             VStack(alignment: .leading, spacing: 10) {
                 StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 8) {
                     HStack(spacing: 5) {
-                        Text("名称:")
+                        Text(L10n.t("名称:"))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
-                        TextField("Donor 名称", text: $donorName)
+                        TextField(L10n.t("Donor 名称"), text: $donorName)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
                             .frame(width: 140)
                     }
 
                     HStack(spacing: 5) {
-                        Text("编辑起点 (1-based):")
+                        Text(L10n.t("编辑起点 (1-based):"))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
-                        TextField("起", text: $editStart1BasedText)
+                        TextField(L10n.t("起"), text: $editStart1BasedText)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
                             .frame(width: 68)
                     }
 
                     HStack(spacing: 5) {
-                        Text("终点 (0-length 插入填 起点-1):")
+                        Text(L10n.t("终点 (0-length 插入填 起点-1):"))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
-                        TextField("止", text: $editEnd1BasedText)
+                        TextField(L10n.t("止"), text: $editEnd1BasedText)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
                             .frame(width: 68)
                     }
 
                     HStack(spacing: 5) {
-                        Text("自定义臂长 (bp):")
+                        Text(L10n.t("自定义臂长 (bp):"))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                         TextField("\(donorFormat.defaultArmLengthBp)", text: $customArmLengthText)
@@ -177,42 +177,42 @@ public struct HDRDonorPanelView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("插入 / 替换载荷 DNA 序列 (5'→3'):")
+                    Text(L10n.t("插入 / 替换载荷 DNA 序列 (5'→3'):"))
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                     SequenceEditorBox(
                         text: $replacementSequence,
-                        placeholder: "输入插入标签（如 3xFLAG）或替换突变碱基...",
+                        placeholder: L10n.t("输入插入标签（如 3xFLAG）或替换突变碱基..."),
                         minHeight: 46
                     )
                 }
 
                 StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 8) {
-                    Toggle("自动检测 CDS 读框", isOn: $autoDetectCDS)
+                    Toggle(L10n.t("自动检测 CDS 读框"), isOn: $autoDetectCDS)
                         .toggleStyle(.switch)
                         .controlSize(.small)
 
                     if !autoDetectCDS {
                         HStack(spacing: 5) {
-                            Text("CDS 起止 (1-based):")
+                            Text(L10n.t("CDS 起止 (1-based):"))
                                 .font(.system(size: 11.5))
                                 .foregroundStyle(.secondary)
-                            TextField("起", text: $manualCDSStartText)
+                            TextField(L10n.t("起"), text: $manualCDSStartText)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 60)
                             Text("~")
-                            TextField("止", text: $manualCDSEndText)
+                            TextField(L10n.t("止"), text: $manualCDSEndText)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 60)
                         }
                     }
 
-                    Toggle("自动构建/消除同义 RFLP 鉴定酶切位点", isOn: $enableRFLP)
+                    Toggle(L10n.t("自动构建/消除同义 RFLP 鉴定酶切位点"), isOn: $enableRFLP)
                         .toggleStyle(.switch)
                         .controlSize(.small)
 
                     HStack(spacing: 5) {
-                        Text("Out-Out 边距:")
+                        Text(L10n.t("Out-Out 边距:"))
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
                         TextField("80", text: $outOutMarginText)
@@ -224,7 +224,7 @@ public struct HDRDonorPanelView: View {
                     }
 
                     HStack(spacing: 5) {
-                        Text("引物 Tm:")
+                        Text(L10n.t("引物 Tm:"))
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
                         TextField("60.0", text: $targetTmText)
@@ -254,22 +254,22 @@ public struct HDRDonorPanelView: View {
     private func resultSummaryCard(_ rep: HDRDonorDesignReport) -> some View {
         StudioCard(title: "Cas9 二次切割阻断与蛋白守恒校验") {
             StudioMetricBadge(
-                label: "再切阻断",
+                label: L10n.t("再切阻断"),
                 value: rep.cas9RecutBlocked ? "已安全阻断" : "需人工复核",
                 color: rep.cas9RecutBlocked ? .green : .red
             )
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
-                    StudioMetricBadge(label: "策略", value: blockingStrategyTitle(rep.blockingStrategy), color: .teal)
+                    StudioMetricBadge(label: L10n.t("策略"), value: blockingStrategyTitle(rep.blockingStrategy), color: .teal)
                     StudioMetricBadge(label: "PAM", value: "\(rep.wtPamSequence) → \(rep.editedPamSequence)", color: .blue)
                     StudioMetricBadge(
-                        label: "蛋白守恒",
+                        label: L10n.t("蛋白守恒"),
                         value: rep.isInCDS ? (rep.aminoAcidConserved ? "100% 同义守恒" : "⚠️ 发生改变") : "非编码区",
                         color: (!rep.isInCDS || rep.aminoAcidConserved) ? .green : .red
                     )
                     StudioMetricBadge(
-                        label: "Donor 总长",
+                        label: L10n.t("Donor 总长"),
                         value: "\(rep.donorLengthBp) bp (\(rep.leftArmLengthBp)+\(rep.insertPayload.count)+\(rep.rightArmLengthBp))",
                         color: .purple
                     )
@@ -277,14 +277,14 @@ public struct HDRDonorPanelView: View {
 
                 if !rep.blockingMutations.isEmpty {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("引入的 PAM / Seed 同义阻断突变")
+                        Text(L10n.t("引入的 PAM / Seed 同义阻断突变"))
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(.secondary)
                         ForEach(Array(rep.blockingMutations.enumerated()), id: \.offset) { _, m in
                             HStack(spacing: 8) {
                                 StudioMetricBadge(label: "@\(m.position1Based)", value: "\(m.originalBase)→\(m.mutatedBase)", color: .teal)
                                 if let cb = m.codonBefore, let ca = m.codonAfter, let aa = m.aminoAcid {
-                                    StudioMetricBadge(label: "密码子", value: "\(cb)→\(ca) (\(aa))", color: .green)
+                                    StudioMetricBadge(label: L10n.t("密码子"), value: "\(cb)→\(ca) (\(aa))", color: .green)
                                 }
                                 Text(m.reason)
                                     .font(.system(size: 11.5))
@@ -322,7 +322,7 @@ public struct HDRDonorPanelView: View {
         } content: {
             VStack(alignment: .leading, spacing: 8) {
                 Text(buildDonorAttributedString(rep))
-                    .font(.system(size: 12.5, weight: .medium, design: .monospaced))
+                    .font(.system(size: 12.5, weight: .medium))
                     .textSelection(.enabled)
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -334,13 +334,13 @@ public struct HDRDonorPanelView: View {
                     )
 
                 StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 4) {
-                    Label("左同源臂 (\(rep.leftArmLengthBp) bp)", systemImage: "circle.fill")
+                    Label(L10n.tr("左同源臂 (\(rep.leftArmLengthBp) bp)", "Left HA (\(rep.leftArmLengthBp) bp)"), systemImage: "circle.fill")
                         .font(.system(size: 11))
                         .foregroundStyle(.blue)
-                    Label("插入/替换载荷 (\(rep.insertPayload.count) bp)", systemImage: "circle.fill")
+                    Label(L10n.tr("插入/替换载荷 (\(rep.insertPayload.count) bp)", "Payload (\(rep.insertPayload.count) bp)"), systemImage: "circle.fill")
                         .font(.system(size: 11))
                         .foregroundStyle(.green)
-                    Label("右同源臂 (\(rep.rightArmLengthBp) bp)", systemImage: "circle.fill")
+                    Label(L10n.tr("右同源臂 (\(rep.rightArmLengthBp) bp)", "Right HA (\(rep.rightArmLengthBp) bp)"), systemImage: "circle.fill")
                         .font(.system(size: 11))
                         .foregroundStyle(.purple)
                 }
@@ -359,12 +359,12 @@ public struct HDRDonorPanelView: View {
             VStack(alignment: .leading, spacing: 6) {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                     StudioMetricBadge(
-                        label: "WT 扩增子酶切",
+                        label: L10n.t("WT 扩增子酶切"),
                         value: rflp.wtAmpliconBandsBp.map(String.init).joined(separator: " / ") + " bp",
                         color: .blue
                     )
                     StudioMetricBadge(
-                        label: "HDR 扩增子酶切",
+                        label: L10n.t("HDR 扩增子酶切"),
                         value: rflp.hdrAmpliconBandsBp.map(String.init).joined(separator: " / ") + " bp",
                         color: .green
                     )
@@ -379,8 +379,8 @@ public struct HDRDonorPanelView: View {
     private func outOutPrimersCard(_ outOut: OutOutPCRDesign) -> some View {
         StudioCard(title: "同源臂外侧 Out-Out PCR 分型引物") {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
-                StudioMetricBadge(label: "WT 扩增子", value: "\(outOut.wtAmpliconLengthBp) bp", color: .blue)
-                StudioMetricBadge(label: "HDR 扩增子", value: "\(outOut.hdrAmpliconLengthBp) bp", color: .green)
+                StudioMetricBadge(label: L10n.t("WT 扩增子"), value: "\(outOut.wtAmpliconLengthBp) bp", color: .blue)
+                StudioMetricBadge(label: L10n.t("HDR 扩增子"), value: "\(outOut.hdrAmpliconLengthBp) bp", color: .green)
                 StudioActionPillButton(title: "加入引物池", icon: "cart.badge.plus", tint: .green, isProminent: true) {
                     appState.addPrimersToCart([outOut.forwardPrimer, outOut.reversePrimer])
                 }
@@ -417,11 +417,11 @@ public struct HDRDonorPanelView: View {
 
     private func blockingStrategyTitle(_ s: HDRBlockingStrategy) -> String {
         switch s {
-        case .pamSynonymous:           return "PAM 同义突变"
-        case .seedSynonymousFallback:  return "Seed 区同义突变"
-        case .pamNonCoding:            return "非编码区 PAM 破坏"
-        case .alreadyDisruptedByEdit:  return "编辑载荷已破坏切点"
-        case .failedToBlock:           return "未能自动阻断"
+        case .pamSynonymous:           return L10n.t("PAM 同义突变")
+        case .seedSynonymousFallback:  return L10n.t("Seed 区同义突变")
+        case .pamNonCoding:            return L10n.t("非编码区 PAM 破坏")
+        case .alreadyDisruptedByEdit:  return L10n.t("编辑载荷已破坏切点")
+        case .failedToBlock:           return L10n.t("未能自动阻断")
         }
     }
 
@@ -459,7 +459,7 @@ public struct HDRDonorPanelView: View {
         do {
             let res = try HDRDonorEngine.designHDRDonor(req)
             self.report = res
-            appState.showToast("已生成 \(res.donorLengthBp) bp HDR 供体（\(blockingStrategyTitle(res.blockingStrategy))）")
+            appState.showToast(L10n.tr("已生成 \(res.donorLengthBp) bp HDR 供体（\(blockingStrategyTitle(res.blockingStrategy))）", "Generated \(res.donorLengthBp) bp HDR donor (\(blockingStrategyTitle(res.blockingStrategy)))"))
         } catch {
             self.errorMessage = error.localizedDescription
         }
@@ -467,7 +467,7 @@ public struct HDRDonorPanelView: View {
 
     private func openReferenceFile() {
         let panel = NSOpenPanel()
-        panel.title = "导入参考位点序列 (.fa / .fasta / .seq / .dna)"
+        panel.title = L10n.t("导入参考位点序列 (.fa / .fasta / .seq / .dna)")
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
         var types: [UTType] = [.plainText]

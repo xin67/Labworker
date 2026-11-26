@@ -147,14 +147,14 @@ public struct SequenceRowCanvasView: View {
         }
         
         return MicroscopicSequenceWindow(
-            title: "全长图谱序列",
-            subtitle: "1..\(displaySeq.count) bp 全景双链与内切酶图谱",
+            title: L10n.t("全长图谱序列"),
+            subtitle: L10n.tr("1..\(displaySeq.count) bp 全景双链与内切酶图谱", "1..\(displaySeq.count) bp Double-Strand & Restriction Map"),
             startBp: 1,
             sequence: displaySeq,
             homologyHighlightRange: homRange,
-            homologyLabel: firstWin?.homologyLabel ?? "18 bp 同源臂",
+            homologyLabel: firstWin?.homologyLabel ?? L10n.t("18 bp 同源臂"),
             focalHighlightRange: focRange,
-            focalLabel: firstWin?.focalLabel ?? "核心重组区",
+            focalLabel: firstWin?.focalLabel ?? L10n.t("核心重组区"),
             enzymeCuts: cuts,
             primers: fullPrimers,
             readingFrameOffset: 0
@@ -452,7 +452,7 @@ public struct SequenceRowCanvasView: View {
                                 Text(junc.rightSeq).foregroundColor(.green)
                                 Text(" -3'").foregroundColor(.secondary)
                             }
-                            .font(.system(size: 10.5, design: .monospaced))
+                            .font(.system(size: 10.5))
                             .textSelection(.enabled)
                         }
                         .studioInnerBox(paddingH: 8, paddingV: 6)
@@ -559,7 +559,7 @@ public struct SequenceRowCanvasView: View {
                                 selectedWindowIndex = -1
                             }
                         }) {
-                            Text("全长序列")
+                            Text(L10n.t("全长序列"))
                                 .font(.system(size: 10, weight: isFull ? .semibold : .medium))
                                 .studioOptionalForeground(isFull ? nil : primaryTextColor.opacity(0.84))
                         }
@@ -700,7 +700,7 @@ public struct SequenceRowCanvasView: View {
             isCircle: true,
             controlSize: .small
         )
-        .help(tooltip)
+        .help(L10n.t(tooltip))
     }
     
     private func copyActiveSequence() {
@@ -719,7 +719,7 @@ public struct SequenceRowCanvasView: View {
         }()
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(seqToCopy, forType: .string)
-        appState.showToast("已复制 \(seqToCopy.count) bp 序列至剪贴板")
+        appState.showToast(L10n.tr("已复制 \(seqToCopy.count) bp 序列至剪贴板", "Copied \(seqToCopy.count) bp sequence to clipboard"))
     }
     
     // MARK: - 底部状态栏
@@ -737,7 +737,7 @@ public struct SequenceRowCanvasView: View {
                     .monospacedDigit()
                     .foregroundColor(selColor)
             } else {
-                Text("直接按住密码子/氨基酸或碱基滑动拉取选区 · Length: \(totalLengthBp) bp · GC: \(String(format: "%.1f", gcPercent))%")
+                Text(L10n.tr("直接按住密码子/氨基酸或碱基滑动拉取选区 · Length: \(totalLengthBp) bp · GC: \(String(format: "%.1f", gcPercent))%", "Drag across codons, amino acids, or bases to select · Length: \(totalLengthBp) bp · GC: \(String(format: "%.1f", gcPercent))%"))
                     .font(.system(size: 9.5))
                     .monospacedDigit()
                     .foregroundColor(secondaryTextColor)
@@ -811,13 +811,13 @@ public struct SequenceRowCanvasView: View {
                 Image(systemName: "sparkles")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.pink)
-                Text("定点突变选择: 第 \(residueNumber) 位氨基酸 \(codonItem.threeLetterCode) (\(String(codonItem.aminoAcid))) · 密码子 \(codonItem.codon) (@\(codonStartBp)..\(codonEndBp) bp)")
+                Text(L10n.tr("定点突变选择: 第 \(residueNumber) 位氨基酸 \(codonItem.threeLetterCode) (\(String(codonItem.aminoAcid))) · 密码子 \(codonItem.codon) (@\(codonStartBp)..\(codonEndBp) bp)", "Mutagenesis Target: Residue #\(residueNumber) \(codonItem.threeLetterCode) (\(String(codonItem.aminoAcid))) · Codon \(codonItem.codon) (@\(codonStartBp)..\(codonEndBp) bp)"))
                     .font(.system(size: 10.5, weight: .bold))
                     .monospacedDigit()
                     .foregroundColor(primaryTextColor)
                 Spacer()
                 HStack(spacing: 4) {
-                    TextField("自定义密码子/碱基", text: $customMutCodonText)
+                    TextField(L10n.t("自定义密码子/碱基"), text: $customMutCodonText)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 10))
                         .frame(width: 105)
@@ -831,7 +831,7 @@ public struct SequenceRowCanvasView: View {
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
-                    Text("突变为氨基酸:")
+                    Text(L10n.t("突变为氨基酸:"))
                         .font(.system(size: 9.5, weight: .semibold))
                         .foregroundColor(secondaryTextColor)
                     ForEach(CodonTranslator.aminoAcidOptions) { opt in
@@ -862,7 +862,7 @@ public struct SequenceRowCanvasView: View {
                             )
                         }
                         .buttonStyle(.plain)
-                        .help("将 \(String(codonItem.aminoAcid))\(residueNumber) (\(codonItem.codon)) 突变为 \(opt.chineseName) \(String(opt.singleLetter)) (\(opt.preferredCodon))")
+                        .help(L10n.tr("将 \(String(codonItem.aminoAcid))\(residueNumber) (\(codonItem.codon)) 突变为 \(opt.chineseName) \(String(opt.singleLetter)) (\(opt.preferredCodon))", "Mutate \(String(codonItem.aminoAcid))\(residueNumber) (\(codonItem.codon)) to \(opt.threeLetter) \(String(opt.singleLetter)) (\(opt.preferredCodon))"))
                     }
                     
                     Button(action: {
@@ -872,13 +872,13 @@ public struct SequenceRowCanvasView: View {
                             codonItem: codonItem,
                             residueNumber: residueNumber,
                             targetCodon: "",
-                            targetAA: "Δ缺失"
+                            targetAA: L10n.t("Δ缺失")
                         )
                     }) {
                         VStack(spacing: 1) {
-                            Text("Δ 缺失")
+                            Text(L10n.t("Δ 缺失"))
                                 .font(.system(size: 9.5, weight: .bold))
-                            Text("删除3bp")
+                            Text(L10n.t("删除3bp"))
                                 .font(.system(size: 8.0))
                         }
                         .foregroundColor(.white)
@@ -939,7 +939,7 @@ public struct SequenceRowCanvasView: View {
         if let callback = onMutateCodon {
             callback(payload)
         } else {
-            appState.showToast("已选中突变 \(String(codonItem.aminoAcid))\(residueNumber)→\(targetAA) (\(codonItem.codon)→\(targetCodon.isEmpty ? "Δ" : targetCodon))")
+            appState.showToast(L10n.tr("已选中突变 \(String(codonItem.aminoAcid))\(residueNumber)→\(targetAA) (\(codonItem.codon)→\(targetCodon.isEmpty ? "Δ" : targetCodon))", "Selected mutation \(String(codonItem.aminoAcid))\(residueNumber)→\(L10n.t(targetAA)) (\(codonItem.codon)→\(targetCodon.isEmpty ? "Δ" : targetCodon))"))
         }
     }
     
@@ -964,7 +964,7 @@ public struct SequenceRowCanvasView: View {
                     .fill(Color.cyan.opacity(0.35))
                     .overlay(RoundedRectangle(cornerRadius: 2).stroke(Color.cyan, lineWidth: 1))
                     .frame(width: 10, height: 8)
-                Text(win.homologyLabel.isEmpty ? "18 bp 同源重叠臂" : win.homologyLabel)
+                Text(win.homologyLabel.isEmpty ? L10n.t("18 bp 同源重叠臂") : L10n.t(win.homologyLabel))
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundColor(isDark ? .cyan : .blue)
             }
@@ -976,7 +976,7 @@ public struct SequenceRowCanvasView: View {
                     .fill(Color.pink.opacity(0.35))
                     .overlay(RoundedRectangle(cornerRadius: 2).stroke(Color.pink, lineWidth: 1))
                     .frame(width: 10, height: 8)
-                Text(win.focalLabel.isEmpty ? "目标突变/插入焦点" : win.focalLabel)
+                Text(win.focalLabel.isEmpty ? L10n.t("目标突变/插入焦点") : L10n.t(win.focalLabel))
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundColor(.pink)
             }
@@ -987,7 +987,7 @@ public struct SequenceRowCanvasView: View {
                 Rectangle()
                     .fill(Color(red: 0.92, green: 0.25, blue: 0.35))
                     .frame(width: 8, height: 2)
-                Text("5'/3' 交错酶切线 (\(win.enzymeCuts.count))")
+                Text(L10n.tr("5'/3' 交错酶切线 (\(win.enzymeCuts.count))", "5'/3' Staggered Cuts (\(win.enzymeCuts.count))"))
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundColor(Color(red: 0.90, green: 0.22, blue: 0.32))
             }
@@ -1072,6 +1072,8 @@ private struct SequenceSingleRowBlock: View {
         return y - 4.0
     }
     
+    @Environment(\.appLanguage) private var appLanguage
+
     private func snapBpToCodonRange(_ bp: Int) -> ClosedRange<Int> {
         let minBp = window.startBp
         let maxBp = max(minBp, window.startBp + window.sequence.count - 1)
@@ -1108,6 +1110,7 @@ private struct SequenceSingleRowBlock: View {
     }
     
     var body: some View {
+        let _ = appLanguage
         let usableW = max(120.0, rowWidth - leftGutter - rightGutter)
         let baseCount = max(slice.topStrand.count, 1)
         let cellW = max(8.0, usableW / CGFloat(max(baseCount, basesPerRow)))
@@ -1369,7 +1372,7 @@ private struct StaticSequenceRowCanvas: View, Equatable {
                 
                 let tResolved = context.resolve(
                     Text(String(topCh))
-                        .font(.system(size: 10.0, weight: .bold, design: .monospaced))
+                        .font(.system(size: 10.0, weight: .bold))
                         .foregroundColor(topColor)
                 )
                 context.draw(tResolved, at: CGPoint(x: xCenter, y: topStrandY), anchor: .center)
@@ -1378,7 +1381,7 @@ private struct StaticSequenceRowCanvas: View, Equatable {
                     if (i + 1) % 5 == 0 {
                         let plusRes = context.resolve(
                             Text("+")
-                                .font(.system(size: 7.5, weight: .bold, design: .monospaced))
+                                .font(.system(size: 7.5, weight: .bold))
                                 .foregroundColor(subLabelColor.opacity(0.75))
                         )
                         context.draw(plusRes, at: CGPoint(x: xCenter, y: plusStrandY), anchor: .center)
@@ -1388,7 +1391,7 @@ private struct StaticSequenceRowCanvas: View, Equatable {
                     let botColor = colorizeBases ? baseColor(for: botCh).opacity(isDark ? 0.78 : 0.85) : monoFallback.opacity(0.68)
                     let bResolved = context.resolve(
                         Text(String(botCh))
-                            .font(.system(size: 10.0, weight: .regular, design: .monospaced))
+                            .font(.system(size: 10.0, weight: .regular))
                             .foregroundColor(botColor)
                     )
                     context.draw(bResolved, at: CGPoint(x: xCenter, y: botStrandY), anchor: .center)
@@ -1472,7 +1475,7 @@ private struct StaticSequenceRowCanvas: View, Equatable {
                     
                     let aaResolved = context.resolve(
                         Text(String(codon.aminoAcid))
-                            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 8.5, weight: .bold))
                             .foregroundColor(.white)
                     )
                     context.draw(aaResolved, at: CGPoint(x: boxX + boxW / 2.0, y: aaY), anchor: .center)
@@ -1533,6 +1536,7 @@ private struct StaticSequenceRowCanvas: View, Equatable {
 
 // MARK: - Layer 2: 极轻量动态选区高亮浮层 (仅在当前选中行绘制 1 个高亮框 + 被选中的密码子方块)
 private struct SelectionOverlayCanvas: View {
+    @Environment(\.appLanguage) private var appLanguage
     let window: MicroscopicSequenceWindow
     let slice: SequenceRowSlice
     let rowWidth: CGFloat
@@ -1549,6 +1553,7 @@ private struct SelectionOverlayCanvas: View {
     private let leftGutter: CGFloat = 26.0
     
     var body: some View {
+        let _ = appLanguage
         Canvas { context, size in
             var currentY: CGFloat = 2.0
             if hasEnzymesInRow {
@@ -1626,7 +1631,7 @@ private struct SelectionOverlayCanvas: View {
                     
                     let aaResolved = context.resolve(
                         Text(String(codon.aminoAcid))
-                            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 8.5, weight: .bold))
                             .foregroundColor(isDark ? .black : .white)
                     )
                     context.draw(aaResolved, at: CGPoint(x: boxX + boxW / 2.0, y: aaY), anchor: .center)

@@ -42,7 +42,7 @@ public struct GoldenGatePanelView: View {
 
     private var configCard: some View {
         StudioCard(title: "Golden Gate (Type IIS) 组装参数") {
-            StudioMetricBadge(label: "保真度矩阵", value: "NEB T4 (Potapov/Pryor)", color: .orange)
+            StudioMetricBadge(label: L10n.t("保真度矩阵"), value: "NEB T4 (Potapov/Pryor)", color: .orange)
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 8) {
@@ -55,13 +55,13 @@ public struct GoldenGatePanelView: View {
                         help: "选择 Type IIS 外切内切酶"
                     )
 
-                    Toggle("环状质粒组装", isOn: $isCircular)
+                    Toggle(L10n.t("环状质粒组装"), isOn: $isCircular)
                         .toggleStyle(.switch)
                         .controlSize(.small)
 
                     if vm.fragments.count > 6 {
                         StudioMetricBadge(
-                            label: "提示",
+                            label: L10n.t("提示"),
                             value: "Golden Gate 支持 2–6 片段，当前将取前 6 段",
                             color: .orange
                         )
@@ -70,23 +70,23 @@ public struct GoldenGatePanelView: View {
 
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        Text("固定黏性末端 (可选):")
+                        Text(L10n.t("固定黏性末端 (可选):"))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .fixedSize()
-                        TextField("逗号分隔，如 AATG, GCTT（留空则自动全局最优分配）", text: $fixedOverhangsText)
+                        TextField(L10n.t("逗号分隔，如 AATG, GCTT（留空则自动全局最优分配）"), text: $fixedOverhangsText)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("固定黏性末端 (可选):")
+                        Text(L10n.t("固定黏性末端 (可选):"))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
-                        TextField("逗号分隔，如 AATG, GCTT", text: $fixedOverhangsText)
+                        TextField(L10n.t("逗号分隔，如 AATG, GCTT"), text: $fixedOverhangsText)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
                     }
                 }
             }
@@ -94,7 +94,7 @@ public struct GoldenGatePanelView: View {
     }
 
     private var fragmentsDomesticationInputCard: some View {
-        StudioCard(title: "待组装片段与 Domestication 设置 (\(activeFragmentCount) 段)") {
+        StudioCard(title: L10n.tr("待组装片段与 Domestication 设置 (\(activeFragmentCount) 段)", "Fragments & Domestication Setup (\(activeFragmentCount))")) {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                 StudioActionPillButton(
                     title: "增加片段",
@@ -113,14 +113,14 @@ public struct GoldenGatePanelView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                            Text(vm.fragmentNames[idx] ?? "片段 \(idx + 1)")
+                            Text(vm.fragmentNames[idx] ?? L10n.tr("片段 \(idx + 1)", "Fragment \(idx + 1)"))
                                 .font(.system(size: 12.5, weight: .bold))
                             StudioMetricBadge(
-                                label: "长度",
+                                label: L10n.t("长度"),
                                 value: "\(cleanLen) bp",
                                 color: cleanLen >= 20 ? .green : .orange
                             )
-                            Toggle("编码区 (同义抹除)", isOn: Binding(
+                            Toggle(L10n.t("编码区 (同义抹除)"), isOn: Binding(
                                 get: { isCDS },
                                 set: { fragmentCodingFlags[idx] = $0 }
                             ))
@@ -151,7 +151,7 @@ public struct GoldenGatePanelView: View {
 
                         SequenceEditorBox(
                             text: $vm.fragments[idx],
-                            placeholder: "输入第 \(idx + 1) 个片段序列（>= 20 bp，自动扫描内源 \(selectedEnzymeName) 切点）...",
+                            placeholder: L10n.tr("输入第 \(idx + 1) 个片段序列（>= 20 bp，自动扫描内源 \(selectedEnzymeName) 切点）...", "Enter fragment #\(idx + 1) sequence (>= 20 bp; auto-scans internal \(selectedEnzymeName) sites)..."),
                             minHeight: 54
                         )
                     }
@@ -207,22 +207,22 @@ public struct GoldenGatePanelView: View {
         StudioCard(title: "Golden Gate 组装方案与 Domestication 明细") {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                 StudioMetricBadge(
-                    label: "组装保真度",
+                    label: L10n.t("组装保真度"),
                     value: String(format: "%.1f%%", ovPlan.assemblyFidelity * 100.0),
                     color: ovPlan.assemblyFidelity >= 0.95 ? .green : .orange
                 )
                 StudioMetricBadge(
-                    label: "跨错配",
-                    value: "\(ovPlan.crossMismatchCount) 对",
+                    label: L10n.t("跨错配"),
+                    value: L10n.tr("\(ovPlan.crossMismatchCount) 对", "\(ovPlan.crossMismatchCount) pairs"),
                     color: ovPlan.crossMismatchCount == 0 ? .green : .red
                 )
                 StudioMetricBadge(
-                    label: "内源位点",
-                    value: "\(plan.totalInternalSitesFound) 个",
+                    label: L10n.t("内源位点"),
+                    value: L10n.tr("\(plan.totalInternalSitesFound) 个", "\(plan.totalInternalSitesFound)"),
                     color: plan.totalInternalSitesFound == 0 ? .green : .orange
                 )
                 StudioMetricBadge(
-                    label: "拼接总长",
+                    label: L10n.t("拼接总长"),
                     value: "\(plan.assembledSequenceLength) bp",
                     color: .blue
                 )
@@ -243,7 +243,7 @@ public struct GoldenGatePanelView: View {
 
                 // 1. 高保真黏性末端串联拓扑
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("高保真 \(plan.overhangLength)-bp 黏性末端顺序 (\(plan.enzymeName) · \(plan.recognitionSite))")
+                    Text(L10n.tr("高保真 \(plan.overhangLength)-bp 黏性末端顺序 (\(plan.enzymeName) · \(plan.recognitionSite))", "High-Fidelity \(plan.overhangLength)-bp Overhangs (\(plan.enzymeName) · \(plan.recognitionSite))"))
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(.secondary)
 
@@ -267,7 +267,7 @@ public struct GoldenGatePanelView: View {
 
                 // 2. 各片段 Domestication 详情
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("片段内源 \(plan.enzymeName) 位点扫描与同义密码子抹除 (Domestication)")
+                    Text(L10n.tr("片段内源 \(plan.enzymeName) 位点扫描与同义密码子抹除 (Domestication)", "Internal \(plan.enzymeName) Site Scan & Synonymous Domestication"))
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(.secondary)
 
@@ -276,21 +276,21 @@ public struct GoldenGatePanelView: View {
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                                 Text(dom.fragmentName)
                                     .font(.system(size: 12.5, weight: .bold))
-                                StudioMetricBadge(label: "长度", value: "\(dom.originalLength) bp", color: .blue)
+                                StudioMetricBadge(label: L10n.t("长度"), value: "\(dom.originalLength) bp", color: .blue)
                                 StudioMetricBadge(
-                                    label: "检出位点",
+                                    label: L10n.t("检出位点"),
                                     value: "\(dom.internalSitesFound)",
                                     color: dom.internalSitesFound == 0 ? .green : .orange
                                 )
                                 StudioMetricBadge(
-                                    label: "抹除后剩余",
+                                    label: L10n.t("抹除后剩余"),
                                     value: "\(dom.remainingSitesAfterDomestication)",
                                     color: dom.remainingSitesAfterDomestication == 0 ? .green : .red
                                 )
                             }
 
                             if dom.suggestions.isEmpty {
-                                Text("未检出内源 \(plan.enzymeName) 识别序列，可直接用于 Golden Gate 反应。")
+                                Text(L10n.tr("未检出内源 \(plan.enzymeName) 识别序列，可直接用于 Golden Gate 反应。", "No internal \(plan.enzymeName) sites found; ready for Golden Gate assembly."))
                                     .font(.system(size: 11.5))
                                     .foregroundStyle(.secondary)
                             } else {
@@ -298,19 +298,19 @@ public struct GoldenGatePanelView: View {
                                     VStack(alignment: .leading, spacing: 3) {
                                         StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                                             StudioMetricBadge(
-                                                label: "\(sug.siteStrand)链",
+                                                label: L10n.tr("\(sug.siteStrand)链", "\(sug.siteStrand) strand"),
                                                 value: "\(sug.siteStart1Based)..\(sug.siteEnd1Based) bp",
                                                 color: .purple
                                             )
                                             if let origC = sug.originalCodon, let mutC = sug.mutatedCodon, let aa = sug.aminoAcid {
                                                 StudioMetricBadge(
-                                                    label: "密码子",
+                                                    label: L10n.t("密码子"),
                                                     value: "\(origC) → \(mutC) (\(aa))",
                                                     color: sug.isSynonymous ? .green : .orange
                                                 )
                                             }
                                             StudioMetricBadge(
-                                                label: "突变",
+                                                label: L10n.t("突变"),
                                                 value: "@\(sug.mutationPosition1Based) \(sug.originalBase)→\(sug.mutatedBase)",
                                                 color: .teal
                                             )
@@ -338,7 +338,7 @@ public struct GoldenGatePanelView: View {
         for idx in 0..<count {
             let clean = BioSequence.clean(vm.fragments[idx])
             guard clean.count >= 20 else {
-                vm.alertMessage = "第 \(idx + 1) 个片段有效序列长度不足 20 bp，请补充序列或点击「载入示例」。"
+                vm.alertMessage = L10n.tr("第 \(idx + 1) 个片段有效序列长度不足 20 bp，请补充序列或点击「载入示例」。", "Fragment #\(idx + 1) must be at least 20 bp; add bases or load sample.")
                 vm.showAlert = true
                 return
             }
@@ -367,7 +367,7 @@ public struct GoldenGatePanelView: View {
         self.plan = result
         appState.showToast(
             String(
-                format: "已完成 %@ Golden Gate 规划：保真度 %.1f%%，抹除 %d 处内源位点",
+                format: L10n.tr("已完成 %@ Golden Gate 规划：保真度 %.1f%%，抹除 %d 处内源位点", "Planned %@ Golden Gate assembly: Fidelity %.1f%%, domesticated %d internal sites"),
                 result.enzymeName,
                 result.overhangPlan.assemblyFidelity * 100.0,
                 result.totalInternalSitesFound

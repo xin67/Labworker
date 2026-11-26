@@ -348,7 +348,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Labworker")
                         .font(.system(size: 13.5, weight: .bold))
-                    Text("实验随手算与工作台直达")
+                    Text(L10n.t("实验随手算与工作台直达"))
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
@@ -360,12 +360,12 @@ public struct CloneStudioStatusBarPopoverView: View {
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: "folder.badge.plus")
-                        Text("导入文件")
+                        Text(L10n.t("导入文件"))
                     }
                     .font(.system(size: 11, weight: .semibold))
                 }
                 .statusGlassButtonCompat(isProminent: true, controlSize: .small)
-                .help("从 Finder 导入 .dna / .tif / .pdb / .csv / .fasta 并自动直达对应模块")
+                .help(L10n.t("从 Finder 导入 .dna / .tif / .pdb / .csv / .fasta 并自动直达对应模块"))
             }
             
             Divider().opacity(0.5)
@@ -373,13 +373,13 @@ public struct CloneStudioStatusBarPopoverView: View {
             // 2. 状态栏随手算：引物/序列 Tm、GC% 与反向互补
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Label("序列随手算 (Tm / GC / 反向互补)", systemImage: "function")
+                    Label(L10n.t("序列随手算 (Tm / GC / 反向互补)"), systemImage: "function")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                     Spacer()
                     StatusGlassContainerCompat(spacing: 6) {
                         HStack(spacing: 6) {
-                            Button("粘贴") {
+                            Button(L10n.t("粘贴")) {
                                 if let str = NSPasteboard.general.string(forType: .string) {
                                     quickSequence = BioSequence.clean(str)
                                 }
@@ -387,7 +387,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                             .statusGlassButtonCompat(isProminent: false, controlSize: .mini)
                             
                             if !quickSequence.isEmpty {
-                                Button("清空") {
+                                Button(L10n.t("清空")) {
                                     quickSequence = ""
                                 }
                                 .statusGlassButtonCompat(isProminent: false, controlSize: .mini)
@@ -396,12 +396,12 @@ public struct CloneStudioStatusBarPopoverView: View {
                     }
                 }
                 
-                TextField("粘贴引物或 DNA 序列即刻计算...", text: $quickSequence)
+                TextField(L10n.t("粘贴引物或 DNA 序列即刻计算..."), text: $quickSequence)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 11))
                 
                 HStack(spacing: 7) {
-                    statusMetricPill(label: "长度", value: "\(cleanedSeq.count)bp", tint: .blue)
+                    statusMetricPill(label: L10n.t("长度"), value: "\(cleanedSeq.count) bp", tint: .blue)
                     statusMetricPill(
                         label: "GC",
                         value: cleanedSeq.isEmpty ? "--" : String(format: "%.0f%%", quickGC),
@@ -418,14 +418,14 @@ public struct CloneStudioStatusBarPopoverView: View {
                         let rc = BioSequence.reverseComplement(cleanedSeq)
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(rc, forType: .string)
-                        copiedFeedback = "已复制"
+                        copiedFeedback = L10n.t("已复制")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                             copiedFeedback = nil
                         }
                     }) {
                         HStack(spacing: 3) {
                             Image(systemName: copiedFeedback != nil ? "checkmark" : "arrow.left.arrow.right")
-                            Text(copiedFeedback ?? "反向互补")
+                            Text(copiedFeedback ?? L10n.t("反向互补"))
                         }
                         .font(.system(size: 10.5, weight: .semibold))
                     }
@@ -439,16 +439,16 @@ public struct CloneStudioStatusBarPopoverView: View {
             // 3. 高频工作台直达（语义化图标，去除旧数字编号）
             StatusGlassContainerCompat(spacing: 6) {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                    quickModuleButton(.plasmidPool, title: "质粒池", icon: "tray.2.fill", tint: .cyan)
-                    quickModuleButton(.singleFragment, title: "单片段", icon: "scissors", tint: .teal)
-                    quickModuleButton(.mutagenesis, title: "定点突变", icon: "wand.and.stars", tint: .pink)
-                    quickModuleButton(.westernBlot, title: "WB定量", icon: "slider.horizontal.below.rectangle", tint: .indigo)
+                    quickModuleButton(.plasmidPool, title: L10n.t("质粒池"), icon: "tray.2.fill", tint: .cyan)
+                    quickModuleButton(.singleFragment, title: L10n.t("单片段"), icon: "scissors", tint: .teal)
+                    quickModuleButton(.mutagenesis, title: L10n.t("定点突变"), icon: "wand.and.stars", tint: .pink)
+                    quickModuleButton(.westernBlot, title: L10n.t("WB定量"), icon: "slider.horizontal.below.rectangle", tint: .indigo)
                     quickModuleButton(.qpcrAnalysis, title: "qPCR", icon: "chart.bar.xaxis", tint: .teal)
-                    quickModuleButton(.gelFigure, title: "凝胶电泳", icon: "chart.bar.doc.horizontal.fill", tint: .cyan)
-                    quickModuleButton(.proteinWorkbench, title: "蛋白质台", icon: "atom", tint: .blue)
+                    quickModuleButton(.gelFigure, title: L10n.t("凝胶电泳"), icon: "chart.bar.doc.horizontal.fill", tint: .cyan)
+                    quickModuleButton(.proteinWorkbench, title: L10n.t("蛋白质台"), icon: "atom", tint: .blue)
                     quickModuleButton(
                         .orderCenter,
-                        title: appState.primersCart.isEmpty ? "订购单" : "订购(\(appState.primersCart.count))",
+                        title: appState.primersCart.isEmpty ? L10n.t("订购单") : L10n.tr("订购(\(appState.primersCart.count))", "Order (\(appState.primersCart.count))"),
                         icon: "cart.fill",
                         tint: .green
                     )
@@ -465,7 +465,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "macwindow")
-                            Text("主窗口")
+                            Text(L10n.t("主窗口"))
                         }
                         .font(.system(size: 11, weight: .medium))
                     }
@@ -477,7 +477,7 @@ public struct CloneStudioStatusBarPopoverView: View {
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "gearshape")
-                            Text("设置")
+                            Text(L10n.t("设置"))
                         }
                         .font(.system(size: 11, weight: .medium))
                     }
@@ -490,18 +490,19 @@ public struct CloneStudioStatusBarPopoverView: View {
                     }) {
                         HStack(spacing: 3) {
                             Image(systemName: "power")
-                            Text("退出")
+                            Text(L10n.t("退出"))
                         }
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help("退出 Labworker (⌘Q)")
+                    .help(L10n.t("退出 Labworker (⌘Q)"))
                 }
             }
         }
         .padding(12)
         .frame(width: 340)
+        .environment(\.appLanguage, appState.appLanguage)
     }
     
     private func statusMetricPill(label: String, value: String, tint: Color) -> some View {

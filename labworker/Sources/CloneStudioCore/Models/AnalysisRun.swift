@@ -364,13 +364,13 @@ public enum AnalysisRunIndexStore {
         }
         if let mode = run.parameters["mode"]?.stringValue, mode == "batch",
            let cloneCount = run.parameters["cloneCount"]?.intValue {
-            return "批量测序验证 · \(cloneCount) 个克隆"
+            return L10n.tr("批量测序验证 · \(cloneCount) 个克隆", "Batch Sequencing Verification · \(cloneCount) clone(s)")
         }
         if let ctrl = run.parameters["resolvedControlLabel"]?.stringValue {
-            return "qPCR ΔΔCt 分析 · 对照组 \(ctrl)"
+            return L10n.tr("qPCR ΔΔCt 分析 · 对照组 \(ctrl)", "qPCR ΔΔCt Analysis · Control: \(ctrl)")
         }
         if let bitDepth = run.parameters["bitDepth"]?.intValue {
-            return "WB \(bitDepth)-bit 定量 · \(outputURL.lastPathComponent)"
+            return L10n.tr("WB \(bitDepth)-bit 定量 · \(outputURL.lastPathComponent)", "WB \(bitDepth)-bit Quantification · \(outputURL.lastPathComponent)")
         }
         return outputURL.lastPathComponent
     }

@@ -407,7 +407,7 @@ public enum GelAnalysisEngine {
         let enzTitle = enzymeNames.joined(separator: "+")
         return GelLaneItem(
             index: laneIndex,
-            name: "酶切:\(plasmidName)(\(enzTitle))",
+            name: L10n.tr("酶切:\(plasmidName)(\(enzTitle))", "Digest:\(plasmidName)(\(enzTitle))"),
             isLadderLane: false,
             isVirtualDigestLane: true,
             centerX: 0.92,
@@ -481,7 +481,7 @@ public enum GelAnalysisEngine {
         }
         sizes.sort(by: >)
         let suffix = mutationLabel.trimmingCharacters(in: .whitespacesAndNewlines)
-        let laneName = suffix.isEmpty ? "突变:\(plasmidName)" : "突变:\(suffix)"
+        let laneName = suffix.isEmpty ? L10n.tr("突变:\(plasmidName)", "Mut:\(plasmidName)") : L10n.tr("突变:\(suffix)", "Mut:\(suffix)")
         return buildCustomVirtualLane(
             laneName: laneName,
             sizes: sizes,
@@ -511,7 +511,7 @@ public enum GelAnalysisEngine {
         let title = laneName.trimmingCharacters(in: .whitespacesAndNewlines)
         return GelLaneItem(
             index: laneIndex,
-            name: title.isEmpty ? "自定义预测" : title,
+            name: title.isEmpty ? L10n.t("自定义预测") : title,
             isLadderLane: false,
             isVirtualDigestLane: true,
             centerX: 0.92,
@@ -642,7 +642,7 @@ public enum GelAnalysisEngine {
         let sidecarURL = try run.writeSidecarJSON(
             alongsideOutputURL: outputCSVURL,
             indexURL: indexURL,
-            summary: "凝胶条带分子量分析 · \(ladder.name) (\(lanes.count) 泳道)"
+            summary: L10n.tr("凝胶条带分子量分析 · \(ladder.name) (\(lanes.count) 泳道)", "Gel Band MW Analysis · \(ladder.name) (\(lanes.count) lanes)")
         )
         return (outputCSVURL, sidecarURL, run)
     }

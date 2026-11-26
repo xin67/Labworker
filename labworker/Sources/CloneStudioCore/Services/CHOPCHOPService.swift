@@ -169,11 +169,11 @@ public final class CHOPCHOPService: @unchecked Sendable {
     ) async throws -> CHOPCHOPFetchResult {
         let cleanGene = gene.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanGene.isEmpty else {
-            throw NSError(domain: "CHOPCHOP", code: -1, userInfo: [NSLocalizedDescriptionKey: "目标基因名称不能为空"])
+            throw NSError(domain: "CHOPCHOP", code: -1, userInfo: [NSLocalizedDescriptionKey: L10n.t("目标基因名称不能为空")])
         }
         
         guard let scriptPath = locateScript() else {
-            throw NSError(domain: "CHOPCHOP", code: -2, userInfo: [NSLocalizedDescriptionKey: "未找到后台执行脚本 chopchop_query.py"])
+            throw NSError(domain: "CHOPCHOP", code: -2, userInfo: [NSLocalizedDescriptionKey: L10n.t("未找到后台执行脚本 chopchop_query.py")])
         }
         
         return try await withCheckedThrowingContinuation { continuation in
@@ -218,7 +218,7 @@ public final class CHOPCHOPService: @unchecked Sendable {
                     errPipe.fileHandleForReading.readabilityHandler = nil
                     
                     guard process.terminationStatus == 0 else {
-                        continuation.resume(throwing: NSError(domain: "CHOPCHOP", code: -3, userInfo: [NSLocalizedDescriptionKey: "Python 查询进程异常退出 (code: \(process.terminationStatus))"]))
+                        continuation.resume(throwing: NSError(domain: "CHOPCHOP", code: -3, userInfo: [NSLocalizedDescriptionKey: L10n.tr("Python 查询进程异常退出 (code: \(process.terminationStatus))", "Python query process exited abnormally (code: \(process.terminationStatus))")]))
                         return
                     }
                     
@@ -233,7 +233,7 @@ public final class CHOPCHOPService: @unchecked Sendable {
                             cached: resp.cached ?? false
                         ))
                     } else {
-                        let err = resp.message ?? "CHOPCHOP 查询未知错误"
+                        let err = resp.message ?? L10n.t("CHOPCHOP 查询未知错误")
                         continuation.resume(throwing: NSError(domain: "CHOPCHOP", code: -4, userInfo: [NSLocalizedDescriptionKey: err]))
                     }
                 } catch {
@@ -253,7 +253,7 @@ public final class CHOPCHOPService: @unchecked Sendable {
     ) async throws -> [CHOPCHOPTarget] {
         let clean = gene.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else {
-            throw NSError(domain: "VBCScore", code: -1, userInfo: [NSLocalizedDescriptionKey: "目标基因名称不能为空"])
+            throw NSError(domain: "VBCScore", code: -1, userInfo: [NSLocalizedDescriptionKey: L10n.t("目标基因名称不能为空")])
         }
         
         let vbcSpecies = species.vbcGenome
@@ -388,7 +388,7 @@ public final class CHOPCHOPService: @unchecked Sendable {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-            throw NSError(domain: "VBCScore", code: code, userInfo: [NSLocalizedDescriptionKey: "VBC-Score 服务返回 HTTP \(code)"])
+            throw NSError(domain: "VBCScore", code: code, userInfo: [NSLocalizedDescriptionKey: L10n.tr("VBC-Score 服务返回 HTTP \(code)", "VBC-Score server returned HTTP \(code)")])
         }
         return try JSONDecoder().decode([VBCEntryDTO].self, from: data)
     }
@@ -459,7 +459,7 @@ public final class CHOPCHOPService: @unchecked Sendable {
     ) async throws -> UCSCCrisporFetchResult {
         let clean = gene.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else {
-            throw NSError(domain: "UCSCCRISPOR", code: -1, userInfo: [NSLocalizedDescriptionKey: "目标基因名称不能为空"])
+            throw NSError(domain: "UCSCCRISPOR", code: -1, userInfo: [NSLocalizedDescriptionKey: L10n.t("目标基因名称不能为空")])
         }
         
         let genome = species.ucscGenome
@@ -480,19 +480,19 @@ public final class CHOPCHOPService: @unchecked Sendable {
             URLQueryItem(name: "genome", value: genome)
         ]
         guard let searchURL = searchComps.url else {
-            throw NSError(domain: "UCSCCRISPOR", code: -2, userInfo: [NSLocalizedDescriptionKey: "无法构建 UCSC 检索 URL"])
+            throw NSError(domain: "UCSCCRISPOR", code: -2, userInfo: [NSLocalizedDescriptionKey: L10n.t("无法构建 UCSC 检索 URL")])
         }
         
         let (searchData, searchResp) = try await URLSession.shared.data(for: URLRequest(url: searchURL, timeoutInterval: 15))
         guard let http = searchResp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let code = (searchResp as? HTTPURLResponse)?.statusCode ?? -1
-            throw NSError(domain: "UCSCCRISPOR", code: code, userInfo: [NSLocalizedDescriptionKey: "UCSC Search 服务返回 HTTP \(code)"])
+            throw NSError(domain: "UCSCCRISPOR", code: code, userInfo: [NSLocalizedDescriptionKey: L10n.tr("UCSC Search 服务返回 HTTP \(code)", "UCSC Search returned HTTP \(code)")])
         }
         
         guard let searchObj = try JSONSerialization.jsonObject(with: searchData) as? [String: Any],
               let span = Self.pickGeneSpan(from: searchObj, gene: clean),
               let parsedSpan = Self.parseGenomicSpan(span) else {
-            throw NSError(domain: "UCSCCRISPOR", code: -3, userInfo: [NSLocalizedDescriptionKey: "未在 UCSC (\(genome)) 中定位到基因「\(clean)」的坐标"])
+            throw NSError(domain: "UCSCCRISPOR", code: -3, userInfo: [NSLocalizedDescriptionKey: L10n.tr("未在 UCSC (\(genome)) 中定位到基因「\(clean)」的坐标", "Could not locate genomic coordinates for \"\(clean)\" in UCSC (\(genome))")])
         }
         
         // 查询 knownGene 解析规范转录本编码外显子区间

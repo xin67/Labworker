@@ -55,9 +55,9 @@ public struct ShRNADesigner {
             homologyArm: ageIOverhang.lowercased(),
             specificSequence: cleanSense + cleanLoop + antisense,
             tm: fwdTm,
-            targetPurpose: "[\(species.shortName) shRNA] 正向发夹链 (Top)",
-            notes: "[\(species.shortName)] 靶基因: \(geneName) | 载体: pLKO.1 (AgeI/EcoRI) | 发夹环: \(cleanLoop)",
-            sourceTool: "shRNA设计"
+            targetPurpose: L10n.tr("[\(species.shortName) shRNA] 正向发夹链 (Top)", "[\(species.shortName) shRNA] Sense Hairpin Oligo (Top)"),
+            notes: L10n.tr("[\(species.shortName)] 靶基因: \(geneName) | 载体: pLKO.1 (AgeI/EcoRI) | 发夹环: \(cleanLoop)", "[\(species.shortName)] Target: \(geneName) | Vector: pLKO.1 (AgeI/EcoRI) | Loop: \(cleanLoop)"),
+            sourceTool: L10n.t("shRNA设计")
         )
         
         let revItem = PrimerItem(
@@ -66,9 +66,9 @@ public struct ShRNADesigner {
             homologyArm: ecoRIOverhang.lowercased(),
             specificSequence: cleanSense + cleanLoop + antisense,
             tm: revTm,
-            targetPurpose: "[\(species.shortName) shRNA] 反向发夹链 (Bottom)",
-            notes: "[\(species.shortName)] 靶基因: \(geneName) | 载体: pLKO.1 (AgeI/EcoRI) | 发夹环: \(cleanLoop)",
-            sourceTool: "shRNA设计"
+            targetPurpose: L10n.tr("[\(species.shortName) shRNA] 反向发夹链 (Bottom)", "[\(species.shortName) shRNA] Antisense Hairpin Oligo (Bottom)"),
+            notes: L10n.tr("[\(species.shortName)] 靶基因: \(geneName) | 载体: pLKO.1 (AgeI/EcoRI) | 发夹环: \(cleanLoop)", "[\(species.shortName)] Target: \(geneName) | Vector: pLKO.1 (AgeI/EcoRI) | Loop: \(cleanLoop)"),
+            sourceTool: L10n.t("shRNA设计")
         )
         
         return PairResult(fwdPrimer: fwdItem, revPrimer: revItem)

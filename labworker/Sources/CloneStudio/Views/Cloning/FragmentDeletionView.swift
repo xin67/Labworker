@@ -96,13 +96,13 @@ public struct FragmentDeletionView: View {
                                         )
                                     }
                                 }
-                                StudioMetricBadge(label: "全长", value: "\(plasmidBp) bp", color: plasmidBp >= 100 ? .green : .orange)
-                                StudioSectionClearButton(label: "一键清除质粒", action: vm.clearPlasmidSection)
+                                StudioMetricBadge(label: L10n.t("全长"), value: "\(plasmidBp) bp", color: plasmidBp >= 100 ? .green : .orange)
+                                StudioSectionClearButton(label: L10n.t("一键清除质粒"), action: vm.clearPlasmidSection)
                             }
                         } content: {
                             SequenceEditorBox(
                                 text: $vm.plasmidSeq,
-                                placeholder: "输入或拖入质粒序列",
+                                placeholder: L10n.t("输入或拖入质粒序列"),
                                 minHeight: 85
                             )
                         }
@@ -124,7 +124,7 @@ public struct FragmentDeletionView: View {
                                         }
                                     )
                                 }
-                                StudioSectionClearButton(label: "一键清除定位", action: vm.clearDeletionTargetSection)
+                                StudioSectionClearButton(label: L10n.t("一键清除定位"), action: vm.clearDeletionTargetSection)
                             }
                         } content: {
                             VStack(alignment: .leading, spacing: 10) {
@@ -134,7 +134,7 @@ public struct FragmentDeletionView: View {
                                     if !feats.isEmpty {
                                         ViewThatFits(in: .horizontal) {
                                             HStack(spacing: 8) {
-                                                Text("选择要敲除/删除的特征:")
+                                                Text(L10n.t("选择要敲除/删除的特征:"))
                                                     .font(.system(size: 11.5, weight: .medium))
                                                     .fixedSize()
                                                 Picker("", selection: Binding(
@@ -154,7 +154,7 @@ public struct FragmentDeletionView: View {
                                             }
                                             
                                             VStack(alignment: .leading, spacing: 6) {
-                                                Text("选择要敲除/删除的特征:")
+                                                Text(L10n.t("选择要敲除/删除的特征:"))
                                                     .font(.system(size: 11.5, weight: .medium))
                                                 Picker("", selection: Binding(
                                                     get: { vm.selectedDeleteFeatureID },
@@ -200,7 +200,7 @@ public struct FragmentDeletionView: View {
                                     if bps.count >= 2 {
                                         ViewThatFits(in: .horizontal) {
                                             HStack(spacing: 8) {
-                                                Text("上游反向 (←):")
+                                                Text(L10n.t("上游反向 (←):"))
                                                     .font(.system(size: 11.5))
                                                     .fixedSize()
                                                 Picker("", selection: Binding(
@@ -217,7 +217,7 @@ public struct FragmentDeletionView: View {
                                                 .labelsHidden()
                                                 .frame(maxWidth: 200)
                                                 
-                                                Text("下游正向 (→):")
+                                                Text(L10n.t("下游正向 (→):"))
                                                     .font(.system(size: 11.5))
                                                     .fixedSize()
                                                 Picker("", selection: Binding(
@@ -238,7 +238,7 @@ public struct FragmentDeletionView: View {
                                             
                                             VStack(alignment: .leading, spacing: 6) {
                                                 HStack(spacing: 8) {
-                                                    Text("上游反向 (←):")
+                                                    Text(L10n.t("上游反向 (←):"))
                                                         .font(.system(size: 11.5))
                                                         .frame(width: 85, alignment: .leading)
                                                     Picker("", selection: Binding(
@@ -257,7 +257,7 @@ public struct FragmentDeletionView: View {
                                                 }
                                                 
                                                 HStack(spacing: 8) {
-                                                    Text("下游正向 (→):")
+                                                    Text(L10n.t("下游正向 (→):"))
                                                         .font(.system(size: 11.5))
                                                         .frame(width: 85, alignment: .leading)
                                                     Picker("", selection: Binding(
@@ -292,12 +292,12 @@ public struct FragmentDeletionView: View {
                                     
                                 case .bySequence:
                                     VStack(alignment: .leading, spacing: 6) {
-                                        Text("粘贴待删除子片段序列 (支持正向或反向互补自动搜索)")
+                                        Text(L10n.t("粘贴待删除子片段序列 (支持正向或反向互补自动搜索)"))
                                             .font(.system(size: 11, weight: .medium))
                                             .foregroundColor(.secondary)
                                         SequenceEditorBox(
                                             text: $vm.targetDelSeq,
-                                            placeholder: "粘贴待敲除的结构域、标签或特定片段序列...",
+                                            placeholder: L10n.t("粘贴待敲除的结构域、标签或特定片段序列..."),
                                             minHeight: 65
                                         )
                                         
@@ -306,7 +306,7 @@ public struct FragmentDeletionView: View {
                                             if let range = cleanPlasmid.range(of: cleanDel) {
                                                 let s = cleanPlasmid.distance(from: cleanPlasmid.startIndex, to: range.lowerBound) + 1
                                                 let e = cleanPlasmid.distance(from: cleanPlasmid.startIndex, to: range.upperBound)
-                                                Label("已正向匹配: 第 \(s) ~ \(e) bp (共 \(cleanDel.count) bp)", systemImage: "checkmark.circle.fill")
+                                                Label(L10n.tr("已正向匹配: 第 \(s) ~ \(e) bp (共 \(cleanDel.count) bp)", "Matched forward: \(s)–\(e) bp (\(cleanDel.count) bp)"), systemImage: "checkmark.circle.fill")
                                                     .font(.system(size: 11.5, weight: .semibold))
                                                     .foregroundColor(.green)
                                             } else {
@@ -314,11 +314,11 @@ public struct FragmentDeletionView: View {
                                                 if let range = cleanPlasmid.range(of: rc) {
                                                     let s = cleanPlasmid.distance(from: cleanPlasmid.startIndex, to: range.lowerBound) + 1
                                                     let e = cleanPlasmid.distance(from: cleanPlasmid.startIndex, to: range.upperBound)
-                                                    Label("已反向互补匹配: 第 \(s) ~ \(e) bp (共 \(cleanDel.count) bp)", systemImage: "checkmark.circle.fill")
+                                                    Label(L10n.tr("已反向互补匹配: 第 \(s) ~ \(e) bp (共 \(cleanDel.count) bp)", "Matched reverse complement: \(s)–\(e) bp (\(cleanDel.count) bp)"), systemImage: "checkmark.circle.fill")
                                                         .font(.system(size: 11.5, weight: .semibold))
                                                         .foregroundColor(.green)
                                                 } else {
-                                                    Label("质粒中未找到该序列片段，请核对输入", systemImage: "exclamationmark.triangle.fill")
+                                                    Label(L10n.t("质粒中未找到该序列片段，请核对输入"), systemImage: "exclamationmark.triangle.fill")
                                                         .font(.system(size: 11))
                                                         .foregroundColor(.orange)
                                                 }
@@ -331,10 +331,10 @@ public struct FragmentDeletionView: View {
                                     ViewThatFits(in: .horizontal) {
                                         HStack(spacing: 16) {
                                             VStack(alignment: .leading, spacing: 4) {
-                                                Text("起始坐标 (1-based)")
+                                                Text(L10n.t("起始坐标 (1-based)"))
                                                     .font(.system(size: 11, weight: .medium))
                                                     .foregroundColor(.secondary)
-                                                TextField("例如 3382", text: $vm.delStartText)
+                                                TextField(L10n.t("例如 3382"), text: $vm.delStartText)
                                                     .textFieldStyle(.roundedBorder)
                                                     .font(.system(size: 12.5, weight: .semibold))
                                                     .monospacedDigit()
@@ -342,10 +342,10 @@ public struct FragmentDeletionView: View {
                                             }
                                             
                                             VStack(alignment: .leading, spacing: 4) {
-                                                Text("终止坐标 (1-based)")
+                                                Text(L10n.t("终止坐标 (1-based)"))
                                                     .font(.system(size: 11, weight: .medium))
                                                     .foregroundColor(.secondary)
-                                                TextField("例如 4371", text: $vm.delEndText)
+                                                TextField(L10n.t("例如 4371"), text: $vm.delEndText)
                                                     .textFieldStyle(.roundedBorder)
                                                     .font(.system(size: 12.5, weight: .semibold))
                                                     .monospacedDigit()
@@ -356,10 +356,10 @@ public struct FragmentDeletionView: View {
                                                 let delLen = e - s + 1
                                                 let newLen = plasmidBp - delLen
                                                 VStack(alignment: .leading, spacing: 3) {
-                                                    Label("待删除长度: \(delLen) bp", systemImage: "scissors")
+                                                    Label(L10n.tr("待删除长度: \(delLen) bp", "To Delete: \(delLen) bp"), systemImage: "scissors")
                                                         .font(.system(size: 11.5, weight: .semibold))
                                                         .foregroundColor(.purple)
-                                                    Text("敲除后预计质粒: \(newLen) bp")
+                                                    Text(L10n.tr("敲除后预计质粒: \(newLen) bp", "Post-Deletion Plasmid: \(newLen) bp"))
                                                         .font(.system(size: 11, weight: .medium))
                                                         .foregroundColor(.secondary)
                                                 }
@@ -370,10 +370,10 @@ public struct FragmentDeletionView: View {
                                         VStack(alignment: .leading, spacing: 8) {
                                             HStack(spacing: 12) {
                                                 VStack(alignment: .leading, spacing: 4) {
-                                                    Text("起始坐标 (1-based)")
+                                                    Text(L10n.t("起始坐标 (1-based)"))
                                                         .font(.system(size: 11, weight: .medium))
                                                         .foregroundColor(.secondary)
-                                                    TextField("例如 3382", text: $vm.delStartText)
+                                                    TextField(L10n.t("例如 3382"), text: $vm.delStartText)
                                                         .textFieldStyle(.roundedBorder)
                                                         .font(.system(size: 12.5, weight: .semibold))
                                                         .monospacedDigit()
@@ -381,10 +381,10 @@ public struct FragmentDeletionView: View {
                                                 }
                                                 
                                                 VStack(alignment: .leading, spacing: 4) {
-                                                    Text("终止坐标 (1-based)")
+                                                    Text(L10n.t("终止坐标 (1-based)"))
                                                         .font(.system(size: 11, weight: .medium))
                                                         .foregroundColor(.secondary)
-                                                    TextField("例如 4371", text: $vm.delEndText)
+                                                    TextField(L10n.t("例如 4371"), text: $vm.delEndText)
                                                         .textFieldStyle(.roundedBorder)
                                                         .font(.system(size: 12.5, weight: .semibold))
                                                         .monospacedDigit()
@@ -396,10 +396,10 @@ public struct FragmentDeletionView: View {
                                                 let delLen = e - s + 1
                                                 let newLen = plasmidBp - delLen
                                                 HStack(spacing: 12) {
-                                                    Label("待删除: \(delLen) bp", systemImage: "scissors")
+                                                    Label(L10n.tr("待删除: \(delLen) bp", "Delete: \(delLen) bp"), systemImage: "scissors")
                                                         .font(.system(size: 11.5, weight: .semibold))
                                                         .foregroundColor(.purple)
-                                                    Text("敲除后: \(newLen) bp")
+                                                    Text(L10n.tr("敲除后: \(newLen) bp", "Result: \(newLen) bp"))
                                                         .font(.system(size: 11, weight: .medium))
                                                         .foregroundColor(.secondary)
                                                 }
@@ -419,17 +419,17 @@ public struct FragmentDeletionView: View {
                                         StudioSegmentedOption(value: $0, title: "\($0) bp", tint: .purple)
                                     }
                                 )
-                                StudioSectionClearButton(label: "一键重置") {
+                                StudioSectionClearButton(label: L10n.t("一键重置")) {
                                     vm.homologyLength = 20
                                 }
                             }
                         } content: {
                             HStack {
-                                Text("当前同源臂: \(vm.homologyLength) bp")
+                                Text(L10n.tr("当前同源臂: \(vm.homologyLength) bp", "Homology Arm: \(vm.homologyLength) bp"))
                                     .font(.system(size: 11.5, weight: .semibold))
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Text("目标 Tm: \(String(format: "%.1f", appState.mutationTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) ℃")
+                                Text(L10n.tr("目标 Tm: \(String(format: "%.1f", appState.mutationTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) ℃", "Target Tm: \(String(format: "%.1f", appState.mutationTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) °C"))
                                     .font(.system(size: 11))
                                     .monospacedDigit()
                                     .foregroundColor(.secondary)
@@ -462,12 +462,12 @@ public struct FragmentDeletionView: View {
                         if !vm.primers.isEmpty {
                             StudioCard(title: "生成的反向 PCR 缺失引物") {
                                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                                    StudioMetricBadge(label: "数量", value: "\(vm.primers.count) 条", color: .purple)
+                                    StudioMetricBadge(label: L10n.t("数量"), value: L10n.tr("\(vm.primers.count) 条", "\(vm.primers.count)"), color: .purple)
                                     if let res = vm.designResult {
-                                        StudioMetricBadge(label: "删除长度", value: "\(res.deletedLength) bp", color: .red)
-                                        StudioMetricBadge(label: "产物全长", value: "\(res.newPlasmidSeq.count) bp", color: .green)
+                                        StudioMetricBadge(label: L10n.t("删除长度"), value: "\(res.deletedLength) bp", color: .red)
+                                        StudioMetricBadge(label: L10n.t("产物全长"), value: "\(res.newPlasmidSeq.count) bp", color: .green)
                                     }
-                                    StudioSectionClearButton(label: "一键清除引物", action: vm.clearPrimersSection)
+                                    StudioSectionClearButton(label: L10n.t("一键清除引物"), action: vm.clearPrimersSection)
                                 }
                             } content: {
                                 VStack(alignment: .leading, spacing: 10) {
@@ -519,7 +519,7 @@ public struct FragmentDeletionView: View {
                             
                             StudioCard(title: "SnapGene 联动与导出") {
                                 if !vm.selectedDNAFileName.isEmpty {
-                                    StudioMetricBadge(label: "模板", value: vm.selectedDNAFileName, color: .purple)
+                                    StudioMetricBadge(label: L10n.t("模板"), value: vm.selectedDNAFileName, color: .purple)
                                 }
                             } content: {
                                 VStack(alignment: .leading, spacing: 8) {
@@ -551,10 +551,10 @@ public struct FragmentDeletionView: View {
 
                                     if let url = vm.lastExportedURL {
                                         HStack(spacing: 6) {
-                                            Text("✅ 已导出: \(url.lastPathComponent)")
+                                            Text(L10n.tr("✅ 已导出: \(url.lastPathComponent)", "✅ Exported: \(url.lastPathComponent)"))
                                                 .font(.system(size: 11, weight: .medium))
                                                 .foregroundColor(.green)
-                                            FinderRevealButton(filePath: url.path, label: "在 Finder 中显示")
+                                            FinderRevealButton(filePath: url.path, label: L10n.t("在 Finder 中显示"))
                                         }
                                     }
                                 }
@@ -564,8 +564,8 @@ public struct FragmentDeletionView: View {
                     }
                 }
         }
-        .alert("提示", isPresented: $vm.showAlert) {
-            Button("确定", role: .cancel) {}
+        .alert(L10n.t("提示"), isPresented: $vm.showAlert) {
+            Button(L10n.t("确定"), role: .cancel) {}
         } message: {
             Text(vm.alertMessage ?? "")
         }

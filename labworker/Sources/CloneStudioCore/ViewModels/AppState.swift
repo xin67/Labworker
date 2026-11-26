@@ -14,6 +14,10 @@ public enum SidebarSectionKind: String, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
     
     public var title: String {
+        L10n.t(rawTitle)
+    }
+
+    public var rawTitle: String {
         switch self {
         case .cloning:          return "分子克隆与质粒"
         case .targeting:        return "基因编辑与靶点"
@@ -63,6 +67,10 @@ public enum NavItem: String, CaseIterable, Identifiable {
     }
     
     public var title: String {
+        L10n.t(rawTitle)
+    }
+
+    public var rawTitle: String {
         switch self {
         case .plasmidPool:      return "质粒池"
         case .entryClone:       return "入门克隆"
@@ -139,68 +147,80 @@ public enum NavItem: String, CaseIterable, Identifiable {
     
     /// 全局功能说明书：核心定位与算法简介
     public var summaryDescription: String {
+        L10n.t(rawSummaryDescription)
+    }
+
+    public var rawSummaryDescription: String {
         switch self {
         case .plasmidPool:
-            return "集中管理本地 SnapGene (.dna) 与 FASTA 质粒载体库，自动解析全序列特征、酶切位点、抗性标签与多步构建谱系树。"
+            return L10n.t("集中管理本地 SnapGene (.dna) 与 FASTA 质粒载体库，自动解析全序列特征、酶切位点、抗性标签与多步构建谱系树。")
         case .entryClone:
-            return "针对 pCE2 等线性入门载体的一步法同源重组引物设计，自动匹配目标退火温度 Tm 与 5' 同源搭桥序列。"
+            return L10n.t("针对 pCE2 等线性入门载体的一步法同源重组引物设计，自动匹配目标退火温度 Tm 与 5' 同源搭桥序列。")
         case .singleFragment:
-            return "支持酶切线性化或反向 PCR 扩增载体，基于 18 bp 黄金同源臂与 SantaLucia 最近邻热力学模型设计无缝克隆引物并直接生成重组 .dna 文件。"
+            return L10n.t("支持酶切线性化或反向 PCR 扩增载体，基于 18 bp 黄金同源臂与 SantaLucia 最近邻热力学模型设计无缝克隆引物并直接生成重组 .dna 文件。")
         case .multiFragment:
-            return "支持 2–10 个插入片段的 Gibson / In-Fusion 多片段同源组装，自动优化相邻片段间重叠区 Tm 一致性，并基于对齐 primer3-py 的热力学引擎执行发夹与自/异二聚体 ΔG 质检。"
+            return L10n.t("支持 2–10 个插入片段的 Gibson / In-Fusion 多片段同源组装，自动优化相邻片段间重叠区 Tm 一致性，并基于对齐 primer3-py 的热力学引擎执行发夹与自/异二聚体 ΔG 质检。")
         case .mutagenesis:
-            return "支持氨基酸定点突变、多位点组合突变与碱基替换，智能切换背靠背反向 PCR 与重叠延伸模式，自动高亮密码子改变。"
+            return L10n.t("支持氨基酸定点突变、多位点组合突变与碱基替换，智能切换背靠背反向 PCR 与重叠延伸模式，自动高亮密码子改变。")
         case .fragmentDeletion:
-            return "精准跨区域同源环化敲除或结构域截短，自动设计跨越删除边界的桥接引物并重映射下游质粒图谱特征坐标。"
+            return L10n.t("精准跨区域同源环化敲除或结构域截短，自动设计跨越删除边界的桥接引物并重映射下游质粒图谱特征坐标。")
         case .sangerVerify:
-            return "原生解析 Sanger 测序 (.ab1 / .abi / .seq) 四色毛细管电泳荧光峰图与 Phred Q 值，执行环状质粒双向全局比对，自动识别 SNP 点突变、移码 Indel 与杂合双峰，并支持多文件批量克隆分组合并看板。"
+            return L10n.t("原生解析 Sanger 测序 (.ab1 / .abi / .seq) 四色毛细管电泳荧光峰图与 Phred Q 值，执行环状质粒双向全局比对，自动识别 SNP 点突变、移码 Indel 与杂合双峰，并支持多文件批量克隆分组合并看板。")
         case .sgRNADesign:
-            return "支持离线文库 (hg38/mm39) 序列启发式评分与内嵌 VBC-Score / UCSC CRISPOR / CHOPCHOP 三源并发脱靶对比及 20bp 共识评分，一键生成 CRISPR/Cas9 退火 Oligo。"
+            return L10n.t("支持离线文库 (hg38/mm39) 序列启发式评分与内嵌 VBC-Score / UCSC CRISPOR / CHOPCHOP 三源并发脱靶对比及 20bp 共识评分，一键生成 CRISPR/Cas9 退火 Oligo。")
         case .shRNADesign:
-            return "支持本地 TRC 文库与内嵌 Broad GPP Public Portal 在线克隆比对（Adjusted / Intrinsic Score、SDR 匹配与脱靶核验），一键生成 pLKO.1 正义/反义发夹引物。"
+            return L10n.t("支持本地 TRC 文库与内嵌 Broad GPP Public Portal 在线克隆比对（Adjusted / Intrinsic Score、SDR 匹配与脱靶核验），一键生成 pLKO.1 正义/反义发夹引物。")
         case .westernBlot:
-            return "原生 16-bit TIFF 无损灰度密度定量引擎，采用一维滚球背景扣除、高斯峰分离与内参归一化，自动执行 Welch t 检验并生成出版级显著性柱状图。"
+            return L10n.t("原生 16-bit TIFF 无损灰度密度定量引擎，采用一维滚球背景扣除、高斯峰分离与内参归一化，自动执行 Welch t 检验并生成出版级显著性柱状图。")
         case .gelFigure:
-            return "电泳胶图泳道自动识别与 Log10(MW) 标准曲线回归计算，支持联动质粒酶切、单/多片段克隆、入门克隆、片段删除、定点突变与自定义条带叠加多泳道虚拟电泳预测对照，以及高分辨率标注导出。"
+            return L10n.t("电泳胶图泳道自动识别与 Log10(MW) 标准曲线回归计算，支持联动质粒酶切、单/多片段克隆、入门克隆、片段删除、定点突变与自定义条带叠加多泳道虚拟电泳预测对照，以及高分辨率标注导出。")
         case .plateDesigner:
-            return "96 孔 / 384 孔微孔板实验排布设计器，支持边缘效应规避 (Edge Avoidance)、梯度稀释序列生成、生物学重复分组与 CSV 机器表导出。"
+            return L10n.t("96 孔 / 384 孔微孔板实验排布设计器，支持边缘效应规避 (Edge Avoidance)、梯度稀释序列生成、生物学重复分组与 CSV 机器表导出。")
         case .qpcrAnalysis:
-            return "实时荧光定量 PCR 2^(-ΔΔCt) 相对表达量与扩增效率标准曲线解算引擎，严格基于生物学样品级 ΔCt 执行 Welch's t 检验、Holm–Bonferroni 多组比较校正并输出 95% 置信区间。"
+            return L10n.t("实时荧光定量 PCR 2^(-ΔΔCt) 相对表达量与扩增效率标准曲线解算引擎，严格基于生物学样品级 ΔCt 执行 Welch's t 检验、Holm–Bonferroni 多组比较校正并输出 95% 置信区间。")
         case .proteinWorkbench:
-            return "集成蛋白质理化性质 (pI/GRAVY/ε280)、三维 Cα 骨架与二面角拉氏图、LIGSITE 七方向 P-S-P 结合口袋扫描、共晶配体共识 Vina 对接盒推荐及点突变 ΔΔG 评估。"
+            return L10n.t("集成蛋白质理化性质 (pI/GRAVY/ε280)、三维 Cα 骨架与二面角拉氏图、LIGSITE 七方向 P-S-P 结合口袋扫描、共晶配体共识 Vina 对接盒推荐及点突变 ΔΔG 评估。")
         case .dnaCalculator:
-            return "全栈生物科研与分子克隆计算工作台：涵盖克隆与经典摩尔比 (0.03 pmol, 1:1~1:5) 体系计算、dsDNA/ssDNA/Linear DNA 质量摩尔互算与 OD260 核酸浓度测定、蛋白质摩尔转换与 DNA 编码容量推算，以及溶液摩尔配制、C1V1=C2V2 稀释与温标换算。"
+            return L10n.t("全栈生物科研与分子克隆计算工作台：涵盖克隆与经典摩尔比 (0.03 pmol, 1:1~1:5) 体系计算、dsDNA/ssDNA/Linear DNA 质量摩尔互算与 OD260 核酸浓度测定、蛋白质摩尔转换与 DNA 编码容量推算，以及溶液摩尔配制、C1V1=C2V2 稀释与温标换算。")
         case .sequenceTools:
-            return "快速 DNA/RNA/氨基酸序列清洗、反向互补、三框密码子翻译、GC% 分布、SantaLucia 最近邻退火温度 (Tm) 及 primer3 发夹/自二聚体 ΔG 即时验算。"
+            return L10n.t("快速 DNA/RNA/氨基酸序列清洗、反向互补、三框密码子翻译、GC% 分布、SantaLucia 最近邻退火温度 (Tm) 及 primer3 发夹/自二聚体 ΔG 即时验算。")
         case .orderCenter:
-            return "汇总各模块加入购物车的引物与测序样品，一键导出符合擎科 (Tsingke)、生工 (Sangon) 等合成公司标准格式的 Excel/CSV 订购单。"
+            return L10n.t("汇总各模块加入购物车的引物与测序样品，一键导出符合擎科 (Tsingke)、生工 (Sangon) 等合成公司标准格式的 Excel/CSV 订购单。")
         case .settings:
-            return "集中管理应用深浅色外观、侧边栏功能模块显隐定制、各实验工作台默认算法参数、限制性内切酶库以及全局功能说明书。"
+            return L10n.t("集中管理应用深浅色外观、侧边栏功能模块显隐定制、各实验工作台默认算法参数、限制性内切酶库以及全局功能说明书。")
         }
     }
     
     /// 全局功能说明书：支持快导或解析的文件格式
     public var supportedFormats: String {
+        L10n.t(rawSupportedFormats)
+    }
+
+    public var rawSupportedFormats: String {
         switch self {
         case .plasmidPool, .entryClone, .singleFragment, .multiFragment, .mutagenesis, .fragmentDeletion:
             return ".dna (SnapGene) / .fa / .fasta / .seq / .gb"
         case .sangerVerify:
-            return ".ab1 / .abi (ABIF 四色峰图) / .seq / .fasta"
+            return L10n.t(".ab1 / .abi (ABIF 四色峰图) / .seq / .fasta")
         case .sgRNADesign, .shRNADesign, .sequenceTools:
-            return ".fa / .fasta / .dna / 纯文本序列"
+            return L10n.t(".fa / .fasta / .dna / 纯文本序列")
         case .westernBlot, .gelFigure:
-            return ".tif / .tiff (原生16-bit) / .png / .jpg"
+            return L10n.t(".tif / .tiff (原生16-bit) / .png / .jpg")
         case .plateDesigner, .qpcrAnalysis, .orderCenter:
-            return ".csv / .tsv / .xlsx 制表文本"
+            return L10n.t(".csv / .tsv / .xlsx 制表文本")
         case .proteinWorkbench:
-            return ".pdb / .cif / .ent / 氨基酸 .fasta"
+            return L10n.t(".pdb / .cif / .ent / 氨基酸 .fasta")
         case .dnaCalculator, .settings:
-            return "内置交互参数面板"
+            return L10n.t("内置交互参数面板")
         }
     }
     
     /// 全局功能说明书：快捷实操提示
     public var workflowTip: String {
+        L10n.t(rawWorkflowTip)
+    }
+
+    public var rawWorkflowTip: String {
         switch self {
         case .plasmidPool:      return "可从 Finder 直接拖入整个质粒文件夹批量建库；右键或点击卡片可一键送入克隆或蛋白翻译。"
         case .entryClone:       return "输入目的片段后自动计算正反向引物并高亮同源臂，点击「加入订购车」即可汇总至订购中心。"
@@ -226,11 +246,18 @@ public enum NavItem: String, CaseIterable, Identifiable {
     public func matchesSearch(_ query: String) -> Bool {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !trimmed.isEmpty else { return true }
-        return title.lowercased().contains(trimmed)
-            || section.title.lowercased().contains(trimmed)
-            || searchKeywords.lowercased().contains(trimmed)
-            || summaryDescription.lowercased().contains(trimmed)
-            || supportedFormats.lowercased().contains(trimmed)
+        let candidates = [
+            rawTitle,
+            L10n.lookupEnglishExact(rawTitle) ?? "",
+            section.rawTitle,
+            L10n.lookupEnglishExact(section.rawTitle) ?? "",
+            searchKeywords,
+            rawSummaryDescription,
+            L10n.lookupEnglishExact(rawSummaryDescription) ?? "",
+            rawSupportedFormats,
+            L10n.lookupEnglishExact(rawSupportedFormats) ?? ""
+        ]
+        return candidates.contains { $0.lowercased().contains(trimmed) }
     }
 }
 
@@ -243,9 +270,9 @@ public enum SidebarVisibilityPreset: String, CaseIterable, Identifiable, Sendabl
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .all:                 return "显示全部功能 (\(NavItem.allCases.count))"
-        case .cloningAndTargeting: return "仅分子克隆与基因编辑"
-        case .imagingAndBench:     return "仅图像定量与蛋白工具"
+        case .all:                 return L10n.tr("显示全部功能 (\(NavItem.allCases.count))", "Show All Modules (\(NavItem.allCases.count))")
+        case .cloningAndTargeting: return L10n.t("仅分子克隆与基因编辑")
+        case .imagingAndBench:     return L10n.t("仅图像定量与蛋白工具")
         }
     }
 }
@@ -260,17 +287,17 @@ public enum AppAppearanceMode: String, CaseIterable, Identifiable, Sendable {
     
     public var title: String {
         switch self {
-        case .system: return "跟随系统"
-        case .light:  return "浅色模式"
-        case .dark:   return "深色模式"
+        case .system: return L10n.t("跟随系统")
+        case .light:  return L10n.t("浅色模式")
+        case .dark:   return L10n.t("深色模式")
         }
     }
     
     public var shortTitle: String {
         switch self {
-        case .system: return "跟随系统"
-        case .light:  return "浅色"
-        case .dark:   return "深色"
+        case .system: return L10n.t("跟随系统")
+        case .light:  return L10n.t("浅色")
+        case .dark:   return L10n.t("深色")
         }
     }
     
@@ -293,9 +320,9 @@ public enum CanvasThemeOverride: String, CaseIterable, Identifiable, Sendable {
     
     public var title: String {
         switch self {
-        case .followApp:  return "跟随外观"
-        case .forceLight: return "固定白底"
-        case .forceDark:  return "固定黑底"
+        case .followApp:  return L10n.t("跟随外观")
+        case .forceLight: return L10n.t("固定白底")
+        case .forceDark:  return L10n.t("固定黑底")
         }
     }
     
@@ -321,16 +348,16 @@ public enum AppAccentTheme: String, CaseIterable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .system:   return "多色"
-        case .blue:     return "蓝色"
-        case .teal:     return "青色"
-        case .purple:   return "紫色"
-        case .pink:     return "粉色"
-        case .red:      return "红色"
-        case .orange:   return "橙色"
-        case .yellow:   return "黄色"
-        case .green:    return "绿色"
-        case .graphite: return "石墨灰"
+        case .system:   return L10n.t("多色")
+        case .blue:     return L10n.t("蓝色")
+        case .teal:     return L10n.t("青色")
+        case .purple:   return L10n.t("紫色")
+        case .pink:     return L10n.t("粉色")
+        case .red:      return L10n.t("红色")
+        case .orange:   return L10n.t("橙色")
+        case .yellow:   return L10n.t("黄色")
+        case .green:    return L10n.t("绿色")
+        case .graphite: return L10n.t("石墨灰")
         }
     }
 
@@ -360,17 +387,17 @@ public enum LiquidGlassStyleMode: String, CaseIterable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .regular: return "标准液态玻璃 (Regular)"
-        case .clear:   return "高透液态玻璃 (Clear)"
-        case .tinted:  return "主题浸染玻璃 (Tinted)"
+        case .regular: return L10n.t("标准液态玻璃 (Regular)")
+        case .clear:   return L10n.t("高透液态玻璃 (Clear)")
+        case .tinted:  return L10n.t("主题浸染玻璃 (Tinted)")
         }
     }
 
     public var shortTitle: String {
         switch self {
-        case .regular: return "标准 (Regular)"
-        case .clear:   return "清透 (Clear)"
-        case .tinted:  return "浸染 (Tinted)"
+        case .regular: return L10n.t("标准 (Regular)")
+        case .clear:   return L10n.t("清透 (Clear)")
+        case .tinted:  return L10n.t("浸染 (Tinted)")
         }
     }
 
@@ -422,9 +449,9 @@ public enum ExportSaveLocation: String, CaseIterable, Identifiable, Sendable {
     
     public var title: String {
         switch self {
-        case .sameAsSource: return "与原载体同目录"
-        case .desktop:      return "桌面"
-        case .downloads:    return "下载目录"
+        case .sameAsSource: return L10n.t("与原载体同目录")
+        case .desktop:      return L10n.t("桌面")
+        case .downloads:    return L10n.t("下载目录")
         }
     }
     
@@ -533,7 +560,16 @@ public final class AppState: ObservableObject {
         }
     }
     
-    // MARK: - 1. 外观与主题设置
+    // MARK: - 1. 语言、外观与主题设置
+    @Published public var appLanguage: AppLanguage = .zhHans {
+        didSet {
+            L10n.setLanguage(appLanguage)
+            saveSetting("cs_appLanguage", appLanguage.rawValue)
+            if !isInitializing {
+                systemAccentTitle = Self.resolveSystemAccentTitle()
+            }
+        }
+    }
     @Published public var appearanceMode: AppAppearanceMode = .system {
         didSet { saveSetting("cs_appearanceMode", appearanceMode.rawValue) }
     }
@@ -639,18 +675,18 @@ public final class AppState: ObservableObject {
         let global = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)
         if let code = global?["AppleAccentColor"] as? Int {
             switch code {
-            case -1: return "石墨灰"
-            case 0:  return "红色"
-            case 1:  return "橙色"
-            case 2:  return "黄色"
-            case 3:  return "绿色"
-            case 4:  return "蓝色"
-            case 5:  return "紫色"
-            case 6:  return "粉色"
+            case -1: return L10n.t("石墨灰")
+            case 0:  return L10n.t("红色")
+            case 1:  return L10n.t("橙色")
+            case 2:  return L10n.t("黄色")
+            case 3:  return L10n.t("绿色")
+            case 4:  return L10n.t("蓝色")
+            case 5:  return L10n.t("紫色")
+            case 6:  return L10n.t("粉色")
             default: break
             }
         }
-        return "多色"
+        return L10n.t("多色")
     }
 
     public static func resolveSystemLiquidGlassStrength() -> Double {
@@ -960,6 +996,11 @@ public final class AppState: ObservableObject {
     }
     
     private func loadPersistedSettings() {
+        if let rawLang = defaults.string(forKey: "cs_appLanguage"),
+           let lang = AppLanguage(rawValue: rawLang) {
+            appLanguage = lang
+            L10n.setLanguage(lang)
+        }
         if let savedCollapsed = defaults.stringArray(forKey: "cs_collapsedSidebarSections") {
             collapsedSidebarSections = Set(savedCollapsed)
         }
@@ -1231,7 +1272,10 @@ public final class AppState: ObservableObject {
         ConstructHistoryManager.shared.activeNodeID = node.id
         self.pendingChainedNode = node
         self.selectedNav = targetNav
-        showToast("已将「\(node.constructName)」送入「\(targetNav.title)」作为改造模板")
+        showToast(L10n.tr(
+            "已将「\(node.constructName)」送入「\(targetNav.title)」作为改造模板",
+            "Loaded '\(node.constructName)' into \(targetNav.title) as template"
+        ))
     }
     
     /// 同步本地查找/选中的 sgRNA 或 shRNA 序列至全局对比池
@@ -1274,28 +1318,43 @@ public final class AppState: ObservableObject {
             self.selectedNav = .sgRNADesign
         }
         let selectedCount = self.localCompareTargets.filter { $0.isSelectedOrGenerated }.count
-        let targetSiteName = (sourceType == .shRNA) ? "Broad GPP" : "在线三源"
+        let targetSiteName = (sourceType == .shRNA) ? "Broad GPP" : L10n.t("在线三源")
         if selectedCount > 0 {
-            showToast("已带入 \(selectedCount) 条本地靶点跳转至「\(gene)」\(targetSiteName)对比")
+            showToast(L10n.tr(
+                L10n.tr("已带入 \(selectedCount) 条本地靶点跳转至「\(gene)」\(targetSiteName)对比", "Loaded \(selectedCount) local target(s) for \"\(gene)\" \(targetSiteName) comparison"),
+                "Navigated to \(targetSiteName) comparison for '\(gene)' with \(selectedCount) local target(s)"
+            ))
         } else {
-            showToast("已跳转至「\(gene)」\(targetSiteName)在线对比")
+            showToast(L10n.tr(
+                L10n.tr("已跳转至「\(gene)」\(targetSiteName)在线对比", "Navigated to online \(targetSiteName) comparison for \"\(gene)\""),
+                "Navigated to \(targetSiteName) online comparison for '\(gene)'"
+            ))
         }
     }
     
     public func addPrimerToCart(_ primer: PrimerItem) {
         primersCart.append(primer)
-        showToast("已将「\(primer.name)」添加至订购单池")
+        showToast(L10n.tr(
+            L10n.tr("已将「\(primer.name)」添加至订购单池", "Added primer \"\(primer.name)\" to order cart"),
+            "Added '\(primer.name)' to synthesis cart"
+        ))
     }
     
     public func addPrimersToCart(_ primers: [PrimerItem]) {
         primersCart.append(contentsOf: primers)
-        showToast("已将 \(primers.count) 条引物添加至订购单池")
+        showToast(L10n.tr(
+            L10n.tr("已将 \(primers.count) 条引物添加至订购单池", "Added \(primers.count) primer(s) to order cart"),
+            "Added \(primers.count) primer(s) to synthesis cart"
+        ))
     }
     
     public func removePrimer(at index: Int) {
         guard index >= 0 && index < primersCart.count else { return }
         let item = primersCart.remove(at: index)
-        showToast("已移除引物：\(item.name)")
+        showToast(L10n.tr(
+            L10n.tr("已移除引物：\(item.name)", "Removed primer: \(item.name)"),
+            "Removed primer: \(item.name)"
+        ))
     }
     
     public func clearPrimersCart() {
@@ -1304,10 +1363,11 @@ public final class AppState: ObservableObject {
     }
     
     public func showToast(_ msg: String) {
-        toastMessage = msg
+        let localized = L10n.t(msg)
+        toastMessage = localized
         isShowingToast = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            if self.toastMessage == msg {
+            if self.toastMessage == localized {
                 self.isShowingToast = false
             }
         }

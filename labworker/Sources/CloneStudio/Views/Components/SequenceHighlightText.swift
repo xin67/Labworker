@@ -4,6 +4,7 @@ import AppKit
 
 /// 序列语法高亮组件（放大等宽字体至 13.5pt，精准区分同源臂、酶切位点与基因特异区）
 public struct SequenceHighlightText: View {
+    @Environment(\.appLanguage) private var appLanguage
     public let primer: PrimerItem
     
     public init(primer: PrimerItem) {
@@ -11,17 +12,18 @@ public struct SequenceHighlightText: View {
     }
     
     public var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text("5'-")
-                    .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .foregroundColor(.secondary)
                 
                 formattedSequence
                     .textSelection(.enabled)
                 
                 Text("-3'")
-                    .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .foregroundColor(.secondary)
                 
                 Spacer()
@@ -45,7 +47,7 @@ public struct SequenceHighlightText: View {
                 if !primer.homologyArm.isEmpty {
                     HStack(spacing: 5) {
                         Circle().fill(Color.blue).frame(width: 8, height: 8)
-                        Text("同源臂 (\(primer.homologyArm.count) bp)")
+                        Text(L10n.tr("同源臂 (\(primer.homologyArm.count) bp)", "Homology Arm (\(primer.homologyArm.count) bp)"))
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
@@ -60,7 +62,7 @@ public struct SequenceHighlightText: View {
                 }
                 HStack(spacing: 5) {
                     Circle().fill(Color.primary).frame(width: 8, height: 8)
-                    Text("特异结合区")
+                    Text(L10n.t("特异结合区"))
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -76,7 +78,7 @@ public struct SequenceHighlightText: View {
         let full = primer.fullSequence
         
         Text(buildAttributedString(arm: arm, site: site, full: full))
-            .font(.system(size: 13.5, weight: .medium, design: .monospaced))
+            .font(.system(size: 13.5, weight: .medium))
             .fixedSize(horizontal: false, vertical: true)
     }
     
@@ -111,7 +113,7 @@ public struct SequenceHighlightText: View {
     private func copySequence() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(primer.formattedSequence, forType: .string)
-        AppState.shared.showToast("已复制「\(primer.name)」引物序列")
+        AppState.shared.showToast(L10n.tr("已复制「\(primer.name)」引物序列", "Copied primer \"\(primer.name)\""))
     }
 }
 
@@ -153,14 +155,17 @@ public struct PrimerPairQuickRenameBar: View {
         self.onApplyPrefix = onApplyPrefix
     }
     
+    @Environment(\.appLanguage) private var appLanguage
+
     public var body: some View {
+        let _ = appLanguage
         HStack(spacing: 10) {
-            Text("\(pairTitle):")
+            Text("\(L10n.t(pairTitle)):")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.primary)
                 .fixedSize()
             
-            TextField("引物前缀 (自动生成 -F / -R)", text: $prefixText)
+            TextField(L10n.t("引物前缀 (自动生成 -F / -R)"), text: $prefixText)
                 .textFieldStyle(.roundedBorder)
                 .font(.system(size: 13, weight: .medium))
                 .frame(minWidth: 140, maxWidth: 220)
@@ -181,7 +186,7 @@ public struct PrimerPairQuickRenameBar: View {
                 if !suggestedPrefix.isEmpty && PrimerItem.extractPairPrefix(from: currentForwardName) != suggestedPrefix {
                     arr.append(
                         StudioPillGroupItem(
-                            title: "设为 \(suggestedPrefix)"
+                            title: L10n.tr("设为 \(suggestedPrefix)", "Set \(suggestedPrefix)")
                         ) {
                             prefixText = suggestedPrefix
                             onApplyPrefix(suggestedPrefix)
@@ -312,12 +317,12 @@ public struct PrimerCardView: View {
                 StudioMetricBadge(label: "", value: "\(primer.length) bp", color: .secondary)
                 
                 if let tm = primer.tm {
-                    let labelPrefix = primer.homologyArm.isEmpty ? "Tm" : "退火"
+                    let labelPrefix = primer.homologyArm.isEmpty ? "Tm" : L10n.t("退火")
                     StudioMetricBadge(label: labelPrefix, value: "\(String(format: "%.1f", tm))℃", color: .orange)
                 }
                 
                 if let fullTm = fullLengthTm {
-                    StudioMetricBadge(label: "全长", value: "\(String(format: "%.0f", fullTm.rounded()))℃", color: .blue)
+                    StudioMetricBadge(label: L10n.t("全长"), value: "\(String(format: "%.0f", fullTm.rounded()))℃", color: .blue)
                 }
                 
                 if let gc = primer.gcPercent {
@@ -330,18 +335,18 @@ public struct PrimerCardView: View {
                     }
                 } label: {
                     StudioMetricBadge(
-                        label: "二级结构",
-                        value: "\(risk.rawValue) (发夹 \(String(format: "%.1f", qc.hairpin.dg)) / 二聚 \(String(format: "%.1f", qc.homodimer.dg)))",
+                        label: L10n.t("二级结构"),
+                        value: L10n.tr("\(risk.rawValue) (发夹 \(String(format: "%.1f", qc.hairpin.dg)) / 二聚 \(String(format: "%.1f", qc.homodimer.dg)))", "\(L10n.t(risk.rawValue)) (Hairpin \(String(format: "%.1f", qc.hairpin.dg)) / Dimer \(String(format: "%.1f", qc.homodimer.dg)))"),
                         color: riskTint(risk)
                     )
                 }
                 .buttonStyle(.plain)
-                .help("点击展开/收起 primer3 发夹与二聚体 ΔG、Tm 及碱基配对示意图")
+                .help(L10n.t("点击展开/收起 primer3 发夹与二聚体 ΔG、Tm 及碱基配对示意图"))
             }
             
             if isEditingName {
                 HStack(spacing: 8) {
-                    TextField(onPairedRename != nil ? "输入成对前缀" : "输入新名称", text: $draftNameText)
+                    TextField(L10n.t(onPairedRename != nil ? "输入成对前缀" : "输入新名称"), text: $draftNameText)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 13))
                         .frame(maxWidth: 220)
@@ -438,7 +443,7 @@ public struct PrimerCardView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
-                Text("缓冲液离子条件:")
+                Text(L10n.t("缓冲液离子条件:"))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                 
@@ -464,7 +469,7 @@ public struct PrimerCardView: View {
                 
                 let eqMm = appState.primerThermoConditions.equivalentMonovalentMolar * 1000.0
                 StudioMetricBadge(
-                    label: "等效 [Na+]",
+                    label: L10n.t("等效 [Na+]"),
                     value: String(format: "%.0f mM", eqMm),
                     color: .teal
                 )
@@ -481,7 +486,7 @@ public struct PrimerCardView: View {
                 )
                 if let het = het, let partner = partnerPrimer {
                     structureDetailCard(
-                        title: "异二聚体 (vs \(partner.name))",
+                        title: L10n.tr("异二聚体 (vs \(partner.name))", "Heterodimer (vs \(partner.name))"),
                         result: het
                     )
                 }
@@ -501,7 +506,7 @@ public struct PrimerCardView: View {
                     .font(.system(size: 11.5, weight: .bold))
                 StudioMetricBadge(
                     label: "",
-                    value: result.riskLevel.rawValue,
+                    value: L10n.t(result.riskLevel.rawValue),
                     color: riskTint(result.riskLevel)
                 )
                 if result.structureFound {
@@ -517,7 +522,7 @@ public struct PrimerCardView: View {
                     )
                     if result.threePrimeAnchored {
                         StudioMetricBadge(
-                            label: "告警",
+                            label: L10n.t("告警"),
                             value: "3'端参与配对",
                             color: .red
                         )
@@ -526,12 +531,16 @@ public struct PrimerCardView: View {
             }
             
             if result.structureFound && !result.asciiStructure.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    Text(result.asciiStructure)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.primary.opacity(0.92))
-                        .textSelection(.enabled)
-                        .padding(7)
+                ZStack(alignment: .topTrailing) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        StudioAlignedCharGridView(text: result.asciiStructure, fontSize: 11)
+                    }
+                    StudioCompactPillButton(title: "复制", icon: "doc.on.doc", tint: .blue) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(result.asciiStructure, forType: .string)
+                        AppState.shared.showToast("已复制配对结构图")
+                    }
+                    .padding(5)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
@@ -539,7 +548,7 @@ public struct PrimerCardView: View {
                         .fill(Color(NSColor.textBackgroundColor))
                 )
             } else {
-                Text("未检出显著二级结构 (ΔG ≈ 0.0 kcal/mol)")
+                Text(L10n.t("未检出显著二级结构 (ΔG ≈ 0.0 kcal/mol)"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .padding(.vertical, 4)
@@ -598,13 +607,13 @@ public struct PrimerPairDimerSummaryBar: View {
                     Image(systemName: "link.circle.fill")
                         .font(.system(size: 12))
                         .foregroundColor(riskTint(rep.overallRisk))
-                    Text("F/R 对间异二聚体 (calc_dimer):")
+                    Text(L10n.t("F/R 对间异二聚体 (calc_dimer):"))
                         .font(.system(size: 11.5, weight: .semibold))
                 }
                 
                 StudioMetricBadge(
-                    label: "对间风险",
-                    value: het.riskLevel.rawValue,
+                    label: L10n.t("对间风险"),
+                    value: L10n.t(het.riskLevel.rawValue),
                     color: riskTint(het.riskLevel)
                 )
                 
@@ -615,19 +624,19 @@ public struct PrimerPairDimerSummaryBar: View {
                         color: riskTint(het.riskLevel)
                     )
                     StudioMetricBadge(
-                        label: "二聚体 Tm",
+                        label: L10n.t("二聚体 Tm"),
                         value: String(format: "%.1f℃", het.tm),
                         color: .blue
                     )
                     if het.threePrimeAnchored {
                         StudioMetricBadge(
-                            label: "注意",
+                            label: L10n.t("注意"),
                             value: "3'端交叉互补",
                             color: .red
                         )
                     }
                 } else {
-                    Text("无显著交叉二聚体")
+                    Text(L10n.t("无显著交叉二聚体"))
                         .font(.system(size: 11.5))
                         .foregroundColor(.secondary)
                 }
@@ -638,7 +647,7 @@ public struct PrimerPairDimerSummaryBar: View {
                             isExpanded.toggle()
                         }
                     } label: {
-                        Text(isExpanded ? "收起 F×R 配对图" : "查看 F×R 配对图")
+                        Text(L10n.t(isExpanded ? "收起 F×R 配对图" : "查看 F×R 配对图"))
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.accentColor)
                             .padding(.horizontal, 7)
@@ -650,12 +659,16 @@ public struct PrimerPairDimerSummaryBar: View {
             }
             
             if isExpanded && het.structureFound {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    Text(het.asciiStructure)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.primary.opacity(0.92))
-                        .textSelection(.enabled)
-                        .padding(7)
+                ZStack(alignment: .topTrailing) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        StudioAlignedCharGridView(text: het.asciiStructure, fontSize: 11)
+                    }
+                    StudioCompactPillButton(title: "复制", icon: "doc.on.doc", tint: .blue) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(het.asciiStructure, forType: .string)
+                        AppState.shared.showToast("已复制 F×R 配对图")
+                    }
+                    .padding(5)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(

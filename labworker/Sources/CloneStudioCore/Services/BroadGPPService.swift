@@ -126,7 +126,7 @@ public final class BroadGPPService: @unchecked Sendable {
         let clean = gene.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else {
             throw NSError(domain: "BroadGPPService", code: 400, userInfo: [
-                NSLocalizedDescriptionKey: "请输入有效的基因名或 NCBI Gene / RefSeq ID（如 TP53、Trp53、7157）。"
+                NSLocalizedDescriptionKey: L10n.t("请输入有效的基因名或 NCBI Gene / RefSeq ID（如 TP53、Trp53、7157）。")
             ])
         }
         
@@ -148,7 +148,7 @@ public final class BroadGPPService: @unchecked Sendable {
         
         guard !targets.isEmpty else {
             throw NSError(domain: "BroadGPPService", code: 404, userInfo: [
-                NSLocalizedDescriptionKey: "Broad GPP 数据库中「\(resolved.symbol) (\(resolved.geneID))」暂无公开 TRC shRNA 克隆记录。"
+                NSLocalizedDescriptionKey: L10n.tr("Broad GPP 数据库中「\(resolved.symbol) (\(resolved.geneID))」暂无公开 TRC shRNA 克隆记录。", "No public TRC shRNA clones for \(resolved.symbol) (\(resolved.geneID)) in Broad GPP.")
             ])
         }
         
@@ -212,7 +212,7 @@ public final class BroadGPPService: @unchecked Sendable {
         }
         
         throw NSError(domain: "BroadGPPService", code: 404, userInfo: [
-            NSLocalizedDescriptionKey: "在 Broad GPP (\(species.shortName)) 中未找到基因「\(clean)」，请核对官方基因符号（人源通常大写、鼠源首字母大写）或直接使用 NCBI Gene ID。"
+            NSLocalizedDescriptionKey: L10n.tr("在 Broad GPP (\(species.shortName)) 中未找到基因「\(clean)」，请核对官方基因符号（人源通常大写、鼠源首字母大写）或直接使用 NCBI Gene ID。", "Gene \"\(clean)\" not found in Broad GPP (\(species.shortName)); verify official gene symbol or use NCBI Gene ID.")
         ])
     }
     
@@ -244,7 +244,7 @@ public final class BroadGPPService: @unchecked Sendable {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
             throw NSError(domain: "BroadGPPService", code: code, userInfo: [
-                NSLocalizedDescriptionKey: "Broad GPP 基因检索请求失败 (HTTP \(code))"
+                NSLocalizedDescriptionKey: L10n.tr("Broad GPP 基因检索请求失败 (HTTP \(code))", "Broad GPP gene search failed (HTTP \(code))")
             ])
         }
         return String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)
@@ -265,7 +265,7 @@ public final class BroadGPPService: @unchecked Sendable {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
             throw NSError(domain: "BroadGPPService", code: code, userInfo: [
-                NSLocalizedDescriptionKey: "Broad GPP 克隆列表获取失败 (HTTP \(code))"
+                NSLocalizedDescriptionKey: L10n.tr("Broad GPP 克隆列表获取失败 (HTTP \(code))", "Broad GPP clone fetch failed (HTTP \(code))")
             ])
         }
         let csv = String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)

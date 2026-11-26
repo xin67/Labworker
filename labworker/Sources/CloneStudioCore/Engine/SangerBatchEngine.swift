@@ -81,7 +81,7 @@ public enum SangerBatchEngine {
         public let verdict: CloneBatchVerdict
 
         public var readCount: Int { reads.count }
-        public var referenceName: String { matchedReferenceName ?? "未匹配" }
+        public var referenceName: String { matchedReferenceName ?? L10n.t("未匹配") }
         public var coveredBp: Int { coveredBasesCount }
         public var referenceLengthBp: Int { targetRegionLength }
         public var snpCount: Int { mergedVariants.filter { $0.kind == .mismatchSNP }.count }
@@ -89,8 +89,8 @@ public enum SangerBatchEngine {
         public var doublePeakCount: Int { mergedVariants.filter { $0.kind == .doublePeak }.count }
 
         public var variantsSummaryText: String {
-            if verdict == .unmatched { return "未匹配参考质粒" }
-            if mergedVariants.isEmpty { return "无变异 (WT)" }
+            if verdict == .unmatched { return L10n.t("未匹配参考质粒") }
+            if mergedVariants.isEmpty { return L10n.t("无变异 (WT)") }
             return mergedVariants.map { "\($0.hgvsNotation)(\($0.kind.rawValue))" }.joined(separator: "; ")
         }
     }
@@ -436,7 +436,7 @@ public enum SangerBatchEngine {
         ) else {
             let unalignedRep = SangerAlignmentEngine.VerificationReport(
                 chromatogram: chrom,
-                referenceName: "未匹配",
+                referenceName: L10n.t("未匹配"),
                 referenceLength: 0,
                 isReverseComplement: false,
                 matchedRefStart1Based: 1,
@@ -449,7 +449,7 @@ public enum SangerBatchEngine {
                 doublePeakCount: 0,
                 identityPercent: 0.0,
                 verdict: .unaligned,
-                summaryNotes: ["未能在候选参考质粒集中找到匹配的同源序列。"],
+                summaryNotes: [L10n.t("未能在候选参考质粒集中找到匹配的同源序列。")],
                 columns: [],
                 variants: []
             )

@@ -76,7 +76,7 @@ public final class CloneOnlineAPIClient: NSObject, URLSessionDelegate {
             }
         }
         
-        throw lastError ?? NSError(domain: "CloneOnlineAPIClient", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法连接到诺唯赞官方服务器"])
+        throw lastError ?? NSError(domain: "CloneOnlineAPIClient", code: -1, userInfo: [NSLocalizedDescriptionKey: L10n.t("无法连接到诺唯赞官方服务器")])
     }
     
     // MARK: - 1. 入门克隆 (Entry Clone)
@@ -113,7 +113,7 @@ public final class CloneOnlineAPIClient: NSObject, URLSessionDelegate {
             jsonBody: data
         )
         guard let res = resp.result else {
-            throw NSError(domain: "API", code: -1, userInfo: [NSLocalizedDescriptionKey: resp.resultMsg ?? "未知错误"])
+            throw NSError(domain: "API", code: -1, userInfo: [NSLocalizedDescriptionKey: resp.resultMsg ?? L10n.t("未知错误")])
         }
         return res
     }
@@ -172,7 +172,7 @@ public final class CloneOnlineAPIClient: NSObject, URLSessionDelegate {
             jsonBody: data
         )
         guard let res = resp.result else {
-            throw NSError(domain: "API", code: -1, userInfo: [NSLocalizedDescriptionKey: resp.resultMsg ?? "未知错误"])
+            throw NSError(domain: "API", code: -1, userInfo: [NSLocalizedDescriptionKey: resp.resultMsg ?? L10n.t("未知错误")])
         }
         return res
     }
@@ -235,7 +235,7 @@ public final class CloneOnlineAPIClient: NSObject, URLSessionDelegate {
             jsonBody: data
         )
         guard let res = resp.result else {
-            throw NSError(domain: "API", code: -1, userInfo: [NSLocalizedDescriptionKey: resp.resultMsg ?? "未知错误"])
+            throw NSError(domain: "API", code: -1, userInfo: [NSLocalizedDescriptionKey: resp.resultMsg ?? L10n.t("未知错误")])
         }
         return res
     }
@@ -268,7 +268,7 @@ public final class CloneOnlineAPIClient: NSObject, URLSessionDelegate {
             jsonBody: data
         )
         guard let res = resp.result else {
-            throw NSError(domain: "API", code: -1, userInfo: [NSLocalizedDescriptionKey: resp.resultMsg ?? "未知错误"])
+            throw NSError(domain: "API", code: -1, userInfo: [NSLocalizedDescriptionKey: resp.resultMsg ?? L10n.t("未知错误")])
         }
         return res
     }
@@ -289,7 +289,7 @@ public final class CloneOnlineAPIClient: NSObject, URLSessionDelegate {
             formBody: form
         )
         guard let res = resp.result else {
-            throw NSError(domain: "API", code: -1, userInfo: [NSLocalizedDescriptionKey: resp.resultMsg ?? "未知错误"])
+            throw NSError(domain: "API", code: -1, userInfo: [NSLocalizedDescriptionKey: resp.resultMsg ?? L10n.t("未知错误")])
         }
         return res
     }

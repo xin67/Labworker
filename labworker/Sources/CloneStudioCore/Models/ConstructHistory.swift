@@ -190,7 +190,7 @@ public final class ConstructHistoryManager: ObservableObject {
                     FeatureShiftItem(
                         featureName: feat.name,
                         oldRangeText: "\(feat.start)..\(feat.end)",
-                        newRangeText: "已移除",
+                        newRangeText: L10n.t("已移除"),
                         deltaBp: -(feat.end - feat.start + 1),
                         status: .deleted
                     )

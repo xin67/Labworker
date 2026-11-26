@@ -81,19 +81,19 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         public var ruleExplanation: String {
             switch self {
             case .smartRecommend:
-                return "优先置顶「本地已选 SG/SH 命中序列」；其余靶点在保证核心特异性前提下，按融合了多源共识加分的全维综合评分从高到低排列。"
+                return L10n.t("优先置顶「本地已选 SG/SH 命中序列」；其余靶点在保证核心特异性前提下，按融合了多源共识加分的全维综合评分从高到低排列。")
             case .consensusFirst:
-                return "优先展示同时被 3 个或 2 个在线网站命中的高共识 sgRNA，再按全维综合评分降序排列。"
+                return L10n.t("优先展示同时被 3 个或 2 个在线网站命中的高共识 sgRNA，再按全维综合评分降序排列。")
             case .vbcScoreDesc:
-                return "按 VBC-Score 敲除效能综合分（整合活性、inDelphi 移码率与 Bioscore 蛋白保守度）从高到低排列。"
+                return L10n.t("按 VBC-Score 敲除效能综合分（整合活性、inDelphi 移码率与 Bioscore 蛋白保守度）从高到低排列。")
             case .combinedScoreDesc:
-                return "严格按全维综合评分（特异性 45% + 效率 35% + 本地序列规则 20% + 多源共识加分）从高到低排列。"
+                return L10n.t("严格按全维综合评分（特异性 45% + 效率 35% + 本地序列规则 20% + 多源共识加分）从高到低排列。")
             case .efficiencyDesc:
-                return "按在线切割效率分（Doench 2016 / CRISPOR 百分位 / VBC 活性）从高到低排列。"
+                return L10n.t("按在线切割效率分（Doench 2016 / CRISPOR 百分位 / VBC 活性）从高到低排列。")
             case .rankAsc:
-                return "按 CHOPCHOP 原始排名（MM0 → MM1 → MM2 → MM3 从少到多）排列。"
+                return L10n.t("按 CHOPCHOP 原始排名（MM0 → MM1 → MM2 → MM3 从少到多）排列。")
             case .offTargetAsc:
-                return "按全基因组脱靶错配数（MM0-3 / VBC VeryLikely / MIT 特异性）从最安全到次优排列。"
+                return L10n.t("按全基因组脱靶错配数（MM0-3 / VBC VeryLikely / MIT 特异性）从最安全到次优排列。")
             }
         }
     }
@@ -144,7 +144,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         var newItems: [LocalCompareTarget] = []
         for (i, seq) in parts.enumerated() {
             newItems.append(LocalCompareTarget(
-                label: "手动 sg#\(existingCount + i + 1)",
+                label: L10n.tr("手动 sg#\(existingCount + i + 1)", "Manual sg#\(existingCount + i + 1)"),
                 sequence: seq,
                 sourceType: .sgRNA,
                 isSelectedOrGenerated: true
@@ -153,7 +153,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         AppState.shared.syncLocalCompareTargets(newItems, replaceSourceType: nil)
         manualCompareInput = ""
         recomputeLocalMatches()
-        AppState.shared.showToast("已添加 \(newItems.count) 条序列至在线对比高亮池")
+        AppState.shared.showToast(L10n.tr("已添加 \(newItems.count) 条序列至在线对比高亮池", "Added \(newItems.count) sequence(s) to online comparison"))
     }
     
     /// 移除单条本地对比序列
@@ -188,7 +188,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
             
             for sg in libSg where !existingSeqs.contains(sg.sequence.uppercased()) {
                 pool.append(LocalCompareTarget(
-                    label: "本地文库 sgRNA",
+                    label: L10n.t("本地文库 sgRNA"),
                     sequence: sg.sequence,
                     sourceType: .sgRNA,
                     isSelectedOrGenerated: false
@@ -271,7 +271,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
     public func fetchTargets(forceRefresh: Bool = false) {
         let clean = gene.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else {
-            errorMessage = "请输入需要查询的基因名称"
+            errorMessage = L10n.t("请输入需要查询的基因名称")
             showErrorAlert = true
             return
         }
@@ -296,7 +296,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         
         for src in TargetCompareSource.allCases {
             if enabledSources.contains(src) {
-                sourceStates[src] = .loading("正在连接 \(src.rawValue)...")
+                sourceStates[src] = .loading(L10n.tr("正在连接 \(src.rawValue)...", "Connecting to \(src.rawValue)..."))
             } else {
                 sourceStates[src] = .idle
             }
@@ -316,7 +316,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         enabledSources.insert(source)
         activeQueryTasks[source]?.cancel()
         let token = activeQueryToken
-        sourceStates[source] = .loading("正在重新查询 \(source.rawValue)...")
+        sourceStates[source] = .loading(L10n.tr("正在重新查询 \(source.rawValue)...", "Retrying \(source.rawValue)..."))
         isLoading = true
         refreshLoadingSummary()
         launchSourceTask(source, gene: clean, species: species, forceRefresh: forceRefresh, token: token, notifyCompletion: false)
@@ -434,7 +434,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
             progressMessage = "[\(only.0.shortTitle)] \(only.1)"
         } else if !loadingPairs.isEmpty {
             let names = loadingPairs.map(\.0.shortTitle).joined(separator: " / ")
-            progressMessage = "正在并发检索 \(names)..."
+            progressMessage = L10n.tr("正在并发检索 \(names)...", "Querying \(names) in parallel...")
         } else {
             progressMessage = ""
         }
@@ -455,9 +455,9 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         
         if let single = singleSourceCompleted {
             if let err = sourceStates[single]?.errorMessage {
-                AppState.shared.showToast("\(single.rawValue) 重试失败: \(err)")
+                AppState.shared.showToast(L10n.tr("\(single.rawValue) 重试失败: \(err)", "\(single.rawValue) retry failed: \(err)"))
             } else {
-                AppState.shared.showToast("\(single.rawValue) 已补全并合并，当前共 \(targets.count) 条靶点")
+                AppState.shared.showToast(L10n.tr("\(single.rawValue) 已补全并合并，当前共 \(targets.count) 条靶点", "\(single.rawValue) merged; \(targets.count) total targets"))
             }
             return
         }
@@ -469,7 +469,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
                 self.showErrorAlert = true
                 AppState.shared.showToast("在线靶点检索失败")
             } else {
-                AppState.shared.showToast("未检索到基因「\(gene)」的候选靶点")
+                AppState.shared.showToast(L10n.tr("未检索到基因「\(gene)」的候选靶点", "No candidate targets found for \"\(gene)\""))
             }
             return
         }
@@ -479,11 +479,11 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         if !failedList.isEmpty {
             let okNames = succeededSources.map(\.shortTitle).joined(separator: "+")
             let failNames = failedList.map(\.0.shortTitle).joined(separator: "/")
-            AppState.shared.showToast("\(okNames) 已返回 \(targets.count) 条靶点；\(failNames) 暂未就绪")
+            AppState.shared.showToast(L10n.tr("\(okNames) 已返回 \(targets.count) 条靶点；\(failNames) 暂未就绪", "\(okNames) returned \(targets.count) targets; \(failNames) unavailable"))
         } else if hitCount > 0 {
-            AppState.shared.showToast("共 \(targets.count) 条靶点（多源共识 \(consensus) 条，本地重合 \(hitCount) 条）")
+            AppState.shared.showToast(L10n.tr("共 \(targets.count) 条靶点（多源共识 \(consensus) 条，本地重合 \(hitCount) 条）", "\(targets.count) targets (\(consensus) consensus, \(hitCount) local hits)"))
         } else {
-            AppState.shared.showToast("共获取 \(targets.count) 条候选靶点（多源共识 \(consensus) 条）")
+            AppState.shared.showToast(L10n.tr("共获取 \(targets.count) 条候选靶点（多源共识 \(consensus) 条）", "Fetched \(targets.count) targets (\(consensus) consensus)"))
         }
     }
     
@@ -596,7 +596,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
     public func selectLocalHitsOnly() {
         let hitIDs = targets.filter { matchMap[$0.id] != nil }.map { $0.id }
         selectedTargetIDs = Set(hitIDs)
-        AppState.shared.showToast("已勾选全部 \(hitIDs.count) 条本地命中靶点")
+        AppState.shared.showToast(L10n.tr("已勾选全部 \(hitIDs.count) 条本地命中靶点", "Selected all \(hitIDs.count) matching local target(s)"))
     }
     
     public func toggleTarget(_ target: CHOPCHOPTarget) {
@@ -612,7 +612,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(target.spacer, forType: .string)
-        AppState.shared.showToast("已复制 20bp Spacer: \(target.spacer)")
+        AppState.shared.showToast(L10n.tr("已复制 20bp Spacer: \(target.spacer)", "Copied 20-bp Spacer: \(target.spacer)"))
     }
     
     /// 为单条靶点生成配对引物并加入订购单
@@ -631,7 +631,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
             vector: vector
         )
         AppState.shared.addPrimersToCart([pair.fwdPrimer, pair.revPrimer])
-        AppState.shared.showToast("已将 \(gene) sg#\(target.rank) 配对引物加入订购单！")
+        AppState.shared.showToast(L10n.tr("已将 \(gene) sg#\(target.rank) 配对引物加入订购单！", "Added \(gene) sg#\(target.rank) primer pair to order cart!"))
     }
     
     /// 将所有选中的靶点生成引物并加入订购单
@@ -660,7 +660,7 @@ public final class CHOPCHOPCompareViewModel: ObservableObject {
             primers.append(pair.revPrimer)
         }
         AppState.shared.addPrimersToCart(primers)
-        AppState.shared.showToast("已将 \(selected.count) 个靶点 (\(primers.count) 条引物) 加入订购单！")
+        AppState.shared.showToast(L10n.tr("已将 \(selected.count) 个靶点 (\(primers.count) 条引物) 加入订购单！", "Added \(selected.count) target(s) (\(primers.count) primers) to order cart!"))
     }
     
     /// 在默认外部浏览器中打开 CHOPCHOP 网页（若有 jobId 则直达结果页）

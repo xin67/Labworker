@@ -302,7 +302,7 @@ public struct MicroscopicSequenceWindow: Identifiable, Sendable, Equatable {
         startBp: Int,
         sequence: String,
         homologyHighlightRange: Range<Int>? = nil,
-        homologyLabel: String = "18 bp 同源臂",
+        homologyLabel: String = L10n.t("18 bp 同源臂"),
         focalHighlightRange: Range<Int>? = nil,
         focalLabel: String = "",
         enzymeCuts: [MicroscopicEnzymeCut] = [],

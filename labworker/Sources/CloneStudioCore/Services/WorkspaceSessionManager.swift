@@ -309,8 +309,8 @@ public final class WorkspaceSessionManager: ObservableObject {
         
         if hasActiveWorkspaceContent {
             let msg = !wasCleanExit
-                ? "⚡ 检测到上次异常退出，已为您自动恢复全部质粒与引物设计进度"
-                : "已自动恢复上次保存的工作进度"
+                ? L10n.t("⚡ 检测到上次异常退出，已为您自动恢复全部质粒与引物设计进度")
+                : L10n.t("已自动恢复上次保存的工作进度")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 AppState.shared.showToast(msg)
             }
@@ -678,8 +678,8 @@ public final class WorkspaceSessionManager: ObservableObject {
         if let firstAB1 = ab1URLs.first {
             AppState.shared.pendingFinderOpenedFileURL = firstAB1
             AppState.shared.selectedNav = .sangerVerify
-            let label = ["fastq", "fq"].contains(firstAB1.pathExtension.lowercased()) ? "全质粒测序" : "Sanger 测序峰图"
-            AppState.shared.showToast("已从 Finder 载入\(label) \(firstAB1.lastPathComponent) 至「测序验证」")
+            let label = ["fastq", "fq"].contains(firstAB1.pathExtension.lowercased()) ? L10n.t("全质粒测序") : L10n.t("Sanger 测序峰图")
+            AppState.shared.showToast(L10n.tr("已从 Finder 载入\(label) \(firstAB1.lastPathComponent) 至「测序验证」", "Loaded \(label) \(firstAB1.lastPathComponent) into Sanger Verification"))
             return
         }
         
@@ -687,7 +687,7 @@ public final class WorkspaceSessionManager: ObservableObject {
         if let firstPDB = pdbURLs.first {
             AppState.shared.pendingFinderOpenedFileURL = firstPDB
             AppState.shared.selectedNav = .proteinWorkbench
-            AppState.shared.showToast("已从 Finder 载入三维结构 \(firstPDB.lastPathComponent) 至「蛋白质工作台」")
+            AppState.shared.showToast(L10n.tr("已从 Finder 载入三维结构 \(firstPDB.lastPathComponent) 至「蛋白质工作台」", "Loaded 3D structure \(firstPDB.lastPathComponent) into Protein Workbench"))
             return
         }
         
@@ -698,7 +698,7 @@ public final class WorkspaceSessionManager: ObservableObject {
             if ![NavItem.westernBlot, .gelFigure].contains(currentNav) {
                 AppState.shared.selectedNav = .westernBlot
             }
-            AppState.shared.showToast("已从 Finder 载入图像 \(firstImg.lastPathComponent) 至「\(AppState.shared.selectedNav.title)」")
+            AppState.shared.showToast(L10n.tr("已从 Finder 载入图像 \(firstImg.lastPathComponent) 至「\(AppState.shared.selectedNav.title)」", "Loaded image \(firstImg.lastPathComponent) into \(AppState.shared.selectedNav.title)"))
             return
         }
         
@@ -708,7 +708,7 @@ public final class WorkspaceSessionManager: ObservableObject {
             if AppState.shared.selectedNav != .plateDesigner {
                 AppState.shared.selectedNav = .qpcrAnalysis
             }
-            AppState.shared.showToast("已从 Finder 载入数据表 \(firstCSV.lastPathComponent) 至「\(AppState.shared.selectedNav.title)」")
+            AppState.shared.showToast(L10n.tr("已从 Finder 载入数据表 \(firstCSV.lastPathComponent) 至「\(AppState.shared.selectedNav.title)」", "Loaded table \(firstCSV.lastPathComponent) into \(AppState.shared.selectedNav.title)"))
             return
         }
         
@@ -778,7 +778,7 @@ public final class WorkspaceSessionManager: ObservableObject {
             if !joinedUpper.isEmpty && Double(nonNucleicCount) / Double(joinedUpper.count) > 0.12 {
                 AppState.shared.pendingFinderOpenedFileURL = firstSeqURL
                 AppState.shared.selectedNav = .proteinWorkbench
-                AppState.shared.showToast("已从 Finder 识别蛋白序列 \(firstSeqURL.lastPathComponent) 并打开「蛋白质工作台」")
+                AppState.shared.showToast(L10n.tr("已从 Finder 识别蛋白序列 \(firstSeqURL.lastPathComponent) 并打开「蛋白质工作台」", "Detected protein sequence \(firstSeqURL.lastPathComponent); opened Protein Workbench"))
                 return
             }
             
@@ -810,7 +810,7 @@ public final class WorkspaceSessionManager: ObservableObject {
                 AppState.shared.selectedNav = .entryClone
                 entryCloneVM.sequence = cleaned
             }
-            AppState.shared.showToast("已从 Finder 导入序列 \(firstSeqURL.lastPathComponent) (\(cleaned.count) bp)")
+            AppState.shared.showToast(L10n.tr("已从 Finder 导入序列 \(firstSeqURL.lastPathComponent) (\(cleaned.count) bp)", "Imported sequence \(firstSeqURL.lastPathComponent) (\(cleaned.count) bp)"))
         }
     }
 }

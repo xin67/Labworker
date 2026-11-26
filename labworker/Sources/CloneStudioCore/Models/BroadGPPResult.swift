@@ -216,7 +216,7 @@ public struct BroadGPPShRNATarget: Identifiable, Hashable, Codable, Sendable {
         specPts = max(0.0, min(45.0, specPts))
         let specInt = Int(round(specPts))
         tags.append(ScoreTag(
-            name: matchesOtherGene ? "匹配同物种其他基因 (存在脱靶风险)" : "单基因特异 (SDR \(sdrMatchPercent)%)",
+            name: matchesOtherGene ? L10n.t("匹配同物种其他基因 (存在脱靶风险)") : L10n.tr("单基因特异 (SDR \(sdrMatchPercent)%)", "Gene-Specific (SDR \(sdrMatchPercent)%)"),
             points: specInt,
             type: matchesOtherGene ? .penalty : .bonus
         ))
@@ -241,7 +241,7 @@ public struct BroadGPPShRNATarget: Identifiable, Hashable, Codable, Sendable {
         let seqPts = max(0.0, min(20.0, (localScore.score / 100.0) * 20.0))
         let seqInt = Int(round(seqPts))
         tags.append(ScoreTag(
-            name: "热力学与 Pol III 规则",
+            name: L10n.t("热力学与 Pol III 规则"),
             points: seqInt,
             type: localScore.hasFatalIssue ? .fatal : (localScore.score >= 65.0 ? .bonus : .penalty)
         ))
@@ -264,7 +264,7 @@ public struct BroadGPPShRNATarget: Identifiable, Hashable, Codable, Sendable {
             tier = .fair
         }
         
-        let summary = "综合评分 \(Int(total)) 分 = 特异性 \(specInt)/45 + Broad效价 \(broadInt)/35 + 序列规则 \(seqInt)/20"
+        let summary = L10n.tr("综合评分 \(Int(total)) 分 = 特异性 \(specInt)/45 + Broad效价 \(broadInt)/35 + 序列规则 \(seqInt)/20", "Composite Score \(Int(total)) = Specificity \(specInt)/45 + Broad Efficacy \(broadInt)/35 + Sequence Rules \(seqInt)/20")
         return TargetScore(
             score: total,
             tier: tier,

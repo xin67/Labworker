@@ -38,11 +38,17 @@ public struct SequenceMinimapView: View {
     private var resolvedViewportText: String? {
         if let vp = viewportRangeBp {
             let span = max(1, vp.upperBound - vp.lowerBound + 1)
-            return "当前视口: \(vp.lowerBound)..\(vp.upperBound) bp (\(span) bp)"
+            return L10n.tr(
+                L10n.tr("当前视口: \(vp.lowerBound)..\(vp.upperBound) bp (\(span) bp)", "Viewport: \(vp.lowerBound)..\(vp.upperBound) bp (\(span) bp)"),
+                "Viewport: \(vp.lowerBound)..\(vp.upperBound) bp (\(span) bp)"
+            )
         }
         if windows.indices.contains(selectedWindowIndex) {
             let activeWin = windows[selectedWindowIndex]
-            return "当前视口: \(activeWin.startBp)..\(activeWin.endBp) bp (\(activeWin.sequence.count) bp)"
+            return L10n.tr(
+                L10n.tr("当前视口: \(activeWin.startBp)..\(activeWin.endBp) bp (\(activeWin.sequence.count) bp)", "Viewport: \(activeWin.startBp)..\(activeWin.endBp) bp (\(activeWin.sequence.count) bp)"),
+                "Viewport: \(activeWin.startBp)..\(activeWin.endBp) bp (\(activeWin.sequence.count) bp)"
+            )
         }
         return nil
     }
@@ -62,7 +68,10 @@ public struct SequenceMinimapView: View {
                         Image(systemName: "map.fill")
                             .font(.system(size: 8.5))
                             .foregroundColor(accentCyan)
-                        Text("全长缩略导航 (1 .. \(totalLengthBp) bp · 点击或滑动跳转)")
+                        Text(L10n.tr(
+                            L10n.tr("全长缩略导航 (1 .. \(totalLengthBp) bp · 点击或滑动跳转)", "Full-Length Minimap (1 .. \(totalLengthBp) bp · Click or drag to navigate)"),
+                            "Full-Plasmid Minimap (1 .. \(totalLengthBp) bp · Click or Drag)"
+                        ))
                             .font(.system(size: 9.5, weight: .semibold))
                             .monospacedDigit()
                             .foregroundColor(primaryText)
@@ -85,7 +94,10 @@ public struct SequenceMinimapView: View {
                         Image(systemName: "map.fill")
                             .font(.system(size: 8.5))
                             .foregroundColor(accentCyan)
-                        Text("全长导航 (1 .. \(totalLengthBp) bp)")
+                        Text(L10n.tr(
+                            L10n.tr("全长导航 (1 .. \(totalLengthBp) bp)", "Full Map (1 .. \(totalLengthBp) bp)"),
+                            "Minimap (1 .. \(totalLengthBp) bp)"
+                        ))
                             .font(.system(size: 9, weight: .semibold))
                             .monospacedDigit()
                             .foregroundColor(primaryText)

@@ -30,7 +30,10 @@ public struct HomologousPCRGelSectionCard: View {
         self.buildSimulation = buildSimulation
     }
 
+    @Environment(\.appLanguage) private var appLanguage
+
     public var body: some View {
+        let _ = appLanguage
         let result = buildSimulation(concentrationOverride, ladderIDOverride, includeMixControlLane)
 
         StudioCard(title: title) {
@@ -74,8 +77,8 @@ public struct HomologousPCRGelSectionCard: View {
                             )
                             if !result.warnings.isEmpty {
                                 StudioMetricBadge(
-                                    label: "提示",
-                                    value: "\(result.warnings.count) 项",
+                                    label: L10n.t("提示"),
+                                    value: L10n.tr("\(result.warnings.count) 项", "\(result.warnings.count)"),
                                     color: .orange
                                 )
                             }
@@ -84,11 +87,11 @@ public struct HomologousPCRGelSectionCard: View {
                     HStack(spacing: 8) {
                         Image(systemName: "chart.bar.doc.horizontal")
                             .foregroundColor(accentTint)
-                        Text(
+                        Text(L10n.t(
                             result.hasSampleBands
                                 ? "已就绪（点击「展开」或「大窗预览」查看各泳道预期条带分布）"
                                 : "载入载体或输入待扩增序列后，将实时模拟同源重组 PCR 条带电泳图谱。"
-                        )
+                        ))
                         .font(.system(size: 11.5))
                         .foregroundColor(.secondary)
                         .monospacedDigit()
@@ -116,7 +119,7 @@ public struct HomologousPCRGelSectionCard: View {
                         Image(systemName: "waveform.path.ecg.rectangle")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(accentTint)
-                        Text("输入 ≥ 50 bp 插入序列或载入载体质粒后，此处将实时按实际同源臂/接头与线性化长度模拟琼脂糖凝胶电泳条带。")
+                        Text(L10n.t("输入 ≥ 50 bp 插入序列或载入载体质粒后，此处将实时按实际同源臂/接头与线性化长度模拟琼脂糖凝胶电泳条带。"))
                             .font(.system(size: 11.5))
                             .foregroundColor(.secondary)
                     }
@@ -132,8 +135,8 @@ public struct HomologousPCRGelSectionCard: View {
                         )
                         if !result.warnings.isEmpty {
                             StudioMetricBadge(
-                                label: "分辨提示",
-                                value: "\(result.warnings.count) 项",
+                                label: L10n.t("分辨提示"),
+                                value: L10n.tr("\(result.warnings.count) 项", "\(result.warnings.count)"),
                                 color: .orange
                             )
                         }
@@ -210,7 +213,7 @@ public struct HomologousPCRGelInteractiveBody: View {
             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 6) {
-                        Text("胶浓度:")
+                        Text(L10n.t("胶浓度:"))
                             .font(.system(size: 11.5, weight: .medium))
                             .foregroundColor(.secondary)
                             .fixedSize()
@@ -237,7 +240,7 @@ public struct HomologousPCRGelInteractiveBody: View {
 
                 if concentrationOverride != nil && concentrationOverride != result.recommendedConcentration {
                     StudioCompactPillButton(
-                        title: "恢复推荐 \(result.recommendedConcentration.rawValue)",
+                        title: L10n.tr("恢复推荐 \(result.recommendedConcentration.rawValue)", "Reset to Rec. \(result.recommendedConcentration.rawValue)"),
                         icon: "wand.and.stars",
                         tint: accentTint
                     ) {
@@ -257,7 +260,7 @@ public struct HomologousPCRGelInteractiveBody: View {
                     help: "选择 DNA 分子量标准品 Marker"
                 )
 
-                Toggle(compareLaneTitle, isOn: $includeMixControlLane)
+                Toggle(L10n.t(compareLaneTitle), isOn: $includeMixControlLane)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 11.5, weight: .medium))
             }
@@ -367,7 +370,7 @@ public struct HomologousPCRGelInteractiveBody: View {
                             )
                         }
                         .buttonStyle(.plain)
-                        .help("点击在凝胶画布中高亮此条带")
+                        .help(L10n.t("点击在凝胶画布中高亮此条带"))
                     }
                 }
             }
@@ -411,7 +414,7 @@ public struct HomologousPCRGelInteractiveBody: View {
     private func warningActionView(_ warn: GelResolutionWarning) -> some View {
         HStack(spacing: 6) {
             if let conc = warn.suggestedConcentration {
-                StudioCompactPillButton(title: "切换 \(conc.rawValue)", icon: "arrow.triangle.2.circlepath", tint: .orange) {
+                StudioCompactPillButton(title: L10n.tr("切换 \(conc.rawValue)", "Switch to \(conc.rawValue)"), icon: "arrow.triangle.2.circlepath", tint: .orange) {
                     concentrationOverride = conc
                 }
             }
@@ -428,7 +431,7 @@ public struct HomologousPCRGelInteractiveBody: View {
         let presentRoles = OrderedRoleList.rolesPresent(in: result.lanes)
         if !presentRoles.isEmpty {
             StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 4) {
-                Text("胶浓度范围: \(result.concentration.optimalRangeText)")
+                Text(L10n.tr("胶浓度范围: \(result.concentration.optimalRangeText)", "Optimal Range: \(result.concentration.optimalRangeText)"))
                     .font(.system(size: 10.5, weight: .medium))
                     .monospacedDigit()
                     .foregroundColor(.secondary)
@@ -474,9 +477,9 @@ public struct HomologousPCRGelInteractiveBody: View {
         if panel.runModal() == .OK, let url = panel.url {
             do {
                 try csv.write(to: url, atomically: true, encoding: .utf8)
-                AppState.shared.showToast("已导出模拟电泳数据至 \(url.lastPathComponent)")
+                AppState.shared.showToast(L10n.tr("已导出模拟电泳数据至 \(url.lastPathComponent)", "Exported simulated gel data to \(url.lastPathComponent)"))
             } catch {
-                AppState.shared.showToast("导出 CSV 失败: \(error.localizedDescription)")
+                AppState.shared.showToast(L10n.tr("导出 CSV 失败: \(error.localizedDescription)", "CSV export failed: \(error.localizedDescription)"))
             }
         }
     }
@@ -595,7 +598,7 @@ private struct AgaroseSimulatedSlabCanvas: View {
                         style: StrokeStyle(lineWidth: 1, dash: [4, 4])
                     )
                     context.draw(
-                        Text("前缘")
+                        Text(L10n.t("前缘"))
                             .font(.system(size: 8.5, weight: .medium))
                             .foregroundColor(Color.cyan.opacity(0.65)),
                         at: CGPoint(x: gutterWidth - 6, y: min(size.height - 2, dyeY + 2)),
@@ -790,7 +793,7 @@ private struct AgaroseSimulatedSlabCanvas: View {
                             .frame(width: minContentWidth)
                     }
                     .frame(minWidth: 0, maxWidth: .infinity)
-                    Text("← 左右滑动查看全部 \(laneCount) 条泳道 →")
+                    Text(L10n.tr("← 左右滑动查看全部 \(laneCount) 条泳道 →", "← Scroll horizontally to view all \(laneCount) lanes →"))
                         .font(.system(size: 10.5))
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -893,7 +896,7 @@ public final class GelSimulationWindowPresenter: NSObject, NSWindowDelegate {
             buildSimulation: buildSimulation
         )
         window.appearance = NSApplication.shared.appearance
-        window.contentView = NSHostingView(rootView: rootView)
+        window.contentView = NSHostingView(rootView: StudioLocalizedWindowHost { rootView })
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -933,10 +936,10 @@ private struct StandaloneGelSimulationWindowView: View {
                         Image(systemName: "chart.bar.doc.horizontal.fill")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(accentTint)
-                        Text(title)
+                        Text(L10n.t(title))
                             .font(.system(size: 16, weight: .bold))
                     }
-                    StudioMetricBadge(label: "凝胶浓度", value: result.concentration.rawValue, color: accentTint)
+                    StudioMetricBadge(label: L10n.t("凝胶浓度"), value: result.concentration.rawValue, color: accentTint)
                     StudioMetricBadge(label: "Marker", value: result.ladder.name, color: .orange)
                 }
 
@@ -952,7 +955,7 @@ private struct StandaloneGelSimulationWindowView: View {
                         selectedBandID: $selectedBandID
                     )
                 } else {
-                    Text("当前主工作区尚未输入有效长度（≥ 50 bp）的序列或载体，请先输入片段后查看模拟电泳。")
+                    Text(L10n.t("当前主工作区尚未输入有效长度（≥ 50 bp）的序列或载体，请先输入片段后查看模拟电泳。"))
                         .font(.system(size: 12.5))
                         .foregroundColor(.secondary)
                         .studioInnerBox(tint: accentTint, paddingH: 14, paddingV: 14)

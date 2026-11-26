@@ -52,7 +52,7 @@ public final class OrderExportViewModel: ObservableObject {
     public func exportPrimersOrder() {
         let primers = AppState.shared.primersCart
         guard !primers.isEmpty else {
-            errorMessage = "待订购引物/基因池为空，请先在设计界面生成或手动添加条目。"
+            errorMessage = L10n.t("待订购引物/基因池为空，请先在设计界面生成或手动添加条目。")
             showErrorAlert = true
             return
         }
@@ -74,8 +74,8 @@ public final class OrderExportViewModel: ObservableObject {
             )
             self.exportedFilePath = path
             self.showSuccessAlert = true
-            let tplLabel = (selectedPrimerTemplate == .customJSON) ? (customSpec?.name ?? "自定义模板") : selectedPrimerTemplate.displayName
-            AppState.shared.showToast("已成功导出「\(tplLabel)」(\(format.rawValue.uppercased()))！")
+            let tplLabel = (selectedPrimerTemplate == .customJSON) ? (customSpec?.name ?? L10n.t("自定义模板")) : L10n.t(selectedPrimerTemplate.displayName)
+            AppState.shared.showToast(L10n.tr("已成功导出「\(tplLabel)」(\(format.rawValue.uppercased()))！", "Exported \"\(tplLabel)\" (\(format.rawValue.uppercased()))!"))
         } catch {
             self.errorMessage = error.localizedDescription
             self.showErrorAlert = true
@@ -111,7 +111,7 @@ public final class OrderExportViewModel: ObservableObject {
             notes: notes
         )
         AppState.shared.primersCart.append(item)
-        AppState.shared.showToast("已加入订购池：\(finalName) (\(cleanSeq.count) bp)")
+        AppState.shared.showToast(L10n.tr("已加入订购池：\(finalName) (\(cleanSeq.count) bp)", "Added to order cart: \(finalName) (\(cleanSeq.count) bp)"))
     }
 
     public func saveCustomTemplate(_ spec: CustomOrderTemplateSpec) {
@@ -124,7 +124,7 @@ public final class OrderExportViewModel: ObservableObject {
         selectedPrimerTemplate = .customJSON
         selectedOutputFormat = spec.preferredFormat
         try? CustomOrderTemplateStore.saveTemplates(customTemplates)
-        AppState.shared.showToast("已保存自定义列映射模板：\(spec.name)")
+        AppState.shared.showToast(L10n.tr("已保存自定义列映射模板：\(spec.name)", "Saved custom column template: \(spec.name)"))
     }
 
     public func deleteCustomTemplate(id: String) {
@@ -152,14 +152,14 @@ public final class OrderExportViewModel: ObservableObject {
         enc.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try enc.encode(spec)
         try data.write(to: url, options: .atomic)
-        AppState.shared.showToast("已导出列映射模板 JSON：\(url.lastPathComponent)")
+        AppState.shared.showToast(L10n.tr("已导出列映射模板 JSON：\(url.lastPathComponent)", "Exported column mapping JSON: \(url.lastPathComponent)"))
     }
     
     /// 执行测序样品表导出 (支持擎科电子订单、生工专属版、生工V9通用版)
     public func exportSequencingOrder() {
         let samples = AppState.shared.sangonSamples
         guard !samples.isEmpty else {
-            errorMessage = "待测序样品列表为空，请先添加测序质粒与引物信息。"
+            errorMessage = L10n.t("待测序样品列表为空，请先添加测序质粒与引物信息。")
             showErrorAlert = true
             return
         }
@@ -176,7 +176,7 @@ public final class OrderExportViewModel: ObservableObject {
             )
             self.exportedFilePath = path
             self.showSuccessAlert = true
-            AppState.shared.showToast("已成功导出「\(selectedSeqTemplate.displayName)」！")
+            AppState.shared.showToast(L10n.tr("已成功导出「\(selectedSeqTemplate.displayName)」！", "Exported \"\(L10n.t(selectedSeqTemplate.displayName))\"!"))
         } catch {
             self.errorMessage = error.localizedDescription
             self.showErrorAlert = true
@@ -198,7 +198,7 @@ public final class OrderExportViewModel: ObservableObject {
             notes: "重组质粒测序验证"
         )
         AppState.shared.sangonSamples.append(item)
-        AppState.shared.showToast("已添加测序样品：\(item.sampleName)")
+        AppState.shared.showToast(L10n.tr("已添加测序样品：\(item.sampleName)", "Added sequencing sample: \(item.sampleName)"))
     }
     
     /// 快速添加 T7 + BGH (或通用正反向) 测序对
@@ -247,7 +247,7 @@ public final class OrderExportViewModel: ObservableObject {
         let primers = AppState.shared.primersCart
         guard !primers.isEmpty else { return }
         
-        var lines: [String] = ["引物名称\t引物序列(5'->3')\t碱基数\t纯度\tOD\t备注"]
+        var lines: [String] = [L10n.t("引物名称\t引物序列(5'->3')\t碱基数\t纯度\tOD\t备注")]
         for p in primers {
             lines.append("\(p.name)\t\(p.fullSequence)\t\(p.length)\t\(p.purity)\t\(p.od)\t\(p.notes)")
         }

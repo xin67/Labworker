@@ -77,9 +77,9 @@ public struct CRISPRDesigner {
             homologyArm: vector.fwdPrefix.lowercased(),
             specificSequence: cleanSeq,
             tm: fwdTm,
-            targetPurpose: "[\(species.shortName) sgRNA] 正向退火引物 (Top)",
-            notes: "[\(species.shortName)] 靶基因: \(geneName) | 载体: \(vector.rawValue) | 5'加 \(vector.fwdPrefix)",
-            sourceTool: "sgRNA设计"
+            targetPurpose: L10n.tr("[\(species.shortName) sgRNA] 正向退火引物 (Top)", "[\(species.shortName) sgRNA] Forward Annealing Oligo (Top)"),
+            notes: L10n.tr("[\(species.shortName)] 靶基因: \(geneName) | 载体: \(vector.rawValue) | 5'加 \(vector.fwdPrefix)", "[\(species.shortName)] Target: \(geneName) | Vector: \(vector.rawValue) | 5'+\(vector.fwdPrefix)"),
+            sourceTool: L10n.t("sgRNA设计")
         )
         
         let revItem = PrimerItem(
@@ -88,9 +88,9 @@ public struct CRISPRDesigner {
             homologyArm: vector.revPrefix.lowercased(),
             specificSequence: revComp,
             tm: revTm,
-            targetPurpose: "[\(species.shortName) sgRNA] 反向退火引物 (Bottom)",
-            notes: "[\(species.shortName)] 靶基因: \(geneName) | 载体: \(vector.rawValue) | 5'加 \(vector.revPrefix) 3'加 \(vector.revSuffix)",
-            sourceTool: "sgRNA设计"
+            targetPurpose: L10n.tr("[\(species.shortName) sgRNA] 反向退火引物 (Bottom)", "[\(species.shortName) sgRNA] Reverse Annealing Oligo (Bottom)"),
+            notes: L10n.tr("[\(species.shortName)] 靶基因: \(geneName) | 载体: \(vector.rawValue) | 5'加 \(vector.revPrefix) 3'加 \(vector.revSuffix)", "[\(species.shortName)] Target: \(geneName) | Vector: \(vector.rawValue) | 5'+\(vector.revPrefix) 3'+\(vector.revSuffix)"),
+            sourceTool: L10n.t("sgRNA设计")
         )
         
         return PairResult(fwdPrimer: fwdItem, revPrimer: revItem)

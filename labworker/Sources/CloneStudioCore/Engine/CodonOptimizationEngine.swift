@@ -410,7 +410,7 @@ public enum CodonOptimizationEngine {
             let rawDNA = BioSequence.clean(inputSequence)
             let rem = rawDNA.count % 3
             if rem != 0 {
-                notices.append("输入 DNA 序列长度 (\(rawDNA.count) bp) 非 3 的整数倍，已截去末尾 \(rem) bp 用于密码子优化。")
+                notices.append(L10n.tr("输入 DNA 序列长度 (\(rawDNA.count) bp) 非 3 的整数倍，已截去末尾 \(rem) bp 用于密码子优化。", "Input DNA length (\(rawDNA.count) bp) is not a multiple of 3; truncated trailing \(rem) bp for optimization."))
             }
             let usableCount = rawDNA.count - rem
             let trimmedDNA = String(rawDNA.prefix(usableCount))
@@ -445,7 +445,7 @@ public enum CodonOptimizationEngine {
                 gcProfileBefore: [],
                 gcProfileAfter: [],
                 constraintChecks: [],
-                notices: ["请输入有效的 DNA CDS 或氨基酸序列。"],
+                notices: [L10n.t("请输入有效的 DNA CDS 或氨基酸序列。")],
                 isSynthesisReady: false
             )
         }
@@ -913,12 +913,12 @@ public enum CodonOptimizationEngine {
         // 1. 禁区酶切位点与 Motif
         let motifHits = findMotifHits(in: chars, motifs: motifs)
         let motifDetail = motifHits.isEmpty
-            ? "未检出 \(config.forbiddenEnzymeNames.joined(separator: "/")) 等禁用酶切位点与禁忌序列"
-            : "残留 \(motifHits.count) 处位点：" + motifHits.prefix(4).map { "\($0.name)@\($0.start0 + 1)" }.joined(separator: ", ")
+            ? L10n.tr("未检出 \(config.forbiddenEnzymeNames.joined(separator: "/")) 等禁用酶切位点与禁忌序列", "Zero forbidden restriction sites (\(config.forbiddenEnzymeNames.joined(separator: "/"))) or blacklisted motifs")
+            : L10n.tr("残留 \(motifHits.count) 处位点：", "\(motifHits.count) remaining site(s): ") + motifHits.prefix(4).map { "\($0.name)@\($0.start0 + 1)" }.joined(separator: ", ")
         checks.append(
             ConstraintCheckItem(
                 id: "motifs",
-                title: "禁用酶切位点与禁忌 Motif 清零",
+                title: L10n.t("禁用酶切位点与禁忌 Motif 清零"),
                 passed: motifHits.isEmpty,
                 detail: motifDetail,
                 violationPositions1Based: motifHits.map { $0.start0 + 1 }
@@ -928,12 +928,12 @@ public enum CodonOptimizationEngine {
         // 2. 连续同聚物
         let hps = findHomopolymers(in: chars, minLen: config.maxHomopolymerLength)
         let hpDetail = hps.isEmpty
-            ? "全长无 ≥\(config.maxHomopolymerLength) bp 连续单碱基同聚物"
-            : "残留 \(hps.count) 处长同聚物：" + hps.prefix(4).map { "@\($0.start0 + 1)(\($0.end0 - $0.start0 + 1)bp)" }.joined(separator: ", ")
+            ? L10n.tr("全长无 ≥\(config.maxHomopolymerLength) bp 连续单碱基同聚物", "No homopolymer runs >= \(config.maxHomopolymerLength) bp")
+            : L10n.tr("残留 \(hps.count) 处长同聚物：", "\(hps.count) long homopolymer(s): ") + hps.prefix(4).map { "@\($0.start0 + 1)(\($0.end0 - $0.start0 + 1)bp)" }.joined(separator: ", ")
         checks.append(
             ConstraintCheckItem(
                 id: "homopolymer",
-                title: "同聚物控制 (< \(config.maxHomopolymerLength) bp)",
+                title: L10n.tr("同聚物控制 (< \(config.maxHomopolymerLength) bp)", "Homopolymer Control (< \(config.maxHomopolymerLength) bp)"),
                 passed: hps.isEmpty,
                 detail: hpDetail,
                 violationPositions1Based: hps.map { $0.start0 + 1 }
@@ -948,12 +948,12 @@ public enum CodonOptimizationEngine {
         let obsMin = profile.map(\.gcPercent).min() ?? 0
         let obsMax = profile.map(\.gcPercent).max() ?? 0
         let gcDetail = badWindows.isEmpty
-            ? String(format: "全部 %d bp 滑动窗 GC 处于 %.1f%%–%.1f%%（目标 %.0f%%–%.0f%%）", config.gcWindowSizeBp, obsMin, obsMax, minPct, maxPct)
-            : String(format: "%d 个滑动窗越界（实测 %.1f%%–%.1f%% vs 目标 %.0f%%–%.0f%%）", badWindows.count, obsMin, obsMax, minPct, maxPct)
+            ? String(format: L10n.tr("全部 %d bp 滑动窗 GC 处于 %.1f%%–%.1f%%（目标 %.0f%%–%.0f%%）", "All %d-bp sliding-window GC% within %.1f%%–%.1f%% (target %.0f%%–%.0f%%)"), config.gcWindowSizeBp, obsMin, obsMax, minPct, maxPct)
+            : String(format: L10n.tr("%d 个滑动窗越界（实测 %.1f%%–%.1f%% vs 目标 %.0f%%–%.0f%%）", "%d window(s) out of bounds (observed %.1f%%–%.1f%% vs target %.0f%%–%.0f%%)"), badWindows.count, obsMin, obsMax, minPct, maxPct)
         checks.append(
             ConstraintCheckItem(
                 id: "window_gc",
-                title: "局部 \(config.gcWindowSizeBp) bp 滑动窗 GC (\(Int(minPct))%–\(Int(maxPct))%)",
+                title: L10n.tr("局部 \(config.gcWindowSizeBp) bp 滑动窗 GC (\(Int(minPct))%–\(Int(maxPct))%)", "Local \(config.gcWindowSizeBp)-bp Window GC (\(Int(minPct))%–\(Int(maxPct))%)"),
                 passed: badWindows.isEmpty,
                 detail: gcDetail,
                 violationPositions1Based: badWindows.map(\.centerBp)
@@ -963,12 +963,12 @@ public enum CodonOptimizationEngine {
         // 4. 直接重复序列
         let repeats = findDirectRepeats(in: chars, repeatLen: config.maxDirectRepeatLength)
         let repDetail = repeats.isEmpty
-            ? "未发现长度 ≥\(config.maxDirectRepeatLength) bp 的内部直接重复片段"
-            : "发现 \(repeats.count) 处 ≥\(config.maxDirectRepeatLength) bp 直接重复：" + repeats.prefix(3).map { "\($0.seq)@\($0.start0 + 1)" }.joined(separator: ", ")
+            ? L10n.tr("未发现长度 ≥\(config.maxDirectRepeatLength) bp 的内部直接重复片段", "No internal direct repeats >= \(config.maxDirectRepeatLength) bp")
+            : L10n.tr("发现 \(repeats.count) 处 ≥\(config.maxDirectRepeatLength) bp 直接重复：", "\(repeats.count) direct repeat(s) >= \(config.maxDirectRepeatLength) bp: ") + repeats.prefix(3).map { "\($0.seq)@\($0.start0 + 1)" }.joined(separator: ", ")
         checks.append(
             ConstraintCheckItem(
                 id: "repeats",
-                title: "内部重复序列 (< \(config.maxDirectRepeatLength) bp)",
+                title: L10n.tr("内部重复序列 (< \(config.maxDirectRepeatLength) bp)", "Direct Repeats (< \(config.maxDirectRepeatLength) bp)"),
                 passed: repeats.isEmpty,
                 detail: repDetail,
                 violationPositions1Based: repeats.map { $0.start0 + 1 }
@@ -981,9 +981,9 @@ public enum CodonOptimizationEngine {
         checks.append(
             ConstraintCheckItem(
                 id: "five_prime_hairpin",
-                title: "5' 起始区前 45 bp 发夹稳定性",
+                title: L10n.t("5' 起始区前 45 bp 发夹稳定性"),
                 passed: structPassed,
-                detail: String(format: "5' 端前 45 bp 发夹 ΔG = %.2f kcal/mol（建议 ≥ -3.0 kcal/mol）", fivePrimeDG),
+                detail: String(format: L10n.tr("5' 端前 45 bp 发夹 ΔG = %.2f kcal/mol（建议 ≥ -3.0 kcal/mol）", "5' first 45-bp hairpin ΔG = %.2f kcal/mol (>= -3.0 kcal/mol recommended)"), fivePrimeDG),
                 violationPositions1Based: structPassed ? [] : [1]
             )
         )

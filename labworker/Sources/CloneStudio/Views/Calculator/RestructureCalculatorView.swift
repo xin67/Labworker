@@ -4,12 +4,14 @@ import SwiftUI
 
 /// 生物计算与反应体系工作台（整合克隆/连接摩尔比配液、DNA 换算、蛋白质换算与生理生化公式）
 public struct RestructureCalculatorView: View {
+    @Environment(\.appLanguage) private var appLanguage
     @ObservedObject private var vm = WorkspaceSessionManager.shared.calculatorVM
     @ObservedObject private var bioVM = WorkspaceSessionManager.shared.bioCalculatorVM
     
     public init() {}
     
     public var body: some View {
+        let _ = appLanguage
         StudioPageLayout(
             title: "生物计算器",
             toolbar: activeToolbarItems
@@ -132,29 +134,29 @@ public struct RestructureCalculatorView: View {
             VStack(alignment: .leading, spacing: 14) {
                 StudioCard(title: "经典连接 / 摩尔比投入量参数") {
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                        StudioMetricBadge(label: "载体", value: "\(vecBp) bp", color: .blue)
-                        StudioMetricBadge(label: "片段", value: "\(insBp) bp", color: .purple)
-                        StudioMetricBadge(label: "比例", value: vm.ligationMolarRatio.title, color: .teal)
+                        StudioMetricBadge(label: L10n.t("载体"), value: "\(vecBp) bp", color: .blue)
+                        StudioMetricBadge(label: L10n.t("片段"), value: "\(insBp) bp", color: .purple)
+                        StudioMetricBadge(label: L10n.t("比例"), value: vm.ligationMolarRatio.title, color: .teal)
                     }
                 } content: {
                     VStack(alignment: .leading, spacing: 12) {
                         StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 8) {
                             labeledInputField(
-                                label: "载体长度",
-                                placeholder: "5000 (或 kb)",
+                                label: L10n.t("载体长度"),
+                                placeholder: L10n.t("5000 (或 kb)"),
                                 text: $vm.vectorLengthKb,
                                 unit: "kb (≥40按bp)",
                                 width: 82
                             )
                             labeledInputField(
-                                label: "载体浓度",
+                                label: L10n.t("载体浓度"),
                                 placeholder: "50",
                                 text: $vm.vectorConcentration,
                                 unit: "ng/μL",
                                 width: 70
                             )
                             labeledInputField(
-                                label: "载体摩尔量",
+                                label: L10n.t("载体摩尔量"),
                                 placeholder: "0.03",
                                 text: $vm.ligationVectorPmol,
                                 unit: "pmol",
@@ -167,7 +169,7 @@ public struct RestructureCalculatorView: View {
                             Image(systemName: "info.circle.fill")
                                 .font(.system(size: 11.5))
                                 .foregroundColor(.teal)
-                            Text("同源重组/连接推荐载体最适使用量为 0.03 pmol（约合 19.5 ng/kb）。")
+                            Text(L10n.t("同源重组/连接推荐载体最适使用量为 0.03 pmol（约合 19.5 ng/kb）。"))
                                 .font(.system(size: 11.5))
                                 .monospacedDigit()
                                 .foregroundColor(.secondary)
@@ -177,14 +179,14 @@ public struct RestructureCalculatorView: View {
 
                         StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 8) {
                             labeledInputField(
-                                label: "片段长度",
-                                placeholder: "1000 (或 kb)",
+                                label: L10n.t("片段长度"),
+                                placeholder: L10n.t("1000 (或 kb)"),
                                 text: bindingForLength(at: 0),
                                 unit: "kb (≥40按bp)",
                                 width: 82
                             )
                             labeledInputField(
-                                label: "片段浓度",
+                                label: L10n.t("片段浓度"),
                                 placeholder: "25",
                                 text: bindingForConc(at: 0),
                                 unit: "ng/μL",
@@ -193,7 +195,7 @@ public struct RestructureCalculatorView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("载体 : 插入片段 摩尔比")
+                            Text(L10n.t("载体 : 插入片段 摩尔比"))
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(.primary)
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
@@ -217,8 +219,8 @@ public struct RestructureCalculatorView: View {
                                     .padding(.top, 1)
                                 Text(
                                     lig.lowInsertMultiWarning
-                                        ? "当前插入片段计算投入量仅 \(BioMathFormatter.format(lig.insertNg)) ng：单片段插入推荐 > 20 ng，多片段组装推荐单个 > 10 ng，建议提高片段比例或载体用量。"
-                                        : "当前插入片段计算投入量为 \(BioMathFormatter.format(lig.insertNg)) ng（< 20 ng）：若为单片段克隆/连接，推荐插入片段使用量 > 20 ng（多片段推荐 > 10 ng）。"
+                                        ? L10n.tr("当前插入片段计算投入量仅 \(BioMathFormatter.format(lig.insertNg)) ng：单片段插入推荐 > 20 ng，多片段组装推荐单个 > 10 ng，建议提高片段比例或载体用量。", "Calculated insert mass is only \(BioMathFormatter.format(lig.insertNg)) ng: > 20 ng recommended for single-insert cloning (> 10 ng each for multi-fragment). Consider increasing molar ratio or vector input.")
+                                        : L10n.tr("当前插入片段计算投入量为 \(BioMathFormatter.format(lig.insertNg)) ng（< 20 ng）：若为单片段克隆/连接，推荐插入片段使用量 > 20 ng（多片段推荐 > 10 ng）。", "Calculated insert mass is \(BioMathFormatter.format(lig.insertNg)) ng (< 20 ng): > 20 ng recommended for single-fragment cloning/ligation (> 10 ng for multi-fragment).")
                                 )
                                 .font(.system(size: 11.5))
                                 .monospacedDigit()
@@ -234,7 +236,7 @@ public struct RestructureCalculatorView: View {
         } right: {
             VStack(alignment: .leading, spacing: 14) {
                 StudioCard(title: "最适用量与体积测算表") {
-                    StudioMetricBadge(label: "比例", value: vm.ligationMolarRatio.title, color: .purple)
+                    StudioMetricBadge(label: L10n.t("比例"), value: vm.ligationMolarRatio.title, color: .purple)
                 } content: {
                     if let lig = ligRes {
                         let vVolStr = lig.vectorVolUl.map { String(format: "%.2f μL", $0) } ?? "-- μL"
@@ -249,14 +251,14 @@ public struct RestructureCalculatorView: View {
                                 tint: .blue
                             )
                             pipetteRow(
-                                name: vm.vectorName.isEmpty ? "线性化载体 (\(lig.vectorLengthBp) bp)" : "\(vm.vectorName) (\(lig.vectorLengthBp) bp)",
-                                detail: "最适投入 \(vNgStr) (\(BioMathFormatter.format(lig.vectorPmol)) pmol)",
+                                name: vm.vectorName.isEmpty ? L10n.tr("线性化载体 (\(lig.vectorLengthBp) bp)", "Linearized Vector (\(lig.vectorLengthBp) bp)") : "\(vm.vectorName) (\(lig.vectorLengthBp) bp)",
+                                detail: L10n.tr("最适投入 \(vNgStr) (\(BioMathFormatter.format(lig.vectorPmol)) pmol)", "Optimal input \(vNgStr) (\(BioMathFormatter.format(lig.vectorPmol)) pmol)"),
                                 vol: vVolStr,
                                 tint: .teal
                             )
                             pipetteRow(
-                                name: "插入片段 (\(lig.insertLengthBp) bp)",
-                                detail: "最适投入 \(iNgStr) (摩尔比 \(lig.molarRatio.title))",
+                                name: L10n.tr("插入片段 (\(lig.insertLengthBp) bp)", "Insert Fragment (\(lig.insertLengthBp) bp)"),
+                                detail: L10n.tr("最适投入 \(iNgStr) (摩尔比 \(lig.molarRatio.title))", "Optimal input \(iNgStr) (Ratio \(lig.molarRatio.title))"),
                                 vol: iVolStr,
                                 tint: .purple
                             )
@@ -269,7 +271,7 @@ public struct RestructureCalculatorView: View {
                             HStack {
                                 Spacer()
                                 StudioCompactPillButton(title: "复制加样表", icon: "doc.on.doc", tint: .purple) {
-                                    let summary = "线性化载体(\(lig.vectorLengthBp)bp): \(vNgStr) / \(vVolStr); 插入片段(\(lig.insertLengthBp)bp, \(lig.molarRatio.title)): \(iNgStr) / \(iVolStr); ddH2O: \(vm.remainingWaterFormatted)"
+                                    let summary = L10n.tr("线性化载体(\(lig.vectorLengthBp)bp): \(vNgStr) / \(vVolStr); 插入片段(\(lig.insertLengthBp)bp, \(lig.molarRatio.title)): \(iNgStr) / \(iVolStr); ddH2O: \(vm.remainingWaterFormatted)", "Linearized Vector (\(lig.vectorLengthBp) bp): \(vNgStr) / \(vVolStr); Insert (\(lig.insertLengthBp) bp, \(lig.molarRatio.title)): \(iNgStr) / \(iVolStr); ddH2O: \(vm.remainingWaterFormatted)")
                                     NSPasteboard.general.clearContents()
                                     NSPasteboard.general.setString(summary, forType: .string)
                                     AppState.shared.showToast("已复制摩尔比配液表到剪贴板")
@@ -277,7 +279,7 @@ public struct RestructureCalculatorView: View {
                             }
                         }
                     } else {
-                        Text("请输入大于 0 的载体长度、载体摩尔量与插入片段长度。")
+                        Text(L10n.t("请输入大于 0 的载体长度、载体摩尔量与插入片段长度。"))
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
@@ -287,8 +289,8 @@ public struct RestructureCalculatorView: View {
                     EmptyView()
                 } content: {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("载体最适用量 (ng) = pmol载体 × 载体长度 (bp) × 0.65\n片段最适用量 (ng) = pmol载体 × 摩尔比 × 片段长度 (bp) × 0.65\n移液体积 (μL) = 最适使用量 (ng) ÷ 实测浓度 (ng/μL)")
-                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        Text(L10n.t("载体最适用量 (ng) = pmol载体 × 载体长度 (bp) × 0.65\n片段最适用量 (ng) = pmol载体 × 摩尔比 × 片段长度 (bp) × 0.65\n移液体积 (μL) = 最适使用量 (ng) ÷ 实测浓度 (ng/μL)"))
+                            .font(.system(size: 12, weight: .semibold))
                             .monospacedDigit()
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -302,15 +304,15 @@ public struct RestructureCalculatorView: View {
     // MARK: - 1. 载体参数卡片
     private var vectorCard: some View {
         let res = vm.vectorResult
-        return StudioCard(title: vm.vectorName.isEmpty ? "载体参数" : "载体参数 · \(vm.vectorName)") {
+        return StudioCard(title: vm.vectorName.isEmpty ? L10n.t("载体参数") : L10n.tr("载体参数 · \(vm.vectorName)", "Vector Parameters · \(vm.vectorName)")) {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                 StudioMetricBadge(
-                    label: "长度",
+                    label: L10n.t("长度"),
                     value: "\(vm.parsedVectorLengthBp) bp",
                     color: .blue
                 )
                 StudioMetricBadge(
-                    label: "公式推荐",
+                    label: L10n.t("公式推荐"),
                     value: "\(res.recommendedNgFormatted) ng",
                     color: .teal
                 )
@@ -325,7 +327,7 @@ public struct RestructureCalculatorView: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 14) {
                         labeledInputField(
-                            label: "长度",
+                            label: L10n.t("长度"),
                             placeholder: "5.0",
                             text: $vm.vectorLengthKb,
                             unit: "kb",
@@ -333,7 +335,7 @@ public struct RestructureCalculatorView: View {
                         )
                         
                         labeledInputField(
-                            label: "浓度",
+                            label: L10n.t("浓度"),
                             placeholder: "50",
                             text: $vm.vectorConcentration,
                             unit: "ng/μL",
@@ -341,7 +343,7 @@ public struct RestructureCalculatorView: View {
                         )
                         
                         labeledInputField(
-                            label: "投入量",
+                            label: L10n.t("投入量"),
                             placeholder: res.recommendedNgFormatted,
                             text: $vm.vectorCustomNg,
                             unit: "ng",
@@ -352,7 +354,7 @@ public struct RestructureCalculatorView: View {
                         Spacer(minLength: 4)
                         
                         HStack(spacing: 5) {
-                            Text("移液体积:")
+                            Text(L10n.t("移液体积:"))
                                 .font(.system(size: 12.5, weight: .semibold))
                                 .foregroundColor(.secondary)
                             Text("\(res.volFormatted) μL")
@@ -371,21 +373,21 @@ public struct RestructureCalculatorView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 12) {
                             labeledInputField(
-                                label: "长度",
+                                label: L10n.t("长度"),
                                 placeholder: "5.0",
                                 text: $vm.vectorLengthKb,
                                 unit: "kb",
                                 width: 68
                             )
                             labeledInputField(
-                                label: "浓度",
+                                label: L10n.t("浓度"),
                                 placeholder: "50",
                                 text: $vm.vectorConcentration,
                                 unit: "ng/μL",
                                 width: 68
                             )
                             labeledInputField(
-                                label: "投入量",
+                                label: L10n.t("投入量"),
                                 placeholder: res.recommendedNgFormatted,
                                 text: $vm.vectorCustomNg,
                                 unit: "ng",
@@ -395,7 +397,7 @@ public struct RestructureCalculatorView: View {
                         }
                         HStack {
                             Spacer()
-                            Text("移液体积: \(res.volFormatted) μL")
+                            Text(L10n.tr("移液体积: \(res.volFormatted) μL", "Pipette Vol: \(res.volFormatted) μL"))
                                 .font(.system(size: 13.5, weight: .bold))
                                 .monospacedDigit()
                                 .foregroundColor(.green)
@@ -405,13 +407,13 @@ public struct RestructureCalculatorView: View {
                 
                 // 载体投入量 ng 快捷选择胶囊条（采用 StudioFlowLayout 流式自动折行）
                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                    Text("快捷 ng:")
+                    Text(L10n.t("快捷 ng:"))
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundColor(.secondary)
                         .padding(.vertical, 3.5)
                     
                     ngPresetPill(
-                        title: "推荐 (\(res.recommendedNgFormatted) ng)",
+                        title: L10n.tr("推荐 (\(res.recommendedNgFormatted) ng)", "Rec. (\(res.recommendedNgFormatted) ng)"),
                         isSelected: !res.isCustomNg,
                         tint: .blue
                     ) {
@@ -459,8 +461,8 @@ public struct RestructureCalculatorView: View {
     private func insertFragmentRow(at idx: Int) -> some View {
         let res = vm.insertResult(at: idx)
         let bpLen = vm.parsedInsertLengthBp(at: idx)
-        let rawName = (idx < vm.insertNames.count && !vm.insertNames[idx].isEmpty) ? vm.insertNames[idx] : "片段 \(idx + 1)"
-        let displayTitle = (vm.cloneType == .multi) ? rawName : (rawName == "片段 1" ? "插入片段" : rawName)
+        let rawName = (idx < vm.insertNames.count && !vm.insertNames[idx].isEmpty) ? vm.insertNames[idx] : L10n.tr("片段 \(idx + 1)", "Fragment \(idx + 1)")
+        let displayTitle = (vm.cloneType == .multi) ? rawName : ((rawName == "片段 1" || rawName == "Fragment 1") ? L10n.t("插入片段") : rawName)
         
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
@@ -472,7 +474,7 @@ public struct RestructureCalculatorView: View {
                 Spacer()
                 
                 HStack(spacing: 5) {
-                    Text("移液:")
+                    Text(L10n.t("移液:"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.secondary)
                     Text("\(res.volFormatted) μL")
@@ -502,19 +504,19 @@ public struct RestructureCalculatorView: View {
             
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                 StudioMetricBadge(
-                    label: "长度",
+                    label: L10n.t("长度"),
                     value: "\(bpLen) bp",
                     color: .purple
                 )
                 
                 StudioMetricBadge(
-                    label: "公式推荐",
+                    label: L10n.t("公式推荐"),
                     value: "\(res.recommendedNgFormatted) ng",
                     color: .teal
                 )
                 
                 StudioMetricBadge(
-                    label: "当前投入",
+                    label: L10n.t("当前投入"),
                     value: "\(res.actualNgFormatted) ng",
                     color: res.isCustomNg ? .orange : .purple
                 )
@@ -523,7 +525,7 @@ public struct RestructureCalculatorView: View {
             
             StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 8) {
                 labeledInputField(
-                    label: "长度",
+                    label: L10n.t("长度"),
                     placeholder: "1.0",
                     text: bindingForLength(at: idx),
                     unit: "kb",
@@ -531,7 +533,7 @@ public struct RestructureCalculatorView: View {
                 )
                 
                 labeledInputField(
-                    label: "浓度",
+                    label: L10n.t("浓度"),
                     placeholder: "20",
                     text: bindingForConc(at: idx),
                     unit: "ng/μL",
@@ -539,7 +541,7 @@ public struct RestructureCalculatorView: View {
                 )
                 
                 labeledInputField(
-                    label: "投入量",
+                    label: L10n.t("投入量"),
                     placeholder: res.recommendedNgFormatted,
                     text: bindingForCustomNg(at: idx),
                     unit: "ng",
@@ -550,13 +552,13 @@ public struct RestructureCalculatorView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                Text("快捷 ng:")
+                Text(L10n.t("快捷 ng:"))
                     .font(.system(size: 11.5, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(.vertical, 3.5)
                 
                 ngPresetPill(
-                    title: "推荐 (\(res.recommendedNgFormatted) ng)",
+                    title: L10n.tr("推荐 (\(res.recommendedNgFormatted) ng)", "Rec. (\(res.recommendedNgFormatted) ng)"),
                     isSelected: !res.isCustomNg,
                     tint: .purple
                 ) {
@@ -582,7 +584,7 @@ public struct RestructureCalculatorView: View {
     // MARK: - 3. 右侧：20 μL 推荐反应体系单
     private var reactionSystemCard: some View {
         StudioCard(title: "20 μL 推荐反应体系") {
-            StudioMetricBadge(label: "条件", value: "50℃ · 15 min", color: .green)
+            StudioMetricBadge(label: L10n.t("条件"), value: "50℃ · 15 min", color: .green)
         } content: {
             VStack(alignment: .leading, spacing: 8) {
                 pipetteRow(
@@ -595,8 +597,8 @@ public struct RestructureCalculatorView: View {
                 if vm.cloneType != .simple {
                     let vRes = vm.vectorResult
                     pipetteRow(
-                        name: vm.vectorName.isEmpty ? "线性化载体" : "载体 (\(vm.vectorName))",
-                        detail: "\(vm.parsedVectorLengthBp) bp · 投入 \(vRes.actualNgFormatted) ng",
+                        name: vm.vectorName.isEmpty ? L10n.t("线性化载体") : L10n.tr("载体 (\(vm.vectorName))", "Vector (\(vm.vectorName))"),
+                        detail: L10n.tr("\(vm.parsedVectorLengthBp) bp · 投入 \(vRes.actualNgFormatted) ng", "\(vm.parsedVectorLengthBp) bp · Input \(vRes.actualNgFormatted) ng"),
                         vol: "\(vRes.volFormatted) μL",
                         tint: .teal
                     )
@@ -606,11 +608,11 @@ public struct RestructureCalculatorView: View {
                 ForEach(0..<count, id: \.self) { idx in
                     let r = vm.insertResult(at: idx)
                     let bp = vm.parsedInsertLengthBp(at: idx)
-                    let rawName = (idx < vm.insertNames.count && !vm.insertNames[idx].isEmpty) ? vm.insertNames[idx] : "片段 \(idx + 1)"
-                    let title = (vm.cloneType == .multi) ? rawName : (rawName == "片段 1" ? "插入片段" : rawName)
+                    let rawName = (idx < vm.insertNames.count && !vm.insertNames[idx].isEmpty) ? vm.insertNames[idx] : L10n.tr("片段 \(idx + 1)", "Fragment \(idx + 1)")
+                    let title = (vm.cloneType == .multi) ? rawName : ((rawName == "片段 1" || rawName == "Fragment 1") ? L10n.t("插入片段") : rawName)
                     pipetteRow(
                         name: title,
-                        detail: "\(bp) bp · 投入 \(r.actualNgFormatted) ng",
+                        detail: L10n.tr("\(bp) bp · 投入 \(r.actualNgFormatted) ng", "\(bp) bp · Input \(r.actualNgFormatted) ng"),
                         vol: "\(r.volFormatted) μL",
                         tint: .purple
                     )
@@ -636,10 +638,10 @@ public struct RestructureCalculatorView: View {
         highlightColor: Color? = nil
     ) -> some View {
         HStack(spacing: 5) {
-            Text("\(label):")
+            Text("\(L10n.t(label)):")
                 .font(.system(size: 12.5, weight: .medium))
                 .foregroundColor(.secondary)
-            TextField(placeholder, text: text)
+            TextField(L10n.t(placeholder), text: text)
                 .textFieldStyle(.roundedBorder)
                 .font(.system(size: 12.5, weight: .semibold))
                 .monospacedDigit()
@@ -648,7 +650,7 @@ public struct RestructureCalculatorView: View {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .stroke(highlightColor?.opacity(0.45) ?? Color.clear, lineWidth: 1)
                 )
-            Text(unit)
+            Text(L10n.t(unit))
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundColor(.secondary)
         }
@@ -671,10 +673,10 @@ public struct RestructureCalculatorView: View {
     private func pipetteRow(name: String, detail: String, vol: String, tint: Color) -> some View {
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(name)
+                Text(L10n.t(name))
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundColor(.primary)
-                Text(detail)
+                Text(L10n.t(detail))
                     .font(.system(size: 11))
                     .monospacedDigit()
                     .foregroundColor(.secondary)

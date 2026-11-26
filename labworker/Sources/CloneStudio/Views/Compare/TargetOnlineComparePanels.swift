@@ -5,6 +5,7 @@ import CloneStudioCore
 
 /// 内嵌于 `SgRNADesignView` 的三源在线靶点并发对比面板
 public struct SgRNAOnlineComparePanel: View {
+    @Environment(\.appLanguage) private var appLanguage
     @ObservedObject private var vm = WorkspaceSessionManager.shared.chopchopVM
     public let species: TargetSpecies
     public let vectorOverhang: CRISPRDesigner.VectorOverhang
@@ -45,13 +46,13 @@ public struct SgRNAOnlineComparePanel: View {
                         var desc = "\(src.rawValue) · \(src.subtitle)"
                         switch state {
                         case .idle:
-                            desc += isEnabled ? "（已启用，等待检索）" : "（未启用，点击开启）"
+                            desc += isEnabled ? L10n.t("（已启用，等待检索）") : L10n.t("（未启用，点击开启）")
                         case .loading(let msg):
                             desc += " — \(msg)"
                         case .loaded(let cnt):
-                            desc += " — 已获取 \(cnt) 条候选"
+                            desc += L10n.tr(" — 已获取 \(cnt) 条候选", " — \(cnt) candidates fetched")
                         case .failed(let err):
-                            desc += " — 查询失败：\(err)"
+                            desc += L10n.tr(" — 查询失败：\(err)", " — Query failed: \(err)")
                         }
                         return desc
                     }()
@@ -70,7 +71,7 @@ public struct SgRNAOnlineComparePanel: View {
             
             // 2. 基因检索栏（L 档 28pt 等高对齐）
             HStack(spacing: 8) {
-                TextField("输入基因名 (如 TP53, Trp53, CDH17)", text: $vm.gene)
+                TextField(L10n.t("输入基因名 (如 TP53, Trp53, CDH17)"), text: $vm.gene)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.large)
                     .font(.system(size: 12.5))
@@ -106,7 +107,7 @@ public struct SgRNAOnlineComparePanel: View {
             
             // 3. 本地 sgRNA 序列对比栏
             LocalCompareSequenceBar(
-                placeholder: "粘贴本地 20bp sgRNA 序列高亮比对（支持空格/逗号分隔多条）",
+                placeholder: L10n.t("粘贴本地 20bp sgRNA 序列高亮比对（支持空格/逗号分隔多条）"),
                 inputText: $vm.manualCompareInput,
                 activeTargets: vm.activeUserLocalTargets,
                 hitRankForTarget: { item in
@@ -128,7 +129,7 @@ public struct SgRNAOnlineComparePanel: View {
                 VStack(alignment: .leading, spacing: 8) {
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                         StudioCompactPillButton(
-                            title: "全部 (\(vm.targets.count))",
+                            title: L10n.tr("全部 (\(vm.targets.count))", "All (\(vm.targets.count))"),
                             tint: vm.activeSourceFilter == .all ? .blue : nil,
                             isSelected: vm.activeSourceFilter == .all
                         ) {
@@ -137,7 +138,7 @@ public struct SgRNAOnlineComparePanel: View {
                         
                         if vm.consensusTargetsCount > 0 {
                             StudioCompactPillButton(
-                                title: "共识 (\(vm.consensusTargetsCount))",
+                                title: L10n.tr("共识 (\(vm.consensusTargetsCount))", "Consensus (\(vm.consensusTargetsCount))"),
                                 icon: "checkmark.seal",
                                 tint: vm.activeSourceFilter == .consensus ? .teal : nil,
                                 isSelected: vm.activeSourceFilter == .consensus,
@@ -179,7 +180,7 @@ public struct SgRNAOnlineComparePanel: View {
                         
                         if vm.totalMatchedTargetsCount > 0 {
                             StudioCompactPillButton(
-                                title: "仅看命中 (\(vm.totalMatchedTargetsCount))",
+                                title: L10n.tr("仅看命中 (\(vm.totalMatchedTargetsCount))", "Hits Only (\(vm.totalMatchedTargetsCount))"),
                                 icon: "line.3.horizontal.decrease.circle",
                                 tint: .green,
                                 isSelected: vm.showOnlyLocalMatches
@@ -197,7 +198,7 @@ public struct SgRNAOnlineComparePanel: View {
                     }
                     
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                        StudioMetricBadge(label: "已选", value: "\(vm.selectedTargetIDs.count)", color: .orange)
+                        StudioMetricBadge(label: L10n.t("已选"), value: "\(vm.selectedTargetIDs.count)", color: .orange)
                         
                         StudioMenuPicker(
                             selection: $vm.sortMode,
@@ -211,7 +212,7 @@ public struct SgRNAOnlineComparePanel: View {
                         StudioCompactPillButton(title: "全选", action: vm.selectAll)
                         StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
                         StudioCompactPillButton(
-                            title: "直接加池 (\(vm.selectedTargetIDs.count))",
+                            title: L10n.tr("直接加池 (\(vm.selectedTargetIDs.count))", "Add Selected (\(vm.selectedTargetIDs.count))"),
                             icon: "cart.badge.plus",
                             tint: .green,
                             isProminent: !vm.selectedTargetIDs.isEmpty,
@@ -232,8 +233,8 @@ public struct SgRNAOnlineComparePanel: View {
                 }
             }
         }
-        .alert("提示", isPresented: $vm.showErrorAlert) {
-            Button("好的", role: .cancel) {}
+        .alert(L10n.t("提示"), isPresented: $vm.showErrorAlert) {
+            Button(L10n.t("好的"), role: .cancel) {}
         } message: {
             Text(verbatim: vm.errorMessage ?? "")
         }
@@ -257,13 +258,13 @@ public struct SgRNAOnlineComparePanel: View {
                 }
                 
                 ForEach(failedSources) { src in
-                    let errMsg = vm.sourceStates[src]?.errorMessage ?? "查询失败"
+                    let errMsg = vm.sourceStates[src]?.errorMessage ?? L10n.t("查询失败")
                     StudioCompactPillButton(
-                        title: "重试 \(src.shortTitle)",
+                        title: L10n.tr("重试 \(src.shortTitle)", "Retry \(src.shortTitle)"),
                         icon: "arrow.clockwise",
                         dotColor: .red,
                         tint: .orange,
-                        help: "\(src.rawValue) 暂未返回：\(errMsg)"
+                        help: L10n.tr("\(src.rawValue) 暂未返回：\(errMsg)", "\(src.rawValue) unavailable: \(errMsg)")
                     ) {
                         vm.species = species
                         vm.retrySource(src)
@@ -278,9 +279,9 @@ public struct SgRNAOnlineComparePanel: View {
         let isChecked = vm.selectedTargetIDs.contains(target.id)
         let isPrimaryHit = (localMatch?.isPrimaryUserSelection == true)
         let isAnyLocalHit = (localMatch != nil)
-        let sourceHelp = "命中数据源：" + target.sources.map(\.rawValue).joined(separator: " + ")
+        let sourceHelp = L10n.t("命中数据源：") + target.sources.map(\.rawValue).joined(separator: " + ")
         let sourceBadgeText = target.sources.count >= 2
-            ? "\(target.sources.count)/3 共识"
+            ? L10n.tr("\(target.sources.count)/3 共识", "\(target.sources.count)/3 Consensus")
             : (target.sources.first?.shortTitle ?? "CHOP")
         let sourceBadgeColor: Color = target.sources.count >= 3 ? .green : (target.sources.count == 2 ? .teal : .secondary)
         
@@ -307,10 +308,10 @@ public struct SgRNAOnlineComparePanel: View {
                     
                     HStack(spacing: 1) {
                         Text(verbatim: target.spacer)
-                            .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 11.5, weight: .semibold))
                             .foregroundColor(isPrimaryHit ? .green : (isChecked ? .cyan : .primary))
                         Text(verbatim: target.pam)
-                            .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                            .font(.system(size: 11.5, weight: .bold))
                             .foregroundColor(.orange)
                     }
                     .lineLimit(1)
@@ -322,7 +323,7 @@ public struct SgRNAOnlineComparePanel: View {
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help("复制 20bp Spacer")
+                    .help(L10n.t("复制 20bp Spacer"))
                     
                     Text(verbatim: sourceBadgeText)
                         .font(.system(size: 9.5, weight: .bold))
@@ -365,11 +366,11 @@ public struct SgRNAOnlineComparePanel: View {
                     
                     if target.hasCHOPCHOPOffTargets {
                         StudioMetricBadge(
-                            label: "脱靶",
+                            label: L10n.t("脱靶"),
                             value: target.offTargetSummary,
                             color: target.isHighlySpecific ? .green : .orange
                         )
-                        .help("CHOPCHOP Bowtie 全基因组错配 MM0/MM1/MM2/MM3")
+                        .help(L10n.t("CHOPCHOP Bowtie 全基因组错配 MM0/MM1/MM2/MM3"))
                     }
                     
                     if let vbc = target.vbcScore {
@@ -383,7 +384,7 @@ public struct SgRNAOnlineComparePanel: View {
                             value: String(format: "%.2f", vbc),
                             color: vbc >= 0.65 ? .green : .blue
                         )
-                        .help("VBC-Score 敲除综合分 | 活性 \(act) · inDelphi移码 \(fs) · Bioscore \(bio) · 高危脱靶 \(vl)/\(lk)")
+                        .help(L10n.tr("VBC-Score 敲除综合分 | 活性 \(act) · inDelphi移码 \(fs) · Bioscore \(bio) · 高危脱靶 \(vl)/\(lk)", "VBC-Score | Activity \(act) · inDelphi Frameshift \(fs) · Bioscore \(bio) · High-Risk Off-targets \(vl)/\(lk)"))
                     }
                     
                     if let mit = target.mitSpecificity {
@@ -395,15 +396,15 @@ public struct SgRNAOnlineComparePanel: View {
                             value: "\(mit)",
                             color: mit >= 65 ? .green : .orange
                         )
-                        .help("UCSC CRISPOR MIT 特异性分 | Doench2016 \(doenchTxt) · CRISPRscan \(scanTxt) · 移码分 \(oofTxt)")
+                        .help(L10n.tr("UCSC CRISPOR MIT 特异性分 | Doench2016 \(doenchTxt) · CRISPRscan \(scanTxt) · 移码分 \(oofTxt)", "UCSC CRISPOR MIT Specificity | Doench 2016 \(doenchTxt) · CRISPRscan \(scanTxt) · Out-of-Frame \(oofTxt)"))
                     }
                     
                     StudioMetricBadge(
-                        label: "效率",
+                        label: L10n.t("效率"),
                         value: String(format: "%.1f", target.efficiency),
                         color: .blue
                     )
-                    .help("切割活性/百分位评分")
+                    .help(L10n.t("切割活性/百分位评分"))
                 }
                 .padding(.leading, 26)
             }
@@ -415,6 +416,7 @@ public struct SgRNAOnlineComparePanel: View {
 
 /// 内嵌于 `ShRNADesignView` 的 Broad GPP Public Portal (TRC shRNA) 在线对比面板
 public struct ShRNABroadGPPComparePanel: View {
+    @Environment(\.appLanguage) private var appLanguage
     @ObservedObject private var vm = WorkspaceSessionManager.shared.broadGPPVM
     public let species: TargetSpecies
     public let loopSequence: String
@@ -434,7 +436,7 @@ public struct ShRNABroadGPPComparePanel: View {
         VStack(alignment: .leading, spacing: 10) {
             // 1. 基因检索栏（L 档 28pt 等高对齐）
             HStack(spacing: 8) {
-                TextField("基因名 / NCBI Gene ID / RefSeq (如 TP53, Trp53, CDH17)", text: $vm.gene)
+                TextField(L10n.t("基因名 / NCBI Gene ID / RefSeq (如 TP53, Trp53, CDH17)"), text: $vm.gene)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.large)
                     .font(.system(size: 12.5))
@@ -484,11 +486,11 @@ public struct ShRNABroadGPPComparePanel: View {
                     }
                     
                     if vm.wtTranscriptCount > 0 {
-                        StudioMetricBadge(label: "WT转录本", value: "\(vm.wtTranscriptCount)", color: .blue)
+                        StudioMetricBadge(label: L10n.t("WT转录本"), value: "\(vm.wtTranscriptCount)", color: .blue)
                     }
                     
                     if vm.isNearMatchFallback {
-                        Text("仅匹配到近源同源 TRC (≥84% SDR)")
+                        Text(L10n.t("仅匹配到近源同源 TRC (≥84% SDR)"))
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.orange)
                     }
@@ -507,7 +509,7 @@ public struct ShRNABroadGPPComparePanel: View {
             
             // 3. 本地 shRNA 序列高亮对比栏
             LocalCompareSequenceBar(
-                placeholder: "粘贴本地 19–21bp shRNA 靶点序列与 TRC 克隆对比",
+                placeholder: L10n.t("粘贴本地 19–21bp shRNA 靶点序列与 TRC 克隆对比"),
                 inputText: $vm.manualCompareInput,
                 activeTargets: vm.activeUserLocalTargets,
                 hitRankForTarget: { item in
@@ -561,7 +563,7 @@ public struct ShRNABroadGPPComparePanel: View {
                 VStack(alignment: .leading, spacing: 8) {
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                         StudioCompactPillButton(
-                            title: "全部 (\(vm.targets.count))",
+                            title: L10n.tr("全部 (\(vm.targets.count))", "All (\(vm.targets.count))"),
                             tint: vm.regionFilter == .all ? .blue : nil,
                             isSelected: vm.regionFilter == .all
                         ) {
@@ -589,7 +591,7 @@ public struct ShRNABroadGPPComparePanel: View {
                         }
                         
                         StudioCompactPillButton(
-                            title: "零他基因脱靶 (\(vm.specificCount))",
+                            title: L10n.tr("零他基因脱靶 (\(vm.specificCount))", "Gene-Specific (\(vm.specificCount))"),
                             icon: "checkmark.shield",
                             tint: vm.onlySpecific ? .green : nil,
                             isSelected: vm.onlySpecific,
@@ -609,7 +611,7 @@ public struct ShRNABroadGPPComparePanel: View {
                         
                         if vm.totalMatchedTargetsCount > 0 {
                             StudioCompactPillButton(
-                                title: "仅看命中 (\(vm.totalMatchedTargetsCount))",
+                                title: L10n.tr("仅看命中 (\(vm.totalMatchedTargetsCount))", "Hits Only (\(vm.totalMatchedTargetsCount))"),
                                 icon: "line.3.horizontal.decrease.circle",
                                 tint: .green,
                                 isSelected: vm.showOnlyLocalMatches
@@ -627,7 +629,7 @@ public struct ShRNABroadGPPComparePanel: View {
                     }
                     
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                        StudioMetricBadge(label: "已选", value: "\(vm.selectedTargetIDs.count)", color: .orange)
+                        StudioMetricBadge(label: L10n.t("已选"), value: "\(vm.selectedTargetIDs.count)", color: .orange)
                         
                         StudioMenuPicker(
                             selection: $vm.sortMode,
@@ -641,7 +643,7 @@ public struct ShRNABroadGPPComparePanel: View {
                         StudioCompactPillButton(title: "全选", action: vm.selectAll)
                         StudioCompactPillButton(title: "清空", tint: .red, action: vm.deselectAll)
                         StudioCompactPillButton(
-                            title: "直接加池 (\(vm.selectedTargetIDs.count))",
+                            title: L10n.tr("直接加池 (\(vm.selectedTargetIDs.count))", "Add Selected (\(vm.selectedTargetIDs.count))"),
                             icon: "cart.badge.plus",
                             tint: .green,
                             isProminent: !vm.selectedTargetIDs.isEmpty,
@@ -662,8 +664,8 @@ public struct ShRNABroadGPPComparePanel: View {
                 }
             }
         }
-        .alert("提示", isPresented: $vm.showErrorAlert) {
-            Button("好的", role: .cancel) {}
+        .alert(L10n.t("提示"), isPresented: $vm.showErrorAlert) {
+            Button(L10n.t("好的"), role: .cancel) {}
         } message: {
             Text(verbatim: vm.errorMessage ?? "")
         }
@@ -673,8 +675,8 @@ public struct ShRNABroadGPPComparePanel: View {
         let isChecked = vm.selectedTargetIDs.contains(target.id)
         let isPrimaryHit = (localMatch?.isPrimaryUserSelection == true)
         let isAnyLocalHit = (localMatch != nil)
-        let cloneHelp = "打开 Broad GPP 克隆详情页 | 全部 TRC: \(target.allCloneIDs.joined(separator: ", "))"
-            + (target.legacyCloneName.isEmpty ? "" : " | 编号: \(target.legacyCloneName)")
+        let cloneHelp = L10n.tr("打开 Broad GPP 克隆详情页 | 全部 TRC: \(target.allCloneIDs.joined(separator: ", "))", "Open Broad GPP Clone Page | All TRC: \(target.allCloneIDs.joined(separator: ", "))")
+            + (target.legacyCloneName.isEmpty ? "" : L10n.tr(" | 编号: \(target.legacyCloneName)", " | Legacy: \(target.legacyCloneName)"))
         
         return OnlineCompareRowContainer(
             isPrimaryHit: isPrimaryHit,
@@ -700,7 +702,7 @@ public struct ShRNABroadGPPComparePanel: View {
                     Button(action: { vm.openCloneInSafari(target) }) {
                         HStack(spacing: 3) {
                             Text(verbatim: target.primaryCloneID)
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .font(.system(size: 10, weight: .bold))
                             Image(systemName: "arrow.up.right")
                                 .font(.system(size: 8.5, weight: .bold))
                         }
@@ -713,7 +715,7 @@ public struct ShRNABroadGPPComparePanel: View {
                     .help(cloneHelp)
                     
                     Text(verbatim: target.targetSequence)
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11.5, weight: .semibold))
                         .foregroundColor(isPrimaryHit ? .green : (isChecked ? .indigo : .primary))
                         .lineLimit(1)
                         .textSelection(.enabled)
@@ -724,7 +726,7 @@ public struct ShRNABroadGPPComparePanel: View {
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help("复制 21bp 靶点序列")
+                    .help(L10n.t("复制 21bp 靶点序列"))
                     
                     if let match = localMatch {
                         LocalMatchPillBadge(match: match)
@@ -756,13 +758,13 @@ public struct ShRNABroadGPPComparePanel: View {
                 
                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                     StudioMetricBadge(
-                        label: "载体",
+                        label: L10n.t("载体"),
                         value: target.vectors.joined(separator: "/"),
                         color: .indigo
                     )
                     
                     StudioMetricBadge(
-                        label: "区域",
+                        label: L10n.t("区域"),
                         value: target.matchRegions,
                         color: target.isCDS ? .blue : .purple
                     )
@@ -773,7 +775,7 @@ public struct ShRNABroadGPPComparePanel: View {
                             value: String(format: "%.2f", adj),
                             color: adj >= 3.0 ? .green : .blue
                         )
-                        .help("Broad GPP Adjusted Score（特异性校正后效价）")
+                        .help(L10n.t("Broad GPP Adjusted Score（特异性校正后效价）"))
                     }
                     
                     if let intr = target.intrinsicScore {
@@ -782,7 +784,7 @@ public struct ShRNABroadGPPComparePanel: View {
                             value: String(format: "%.2f", intr),
                             color: .teal
                         )
-                        .help("Broad GPP Intrinsic Score（原始沉默效价）")
+                        .help(L10n.t("Broad GPP Intrinsic Score（原始沉默效价）"))
                     }
                     
                     StudioMetricBadge(
@@ -793,14 +795,14 @@ public struct ShRNABroadGPPComparePanel: View {
                     
                     if target.transcriptCount > 0 {
                         StudioMetricBadge(
-                            label: "转录本",
+                            label: L10n.t("转录本"),
                             value: "\(target.transcriptCount)",
                             color: .secondary
                         )
-                        .help("匹配转录本：" + target.matchingTranscripts.joined(separator: ", "))
+                        .help(L10n.t("匹配转录本：") + target.matchingTranscripts.joined(separator: ", "))
                     }
                     
-                    Text(verbatim: target.matchesOtherGene ? "⚠️ 匹配他基因" : "单基因特异")
+                    Text(verbatim: L10n.t(target.matchesOtherGene ? "⚠️ 匹配他基因" : "单基因特异"))
                         .font(.system(size: 9.5, weight: .bold))
                         .foregroundColor(target.matchesOtherGene ? .red : .green)
                         .padding(.horizontal, 6)
@@ -825,6 +827,7 @@ public struct ShRNABroadGPPComparePanel: View {
 // MARK: - 3. 共享 UI 辅助组件（无重复逻辑）
 
 private struct LocalCompareSequenceBar: View {
+    @Environment(\.appLanguage) private var appLanguage
     let placeholder: String
     @Binding var inputText: String
     let activeTargets: [LocalCompareTarget]
@@ -835,6 +838,7 @@ private struct LocalCompareSequenceBar: View {
     let onRemoveItem: (LocalCompareTarget) -> Void
     
     var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 8) {
                 TextField(placeholder, text: $inputText)
@@ -869,7 +873,7 @@ private struct LocalCompareSequenceBar: View {
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(hitText != nil ? .green : .secondary)
                             Text(verbatim: item.cleanSequence)
-                                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                                .font(.system(size: 10.5, weight: .semibold))
                                 .foregroundColor(.primary)
                             if let hitText {
                                 Text(verbatim: hitText)
@@ -879,7 +883,7 @@ private struct LocalCompareSequenceBar: View {
                                     .padding(.vertical, 1)
                                     .background(Capsule().fill(Color.green))
                             } else if hasResults {
-                                Text("未命中")
+                                Text(L10n.t("未命中"))
                                     .font(.system(size: 9.5, weight: .medium))
                                     .foregroundColor(.secondary)
                                     .padding(.horizontal, 4)
@@ -903,9 +907,11 @@ private struct LocalCompareSequenceBar: View {
 }
 
 private struct LocalMatchPillBadge: View {
+    @Environment(\.appLanguage) private var appLanguage
     let match: CHOPCHOPLocalMatchResult
     
     var body: some View {
+        let _ = appLanguage
         Text(verbatim: match.badgeText)
             .font(.system(size: 10, weight: .bold))
             .foregroundColor(match.isPrimaryUserSelection ? .white : .teal)
@@ -923,6 +929,7 @@ private struct LocalMatchPillBadge: View {
 }
 
 private struct OnlineCompareRowContainer<Content: View>: View {
+    @Environment(\.appLanguage) private var appLanguage
     let isPrimaryHit: Bool
     let isAnyLocalHit: Bool
     let isChecked: Bool
@@ -944,6 +951,7 @@ private struct OnlineCompareRowContainer<Content: View>: View {
     }
     
     var body: some View {
+        let _ = appLanguage
         let rowBg: Color = {
             if isPrimaryHit { return Color.green.opacity(0.13) }
             if isAnyLocalHit { return Color.teal.opacity(0.09) }
@@ -973,6 +981,7 @@ private struct OnlineCompareRowContainer<Content: View>: View {
 
 /// sgRNA / shRNA 共用本地文库候选行
 public struct LocalLibraryTargetRow: View {
+    @Environment(\.appLanguage) private var appLanguage
     public let target: GenomicTarget
     public let isChecked: Bool
     public let accentColor: Color
@@ -997,6 +1006,7 @@ public struct LocalLibraryTargetRow: View {
     }
     
     public var body: some View {
+        let _ = appLanguage
         let scoreRes = target.scoreResult
         HStack(spacing: 8) {
             Toggle("", isOn: Binding(
@@ -1014,7 +1024,7 @@ public struct LocalLibraryTargetRow: View {
                 .fixedSize(horizontal: true, vertical: false)
             
             Text(verbatim: target.sequence)
-                .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+                .font(.system(size: 11.5, weight: .medium))
                 .foregroundColor(isChecked ? accentColor : .primary)
                 .lineLimit(1)
                 .textSelection(.enabled)
@@ -1023,14 +1033,14 @@ public struct LocalLibraryTargetRow: View {
                 let pb = NSPasteboard.general
                 pb.clearContents()
                 pb.setString(target.sequence, forType: .string)
-                AppState.shared.showToast("\(copyToastPrefix): \(target.sequence)")
+                AppState.shared.showToast("\(L10n.t(copyToastPrefix)): \(target.sequence)")
             } label: {
                 Image(systemName: "doc.on.doc")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
-            .help("复制靶点序列")
+            .help(L10n.t("复制靶点序列"))
             
             Spacer(minLength: 4)
             
@@ -1041,7 +1051,7 @@ public struct LocalLibraryTargetRow: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color.red.opacity(0.12)))
-                    .help(polyTHelp)
+                    .help(L10n.t(polyTHelp))
             }
             
             Text(verbatim: "GC \(String(format: "%.0f", target.gcPercent))%")
@@ -1055,6 +1065,7 @@ public struct LocalLibraryTargetRow: View {
 
 /// sgRNA / shRNA 共用响应式手动输入面板
 public struct LocalCustomTargetInputSection: View {
+    @Environment(\.appLanguage) private var appLanguage
     @Binding public var geneName: String
     @Binding public var sequence: String
     public let sequencePlaceholder: String
@@ -1073,16 +1084,17 @@ public struct LocalCustomTargetInputSection: View {
     }
     
     public var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 8) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) {
-                    TextField("基因名", text: $geneName)
+                    TextField(L10n.t("基因名"), text: $geneName)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                         .frame(minWidth: 96, idealWidth: 120, maxWidth: 140)
                     
-                    TextField(sequencePlaceholder, text: $sequence)
-                        .font(.system(size: 12, design: .monospaced))
+                    TextField(L10n.t(sequencePlaceholder), text: $sequence)
+                        .font(.system(size: 12))
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                     
@@ -1092,13 +1104,13 @@ public struct LocalCustomTargetInputSection: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    TextField("基因名", text: $geneName)
+                    TextField(L10n.t("基因名"), text: $geneName)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                     
                     HStack(spacing: 8) {
-                        TextField(sequencePlaceholder, text: $sequence)
-                            .font(.system(size: 12, design: .monospaced))
+                        TextField(L10n.t(sequencePlaceholder), text: $sequence)
+                            .font(.system(size: 12))
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
                         

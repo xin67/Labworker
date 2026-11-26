@@ -3705,6 +3705,102 @@ do {
     pass("OrderTemplateEngine & ExcelOrderExporter verified (IDT/Twist/GenScript/Eurofins/BGI + Custom JSON XLSX/CSV).")
 }
 
+// 60. 验证双语本地化词典完整性、实时语言切换、动态规则与中英双语检索
+print("🧪 [60/60] Testing Bilingual Localization Dictionary & Live Switching...")
+do {
+    func containsCJK(_ text: String) -> Bool {
+        text.unicodeScalars.contains { (0x4E00...0x9FFF).contains($0.value) }
+    }
+
+    let dictCount = L10n.loadedTranslationCount
+    assert(dictCount >= 1500, "Expected >= 1500 entries in en_translations.json, got \(dictCount)")
+
+    let dict = L10n.allExactTranslations
+    assert(dict.count == dictCount)
+    let fmtRegex = try NSRegularExpression(
+        pattern: #"%%|%[-+0#]*(?:\d+|\*)?(?:\.(?:\d+|\*))?(?:hh|h|ll|l|q|L|z|t|j)?[diuoxXfFeEgGaAcCsSp@]"#
+    )
+    func printfSpecs(_ s: String) -> [String] {
+        let ns = s as NSString
+        return fmtRegex.matches(in: s, range: NSRange(location: 0, length: ns.length))
+            .map { ns.substring(with: $0.range) }
+            .filter { $0 != "%%" }
+    }
+
+    var badEnglish: [String] = []
+    var badFmt: [String] = []
+    for (zhKey, enVal) in dict {
+        if enVal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || containsCJK(enVal) {
+            badEnglish.append("\(zhKey) -> \(enVal)")
+        }
+        if zhKey.contains("%") && printfSpecs(zhKey) != printfSpecs(enVal) {
+            badFmt.append("\(zhKey) -> \(enVal)")
+        }
+    }
+    assert(badEnglish.isEmpty, "Empty or CJK-containing English values found: \(badEnglish.prefix(5))")
+    assert(badFmt.isEmpty, "Printf specifier mismatch found: \(badFmt.prefix(5))")
+
+    await MainActor.run {
+        let prevLang = AppState.shared.appLanguage
+        let prevUD = UserDefaults.standard.object(forKey: "cs_appLanguage")
+        defer {
+            AppState.shared.appLanguage = prevLang
+            if let prevUD {
+                UserDefaults.standard.set(prevUD, forKey: "cs_appLanguage")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "cs_appLanguage")
+            }
+        }
+
+        AppState.shared.appLanguage = .english
+        assert(L10n.currentLanguage == .english && L10n.isEnglish)
+
+        for sec in SidebarSectionKind.allCases {
+            assert(!sec.title.isEmpty && !containsCJK(sec.title), "SidebarSectionKind.\(sec.rawValue) leaked CJK: \(sec.title)")
+        }
+        for nav in NavItem.allCases {
+            assert(!nav.title.isEmpty && !containsCJK(nav.title), "NavItem.\(nav.rawValue).title leaked CJK: \(nav.title)")
+            assert(!nav.summaryDescription.isEmpty && !containsCJK(nav.summaryDescription), "NavItem.\(nav.rawValue).summaryDescription leaked CJK: \(nav.summaryDescription)")
+            assert(!nav.supportedFormats.isEmpty && !containsCJK(nav.supportedFormats), "NavItem.\(nav.rawValue).supportedFormats leaked CJK: \(nav.supportedFormats)")
+            assert(!nav.workflowTip.isEmpty && !containsCJK(nav.workflowTip), "NavItem.\(nav.rawValue).workflowTip leaked CJK: \(nav.workflowTip)")
+            assert(!nav.section.title.isEmpty && !containsCJK(nav.section.title), "NavItem.\(nav.rawValue).section.title leaked CJK: \(nav.section.title)")
+        }
+        for preset in SidebarVisibilityPreset.allCases {
+            assert(!preset.title.isEmpty && !containsCJK(preset.title), "SidebarVisibilityPreset leaked CJK: \(preset.title)")
+        }
+        for mode in AppAppearanceMode.allCases {
+            assert(!mode.title.isEmpty && !containsCJK(mode.title), "AppAppearanceMode.title leaked CJK: \(mode.title)")
+            assert(!mode.shortTitle.isEmpty && !containsCJK(mode.shortTitle), "AppAppearanceMode.shortTitle leaked CJK: \(mode.shortTitle)")
+        }
+        for ov in CanvasThemeOverride.allCases {
+            assert(!ov.title.isEmpty && !containsCJK(ov.title), "CanvasThemeOverride leaked CJK: \(ov.title)")
+        }
+        for theme in AppAccentTheme.allCases {
+            assert(!theme.title.isEmpty && !containsCJK(theme.title), "AppAccentTheme leaked CJK: \(theme.title)")
+        }
+        for lg in LiquidGlassStyleMode.allCases {
+            assert(!lg.title.isEmpty && !containsCJK(lg.title), "LiquidGlassStyleMode.title leaked CJK: \(lg.title)")
+            assert(!lg.shortTitle.isEmpty && !containsCJK(lg.shortTitle), "LiquidGlassStyleMode.shortTitle leaked CJK: \(lg.shortTitle)")
+        }
+        for loc in ExportSaveLocation.allCases {
+            assert(!loc.title.isEmpty && !containsCJK(loc.title), "ExportSaveLocation leaked CJK: \(loc.title)")
+        }
+
+        assert(L10n.t("96 孔板") == "96-Well Plate", "Dynamic plate format mismatch: \(L10n.t("96 孔板"))")
+        assert(L10n.t("显示全部功能 (18)") == "Show All Modules (18)", "Dynamic module preset mismatch: \(L10n.t("显示全部功能 (18)"))")
+        assert(L10n.t("3 项") == "3 items", "Dynamic item count mismatch: \(L10n.t("3 项"))")
+        assert(L10n.tr("中文", "English") == "English")
+
+        assert(NavItem.plateDesigner.matchesSearch("微孔板") == true)
+        assert(NavItem.plateDesigner.matchesSearch("Microplate") == true)
+
+        AppState.shared.appLanguage = .zhHans
+        assert(L10n.t("单片段无缝克隆") == "单片段无缝克隆")
+    }
+
+    pass("Bilingual localization verified (\(dictCount) translations, 0 CJK leaks, live switching & bilingual search).")
+}
+
 let finalPyToolCount = await MainActor.run { PlasmidPoolManager.mcpToolsCatalog.count }
 print("COUNTS tests=\(passedTests.count) tools=\(finalPyToolCount) modules=\(NavItem.allCases.count)")
 print("\n🎉 ALL \(passedTests.count) AUTOMATED VERIFICATION TESTS PASSED SUCCESSFULLY!")

@@ -107,8 +107,8 @@ public struct VectorCutSiteOption: Identifiable, Hashable, Sendable {
     public var isUnique: Bool { totalCutsInVector == 1 }
     
     public var displayTitle: String {
-        let cutTag = totalCutsInVector == 1 ? "★唯一切点" : "共\(totalCutsInVector)切点"
-        let featTag = overlappingFeatureName != nil ? " · 位于 \(overlappingFeatureName!)" : ""
+        let cutTag = totalCutsInVector == 1 ? L10n.t("★唯一切点") : L10n.tr("共\(totalCutsInVector)切点", "\(totalCutsInVector) cuts")
+        let featTag = overlappingFeatureName != nil ? L10n.tr(" · 位于 \(overlappingFeatureName!)", " · in \(overlappingFeatureName!)") : ""
         return "\(enzyme.name) (@\(position1Based) bp, \(enzyme.site)) [\(cutTag)\(featTag)]"
     }
     
@@ -251,13 +251,13 @@ public enum SnapGeneError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .scriptNotFound:
-            return "未找到 SnapGene 桥接助手脚本 (snapgene_bridge.py)"
+            return L10n.t("未找到 SnapGene 桥接助手脚本 (snapgene_bridge.py)")
         case .fileNotFound(let path):
-            return "文件不存在: \(path)"
+            return L10n.tr("文件不存在: \(path)", "File not found: \(path)")
         case .executionFailed(let msg):
-            return "SnapGene 处理执行失败: \(msg)"
+            return L10n.tr("SnapGene 处理执行失败: \(msg)", "SnapGene execution failed: \(msg)")
         case .invalidJSON(let msg):
-            return "解析 SnapGene 返回数据失败: \(msg)"
+            return L10n.tr("解析 SnapGene 返回数据失败: \(msg)", "Failed to decode SnapGene response: \(msg)")
         }
     }
 }
@@ -342,7 +342,7 @@ public final class SnapGeneService: Sendable {
         
         let output = try await runBridgeAsync(arguments: ["parse", path])
         guard let data = output.data(using: .utf8) else {
-            throw SnapGeneError.invalidJSON("输出编码异常")
+            throw SnapGeneError.invalidJSON(L10n.t("输出编码异常"))
         }
         let decoder = JSONDecoder()
         return try decoder.decode(SnapGeneFileInfo.self, from: data)
@@ -389,7 +389,7 @@ public final class SnapGeneService: Sendable {
         ])
         
         guard let data = output.data(using: .utf8) else {
-            throw SnapGeneError.invalidJSON("注入结果无法解析")
+            throw SnapGeneError.invalidJSON(L10n.t("注入结果无法解析"))
         }
         let decoder = JSONDecoder()
         return try decoder.decode(SnapGeneInjectResult.self, from: data)
@@ -453,7 +453,7 @@ public final class SnapGeneService: Sendable {
         ])
         
         guard let data = output.data(using: .utf8) else {
-            throw SnapGeneError.invalidJSON("组装结果无法解析")
+            throw SnapGeneError.invalidJSON(L10n.t("组装结果无法解析"))
         }
         let decoder = JSONDecoder()
         return try decoder.decode(SnapGeneAssembleResult.self, from: data)
@@ -507,7 +507,7 @@ public final class SnapGeneService: Sendable {
         ])
         
         guard let data = output.data(using: .utf8) else {
-            throw SnapGeneError.invalidJSON("删除结果无法解析")
+            throw SnapGeneError.invalidJSON(L10n.t("删除结果无法解析"))
         }
         let decoder = JSONDecoder()
         return try decoder.decode(SnapGeneDeleteResult.self, from: data)
@@ -518,7 +518,7 @@ public final class SnapGeneService: Sendable {
     public func openInSnapGene(url: URL) {
         let fm = FileManager.default
         guard fm.fileExists(atPath: url.path) else {
-            AppState.shared.showToast("未找到生成的 .dna 文件: \(url.lastPathComponent)")
+            AppState.shared.showToast(L10n.tr("未找到生成的 .dna 文件: \(url.lastPathComponent)", "Generated .dna file not found: \(url.lastPathComponent)"))
             return
         }
         

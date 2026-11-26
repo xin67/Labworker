@@ -96,7 +96,7 @@ public struct SgRNADesignView: View {
                 .plasmidToggle(isOn: $appState.showPlasmidPreview, isAvailable: workspaceMode == .targetDesign && previewData != nil),
                 .picker(
                     id: "sgrna_species",
-                    label: "物种",
+                    label: L10n.t("物种"),
                     options: TargetSpecies.allCases.map { spec in
                         StudioToolbarPickerOption(
                             id: spec.rawValue,
@@ -191,7 +191,7 @@ public struct SgRNADesignView: View {
                     // 2. 载体骨架与命名
                     StudioCard(title: "载体骨架与命名") {
                         StudioMetricBadge(
-                            label: "接头",
+                            label: L10n.t("接头"),
                             value: vm.vectorOverhang == .px459_px458 ? "BbsI (CACC)" : "BsmBI (CACCG)",
                             color: .cyan
                         )
@@ -208,7 +208,7 @@ public struct SgRNADesignView: View {
                                     help: "选择靶点寡核苷酸退火克隆的载体酶切粘性末端"
                                 )
                                 
-                                TextField("引物前缀 (可选)", text: $vm.customPrefix)
+                                TextField(L10n.t("引物前缀 (可选)"), text: $vm.customPrefix)
                                     .textFieldStyle(.roundedBorder)
                                     .controlSize(.large)
                             }
@@ -223,7 +223,7 @@ public struct SgRNADesignView: View {
                                     icon: "circle.dotted.circle"
                                 )
                                 
-                                TextField("引物前缀 (可选)", text: $vm.customPrefix)
+                                TextField(L10n.t("引物前缀 (可选)"), text: $vm.customPrefix)
                                     .textFieldStyle(.roundedBorder)
                                     .controlSize(.large)
                             }
@@ -233,7 +233,7 @@ public struct SgRNADesignView: View {
                     // 3. 居左紧凑主操作栏（设计引物 + 次级入池）
                     StudioActionBar {
                         StudioPrimaryActionButton(
-                            title: activeSelectionCount > 0 ? "设计 sgRNA 引物 (\(activeSelectionCount))" : "设计 sgRNA 引物",
+                            title: activeSelectionCount > 0 ? L10n.tr("设计 sgRNA 引物 (\(activeSelectionCount))", "Design sgRNA Primers (\(activeSelectionCount))") : L10n.t("设计 sgRNA 引物"),
                             icon: "sparkles",
                             tint: .cyan,
                             action: vm.generatePrimers
@@ -241,7 +241,7 @@ public struct SgRNADesignView: View {
                         
                         if !vm.generatedPrimers.isEmpty {
                             StudioActionPillButton(
-                                title: "加入引物池 (\(vm.generatedPrimers.count))",
+                                title: L10n.tr("加入引物池 (\(vm.generatedPrimers.count))", "Add to Primer Cart (\(vm.generatedPrimers.count))"),
                                 icon: "cart.badge.plus",
                                 tint: .green,
                                 action: vm.addAllToCart
@@ -252,7 +252,7 @@ public struct SgRNADesignView: View {
                     // 4. 生成的引物结果
                     if !vm.generatedPrimers.isEmpty {
                         StudioCard(title: "生成的引物结果") {
-                            StudioMetricBadge(label: "数量", value: "\(vm.generatedPrimers.count) 条", color: .green)
+                            StudioMetricBadge(label: L10n.t("数量"), value: L10n.tr("\(vm.generatedPrimers.count) 条", "\(vm.generatedPrimers.count)"), color: .green)
                         } content: {
                             VStack(spacing: 10) {
                                 ForEach(Array(vm.generatedPrimers.enumerated()), id: \.element.id) { idx, primer in
@@ -274,8 +274,8 @@ public struct SgRNADesignView: View {
                 }
             }
         }
-        .alert("提示", isPresented: $vm.showErrorAlert) {
-            Button("好的", role: .cancel) {}
+        .alert(L10n.t("提示"), isPresented: $vm.showErrorAlert) {
+            Button(L10n.t("好的"), role: .cancel) {}
         } message: {
             Text(vm.errorMessage ?? "")
         }
@@ -300,7 +300,7 @@ public struct SgRNADesignView: View {
     private var librarySearchSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                TextField("输入待检索基因 (如 TP53, PRKAA1, Trp53)", text: $vm.searchQuery)
+                TextField(L10n.t("输入待检索基因 (如 TP53, PRKAA1, Trp53)"), text: $vm.searchQuery)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.large)
                     .font(.system(size: 12.5))
@@ -320,7 +320,7 @@ public struct SgRNADesignView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                         StudioMetricBadge(
-                            label: "已选",
+                            label: L10n.t("已选"),
                             value: "\(vm.selectedTargetIDs.count)/\(vm.searchResults.count)",
                             color: .cyan
                         )

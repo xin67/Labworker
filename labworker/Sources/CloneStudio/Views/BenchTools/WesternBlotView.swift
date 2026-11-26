@@ -245,7 +245,7 @@ public struct WesternBlotView: View {
                                         .foregroundStyle(isSel ? .white : .teal)
                                 }
                                 if group.brightfield != nil {
-                                    Text("明场")
+                                    Text(L10n.t("明场"))
                                         .font(.system(size: 9.5, weight: .bold))
                                         .padding(.horizontal, 5)
                                         .padding(.vertical, 1.5)
@@ -266,7 +266,7 @@ public struct WesternBlotView: View {
                     Button {
                         selectSyntheticDualDemo()
                     } label: {
-                        Label("TP53 / GAPDH 示范", systemImage: "square.stack.3d.up.fill")
+                        Label(L10n.t("TP53 / GAPDH 示范"), systemImage: "square.stack.3d.up.fill")
                             .studioOptionalForeground(synthSelected ? nil : .purple)
                     }
                     .studioGlassButton(
@@ -275,7 +275,7 @@ public struct WesternBlotView: View {
                         isSelected: synthSelected,
                         controlSize: .regular
                     )
-                    .help("切换内置 TP53 + GAPDH 双排目的/内参示范膜")
+                    .help(L10n.t("切换内置 TP53 + GAPDH 双排目的/内参示范膜"))
                 }
                 
                 // 若当前选中的真实样本组包含多个图层（16-bit 原图 / 发光 / 明场 / 叠加），展示图层切换与明场混叠滑块
@@ -331,7 +331,7 @@ public struct WesternBlotView: View {
                 .monospacedDigit()
                 .frame(width: 34, alignment: .trailing)
         }
-        .help("明场 Marker 图层混叠透明度")
+        .help(L10n.t("明场 Marker 图层混叠透明度"))
     }
     
     // MARK: - 2. 交互式 WB 自动圈定画布 (支持聚焦有效膜条、缩放平移与条带框直接拖拽/拉伸微调)
@@ -359,10 +359,10 @@ public struct WesternBlotView: View {
     private var interactiveCanvasCard: some View {
         StudioCard(title: "膜条交互画布") {
             StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
-                Toggle("过曝掩码", isOn: $showSaturatedPixelMask)
+                Toggle(L10n.t("过曝掩码"), isOn: $showSaturatedPixelMask)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 11, weight: .medium))
-                    .help("高亮显示接近或达到 16-bit 上限的饱和像素")
+                    .help(L10n.t("高亮显示接近或达到 16-bit 上限的饱和像素"))
                     .onChange(of: showSaturatedPixelMask) { _, _ in
                         refreshDisplayImages()
                     }
@@ -506,7 +506,7 @@ public struct WesternBlotView: View {
                                 .buttonStyle(.plain)
                                 .position(x: laneX + laneW * 0.5, y: max(16, laneY - 11))
                                 .contextMenu {
-                                    Button("设为对照泳道 (1.00×)") {
+                                    Button(L10n.t("设为对照泳道 (1.00×)")) {
                                         setControlLane(lane.index)
                                     }
                                 }
@@ -664,7 +664,7 @@ public struct WesternBlotView: View {
     
     private func profileAndStatisticsDrawer(result: WBAnalysisResult) -> some View {
         StudioResponsiveSplitLayout(breakpoint: 620, spacing: 12, leftRatio: 0.48) {
-            StudioCard(title: "L\(selectedLaneIndex + 1) 光密度剖面") {
+            StudioCard(title: L10n.tr("L\(selectedLaneIndex + 1) 光密度剖面", "L\(selectedLaneIndex + 1) Optical Density Profile")) {
                 if let band = result.bands.first(where: { $0.laneIndex == selectedLaneIndex }) {
                     Text(String(format: "Net IOD %.0f", band.netIOD))
                         .font(.system(size: 11, weight: .semibold))
@@ -737,7 +737,7 @@ public struct WesternBlotView: View {
                     Chart {
                         ForEach(row0Bands) { band in
                             BarMark(
-                                x: .value("泳道", "L\(band.laneIndex + 1)"),
+                                x: .value(L10n.t("泳道"), "L\(band.laneIndex + 1)"),
                                 y: .value("Fold", band.foldChange)
                             )
                             .foregroundStyle(
@@ -760,7 +760,7 @@ public struct WesternBlotView: View {
                         Chart {
                             ForEach(statOut.groupStats) { g in
                                 BarMark(
-                                    x: .value("分组", g.groupName),
+                                    x: .value(L10n.t("分组"), g.groupName),
                                     y: .value("Fold", g.meanFold)
                                 )
                                 .foregroundStyle(g.isControl ? Color.secondary.gradient : Color.indigo.gradient)
@@ -768,7 +768,7 @@ public struct WesternBlotView: View {
                                 
                                 if let sd = g.sdFold, sd > 0 {
                                     RuleMark(
-                                        x: .value("分组", g.groupName),
+                                        x: .value(L10n.t("分组"), g.groupName),
                                         yStart: .value("Low", max(0, g.meanFold - sd)),
                                         yEnd: .value("High", g.meanFold + sd)
                                     )
@@ -777,7 +777,7 @@ public struct WesternBlotView: View {
                                 }
                                 
                                 PointMark(
-                                    x: .value("分组", g.groupName),
+                                    x: .value(L10n.t("分组"), g.groupName),
                                     y: .value("Top", g.meanFold + (g.sdFold ?? 0) + 0.08)
                                 )
                                 .symbolSize(0)
@@ -795,12 +795,12 @@ public struct WesternBlotView: View {
                             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 4) {
                                 Text(g.groupName)
                                     .font(.system(size: 11.5, weight: .semibold))
-                                StudioMetricBadge(label: "有效 n", value: "\(g.n)", color: .secondary)
+                                StudioMetricBadge(label: L10n.t("有效 n"), value: "\(g.n)", color: .secondary)
                                 StudioMetricBadge(label: "Mean±SD", value: String(format: "%.2f±%.2f", g.meanFold, g.sdFold ?? 0), color: .indigo)
                                 if g.nExcludedSaturated > 0 {
                                     StudioMetricBadge(
                                         label: "",
-                                        value: "已剔除 \(g.nExcludedSaturated) 条过曝条带",
+                                        value: L10n.tr("已剔除 \(g.nExcludedSaturated) 条过曝条带", "\(g.nExcludedSaturated) saturated excluded"),
                                         color: .red
                                     )
                                 }
@@ -841,22 +841,22 @@ public struct WesternBlotView: View {
     private var detectInspectorContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                Toggle("有效膜框", isOn: $showStripROI)
+                Toggle(L10n.t("有效膜框"), isOn: $showStripROI)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 12))
-                Toggle("泳道线", isOn: $showLaneGuides)
+                Toggle(L10n.t("泳道线"), isOn: $showLaneGuides)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 12))
-                Toggle("条带框", isOn: $showBandBoxes)
+                Toggle(L10n.t("条带框"), isOn: $showBandBoxes)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 12))
-                Toggle("底部峰图", isOn: $showProfileDrawer)
+                Toggle(L10n.t("底部峰图"), isOn: $showProfileDrawer)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 12))
             }
             
             HStack {
-                Text("期望泳道数")
+                Text(L10n.t("期望泳道数"))
                     .font(.system(size: 12, weight: .medium))
                 Spacer()
                 StudioMenuPicker(
@@ -877,7 +877,7 @@ public struct WesternBlotView: View {
             
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text("Rolling-Ball 背景球半径")
+                    Text(L10n.t("Rolling-Ball 背景球半径"))
                         .font(.system(size: 11.5))
                         .foregroundColor(.secondary)
                     Spacer()
@@ -899,7 +899,7 @@ public struct WesternBlotView: View {
             
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text("条带峰值灵敏度")
+                    Text(L10n.t("条带峰值灵敏度"))
                         .font(.system(size: 11.5))
                         .foregroundColor(.secondary)
                     Spacer()
@@ -914,7 +914,7 @@ public struct WesternBlotView: View {
             
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text("有效膜条裁剪阈值")
+                    Text(L10n.t("有效膜条裁剪阈值"))
                         .font(.system(size: 11.5))
                         .foregroundColor(.secondary)
                     Spacer()
@@ -972,7 +972,7 @@ public struct WesternBlotView: View {
             
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text("显影对比度增强（不改定量原图）")
+                    Text(L10n.t("显影对比度增强（不改定量原图）"))
                         .font(.system(size: 11.5))
                         .foregroundColor(.secondary)
                     Spacer()
@@ -987,7 +987,7 @@ public struct WesternBlotView: View {
             
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text("Gamma 曲线映射")
+                    Text(L10n.t("Gamma 曲线映射"))
                         .font(.system(size: 11.5))
                         .foregroundColor(.secondary)
                     Spacer()
@@ -1013,7 +1013,7 @@ public struct WesternBlotView: View {
         VStack(alignment: .leading, spacing: 9) {
             if let res = currentResult {
                 HStack {
-                    Text("对照泳道 (1.00×)")
+                    Text(L10n.t("对照泳道 (1.00×)"))
                         .font(.system(size: 12, weight: .medium))
                     Spacer()
                     StudioMenuPicker(
@@ -1029,7 +1029,7 @@ public struct WesternBlotView: View {
                 }
                 
                 HStack {
-                    Text("生物学重复对照组")
+                    Text(L10n.t("生物学重复对照组"))
                         .font(.system(size: 12, weight: .medium))
                     Spacer()
                     TextField("WT", text: $controlGroupName)
@@ -1038,7 +1038,7 @@ public struct WesternBlotView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("过曝饱和条带统计策略 (>\(String(format: "%.0f%%", params.saturationRatioThreshold * 100)) 核心像素饱和)")
+                    Text(L10n.tr("过曝饱和条带统计策略 (>\(String(format: "%.0f%%", params.saturationRatioThreshold * 100)) 核心像素饱和)", "Saturated Band Policy (>\(String(format: "%.0f%%", params.saturationRatioThreshold * 100)) core pixels saturated)"))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                     StudioMenuPicker(
@@ -1051,7 +1051,7 @@ public struct WesternBlotView: View {
                 }
                 
                 Divider().opacity(0.4)
-                Text("各泳道实验分组（用于计算 Mean ± SD 与 Welch's t 检验）")
+                Text(L10n.t("各泳道实验分组（用于计算 Mean ± SD 与 Welch's t 检验）"))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                 
@@ -1062,7 +1062,7 @@ public struct WesternBlotView: View {
                             .monospacedDigit()
                             .frame(width: 28, alignment: .leading)
                         TextField(
-                            "分组名",
+                            L10n.t("分组名"),
                             text: Binding(
                                 get: {
                                     laneGroups[lane.index] ?? ((lane.index < 2) ? "WT" : ((lane.index < 4) ? "Group-2" : "Group-3"))
@@ -1077,7 +1077,7 @@ public struct WesternBlotView: View {
                 
                 Divider().opacity(0.4)
                 HStack {
-                    Text("多曝光动态线性范围检查 (P14)")
+                    Text(L10n.t("多曝光动态线性范围检查 (P14)"))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                     Spacer()
@@ -1111,7 +1111,7 @@ public struct WesternBlotView: View {
                                             .font(.system(size: 10.5, weight: .bold))
                                             .monospacedDigit()
                                         Spacer()
-                                        Text(bl.isLinear ? "线性" : "非线性")
+                                        Text(L10n.t(bl.isLinear ? "线性" : "非线性"))
                                             .font(.system(size: 9.5, weight: .bold))
                                             .foregroundColor(bl.isLinear ? .green : .red)
                                     }
@@ -1133,7 +1133,7 @@ public struct WesternBlotView: View {
                                     .chartXAxis(.hidden)
                                     .chartYAxis(.hidden)
                                     .frame(height: 32)
-                                    Text(String(format: "R²=%.4f%@", bl.r2, bl.isSaturatedInMaxExposure ? " · 截断" : ""))
+                                    Text(String(format: "R²=%.4f%@", bl.r2, bl.isSaturatedInMaxExposure ? L10n.t(" · 截断") : ""))
                                         .font(.system(size: 9.5))
                                         .monospacedDigit()
                                         .foregroundColor(.secondary)
@@ -1153,7 +1153,7 @@ public struct WesternBlotView: View {
     
     private var exportInspectorContent: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Toggle("强制使用纯 Swift 16-bit 原生引擎", isOn: $preferNativeEngine)
+            Toggle(L10n.t("强制使用纯 Swift 16-bit 原生引擎"), isOn: $preferNativeEngine)
                 .toggleStyle(.checkbox)
                 .font(.system(size: 12))
                 .onChange(of: preferNativeEngine) { _, _ in
@@ -1162,7 +1162,7 @@ public struct WesternBlotView: View {
             
             if !poolManager.items.isEmpty {
                 StudioMenuPillButton(
-                    title: linkedPlasmidIDs.isEmpty ? "关联质粒池" : "已关联 \(linkedPlasmidIDs.count) 个质粒",
+                    title: linkedPlasmidIDs.isEmpty ? L10n.t("关联质粒池") : L10n.tr("已关联 \(linkedPlasmidIDs.count) 个质粒", "Linked (\(linkedPlasmidIDs.count))"),
                     icon: "link",
                     tint: linkedPlasmidIDs.isEmpty ? nil : .accentColor,
                     help: "可选关联本地质粒池条目"
@@ -1229,7 +1229,7 @@ public struct WesternBlotView: View {
     private var bandQuantTableCard: some View {
         StudioCard(title: "条带 IOD 定量明细") {
             if let res = currentResult {
-                Text("共 \(res.bands.count) 个圈定框")
+                Text(L10n.tr("共 \(res.bands.count) 个圈定框", "\(res.bands.count) Band ROIs"))
                     .font(.system(size: 11))
                     .monospacedDigit()
                     .foregroundColor(.secondary)
@@ -1486,7 +1486,7 @@ public struct WesternBlotView: View {
     
     private func openImportPanel() {
         let panel = NSOpenPanel()
-        panel.title = "选择 WB 曝光目录或 16-bit/8-bit TIFF/PNG 图像"
+        panel.title = L10n.t("选择 WB 曝光目录或 16-bit/8-bit TIFF/PNG 图像")
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -1495,7 +1495,7 @@ public struct WesternBlotView: View {
             var isDir: ObjCBool = false
             if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
                 reloadSampleGroups(from: url)
-                appState.showToast("已载入 WB 样本目录：\(url.lastPathComponent)")
+                appState.showToast(L10n.tr("已载入 WB 样本目录：\(url.lastPathComponent)", "Loaded WB sample folder: \(url.lastPathComponent)"))
             } else {
                 let parent = url.deletingLastPathComponent()
                 reloadSampleGroups(from: parent)
@@ -1503,7 +1503,7 @@ public struct WesternBlotView: View {
                 if let matched = sampleGroups.first(where: { stem.hasPrefix($0.id) }) {
                     selectSampleGroup(matched.id)
                 }
-                appState.showToast("已导入 WB 图像：\(url.lastPathComponent)")
+                appState.showToast(L10n.tr("已导入 WB 图像：\(url.lastPathComponent)", "Imported WB image: \(url.lastPathComponent)"))
             }
         }
     }
@@ -1576,21 +1576,21 @@ public struct WesternBlotView: View {
             linkedPlasmidIDs: linked
         )
         let exWarnings = qOut.excludedBands.map {
-            "已按策略 (\(qOut.saturationPolicy.rawValue)) 从分组统计中剔除泳道 L\($0.laneIndex) 条带 \($0.bandID) (\($0.groupName))：\($0.reason)"
+            L10n.tr("已按策略 (\(qOut.saturationPolicy.rawValue)) 从分组统计中剔除泳道 L\($0.laneIndex) 条带 \($0.bandID) (\($0.groupName))：\($0.reason)", "Excluded Lane L\($0.laneIndex) Band \($0.bandID) (\($0.groupName)) per \(L10n.t(qOut.saturationPolicy.rawValue)): \($0.reason)")
         }
         let html = FinderFileDropHelper.buildOfflineHTMLReport(
-            title: "Western Blot 16-bit 光密度定量与过曝质控报告",
-            subtitle: "图像：\((res.imagePath as NSString).lastPathComponent) · 位深 \(res.bitDepth)-bit · 饱和策略：\(qOut.saturationPolicy.title)",
-            credibilityBadge: qOut.excludedBands.isEmpty ? "无过曝饱和剔除" : "已剔除 \(qOut.excludedBands.count) 条过曝条带",
-            warnings: exWarnings.isEmpty ? ["全部检测条带核心区饱和像素占比均低于阈值 (\(String(format: "%.1f%%", res.params.saturationRatioThreshold * 100)))，数据处于有效动态范围。"] : exWarnings,
+            title: L10n.t("Western Blot 16-bit 光密度定量与过曝质控报告"),
+            subtitle: L10n.tr("图像：\((res.imagePath as NSString).lastPathComponent) · 位深 \(res.bitDepth)-bit · 饱和策略：\(qOut.saturationPolicy.title)", "Image: \((res.imagePath as NSString).lastPathComponent) · \(res.bitDepth)-bit · Saturation Policy: \(L10n.t(qOut.saturationPolicy.title))"),
+            credibilityBadge: qOut.excludedBands.isEmpty ? L10n.t("无过曝饱和剔除") : L10n.tr("已剔除 \(qOut.excludedBands.count) 条过曝条带", "Excluded \(qOut.excludedBands.count) saturated band(s)"),
+            warnings: exWarnings.isEmpty ? [L10n.tr("全部检测条带核心区饱和像素占比均低于阈值 (\(String(format: "%.1f%%", res.params.saturationRatioThreshold * 100)))，数据处于有效动态范围。", "All detected band cores fall below the saturation threshold (\(String(format: "%.1f%%", res.params.saturationRatioThreshold * 100))); data lie within valid dynamic range.")] : exWarnings,
             metrics: [
-                ("图像尺寸", "\(res.width)×\(res.height) px"),
-                ("量化位深", "\(res.bitDepth)-bit"),
-                ("滚球半径", "\(res.params.rollingBallRadius) px"),
-                ("饱和处理策略", qOut.saturationPolicy.rawValue),
-                ("剔除过曝条带数", "\(qOut.excludedBands.count)")
+                (L10n.t("图像尺寸"), "\(res.width)×\(res.height) px"),
+                (L10n.t("量化位深"), "\(res.bitDepth)-bit"),
+                (L10n.t("滚球半径"), "\(res.params.rollingBallRadius) px"),
+                (L10n.t("饱和处理策略"), L10n.t(qOut.saturationPolicy.rawValue)),
+                (L10n.t("剔除过曝条带数"), "\(qOut.excludedBands.count)")
             ],
-            tableHeaders: ["分组", "有效样本数 n", "已剔除过曝数", "Mean Fold", "SD", "p (Welch)", "显著性"],
+            tableHeaders: [L10n.t("分组"), L10n.t("有效样本数 n"), L10n.t("已剔除过曝数"), "Mean Fold", "SD", "p (Welch)", L10n.t("显著性")],
             tableRows: qOut.groupStats.map { g in
                 [
                     g.groupName,

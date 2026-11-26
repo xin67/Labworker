@@ -28,7 +28,7 @@
 
 自动化门禁脚本 `labworker/Scripts/check_doc_counts.sh` 强制校验以下核心契约指标。**除非你同步更新了代码、测试和 `README.md` / `ARCHITECTURE.md` 中的声明，否则严禁让这些计数发生漂移**：
 
-1. **自动化验证测试数 (`tests=57`)**：`Tests/CloneStudioVerify/main.swift` 执行并输出 **57** 项 `✅` 通过记录（无桌面外部私有文件时跳过 3 项本地路径测试），运行结束输出 `COUNTS tests=57 tools=23 modules=18`。
+1. **自动化验证测试数 (`tests=58`)**：`Tests/CloneStudioVerify/main.swift` 执行并输出 **58** 项 `✅` 通过记录（无桌面外部私有文件时跳过 3 项本地路径测试），运行结束输出 `COUNTS tests=58 tools=23 modules=18`。
 2. **MCP 全栈工具数 (`tools=23`)**：Python 端 `Sources/CloneStudioCore/Resources/clonestudio_mcp_server.py`（`--count-tools` 验证）与 Swift 端 `PlasmidPoolManager.mcpToolsCatalog` 严格保持 **23** 个工具 1:1 对齐。
 3. **UI 导航模块总数 (`modules=18`)**：`Sources/CloneStudioCore/ViewModels/AppState.swift` 中的 `NavItem` 枚举共 **18** 个模块（含 5 大侧边栏分类功能模块及常驻 `.settings` 系统设置模块，在线靶点对比已分别内嵌 `sgRNA 设计` 与 `shRNA 设计`）。
 4. **跨语言共享测试向量 (`10 files, 50 cases`)**：`Tests/vectors/*.json` 共 **10** 个 JSON 标准测试向量文件、**50** 个跨语言测试用例，由 Swift (`Test 48`) 与 Python (`Tests/vectors/run_python_vectors.py`) 双向对齐校验；`run_python_vectors.py --tamper-check` 验证篡改任一期望值必须触发非零退出码（exit code 2）。
@@ -51,7 +51,7 @@
     ├── Package.swift                           # macOS 14.0+，3 Targets: CloneStudioCore, CloneStudio, CloneStudioVerify
     ├── README.md / ARCHITECTURE.md / HANDOVER.md
     ├── Scripts/
-    │   ├── check_doc_counts.sh                 # 【核心门禁】校验 57 测试 + 23 MCP 工具 + 18 UI 模块 + 文档一致性
+    │   ├── check_doc_counts.sh                 # 【核心门禁】校验 58 测试 + 23 MCP 工具 + 18 UI 模块 + 文档一致性
     │   ├── build_app.sh                        # Release 编译并签名 labworker/Labworker.app (LSMinimumSystemVersion=14.0)
     │   ├── package_dmg.sh                      # 打包可分发 DMG + .sha256 + Gatekeeper 一键修复工具 + --update-cask
     │   ├── install.sh                          # 免开发者账号一键下载、校验签名与清除 quarantine 安装脚本
@@ -182,7 +182,7 @@
 /usr/bin/python3 Tests/vectors/run_python_vectors.py
 /usr/bin/python3 Tests/vectors/run_python_vectors.py --tamper-check; echo "tamper_exit=$?"
 
-# 2. Swift 编译 + 57 项回归测试 + 文档数字单一真值门禁
+# 2. Swift 编译 + 58 项回归测试 + 文档数字单一真值门禁
 bash Scripts/check_doc_counts.sh
 
 # 3. Release 编译 (0 warnings) 并重新打包签名 Labworker.app，生成可分发 .dmg + .sha256 并同步 Cask
@@ -197,4 +197,4 @@ bash Scripts/install.sh --local-dmg Labworker-20261120.dmg --dry-run
 > - 严禁在 `Sources/`、`Tests/` 或公开文档中硬编码任何本地用户路径（如个人 home 目录）、真实实验室质粒私有名称或私人联系方式。
 > - 新增、删除或拆分的任何 `.swift` 源码文件，必须在 `labworker/ARCHITECTURE.md` 中同步登记。
 > - 修改任何跨语言核心科学计算（Tm、反向互补、引物 ΔG、蛋白 pI/ΔΔG、qPCR $\Delta\Delta C_t$/Welch CI、Holm 校正）时，必须同步更新 `Tests/vectors/*.json`、`clonestudio_mcp_server.py` 与 `CloneStudioCore`。
-> - UI 控件须遵守同排同档高度（L 档 28pt / S 档 24pt）、玻璃交互默认受限 HDR（`StudioGlassSupport.dynamicRange` `.constrainedHigh` + `hdrGain`，静止描边禁加曝光）、科学定量图像画布显式 `.allowedDynamicRange(.standard)` 锁定 SDR、工作台主操作栏采用 `StudioActionBar` 居左紧凑排布（禁用全宽长条主按钮）、顶栏 `.plasmidToggle`「图谱」按钮未生成图谱时自动隐藏以及嵌入式 `Canvas` 禁止硬设固定宽度锁死窗口缩放（详见 `labworker/README.md` 第 2 节）。
+> - UI 控件须遵守同排同档高度（L 档 28pt / S 档 24pt）、玻璃交互默认受限 HDR（`StudioGlassSupport.dynamicRange` `.constrainedHigh` + `hdrGain`，静止描边禁加曝光）、科学定量图像画布显式 `.allowedDynamicRange(.standard)` 锁定 SDR、工作台主操作栏采用 `StudioActionBar` 居左紧凑排布（禁用全宽长条主按钮）、顶栏 `.plasmidToggle`「图谱」按钮未生成图谱时自动隐藏、嵌入式 `Canvas` 禁止硬设固定宽度锁死窗口缩放、`StudioResponsiveSplitLayout` 子槽位必须为单一容器视图、全应用强制使用 macOS 默认系统字体（禁用 `design: .monospaced` 与硬编码字体族，列对齐改用 `StudioAlignedCharGridView`），以及界面文案须通过 `L10n` + `en_translations.json` 支持简体中文与学术英文双语实时切换（详见根目录 `AGENTS.md` 与 `labworker/README.md` 第 2 节）。

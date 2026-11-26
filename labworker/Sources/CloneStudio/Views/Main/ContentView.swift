@@ -223,7 +223,7 @@ public struct ContentView: View {
                                         appState.sidebarWidth = 232
                                     }
                                 }
-                                .help("左右拖拽调整侧边栏宽度 · 双击恢复默认宽度")
+                                .help(L10n.t("左右拖拽调整侧边栏宽度 · 双击恢复默认宽度"))
                         }
                 }
                 .overlay(alignment: .top) {
@@ -232,7 +232,7 @@ public struct ContentView: View {
                             Image(systemName: "folder.fill.badge.plus")
                                 .font(.system(size: 15, weight: .bold))
                                 .foregroundColor(.white)
-                            Text("松开智能导入 (.dna / .ab1 / .tif / .pdb / .csv / .fasta) 直达对应工作台")
+                            Text(L10n.t("松开智能导入 (.dna / .ab1 / .tif / .pdb / .csv / .fasta) 直达对应工作台"))
                                 .font(.system(size: 13.5, weight: .semibold))
                                 .foregroundColor(.white)
                         }
@@ -280,6 +280,9 @@ public struct ContentView: View {
         }
         .onChange(of: appState.showStatusBarIcon) { _, isVisible in
             CloneStudioAppDelegate.shared?.syncStatusBarVisibility(isVisible: isVisible)
+        }
+        .onChange(of: appState.appLanguage) { _, _ in
+            CloneStudioAppDelegate.shared?.syncStatusBarTooltip()
         }
         .onDisappear {
             setResizeCursorActive(false)
@@ -350,7 +353,7 @@ public struct ContentView: View {
                             )
 
                         StudioNoAutoFocusSearchField(
-                            placeholder: "搜索",
+                            placeholder: L10n.t("搜索"),
                             text: $appState.sidebarSearchText,
                             focusTrigger: $searchFocusTrigger
                         )
@@ -406,7 +409,7 @@ public struct ContentView: View {
                         isCircle: true,
                         controlSize: .large
                     )
-                    .help("导入实验文件 (.dna / .ab1 / .tif / .pdb / .csv / .fasta)")
+                    .help(L10n.t("导入实验文件 (.dna / .ab1 / .tif / .pdb / .csv / .fasta)"))
                 }
             }
             .padding(.horizontal, 12)

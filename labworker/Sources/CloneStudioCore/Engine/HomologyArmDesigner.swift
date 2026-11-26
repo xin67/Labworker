@@ -121,7 +121,7 @@ public struct HomologyArmDesigner {
             return DesignResult(
                 primerF: PrimerItem(name: "F", fullSequence: ""),
                 primerR: PrimerItem(name: "R", fullSequence: ""),
-                promptMessage: "插入片段长度必须大于等于 50 bp"
+                promptMessage: L10n.t("插入片段长度必须大于等于 50 bp")
             )
         }
         
@@ -157,9 +157,9 @@ public struct HomologyArmDesigner {
             specificSequence: fSpec,
             tm: fTm,
             gcPercent: BioSequence.gcContent(fullF),
-            targetPurpose: "ClonExpress 入门克隆正向引物",
-            notes: "5' URS (15bp)" + (hasEnzymes ? " + \(enzyme5?.name ?? "")" : "") + " + 特异序列 (Tm: \(fTm)℃)",
-            sourceTool: "入门克隆"
+            targetPurpose: L10n.t("ClonExpress 入门克隆正向引物"),
+            notes: "5' URS (15bp)" + (hasEnzymes ? " + \(enzyme5?.name ?? "")" : "") + L10n.tr(" + 特异序列 (Tm: \(fTm)℃)", " + Specific (Tm: \(fTm) °C)"),
+            sourceTool: L10n.t("入门克隆")
         )
         
         let primerR = PrimerItem(
@@ -171,9 +171,9 @@ public struct HomologyArmDesigner {
             specificSequence: rSpec,
             tm: rTm,
             gcPercent: BioSequence.gcContent(fullR),
-            targetPurpose: "ClonExpress 入门克隆反向引物",
-            notes: "5' DRS (15bp)" + (hasEnzymes ? " + \(enzyme3?.name ?? "")" : "") + " + 特异序列 (Tm: \(rTm)℃)",
-            sourceTool: "入门克隆"
+            targetPurpose: L10n.t("ClonExpress 入门克隆反向引物"),
+            notes: "5' DRS (15bp)" + (hasEnzymes ? " + \(enzyme3?.name ?? "")" : "") + L10n.tr(" + 特异序列 (Tm: \(rTm)℃)", " + Specific (Tm: \(rTm) °C)"),
+            sourceTool: L10n.t("入门克隆")
         )
         
         return DesignResult(primerF: primerF, primerR: primerR, promptMessage: nil)
@@ -200,8 +200,8 @@ public struct HomologyArmDesigner {
         let selectedSite = sites.indices.contains(preferredSiteIndex) ? sites[preferredSiteIndex] : sites.first
         let cutPos = selectedSite ?? (cleanVec.count / 2)
         let warnMsg: String? = sites.isEmpty
-            ? "⚠️ 载体序列中未检测到 \(enzyme.name) (\(enzyme.site)) 位点，请确认酶切位点或改用反向 PCR 模式"
-            : (sites.count > 1 ? "提示：载体中存在 \(sites.count) 个 \(enzyme.name) 位点，当前使用第 \(min(preferredSiteIndex + 1, sites.count)) 个位点 (\(cutPos + 1) bp)" : nil)
+            ? L10n.tr("⚠️ 载体序列中未检测到 \(enzyme.name) (\(enzyme.site)) 位点，请确认酶切位点或改用反向 PCR 模式", "⚠️ \(enzyme.name) (\(enzyme.site)) site not found in vector; verify site or switch to inverse PCR")
+            : (sites.count > 1 ? L10n.tr("提示：载体中存在 \(sites.count) 个 \(enzyme.name) 位点，当前使用第 \(min(preferredSiteIndex + 1, sites.count)) 个位点 (\(cutPos + 1) bp)", "Note: \(sites.count) \(enzyme.name) sites in vector; using site #\(min(preferredSiteIndex + 1, sites.count)) (\(cutPos + 1) bp)") : nil)
         
         let doubledVec = cleanVec + cleanVec
         let vecLen = max(1, cleanVec.count)
@@ -237,33 +237,33 @@ public struct HomologyArmDesigner {
         
         let fullF = fOverhang + fSpec
         let fullR = rOverhang + rSpec
-        let fNoteExtra = extra5.isEmpty ? "" : " + 5'补码/Linker(\(extra5.count)bp)"
-        let rNoteExtra = extra3RC.isEmpty ? "" : " + 3'补码/Linker(\(extra3RC.count)bp)"
+        let fNoteExtra = extra5.isEmpty ? "" : L10n.tr(" + 5'补码/Linker(\(extra5.count)bp)", " + 5'Linker(\(extra5.count) bp)")
+        let rNoteExtra = extra3RC.isEmpty ? "" : L10n.tr(" + 3'补码/Linker(\(extra3RC.count)bp)", " + 3'Linker(\(extra3RC.count) bp)")
         
         let primerF = PrimerItem(
             name: "Single-Frag-F",
             fullSequence: fullF,
             homologyArm: upArm,
-            enzymeName: extra5.isEmpty ? enzyme.name : "\(enzyme.name)+5'附加",
+            enzymeName: extra5.isEmpty ? enzyme.name : L10n.tr("\(enzyme.name)+5'附加", "\(enzyme.name)+5'Linker"),
             enzymeSite: extra5.isEmpty ? nil : extra5,
             specificSequence: fSpec,
             tm: fTm,
-            targetPurpose: "单片段克隆 (单酶切) 正向引物",
-            notes: "载体上游同源臂 (\(upArm.count)bp, @\(cutPos + 1))\(fNoteExtra) + 特异性序列 (Tm: \(fTm)℃)",
-            sourceTool: "单片段克隆"
+            targetPurpose: L10n.t("单片段克隆 (单酶切) 正向引物"),
+            notes: L10n.tr("载体上游同源臂 (\(upArm.count)bp, @\(cutPos + 1))\(fNoteExtra) + 特异性序列 (Tm: \(fTm)℃)", "Vector 5' Arm (\(upArm.count) bp, @\(cutPos + 1))\(fNoteExtra) + Specific (Tm: \(fTm) °C)"),
+            sourceTool: L10n.t("单片段克隆")
         )
         
         let primerR = PrimerItem(
             name: "Single-Frag-R",
             fullSequence: fullR,
             homologyArm: downArm,
-            enzymeName: extra3RC.isEmpty ? enzyme.name : "\(enzyme.name)+3'附加",
+            enzymeName: extra3RC.isEmpty ? enzyme.name : L10n.tr("\(enzyme.name)+3'附加", "\(enzyme.name)+3'Linker"),
             enzymeSite: extra3RC.isEmpty ? nil : extra3RC,
             specificSequence: rSpec,
             tm: rTm,
-            targetPurpose: "单片段克隆 (单酶切) 反向引物",
-            notes: "载体下游同源臂 (\(downArm.count)bp, @\(cutPos + enzyme.site.count))\(rNoteExtra) + 特异性序列 (Tm: \(rTm)℃)",
-            sourceTool: "单片段克隆"
+            targetPurpose: L10n.t("单片段克隆 (单酶切) 反向引物"),
+            notes: L10n.tr("载体下游同源臂 (\(downArm.count)bp, @\(cutPos + enzyme.site.count))\(rNoteExtra) + 特异性序列 (Tm: \(rTm)℃)", "Vector 3' Arm (\(downArm.count) bp, @\(cutPos + enzyme.site.count))\(rNoteExtra) + Specific (Tm: \(rTm) °C)"),
+            sourceTool: L10n.t("单片段克隆")
         )
         
         return DesignResult(
@@ -302,8 +302,8 @@ public struct HomologyArmDesigner {
         let endEnzLen = (raw5 <= raw3) ? enzyme3.site.count : enzyme5.site.count
         
         var warnParts: [String] = []
-        if sites5.isEmpty { warnParts.append("未找到 5' 酶切位点 \(enzyme5.name)") }
-        if sites3.isEmpty { warnParts.append("未找到 3' 酶切位点 \(enzyme3.name)") }
+        if sites5.isEmpty { warnParts.append(L10n.tr("未找到 5' 酶切位点 \(enzyme5.name)", "5' site \(enzyme5.name) not found")) }
+        if sites3.isEmpty { warnParts.append(L10n.tr("未找到 3' 酶切位点 \(enzyme3.name)", "3' site \(enzyme3.name) not found")) }
         let warnMsg: String? = warnParts.isEmpty ? nil : ("⚠️ " + warnParts.joined(separator: "；"))
         
         let vecLen = max(1, cleanVec.count)
@@ -341,33 +341,33 @@ public struct HomologyArmDesigner {
         
         let fullF = fOverhang + fSpec
         let fullR = rOverhang + rSpec
-        let fNoteExtra = extra5.isEmpty ? "" : " + 5'补码/Linker(\(extra5.count)bp)"
-        let rNoteExtra = extra3RC.isEmpty ? "" : " + 3'补码/Linker(\(extra3RC.count)bp)"
+        let fNoteExtra = extra5.isEmpty ? "" : L10n.tr(" + 5'补码/Linker(\(extra5.count)bp)", " + 5'Linker(\(extra5.count) bp)")
+        let rNoteExtra = extra3RC.isEmpty ? "" : L10n.tr(" + 3'补码/Linker(\(extra3RC.count)bp)", " + 3'Linker(\(extra3RC.count) bp)")
         
         let primerF = PrimerItem(
             name: "Single-Frag-F",
             fullSequence: fullF,
             homologyArm: upArm,
-            enzymeName: extra5.isEmpty ? enzyme5.name : "\(enzyme5.name)+5'附加",
+            enzymeName: extra5.isEmpty ? enzyme5.name : L10n.tr("\(enzyme5.name)+5'附加", "\(enzyme5.name)+5'Linker"),
             enzymeSite: extra5.isEmpty ? nil : extra5,
             specificSequence: fSpec,
             tm: fTm,
-            targetPurpose: "单片段克隆 (双酶切) 正向引物",
-            notes: "5' 载体同源臂 (\(upArm.count)bp, @\(cut5 + 1))\(fNoteExtra) + 特异性序列 (Tm: \(fTm)℃)",
-            sourceTool: "单片段克隆"
+            targetPurpose: L10n.t("单片段克隆 (双酶切) 正向引物"),
+            notes: L10n.tr("5' 载体同源臂 (\(upArm.count)bp, @\(cut5 + 1))\(fNoteExtra) + 特异性序列 (Tm: \(fTm)℃)", "5' Vector Arm (\(upArm.count) bp, @\(cut5 + 1))\(fNoteExtra) + Specific (Tm: \(fTm) °C)"),
+            sourceTool: L10n.t("单片段克隆")
         )
         
         let primerR = PrimerItem(
             name: "Single-Frag-R",
             fullSequence: fullR,
             homologyArm: downArm,
-            enzymeName: extra3RC.isEmpty ? enzyme3.name : "\(enzyme3.name)+3'附加",
+            enzymeName: extra3RC.isEmpty ? enzyme3.name : L10n.tr("\(enzyme3.name)+3'附加", "\(enzyme3.name)+3'Linker"),
             enzymeSite: extra3RC.isEmpty ? nil : extra3RC,
             specificSequence: rSpec,
             tm: rTm,
-            targetPurpose: "单片段克隆 (双酶切) 反向引物",
-            notes: "3' 载体同源臂 (\(downArm.count)bp, @\(cut3 + endEnzLen))\(rNoteExtra) + 特异性序列 (Tm: \(rTm)℃)",
-            sourceTool: "单片段克隆"
+            targetPurpose: L10n.t("单片段克隆 (双酶切) 反向引物"),
+            notes: L10n.tr("3' 载体同源臂 (\(downArm.count)bp, @\(cut3 + endEnzLen))\(rNoteExtra) + 特异性序列 (Tm: \(rTm)℃)", "3' Vector Arm (\(downArm.count) bp, @\(cut3 + endEnzLen))\(rNoteExtra) + Specific (Tm: \(rTm) °C)"),
+            sourceTool: L10n.t("单片段克隆")
         )
         
         return DesignResult(
@@ -420,33 +420,33 @@ public struct HomologyArmDesigner {
         
         let fullF = fOverhang + fSpec
         let fullR = rOverhang + rSpec
-        let fNoteExtra = extra5.isEmpty ? "" : " + 5'补码/Linker(\(extra5.count)bp)"
-        let rNoteExtra = extra3RC.isEmpty ? "" : " + 3'补码/Linker(\(extra3RC.count)bp)"
+        let fNoteExtra = extra5.isEmpty ? "" : L10n.tr(" + 5'补码/Linker(\(extra5.count)bp)", " + 5'Linker(\(extra5.count) bp)")
+        let rNoteExtra = extra3RC.isEmpty ? "" : L10n.tr(" + 3'补码/Linker(\(extra3RC.count)bp)", " + 3'Linker(\(extra3RC.count) bp)")
         
         let primerF = PrimerItem(
             name: "Single-Frag-F",
             fullSequence: fullF,
             homologyArm: upArm,
-            enzymeName: extra5.isEmpty ? nil : "5'补码/Linker",
+            enzymeName: extra5.isEmpty ? nil : L10n.t("5'补码/Linker"),
             enzymeSite: extra5.isEmpty ? nil : extra5,
             specificSequence: fSpec,
             tm: fTm,
-            targetPurpose: "单片段克隆 (反向PCR) 插入正向引物",
-            notes: "5' 载体同源臂 (\(upArm.count)bp)\(fNoteExtra) + 特异性序列 (Tm: \(fTm)℃)",
-            sourceTool: "单片段克隆"
+            targetPurpose: L10n.t("单片段克隆 (反向PCR) 插入正向引物"),
+            notes: L10n.tr("5' 载体同源臂 (\(upArm.count)bp)\(fNoteExtra) + 特异性序列 (Tm: \(fTm)℃)", "5' Vector Arm (\(upArm.count) bp)\(fNoteExtra) + Specific (Tm: \(fTm) °C)"),
+            sourceTool: L10n.t("单片段克隆")
         )
         
         let primerR = PrimerItem(
             name: "Single-Frag-R",
             fullSequence: fullR,
             homologyArm: downArm,
-            enzymeName: extra3RC.isEmpty ? nil : "3'补码/Linker",
+            enzymeName: extra3RC.isEmpty ? nil : L10n.t("3'补码/Linker"),
             enzymeSite: extra3RC.isEmpty ? nil : extra3RC,
             specificSequence: rSpec,
             tm: rTm,
-            targetPurpose: "单片段克隆 (反向PCR) 插入反向引物",
-            notes: "3' 载体同源臂 (\(downArm.count)bp)\(rNoteExtra) + 特异性序列 (Tm: \(rTm)℃)",
-            sourceTool: "单片段克隆"
+            targetPurpose: L10n.t("单片段克隆 (反向PCR) 插入反向引物"),
+            notes: L10n.tr("3' 载体同源臂 (\(downArm.count)bp)\(rNoteExtra) + 特异性序列 (Tm: \(rTm)℃)", "3' Vector Arm (\(downArm.count) bp)\(rNoteExtra) + Specific (Tm: \(rTm) °C)"),
+            sourceTool: L10n.t("单片段克隆")
         )
         
         var vecPrimerF: PrimerItem? = nil
@@ -464,9 +464,9 @@ public struct HomologyArmDesigner {
                 fullSequence: vfSeq,
                 specificSequence: vfSeq,
                 tm: vfTm,
-                targetPurpose: "载体反向PCR扩增正向引物 (下游断点顺时针)",
-                notes: "结合于目标替换位点 3' 下游载体骨架 (Tm: \(vfTm)℃)",
-                sourceTool: "单片段克隆"
+                targetPurpose: L10n.t("载体反向PCR扩增正向引物 (下游断点顺时针)"),
+                notes: L10n.tr("结合于目标替换位点 3' 下游载体骨架 (Tm: \(vfTm)℃)", "Binds downstream of 3' replacement junction on vector (Tm: \(vfTm) °C)"),
+                sourceTool: L10n.t("单片段克隆")
             )
         }
         if cleanU.count >= 18 {
@@ -482,9 +482,9 @@ public struct HomologyArmDesigner {
                 fullSequence: vrSeq,
                 specificSequence: vrSeq,
                 tm: vrTm,
-                targetPurpose: "载体反向PCR扩增反向引物 (上游断点逆时针)",
-                notes: "结合于目标替换位点 5' 上游载体骨架 (Tm: \(vrTm)℃)",
-                sourceTool: "单片段克隆"
+                targetPurpose: L10n.t("载体反向PCR扩增反向引物 (上游断点逆时针)"),
+                notes: L10n.tr("结合于目标替换位点 5' 上游载体骨架 (Tm: \(vrTm)℃)", "Binds upstream of 5' replacement junction on vector (Tm: \(vrTm) °C)"),
+                sourceTool: L10n.t("单片段克隆")
             )
         }
         
@@ -514,7 +514,7 @@ public struct HomologyArmDesigner {
             return DesignResult(
                 primerF: PrimerItem(name: "Mutation-F", fullSequence: ""),
                 primerR: PrimerItem(name: "Mutation-R", fullSequence: ""),
-                promptMessage: "上下游序列长度至少需要 20 bp"
+                promptMessage: L10n.t("上下游序列长度至少需要 20 bp")
             )
         }
         
@@ -556,9 +556,9 @@ public struct HomologyArmDesigner {
             homologyArm: fOverlap,
             specificSequence: fSpec,
             tm: fTm,
-            targetPurpose: "定点突变正向引物",
-            notes: "5' 突变同源臂 (\(fOverlap.count)bp) + 3' 特异结合端 (Tm: \(fTm)℃)",
-            sourceTool: "定点突变"
+            targetPurpose: L10n.t("定点突变正向引物"),
+            notes: L10n.tr("5' 突变同源臂 (\(fOverlap.count)bp) + 3' 特异结合端 (Tm: \(fTm)℃)", "5' Mutant Arm (\(fOverlap.count) bp) + 3' Binding (Tm: \(fTm) °C)"),
+            sourceTool: L10n.t("定点突变")
         )
         
         let primerR = PrimerItem(
@@ -567,9 +567,9 @@ public struct HomologyArmDesigner {
             homologyArm: rOverlap,
             specificSequence: rSpec,
             tm: rTm,
-            targetPurpose: "定点突变反向引物",
-            notes: "5' 突变同源臂 (\(rOverlap.count)bp) + 3' 特异结合端 (Tm: \(rTm)℃)",
-            sourceTool: "定点突变"
+            targetPurpose: L10n.t("定点突变反向引物"),
+            notes: L10n.tr("5' 突变同源臂 (\(rOverlap.count)bp) + 3' 特异结合端 (Tm: \(rTm)℃)", "5' Mutant Arm (\(rOverlap.count) bp) + 3' Binding (Tm: \(rTm) °C)"),
+            sourceTool: L10n.t("定点突变")
         )
         
         return DesignResult(primerF: primerF, primerR: primerR, promptMessage: nil)
@@ -631,7 +631,7 @@ public struct HomologyArmDesigner {
                 newLength: 0,
                 delStart: delStart,
                 delEnd: delEnd,
-                promptMessage: "质粒序列长度至少需要 100 bp"
+                promptMessage: L10n.t("质粒序列长度至少需要 100 bp")
             )
         }
         
@@ -645,7 +645,7 @@ public struct HomologyArmDesigner {
                 newLength: 0,
                 delStart: delStart,
                 delEnd: delEnd,
-                promptMessage: "删除坐标区间 [\(delStart), \(delEnd)] 无效 (质粒总长: \(cleanPlasmid.count) bp)"
+                promptMessage: L10n.tr("删除坐标区间 [\(delStart), \(delEnd)] 无效 (质粒总长: \(cleanPlasmid.count) bp)", "Invalid deletion range [\(delStart), \(delEnd)] (plasmid length: \(cleanPlasmid.count) bp)")
             )
         }
         
@@ -692,9 +692,9 @@ public struct HomologyArmDesigner {
             specificSequence: fSpec,
             tm: fTm,
             gcPercent: BioSequence.gcContent(fullF),
-            targetPurpose: "质粒片段删除反向PCR正向引物",
-            notes: "5' 上游同源臂 (\(upArm.count)bp) + 3' 特异结合端 (Tm: \(fTm)℃)",
-            sourceTool: "片段删除"
+            targetPurpose: L10n.t("质粒片段删除反向PCR正向引物"),
+            notes: L10n.tr("5' 上游同源臂 (\(upArm.count)bp) + 3' 特异结合端 (Tm: \(fTm)℃)", "5' Upstream Arm (\(upArm.count) bp) + 3' Binding (Tm: \(fTm) °C)"),
+            sourceTool: L10n.t("片段删除")
         )
         
         let primerR = PrimerItem(
@@ -704,9 +704,9 @@ public struct HomologyArmDesigner {
             specificSequence: rSpec,
             tm: rTm,
             gcPercent: BioSequence.gcContent(fullR),
-            targetPurpose: "质粒片段删除反向PCR反向引物",
-            notes: "上游断点逆时针退火结合端 (Tm: \(rTm)℃)",
-            sourceTool: "片段删除"
+            targetPurpose: L10n.t("质粒片段删除反向PCR反向引物"),
+            notes: L10n.tr("上游断点逆时针退火结合端 (Tm: \(rTm)℃)", "Binds upstream breakpoint counterclockwise (Tm: \(rTm) °C)"),
+            sourceTool: L10n.t("片段删除")
         )
         
         return FragmentDeletionDesignResult(
@@ -755,11 +755,11 @@ public struct HomologyArmDesigner {
             let fArmNote: String
             if i == 0 {
                 fArm = vecUpArm
-                fArmNote = "载体5'同源臂(\(fArm.count)bp)"
+                fArmNote = L10n.tr("载体5'同源臂(\(fArm.count)bp)", "Vector 5' Arm (\(fArm.count) bp)")
             } else {
                 let prevFrag = validFrags[i - 1]
                 fArm = (prevFrag.count >= armLen ? String(prevFrag.suffix(armLen)) : prevFrag).lowercased()
-                fArmNote = "片段\(i)末端同源臂(\(fArm.count)bp)"
+                fArmNote = L10n.tr("片段\(i)末端同源臂(\(fArm.count)bp)", "Frag \(i) End Arm (\(fArm.count) bp)")
             }
             
             let rArm: String
@@ -767,11 +767,11 @@ public struct HomologyArmDesigner {
             let rExtraRC: String
             if i == count - 1 {
                 rArm = vecDownArm
-                rArmNote = "载体3'同源臂(\(rArm.count)bp)"
+                rArmNote = L10n.tr("载体3'同源臂(\(rArm.count)bp)", "Vector 3' Arm (\(rArm.count) bp)")
                 rExtraRC = cleanTermExtra3RC
             } else {
                 rArm = ""
-                rArmNote = "无缝拼接端"
+                rArmNote = L10n.t("无缝拼接端")
                 rExtraRC = ""
             }
             
@@ -795,38 +795,38 @@ public struct HomologyArmDesigner {
             
             let fullF = fOverhang + fSpec
             let fullR = rOverhang + rSpec
-            let fExtraNote = extra5.isEmpty ? "" : " + 5'补码/Linker(\(extra5.count)bp)"
-            let rExtraNote = rExtraRC.isEmpty ? "" : " + 3'补码/Linker(\(rExtraRC.count)bp)"
+            let fExtraNote = extra5.isEmpty ? "" : L10n.tr(" + 5'补码/Linker(\(extra5.count)bp)", " + 5'Linker(\(extra5.count) bp)")
+            let rExtraNote = rExtraRC.isEmpty ? "" : L10n.tr(" + 3'补码/Linker(\(rExtraRC.count)bp)", " + 3'Linker(\(rExtraRC.count) bp)")
             let pairQC = PrimerQualityEngine.evaluatePrimerPair(forward: fullF, reverse: fullR)
-            let fQCNote = " · 二级结构:\(pairQC.forwardReport.overallRisk.rawValue)(发夹\(String(format: "%.1f", pairQC.forwardReport.hairpin.dg))/异二聚\(String(format: "%.1f", pairQC.heterodimer.dg)))"
-            let rQCNote = " · 二级结构:\(pairQC.reverseReport.overallRisk.rawValue)(发夹\(String(format: "%.1f", pairQC.reverseReport.hairpin.dg))/异二聚\(String(format: "%.1f", pairQC.heterodimer.dg)))"
+            let fQCNote = L10n.tr(" · 二级结构:\(pairQC.forwardReport.overallRisk.rawValue)(发夹\(String(format: "%.1f", pairQC.forwardReport.hairpin.dg))/异二聚\(String(format: "%.1f", pairQC.heterodimer.dg)))", " · Structure:\(L10n.t(pairQC.forwardReport.overallRisk.rawValue))(Hairpin \(String(format: "%.1f", pairQC.forwardReport.hairpin.dg))/Heterodimer \(String(format: "%.1f", pairQC.heterodimer.dg)))")
+            let rQCNote = L10n.tr(" · 二级结构:\(pairQC.reverseReport.overallRisk.rawValue)(发夹\(String(format: "%.1f", pairQC.reverseReport.hairpin.dg))/异二聚\(String(format: "%.1f", pairQC.heterodimer.dg)))", " · Structure:\(L10n.t(pairQC.reverseReport.overallRisk.rawValue))(Hairpin \(String(format: "%.1f", pairQC.reverseReport.hairpin.dg))/Heterodimer \(String(format: "%.1f", pairQC.heterodimer.dg)))")
             
             primers.append(PrimerItem(
                 name: "Multi-Frag\(i + 1)-F",
                 fullSequence: fullF,
                 homologyArm: fArm,
-                enzymeName: extra5.isEmpty ? nil : "5'补码/Linker",
+                enzymeName: extra5.isEmpty ? nil : L10n.t("5'补码/Linker"),
                 enzymeSite: extra5.isEmpty ? nil : extra5,
                 specificSequence: fSpec,
                 tm: fTm,
                 gcPercent: BioSequence.gcContent(fullF),
-                targetPurpose: "片段 \(i + 1) 正向扩增引物",
-                notes: "\(fArmNote)\(fExtraNote) + 特异序列 (Tm: \(fTm)℃)\(fQCNote)",
-                sourceTool: "多片段克隆"
+                targetPurpose: L10n.tr("片段 \(i + 1) 正向扩增引物", "Fragment \(i + 1) Forward Primer"),
+                notes: L10n.tr("\(fArmNote)\(fExtraNote) + 特异序列 (Tm: \(fTm)℃)\(fQCNote)", "\(fArmNote)\(fExtraNote) + Specific (Tm: \(fTm) °C)\(fQCNote)"),
+                sourceTool: L10n.t("多片段克隆")
             ))
             
             primers.append(PrimerItem(
                 name: "Multi-Frag\(i + 1)-R",
                 fullSequence: fullR,
                 homologyArm: rArm,
-                enzymeName: rExtraRC.isEmpty ? nil : "3'补码/Linker",
+                enzymeName: rExtraRC.isEmpty ? nil : L10n.t("3'补码/Linker"),
                 enzymeSite: rExtraRC.isEmpty ? nil : rExtraRC,
                 specificSequence: rSpec,
                 tm: rTm,
                 gcPercent: BioSequence.gcContent(fullR),
-                targetPurpose: "片段 \(i + 1) 反向扩增引物",
-                notes: (rArm.isEmpty ? "" : "\(rArmNote)\(rExtraNote) + ") + "特异序列 (Tm: \(rTm)℃)\(rQCNote)",
-                sourceTool: "多片段克隆"
+                targetPurpose: L10n.tr("片段 \(i + 1) 反向扩增引物", "Fragment \(i + 1) Reverse Primer"),
+                notes: (rArm.isEmpty ? "" : "\(rArmNote)\(rExtraNote) + ") + L10n.tr("特异序列 (Tm: \(rTm)℃)\(rQCNote)", "Specific (Tm: \(rTm) °C)\(rQCNote)"),
+                sourceTool: L10n.t("多片段克隆")
             ))
         }
         

@@ -95,11 +95,11 @@ public struct PlasmidPoolView: View {
     
     // MARK: - 左侧：三维筛选（载体 / 基因 / 抗性）与质粒列表
     private var plasmidListCard: some View {
-        StudioCard(title: "质粒筛选与列表 (\(pool.filteredItems.count)/\(pool.items.count))") {
+        StudioCard(title: L10n.tr("质粒筛选与列表 (\(pool.filteredItems.count)/\(pool.items.count))", "Plasmid Filter & List (\(pool.filteredItems.count)/\(pool.items.count))")) {
             HStack(spacing: 8) {
                 StudioMetricBadge(
-                    label: "共",
-                    value: "\(pool.items.count) 个",
+                    label: L10n.t("共"),
+                    value: L10n.tr("\(pool.items.count) 个", "\(pool.items.count)"),
                     color: .blue
                 )
                 if pool.isScanning {
@@ -119,7 +119,7 @@ public struct PlasmidPoolView: View {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
-                    TextField("搜索质粒、载体、基因、抗性或酶切位点", text: $pool.searchQuery)
+                    TextField(L10n.t("搜索质粒、载体、基因、抗性或酶切位点"), text: $pool.searchQuery)
                         .textFieldStyle(.plain)
                         .font(.system(size: 13))
                     if !pool.searchQuery.isEmpty {
@@ -145,7 +145,7 @@ public struct PlasmidPoolView: View {
                 // 2. 三维动态筛选栏：载体 / 基因 / 抗性（全部采用 StudioFlowLayout 流式自动折行）
                 VStack(alignment: .leading, spacing: 8) {
                     filterDimensionRow(
-                        label: "载体",
+                        label: L10n.t("载体"),
                         icon: "circle.dashed",
                         options: pool.availableVectors,
                         selection: $pool.selectedVectorFilter,
@@ -153,7 +153,7 @@ public struct PlasmidPoolView: View {
                     )
                     
                     filterDimensionRow(
-                        label: "基因",
+                        label: L10n.t("基因"),
                         icon: "sparkles",
                         options: pool.availableGenes,
                         selection: $pool.selectedGeneFilter,
@@ -161,7 +161,7 @@ public struct PlasmidPoolView: View {
                     )
                     
                     filterDimensionRow(
-                        label: "抗性",
+                        label: L10n.t("抗性"),
                         icon: "shield.lefthalf.filled",
                         options: pool.availableResistances,
                         selection: $pool.selectedResistanceFilter,
@@ -183,7 +183,7 @@ public struct PlasmidPoolView: View {
                                 action: presentImportFilesOrFolderPanel
                             )
                         } else {
-                            Text("未找到符合当前「载体 / 基因 / 抗性」筛选条件的质粒")
+                            Text(L10n.t("未找到符合当前「载体 / 基因 / 抗性」筛选条件的质粒"))
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.secondary)
                             StudioActionPillButton(
@@ -236,7 +236,7 @@ public struct PlasmidPoolView: View {
                 ForEach(options, id: \.self) { opt in
                     let isSelected = (selection.wrappedValue.caseInsensitiveCompare(opt) == .orderedSame)
                     StudioCompactPillButton(
-                        title: opt,
+                        title: opt == "全部" ? L10n.t("全部") : opt,
                         tint: tint,
                         isProminent: isSelected
                     ) {
@@ -306,7 +306,7 @@ public struct PlasmidPoolView: View {
                 Button(action: {
                     pool.selectedVectorFilter = (pool.selectedVectorFilter == vectorName) ? "全部" : vectorName
                 }) {
-                    StudioMetricBadge(label: "载体", value: vectorName, color: .blue)
+                    StudioMetricBadge(label: L10n.t("载体"), value: vectorName, color: .blue)
                 }
                 .buttonStyle(.plain)
                 
@@ -314,7 +314,7 @@ public struct PlasmidPoolView: View {
                     Button(action: {
                         pool.selectedGeneFilter = (pool.selectedGeneFilter == g) ? "全部" : g
                     }) {
-                        StudioMetricBadge(label: "基因", value: g, color: .purple)
+                        StudioMetricBadge(label: L10n.t("基因"), value: g, color: .purple)
                     }
                     .buttonStyle(.plain)
                 }
@@ -323,7 +323,7 @@ public struct PlasmidPoolView: View {
                     Button(action: {
                         pool.selectedResistanceFilter = (pool.selectedResistanceFilter == r) ? "全部" : r
                     }) {
-                        StudioMetricBadge(label: "抗性", value: r, color: .green)
+                        StudioMetricBadge(label: L10n.t("抗性"), value: r, color: .green)
                     }
                     .buttonStyle(.plain)
                 }
@@ -345,17 +345,17 @@ public struct PlasmidPoolView: View {
             pool.selectedItemID = item.id
         }
         .contextMenu {
-            Button("送入单片段克隆（作为载体）") { pool.sendToSingleCloneAsVector(item) }
-            Button("送入单片段克隆（作为供体）") { pool.sendToSingleCloneAsDonor(item) }
-            Button("送入多片段克隆（作为载体）") { pool.sendToMultiCloneAsVector(item) }
+            Button(L10n.t("送入单片段克隆（作为载体）")) { pool.sendToSingleCloneAsVector(item) }
+            Button(L10n.t("送入单片段克隆（作为供体）")) { pool.sendToSingleCloneAsDonor(item) }
+            Button(L10n.t("送入多片段克隆（作为载体）")) { pool.sendToMultiCloneAsVector(item) }
             Divider()
-            Button("送入定点突变") { pool.sendToMutagenesis(item) }
-            Button("送入片段删除") { pool.sendToFragmentDeletion(item) }
+            Button(L10n.t("送入定点突变")) { pool.sendToMutagenesis(item) }
+            Button(L10n.t("送入片段删除")) { pool.sendToFragmentDeletion(item) }
             Divider()
-            Button("打开独立质粒图谱") {
+            Button(L10n.t("打开独立质粒图谱")) {
                 PlasmidWindowPresenter.shared.openPreviewWindow(for: item.dnaInfo, roleLabel: item.name, highlightRange: nil)
             }
-            Button("从质粒池移除", role: .destructive) { pool.removeItem(item) }
+            Button(L10n.t("从质粒池移除"), role: .destructive) { pool.removeItem(item) }
         }
     }
     
@@ -379,7 +379,7 @@ public struct PlasmidPoolView: View {
                     tint: .teal,
                     help: "导出标准 GenBank (.gb)、OpenCloning (.json) 或 SBOL3 (.jsonld)"
                 ) {
-                    Button("导出 GenBank (.gb)") {
+                    Button(L10n.t("导出 GenBank (.gb)")) {
                         let gb = SequenceFormatEngine.exportGenBank(info: item.dnaInfo, name: item.name)
                         FinderFileDropHelper.saveTextToFile(
                             content: gb,
@@ -388,7 +388,7 @@ public struct PlasmidPoolView: View {
                             toastPrefix: "已导出 GenBank 文件"
                         )
                     }
-                    Button("导出 OpenCloning (.json)") {
+                    Button(L10n.t("导出 OpenCloning (.json)")) {
                         if let json = try? SequenceFormatEngine.exportOpenCloningJSON(info: item.dnaInfo, name: item.name) {
                             FinderFileDropHelper.saveTextToFile(
                                 content: json,
@@ -398,7 +398,7 @@ public struct PlasmidPoolView: View {
                             )
                         }
                     }
-                    Button("导出 SBOL3 JSON-LD (.jsonld)") {
+                    Button(L10n.t("导出 SBOL3 JSON-LD (.jsonld)")) {
                         if let jsonld = try? SequenceFormatEngine.exportSBOL3JSONLD(info: item.dnaInfo, name: item.name) {
                             FinderFileDropHelper.saveTextToFile(
                                 content: jsonld,
@@ -441,14 +441,14 @@ public struct PlasmidPoolView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                        StudioMetricBadge(label: "载体", value: vectorName, color: .blue)
+                        StudioMetricBadge(label: L10n.t("载体"), value: vectorName, color: .blue)
                         if !genes.isEmpty {
-                            StudioMetricBadge(label: "基因", value: genes.joined(separator: " / "), color: .purple)
+                            StudioMetricBadge(label: L10n.t("基因"), value: genes.joined(separator: " / "), color: .purple)
                         }
                         if !resistances.isEmpty {
-                            StudioMetricBadge(label: "抗性", value: resistances.joined(separator: " / "), color: .green)
+                            StudioMetricBadge(label: L10n.t("抗性"), value: resistances.joined(separator: " / "), color: .green)
                         }
-                        StudioMetricBadge(label: "全长", value: "\(item.dnaInfo.length) bp", color: .teal)
+                        StudioMetricBadge(label: L10n.t("全长"), value: "\(item.dnaInfo.length) bp", color: .teal)
                         StudioMetricBadge(label: "GC", value: String(format: "%.1f%%", item.gcPercent), color: .orange)
                         StudioMetricBadge(label: "", value: item.categoryTag, color: .indigo)
                     }
@@ -459,7 +459,7 @@ public struct PlasmidPoolView: View {
                 
                 // 2. 参考图2的双列对称胶囊按钮矩阵（一键送入各分子克隆模块）
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("一键送入克隆模块")
+                    Text(L10n.t("一键送入克隆模块"))
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.secondary)
                     
@@ -525,7 +525,7 @@ public struct PlasmidPoolView: View {
                             calcVM.vectorLengthKb = String(format: "%.2f", Double(item.dnaInfo.length) / 1000.0)
                             WorkspaceSessionManager.shared.bioCalculatorVM.selectedCategory = .cloningAndLigation
                             AppState.shared.selectedNav = .dnaCalculator
-                            AppState.shared.showToast("已将载体 \(item.name) (\(item.dnaInfo.length) bp) 送入用量计算器")
+                            AppState.shared.showToast(L10n.tr("已将载体 \(item.name) (\(item.dnaInfo.length) bp) 送入用量计算器", "Sent vector \(item.name) (\(item.dnaInfo.length) bp) to Dosage Calculator"))
                         }
                     }
                 }
@@ -533,7 +533,7 @@ public struct PlasmidPoolView: View {
                 // 3. 唯一酶切位点（采用 StudioFlowLayout 流式自动换行，杜绝右侧截断）
                 if !item.uniqueCutSites.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("唯一酶切位点 (\(item.uniqueCutSites.count))")
+                        Text(L10n.tr("唯一酶切位点 (\(item.uniqueCutSites.count))", "Unique Cutters (\(item.uniqueCutSites.count))"))
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.secondary)
                         
@@ -558,7 +558,7 @@ public struct PlasmidPoolView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ViewThatFits(in: .horizontal) {
                         HStack {
-                            Text("特征注释 (\(displayedFeatures.count))")
+                            Text(L10n.tr("特征注释 (\(displayedFeatures.count))", "Features (\(displayedFeatures.count))"))
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .fixedSize(horizontal: true, vertical: false)
@@ -572,7 +572,7 @@ public struct PlasmidPoolView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("特征注释 (\(displayedFeatures.count))")
+                            Text(L10n.tr("特征注释 (\(displayedFeatures.count))", "Features (\(displayedFeatures.count))"))
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.secondary)
                             StudioSegmentedPicker(
@@ -645,18 +645,18 @@ public struct PlasmidPoolView: View {
         let linkedEntries = AnalysisRunIndexStore.entries(forPlasmidID: item.id, plasmidName: item.name)
         VStack(alignment: .leading, spacing: 7) {
             HStack {
-                Text("关联分析记录 (AnalysisRun 溯源)")
+                Text(L10n.t("关联分析记录 (AnalysisRun 溯源)"))
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.secondary)
                 Spacer()
-                Text("\(linkedEntries.count) 条")
+                Text(L10n.tr("\(linkedEntries.count) 条", "\(linkedEntries.count)"))
                     .font(.system(size: 11, weight: .semibold))
                     .monospacedDigit()
                     .foregroundColor(.teal)
             }
             
             if linkedEntries.isEmpty {
-                Text("暂无关联的 Sanger / WB / qPCR 分析导出记录；在对应模块关联该质粒并导出即可自动归档至此。")
+                Text(L10n.t("暂无关联的 Sanger / WB / qPCR 分析导出记录；在对应模块关联该质粒并导出即可自动归档至此。"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -699,7 +699,7 @@ public struct PlasmidPoolView: View {
     
     private func presentImportFilesOrFolderPanel() {
         let panel = NSOpenPanel()
-        panel.title = "选择 .dna / .fasta 文件或文件夹"
+        panel.title = L10n.t("选择 .dna / .fasta 文件或文件夹")
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
@@ -719,6 +719,6 @@ public struct PlasmidPoolView: View {
         vm.donorExtractSource = .byFeature
         vm.selectInsertFeature(id: feature.id)
         AppState.shared.selectedNav = .singleFragment
-        AppState.shared.showToast("已从「\(plasmid.name)」提取特征「\(feature.name)」(\(end - start + 1) bp) 至单片段克隆！")
+        AppState.shared.showToast(L10n.tr("已从「\(plasmid.name)」提取特征「\(feature.name)」(\(end - start + 1) bp) 至单片段克隆！", "Extracted feature \"\(feature.name)\" (\(end - start + 1) bp) from \(plasmid.name) into Single-Fragment Cloning!"))
     }
 }

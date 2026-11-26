@@ -233,6 +233,9 @@ public struct ProteinWorkbenchView: View {
         .onChange(of: appState.defaultProteinTempK) { _, newT in
             env.temperatureK = newT
         }
+        .onChange(of: appState.appLanguage) { _, _ in
+            recomputeProteinReport()
+        }
     }
 
     private func consumePendingFinderProteinFileIfNeeded() {
@@ -271,12 +274,12 @@ public struct ProteinWorkbenchView: View {
                     color: .teal
                 )
                 StudioMetricBadge(
-                    label: "坐标源",
-                    value: onlineSourceNote ?? (importedPDBText != nil ? "外部 PDB / mmCIF" : "SPICE 启发式折叠"),
+                    label: L10n.t("坐标源"),
+                    value: onlineSourceNote.map { L10n.t($0) } ?? L10n.t(importedPDBText != nil ? "外部 PDB / mmCIF" : "SPICE 启发式折叠"),
                     color: importedPDBText != nil ? .green : .teal
                 )
                 StudioCompactPillButton(
-                    title: isShowingSourceEditor ? "收起配置" : "编辑序列 (pH \(String(format: "%.1f", env.ph)) · \(String(format: "%.0fK", env.temperatureK)))",
+                    title: isShowingSourceEditor ? L10n.t("收起配置") : L10n.tr("编辑序列 (pH \(String(format: "%.1f", env.ph)) · \(String(format: "%.0fK", env.temperatureK)))", "Edit Sequence (pH \(String(format: "%.1f", env.ph)) · \(String(format: "%.0fK", env.temperatureK)))"),
                     icon: isShowingSourceEditor ? "chevron.up.circle.fill" : "slider.horizontal.3",
                     tint: .accentColor,
                     isSelected: isShowingSourceEditor
@@ -324,7 +327,7 @@ public struct ProteinWorkbenchView: View {
                 if isShowingSourceEditor {
                     VStack(alignment: .leading, spacing: 8) {
                         TextEditor(text: $rawSequence)
-                            .font(.system(size: 12, weight: .regular, design: .monospaced))
+                            .font(.system(size: 12, weight: .regular))
                             .scrollContentBackground(.hidden)
                             .padding(6)
                             .frame(height: 58)
@@ -337,7 +340,7 @@ public struct ProteinWorkbenchView: View {
 
                         StudioFlowLayout(horizontalSpacing: 16, verticalSpacing: 8) {
                             HStack(spacing: 6) {
-                                Text("溶液 pH")
+                                Text(L10n.t("溶液 pH"))
                                     .font(.system(size: 11.5, weight: .medium))
                                     .foregroundColor(.secondary)
                                 Slider(value: $env.ph, in: 4.0...10.0, step: 0.2)
@@ -349,7 +352,7 @@ public struct ProteinWorkbenchView: View {
                             }
 
                             HStack(spacing: 6) {
-                                Text("温度 (K)")
+                                Text(L10n.t("温度 (K)"))
                                     .font(.system(size: 11.5, weight: .medium))
                                     .foregroundColor(.secondary)
                                 Slider(value: $env.temperatureK, in: 275.0...350.0, step: 5.0)
@@ -361,7 +364,7 @@ public struct ProteinWorkbenchView: View {
                             }
 
                             HStack(spacing: 6) {
-                                Text("离子强度")
+                                Text(L10n.t("离子强度"))
                                     .font(.system(size: 11.5, weight: .medium))
                                     .foregroundColor(.secondary)
                                 Slider(value: $env.ionicStrengthM, in: 0.0...1.0, step: 0.05)
@@ -447,21 +450,21 @@ public struct ProteinWorkbenchView: View {
                 if viewerMode == .nativeCanvas {
                     // 响应式控制栏：脱离 3D 画布，窄窗自动换行，不遮挡三维结构
                     StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
-                        Toggle("聚焦口袋", isOn: $focusPocketOnly)
+                        Toggle(L10n.t("聚焦口袋"), isOn: $focusPocketOnly)
                             .toggleStyle(.checkbox)
                             .font(.system(size: 11, weight: .medium))
-                        Toggle("Vina 对接盒", isOn: $showDockingBoxWireframe)
+                        Toggle(L10n.t("Vina 对接盒"), isOn: $showDockingBoxWireframe)
                             .toggleStyle(.checkbox)
                             .font(.system(size: 11, weight: .medium))
-                        Toggle("接触虚线", isOn: $showContactLines)
+                        Toggle(L10n.t("接触虚线"), isOn: $showContactLines)
                             .toggleStyle(.checkbox)
                             .font(.system(size: 11, weight: .medium))
-                        Toggle("口袋光晕", isOn: $showPocketHighlight)
+                        Toggle(L10n.t("口袋光晕"), isOn: $showPocketHighlight)
                             .toggleStyle(.checkbox)
                             .font(.system(size: 11, weight: .medium))
 
                         HStack(spacing: 4) {
-                            Text("缩放")
+                            Text(L10n.t("缩放"))
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                             Slider(value: $zoomScale, in: 0.65...2.2)
@@ -548,11 +551,11 @@ public struct ProteinWorkbenchView: View {
                             compact: true
                         )
 
-                        Toggle("非共价相互作用", isOn: $molstarShowInteractions)
+                        Toggle(L10n.t("非共价相互作用"), isOn: $molstarShowInteractions)
                             .toggleStyle(.checkbox)
                             .font(.system(size: 11, weight: .medium))
 
-                        Toggle("Mol* 控件", isOn: $molstarShowControls)
+                        Toggle(L10n.t("Mol* 控件"), isOn: $molstarShowControls)
                             .toggleStyle(.checkbox)
                             .font(.system(size: 11, weight: .medium))
 
@@ -615,7 +618,7 @@ public struct ProteinWorkbenchView: View {
                         HStack(spacing: 6) {
                             if isMolstarRendering {
                                 ProgressView().controlSize(.small)
-                                Text("正在离线载入 Mol* 全原子模型...")
+                                Text(L10n.t("正在离线载入 Mol* 全原子模型..."))
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                             } else if let note = molstarStatusNote {
@@ -630,19 +633,19 @@ public struct ProteinWorkbenchView: View {
                 // 底部轻量状态摘要行（自适应折行）
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 4) {
                     StudioMetricBadge(
-                        label: "回旋半径 Rg",
+                        label: L10n.t("回旋半径 Rg"),
                         value: String(format: "%.1f Å", report.radiusOfGyrationA),
                         color: .cyan
                     )
                     if let pocket = report.pockets.first {
                         StudioMetricBadge(
-                            label: "主口袋评分",
-                            value: String(format: "%.2f · 包埋 %.0f%%", pocket.druggabilityScore, pocket.enclosureRatio * 100.0),
+                            label: L10n.t("主口袋评分"),
+                            value: String(format: L10n.tr("%.2f · 包埋 %.0f%%", "%.2f · Buried %.0f%%"), pocket.druggabilityScore, pocket.enclosureRatio * 100.0),
                             color: .orange
                         )
                     }
                     StudioMetricBadge(
-                        label: "盒子依据",
+                        label: L10n.t("盒子依据"),
                         value: report.dockingBox.sourceTitle,
                         color: .indigo
                     )
@@ -825,17 +828,17 @@ public struct ProteinWorkbenchView: View {
     private func spiceQualityMetricsCard(report: ProteinBiophysicsReport) -> some View {
         StudioCard(title: "SPICE 五维构象与能量评估 (M1–M5)") {
             StudioMetricBadge(
-                label: "综合 Q 分",
+                label: L10n.t("综合 Q 分"),
                 value: String(format: "%.1f / 100", report.compositeQScore),
                 color: report.compositeQScore >= 75 ? .green : .orange
             )
         } content: {
             let items: [(label: String, val: Double, color: Color)] = [
-                ("M1 疏水核心堆积密度", report.metricM1Packing, .blue),
-                ("M2 主链氢键网络饱和度", report.metricM2HBond, .teal),
-                ("M3 拉氏构象允许区占比", report.metricM3Ramachandran, .green),
-                ("M4 溶剂化自由能匹配度", report.metricM4Solvation, .indigo),
-                ("M5 表面静电互补性", report.metricM5Electrostatics, .purple)
+                (L10n.t("M1 疏水核心堆积密度"), report.metricM1Packing, .blue),
+                (L10n.t("M2 主链氢键网络饱和度"), report.metricM2HBond, .teal),
+                (L10n.t("M3 拉氏构象允许区占比"), report.metricM3Ramachandran, .green),
+                (L10n.t("M4 溶剂化自由能匹配度"), report.metricM4Solvation, .indigo),
+                (L10n.t("M5 表面静电互补性"), report.metricM5Electrostatics, .purple)
             ]
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 360), spacing: 10)], spacing: 8) {
                 ForEach(items, id: \.label) { item in
@@ -872,7 +875,7 @@ public struct ProteinWorkbenchView: View {
     private func biophysicsSummaryCard(report: ProteinBiophysicsReport) -> some View {
         StudioCard(title: "蛋白质生物物理与溶液性质") {
             StudioMetricBadge(
-                label: "稳定性判定",
+                label: L10n.t("稳定性判定"),
                 value: report.isStable ? "稳定 (II < 40)" : "易降解风险",
                 color: report.isStable ? .green : .orange
             )
@@ -889,7 +892,7 @@ public struct ProteinWorkbenchView: View {
                 metricTile(
                     title: "理论等电点 (pI)",
                     value: String(format: "%.2f", report.isoelectricPoint),
-                    sub: "pH \(String(format: "%.1f", env.ph)) 电荷 \(String(format: "%+.1f", report.netChargeAtEnvPh))"
+                    sub: L10n.tr("pH \(String(format: "%.1f", env.ph)) 电荷 \(String(format: "%+.1f", report.netChargeAtEnvPh))", "Charge at pH \(String(format: "%.1f", env.ph)): \(String(format: "%+.1f", report.netChargeAtEnvPh))")
                 )
                 metricTile(
                     title: "消光系数 ε280",
@@ -899,12 +902,12 @@ public struct ProteinWorkbenchView: View {
                 metricTile(
                     title: "平均疏水性 GRAVY",
                     value: String(format: "%+.3f", report.gravy),
-                    sub: "脂溶指数 \(String(format: "%.1f", report.aliphaticIndex))"
+                    sub: L10n.tr("脂溶指数 \(String(format: "%.1f", report.aliphaticIndex))", "Aliphatic Index \(String(format: "%.1f", report.aliphaticIndex))")
                 )
                 metricTile(
                     title: "不稳定指数 (II)",
                     value: String(format: "%.1f", report.instabilityIndex),
-                    sub: "无序倾向 \(String(format: "%.1f%%", report.disorderPct))"
+                    sub: L10n.tr("无序倾向 \(String(format: "%.1f%%", report.disorderPct))", "Disorder Propensity \(String(format: "%.1f%%", report.disorderPct))")
                 )
                 metricTile(
                     title: "二级结构分布",
@@ -968,8 +971,8 @@ public struct ProteinWorkbenchView: View {
         return VStack(alignment: .leading, spacing: 10) {
             // 1. 证据来源与一键复制 Vina 配置（使用 StudioFlowLayout 自适应折行）
             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                StudioMetricBadge(label: "决策来源", value: box.sourceTitle, color: .orange)
-                StudioMetricBadge(label: "盒子体积", value: String(format: "%.0f Å³", box.volumeA3), color: .blue)
+                StudioMetricBadge(label: L10n.t("决策来源"), value: box.sourceTitle, color: .orange)
+                StudioMetricBadge(label: L10n.t("盒子体积"), value: String(format: "%.0f Å³", box.volumeA3), color: .blue)
                 StudioMetricBadge(label: "Exhaustiveness", value: "\(box.recommendedExhaustiveness)", color: .teal)
                 StudioActionPillButton(title: "复制 vina_config.txt", icon: "doc.on.doc", tint: .blue, isProminent: true) {
                     copyVinaConfig(report: report)
@@ -999,18 +1002,18 @@ public struct ProteinWorkbenchView: View {
             VStack(alignment: .leading, spacing: 5) {
                 ViewThatFits(in: .horizontal) {
                     HStack {
-                        Text("近端可旋转柔性侧链推荐 (≤ 6.0 Å):")
+                        Text(L10n.t("近端可旋转柔性侧链推荐 (≤ 6.0 Å):"))
                             .font(.system(size: 11.5, weight: .semibold))
                         Spacer()
-                        Text(box.recommendedFlexResidues.isEmpty ? "无" : box.recommendedFlexResidues.joined(separator: ", "))
+                        Text(box.recommendedFlexResidues.isEmpty ? L10n.t("无") : box.recommendedFlexResidues.joined(separator: ", "))
                             .font(.system(size: 11.5, weight: .bold))
                             .monospacedDigit()
                             .foregroundColor(.indigo)
                     }
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("近端可旋转柔性侧链推荐 (≤ 6.0 Å):")
+                        Text(L10n.t("近端可旋转柔性侧链推荐 (≤ 6.0 Å):"))
                             .font(.system(size: 11.5, weight: .semibold))
-                        Text(box.recommendedFlexResidues.isEmpty ? "无" : box.recommendedFlexResidues.joined(separator: ", "))
+                        Text(box.recommendedFlexResidues.isEmpty ? L10n.t("无") : box.recommendedFlexResidues.joined(separator: ", "))
                             .font(.system(size: 11.5, weight: .bold))
                             .monospacedDigit()
                             .foregroundColor(.indigo)
@@ -1030,15 +1033,15 @@ public struct ProteinWorkbenchView: View {
                     HStack(spacing: 5) {
                         Image(systemName: hc.isExperimentalOrAlphaFoldPDB ? "checkmark.shield.fill" : "info.circle.fill")
                             .foregroundColor(hc.isExperimentalOrAlphaFoldPDB ? .green : .orange)
-                        Text("结构体检 (\(hc.coordinateSource))")
+                        Text(L10n.tr("结构体检 (\(hc.coordinateSource))", "Structure Diagnostics (\(L10n.t(hc.coordinateSource)))"))
                             .font(.system(size: 12, weight: .bold))
                     }
-                    StudioMetricBadge(label: "链", value: hc.chainIDs.joined(separator: ","), color: .secondary)
+                    StudioMetricBadge(label: L10n.t("链"), value: hc.chainIDs.joined(separator: ","), color: .secondary)
                     if !hc.coCrystalLigands.isEmpty {
-                        StudioMetricBadge(label: "共晶配体", value: hc.coCrystalLigands.joined(separator: "/"), color: .green)
+                        StudioMetricBadge(label: L10n.t("共晶配体"), value: hc.coCrystalLigands.joined(separator: "/"), color: .green)
                     }
                     if !hc.metalIons.isEmpty {
-                        StudioMetricBadge(label: "金属离子", value: hc.metalIons.joined(separator: "/"), color: .orange)
+                        StudioMetricBadge(label: L10n.t("金属离子"), value: hc.metalIons.joined(separator: "/"), color: .orange)
                     }
                 }
 
@@ -1071,7 +1074,7 @@ public struct ProteinWorkbenchView: View {
                 HStack(spacing: 5) {
                     Image(systemName: "terminal.fill")
                         .foregroundColor(.indigo)
-                    Text("本地计算桥接 (Vina / Smina / Gnina / Boltz)")
+                    Text(L10n.t("本地计算桥接 (Vina / Smina / Gnina / Boltz)"))
                         .font(.system(size: 12, weight: .bold))
                 }
 
@@ -1112,15 +1115,15 @@ public struct ProteinWorkbenchView: View {
                         tint: isSelectedTool ? .indigo : (tool.isAvailable ? .green : nil),
                         isSelected: isSelectedTool,
                         help: tool.isAvailable
-                            ? "\(tool.kind.displayName)\n路径：\(tool.executablePath ?? "")\n版本：\(tool.versionText ?? "已就绪")"
-                            : "未在本机检测到 \(tool.kind.cliName)\n安装建议：\(tool.installHint)"
+                            ? L10n.tr("\(tool.kind.displayName)\n路径：\(tool.executablePath ?? "")\n版本：\(tool.versionText ?? "已就绪")", "\(tool.kind.displayName)\nPath: \(tool.executablePath ?? "")\nVersion: \(tool.versionText ?? L10n.t("已就绪"))")
+                            : L10n.tr("未在本机检测到 \(tool.kind.cliName)\n安装建议：\(tool.installHint)", "\(tool.kind.cliName) not detected locally\nInstall: \(tool.installHint)")
                     ) {
                         if tool.kind != .obabel {
                             selectedDockingTool = tool.kind
                         } else {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(tool.installHint, forType: .string)
-                            appState.showToast("已复制安装命令：\(tool.installHint)")
+                            appState.showToast(L10n.tr("已复制安装命令：\(tool.installHint)", "Copied install command: \(tool.installHint)"))
                         }
                     }
                 }
@@ -1131,17 +1134,17 @@ public struct ProteinWorkbenchView: View {
                     ForEach(ProteinDockingBridgeEngine.LocalComputeToolKind.allCases) { kind in
                         HStack(spacing: 6) {
                             Text(kind.cliName)
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .font(.system(size: 11, weight: .semibold))
                                 .frame(width: 56, alignment: .leading)
                             TextField(
-                                "留空则自动从 PATH / Homebrew / Conda 探测",
+                                L10n.t("留空则自动从 PATH / Homebrew / Conda 探测"),
                                 text: Binding(
                                     get: { customPathTextByTool[kind.rawValue] ?? "" },
                                     set: { customPathTextByTool[kind.rawValue] = $0 }
                                 )
                             )
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(.system(size: 11))
                         }
                     }
                 }
@@ -1158,9 +1161,9 @@ public struct ProteinWorkbenchView: View {
                     compact: true
                 )
 
-                TextField("输入配体 SMILES（或右侧选 .pdbqt/.sdf）", text: $ligandSMILESInput)
+                TextField(L10n.t("输入配体 SMILES（或右侧选 .pdbqt/.sdf）"), text: $ligandSMILESInput)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 11.5, design: .monospaced))
+                    .font(.system(size: 11.5))
                     .frame(minWidth: 200, maxWidth: 320)
 
                 StudioCompactPillButton(
@@ -1181,8 +1184,8 @@ public struct ProteinWorkbenchView: View {
             StudioActionBar {
                 StudioPrimaryActionButton(
                     title: isRunningLocalCompute
-                        ? "正在运行 \(selectedDockingTool.cliName)..."
-                        : (selectedDockingTool == .boltz ? "运行本地 Boltz 共折叠" : "运行本地 \(selectedDockingTool.cliName) 对接"),
+                        ? L10n.tr("正在运行 \(selectedDockingTool.cliName)...", "Running \(selectedDockingTool.cliName)...")
+                        : (selectedDockingTool == .boltz ? L10n.t("运行本地 Boltz 共折叠") : L10n.tr("运行本地 \(selectedDockingTool.cliName) 对接", "Run Local \(selectedDockingTool.cliName) Docking")),
                     icon: "play.circle.fill",
                     tint: .indigo,
                     isLoading: isRunningLocalCompute,
@@ -1192,10 +1195,10 @@ public struct ProteinWorkbenchView: View {
                 }
 
                 if detectedSelected?.isAvailable != true, let hint = detectedSelected?.installHint {
-                    StudioActionPillButton(title: "复制安装命令: \(hint)", icon: "doc.on.doc", tint: .orange) {
+                    StudioActionPillButton(title: L10n.tr("复制安装命令: \(hint)", "Copy Install Cmd: \(hint)"), icon: "doc.on.doc", tint: .orange) {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(hint, forType: .string)
-                        appState.showToast("已复制：\(hint)")
+                        appState.showToast(L10n.tr("已复制：\(hint)", "Copied: \(hint)"))
                     }
                 }
             }
@@ -1227,7 +1230,7 @@ public struct ProteinWorkbenchView: View {
 
             if !activeDockingPoses.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("对接结合构象表（点击任意行在 Mol* 3D 中查看配体与氢键/疏水相互作用）：")
+                    Text(L10n.t("对接结合构象表（点击任意行在 Mol* 3D 中查看配体与氢键/疏水相互作用）："))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
 
@@ -1301,7 +1304,7 @@ public struct ProteinWorkbenchView: View {
 
     private func pickLigandFile() {
         let panel = NSOpenPanel()
-        panel.title = "选择小分子配体文件 (.pdbqt / .sdf / .mol2 / .pdb)"
+        panel.title = L10n.t("选择小分子配体文件 (.pdbqt / .sdf / .mol2 / .pdb)")
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -1312,7 +1315,7 @@ public struct ProteinWorkbenchView: View {
 
     private func importExternalDockingResult() {
         let panel = NSOpenPanel()
-        panel.title = "导入对接输出构象文件 (.pdbqt / .sdf / .pdb)"
+        panel.title = L10n.t("导入对接输出构象文件 (.pdbqt / .sdf / .pdb)")
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -1324,14 +1327,14 @@ public struct ProteinWorkbenchView: View {
                 tool: selectedDockingTool.isDockingEngine ? selectedDockingTool : .vina
             )
             if poses.isEmpty {
-                localComputeError = "未能在 \(url.lastPathComponent) 中解析出有效 Pose 构象。"
+                localComputeError = L10n.tr("未能在 \(url.lastPathComponent) 中解析出有效 Pose 构象。", "No valid binding poses parsed from \(url.lastPathComponent).")
             } else {
                 localComputeError = nil
                 dockingResult = nil
                 importedDockingPoses = poses
                 selectedPoseIndex = poses.first?.modeIndex
                 viewerMode = .molstar3D
-                appState.showToast("已导入 \(poses.count) 个对接 Pose，正在 Mol* 3D 中载入")
+                appState.showToast(L10n.tr("已导入 \(poses.count) 个对接 Pose，正在 Mol* 3D 中载入", "Imported \(poses.count) docking poses; loading in Mol* 3D"))
             }
         }
     }
@@ -1339,7 +1342,7 @@ public struct ProteinWorkbenchView: View {
     private func launchLocalCompute(report: ProteinBiophysicsReport, obabelPath: String?) {
         guard let toolInfo = detectedTools.first(where: { $0.kind == selectedDockingTool }),
               let exe = toolInfo.executablePath else {
-            localComputeError = "未在本机检测到 \(selectedDockingTool.displayName) 可执行文件。"
+            localComputeError = L10n.tr("未在本机检测到 \(selectedDockingTool.displayName) 可执行文件。", "\(selectedDockingTool.displayName) executable not detected on this Mac.")
             return
         }
         isRunningLocalCompute = true
@@ -1404,7 +1407,7 @@ public struct ProteinWorkbenchView: View {
                         self.viewerMode = .molstar3D
                         self.isRunningLocalCompute = false
                         let bestAff = res.poses.first.map { String(format: "%.2f kcal/mol", $0.affinityKcalMol) } ?? "-"
-                        appState.showToast("\(tool.displayName) 对接完成：\(res.poses.count) 个构象（最优 \(bestAff)）")
+                        appState.showToast(L10n.tr("\(tool.displayName) 对接完成：\(res.poses.count) 个构象（最优 \(bestAff)）", "\(tool.displayName) complete: \(res.poses.count) poses (best \(bestAff))"))
                     }
                 } catch {
                     await MainActor.run {
@@ -1449,7 +1452,7 @@ public struct ProteinWorkbenchView: View {
     private func ramachandranPlotView(report: ProteinBiophysicsReport) -> some View {
         let validResidues = report.residues.filter { $0.phi != nil && $0.psi != nil }
         return VStack(alignment: .leading, spacing: 6) {
-            Text("主链二面角分布 (φ, ψ ∈ [-180°, +180°]) · 核心允许区占比 \(String(format: "%.1f%%", report.metricM3Ramachandran))")
+            Text(L10n.tr("主链二面角分布 (φ, ψ ∈ [-180°, +180°]) · 核心允许区占比 \(String(format: "%.1f%%", report.metricM3Ramachandran))", "Backbone Dihedrals (φ, ψ ∈ [-180°, +180°]) · Favored \(String(format: "%.1f%%", report.metricM3Ramachandran))"))
                 .font(.system(size: 11.5))
                 .foregroundColor(.secondary)
 
@@ -1459,7 +1462,7 @@ public struct ProteinWorkbenchView: View {
                         x: .value("Phi (φ)", r.phi ?? 0),
                         y: .value("Psi (ψ)", r.psi ?? 0)
                     )
-                    .foregroundStyle(by: .value("二级结构", r.secondary.title))
+                    .foregroundStyle(by: .value(L10n.t("二级结构"), r.secondary.title))
                     .symbolSize(36)
                 }
             }
@@ -1473,22 +1476,22 @@ public struct ProteinWorkbenchView: View {
     private func contactAndHydropathyCombinedView(report: ProteinBiophysicsReport) -> some View {
         StudioResponsiveSplitLayout(breakpoint: 500, spacing: 12, leftRatio: 0.48) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Cα–Cα 接触图 (≤ 8.5 Å，\(report.contacts.count) 对)")
+                Text(L10n.tr("Cα–Cα 接触图 (≤ 8.5 Å，\(report.contacts.count) 对)", "Cα–Cα Contact Map (≤ 8.5 Å, \(report.contacts.count) pairs)"))
                     .font(.system(size: 11.5, weight: .semibold))
                     .foregroundColor(.secondary)
 
                 Chart {
                     ForEach(report.contacts) { c in
                         PointMark(
-                            x: .value("残基 i", c.resI),
-                            y: .value("残基 j", c.resJ)
+                            x: .value(L10n.t("残基 i"), c.resI),
+                            y: .value(L10n.t("残基 j"), c.resJ)
                         )
                         .foregroundStyle(Color.teal.opacity(0.75))
                         .symbolSize(22)
 
                         PointMark(
-                            x: .value("残基 i", c.resJ),
-                            y: .value("残基 j", c.resI)
+                            x: .value(L10n.t("残基 i"), c.resJ),
+                            y: .value(L10n.t("残基 j"), c.resI)
                         )
                         .foregroundStyle(Color.indigo.opacity(0.65))
                         .symbolSize(22)
@@ -1500,19 +1503,19 @@ public struct ProteinWorkbenchView: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Kyte-Doolittle 疏水性剖面 (窗口 = 7 aa)")
+                Text(L10n.t("Kyte-Doolittle 疏水性剖面 (窗口 = 7 aa)"))
                     .font(.system(size: 11.5, weight: .semibold))
                     .foregroundColor(.secondary)
 
                 Chart {
-                    RuleMark(y: .value("中性线", 0.0))
+                    RuleMark(y: .value(L10n.t("中性线"), 0.0))
                         .foregroundStyle(Color.secondary.opacity(0.5))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
 
                     ForEach(report.hydropathyProfile, id: \.index) { pt in
                         LineMark(
-                            x: .value("残基位置", pt.index),
-                            y: .value("KD 疏水指数", pt.value)
+                            x: .value(L10n.t("残基位置"), pt.index),
+                            y: .value(L10n.t("KD 疏水指数"), pt.value)
                         )
                         .foregroundStyle(Color.orange)
                         .lineStyle(StrokeStyle(lineWidth: 2))
@@ -1525,12 +1528,12 @@ public struct ProteinWorkbenchView: View {
 
     private var mutantScreeningView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("输入单点或组合突变（每行一条，如 V13A 或 I15L + L19M），按疏水性/位阻/脯氨酸经验启发式模型 (empirical_heuristic) 进行快速初筛（不等同于 FoldX/Rosetta 全原子自由能计算）：")
+            Text(L10n.t("输入单点或组合突变（每行一条，如 V13A 或 I15L + L19M），按疏水性/位阻/脯氨酸经验启发式模型 (empirical_heuristic) 进行快速初筛（不等同于 FoldX/Rosetta 全原子自由能计算）："))
                 .font(.system(size: 11.5))
                 .foregroundColor(.secondary)
 
             TextEditor(text: $mutantInputText)
-                .font(.system(size: 11.5, design: .monospaced))
+                .font(.system(size: 11.5))
                 .scrollContentBackground(.hidden)
                 .padding(6)
                 .frame(height: 64)
@@ -1600,13 +1603,13 @@ public struct ProteinWorkbenchView: View {
         if !aaSeq.isEmpty {
             importedPDBText = nil
             rawSequence = aaSeq
-            appState.showToast("已将「\(item.name) : \(feature.name)」翻译为 \(aaSeq.count) aa 蛋白质序列")
+            appState.showToast(L10n.tr("已将「\(item.name) : \(feature.name)」翻译为 \(aaSeq.count) aa 蛋白质序列", "Translated \"\(item.name) : \(feature.name)\" to \(aaSeq.count) aa"))
         }
     }
 
     private func importStructureOrSequenceFile() {
         let panel = NSOpenPanel()
-        panel.title = "选择 PDB / mmCIF 结构文件 (.pdb / .cif) 或 FASTA 氨基酸序列"
+        panel.title = L10n.t("选择 PDB / mmCIF 结构文件 (.pdb / .cif) 或 FASTA 氨基酸序列")
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -1620,12 +1623,12 @@ public struct ProteinWorkbenchView: View {
                     rawSequence = parsed.map(\.oneLetter).joined()
                 }
                 onlineSourceNote = ProteinBiophysicsEngine.isMMCIFFormat(content) ? "mmCIF (.cif)" : "PDB (.pdb)"
-                appState.showToast("已载入三维结构：\(url.lastPathComponent) (\(parsed.count) 残基)")
+                appState.showToast(L10n.tr("已载入三维结构：\(url.lastPathComponent) (\(parsed.count) 残基)", "Loaded 3D structure: \(url.lastPathComponent) (\(parsed.count) residues)"))
             } else {
                 importedPDBText = nil
                 onlineSourceNote = nil
                 rawSequence = ProteinBiophysicsEngine.cleanProteinSequence(content)
-                appState.showToast("已导入氨基酸序列：\(url.lastPathComponent)")
+                appState.showToast(L10n.tr("已导入氨基酸序列：\(url.lastPathComponent)", "Imported amino acid sequence: \(url.lastPathComponent)"))
             }
         }
     }
@@ -1638,12 +1641,12 @@ public struct ProteinWorkbenchView: View {
                 rawSequence = parsed.map(\.oneLetter).joined()
             }
             onlineSourceNote = "\(res.source) · \(res.identifier)"
-            appState.showToast("已从 \(res.source) 载入 \(res.identifier) (\(parsed.count) 残基)")
+            appState.showToast(L10n.tr("已从 \(res.source) 载入 \(res.identifier) (\(parsed.count) 残基)", "Loaded \(res.identifier) from \(res.source) (\(parsed.count) residues)"))
         } else {
             importedPDBText = nil
             rawSequence = ProteinBiophysicsEngine.cleanProteinSequence(res.contentText)
             onlineSourceNote = "\(res.source) · \(res.identifier)"
-            appState.showToast("已从 \(res.source) 载入序列 \(res.identifier) (\(rawSequence.count) aa)")
+            appState.showToast(L10n.tr("已从 \(res.source) 载入序列 \(res.identifier) (\(rawSequence.count) aa)", "Loaded sequence \(res.identifier) from \(res.source) (\(rawSequence.count) aa)"))
         }
     }
 
@@ -1658,25 +1661,25 @@ public struct ProteinWorkbenchView: View {
         recomputeMutants(wildTypeSequence: report.sequence)
         let box = report.dockingBox
         let html = FinderFileDropHelper.buildOfflineHTMLReport(
-            title: "蛋白质三维结构、LIGSITE 结合口袋与 Vina 对接盒子报告",
-            subtitle: "序列长度 \(report.length) aa · 环境 pH \(String(format: "%.1f", env.ph)) · 温度 \(String(format: "%.0f K", env.temperatureK))",
+            title: L10n.t("蛋白质三维结构、LIGSITE 结合口袋与 Vina 对接盒子报告"),
+            subtitle: L10n.tr("序列长度 \(report.length) aa · 环境 pH \(String(format: "%.1f", env.ph)) · 温度 \(String(format: "%.0f K", env.temperatureK))", "Length \(report.length) aa · pH \(String(format: "%.1f", env.ph)) · \(String(format: "%.0f K", env.temperatureK))"),
             credibilityBadge: report.healthCard.credibilitySummary,
             warnings: report.healthCard.warnings + [
                 box.sourceNote,
                 box.runtimeEstimateNote,
-                "点突变 ΔΔG 评估采用经验启发式模型 (empirical_heuristic：基于 Kyte-Doolittle 疏水性差异、残基质量位阻与脯氨酸罚分)，仅用于快速初筛，不等同于 FoldX / Rosetta 全原子能量函数。"
+                L10n.t("点突变 ΔΔG 评估采用经验启发式模型 (empirical_heuristic：基于 Kyte-Doolittle 疏水性差异、残基质量位阻与脯氨酸罚分)，仅用于快速初筛，不等同于 FoldX / Rosetta 全原子能量函数。")
             ],
             metrics: [
-                ("氨基酸长度", "\(report.length) aa"),
-                ("分子量 (MW)", String(format: "%.2f kDa", report.molecularWeightDa / 1000.0)),
-                ("理论等电点 (pI)", String(format: "%.2f", report.isoelectricPoint)),
-                ("平均疏水性 GRAVY", String(format: "%+.3f", report.gravy)),
-                ("回旋半径 Rg", String(format: "%.2f Å", report.radiusOfGyrationA)),
-                ("综合折叠质量 Q", String(format: "%.1f / 100", report.compositeQScore)),
-                ("口袋 LIGSITE 评分", String(format: "%.2f", report.pockets.first?.druggabilityScore ?? 0)),
-                ("Vina 盒子中心", String(format: "(%.1f, %.1f, %.1f)", box.centerX, box.centerY, box.centerZ))
+                (L10n.t("氨基酸长度"), "\(report.length) aa"),
+                (L10n.t("分子量 (MW)"), String(format: "%.2f kDa", report.molecularWeightDa / 1000.0)),
+                (L10n.t("理论等电点 (pI)"), String(format: "%.2f", report.isoelectricPoint)),
+                (L10n.t("平均疏水性 GRAVY"), String(format: "%+.3f", report.gravy)),
+                (L10n.t("回旋半径 Rg"), String(format: "%.2f Å", report.radiusOfGyrationA)),
+                (L10n.t("综合折叠质量 Q"), String(format: "%.1f / 100", report.compositeQScore)),
+                (L10n.t("口袋 LIGSITE 评分"), String(format: "%.2f", report.pockets.first?.druggabilityScore ?? 0)),
+                (L10n.t("Vina 盒子中心"), String(format: "(%.1f, %.1f, %.1f)", box.centerX, box.centerY, box.centerZ))
             ],
-            tableHeaders: ["突变组合", "ΔΔG (kcal/mol)", "ΔGRAVY", "ΔCharge", "综合评分", "稳定性结论"],
+            tableHeaders: [L10n.t("突变组合"), "ΔΔG (kcal/mol)", "ΔGRAVY", "ΔCharge", L10n.t("综合评分"), L10n.t("稳定性结论")],
             tableRows: mutantResults.map { m in
                 [
                     m.mutationSpec,
@@ -1687,7 +1690,7 @@ public struct ProteinWorkbenchView: View {
                     m.stabilityVerdict
                 ]
             },
-            extraPreBlockTitle: "4. AutoDock Vina / Smina 对接配置文件 (vina_config.txt)",
+            extraPreBlockTitle: L10n.t("4. AutoDock Vina / Smina 对接配置文件 (vina_config.txt)"),
             extraPreBlockContent: box.vinaConfigText
         )
         FinderFileDropHelper.saveHTMLReport(
@@ -1714,6 +1717,7 @@ private struct ProteinOnlineFetchSheet: View {
         var id: String { rawValue }
     }
 
+    @Environment(\.appLanguage) private var appLanguage
     @Environment(\.dismiss) private var dismiss
     let onFetched: (BioDatabaseFetchService.FetchedProteinStructureResult) -> Void
 
@@ -1723,17 +1727,18 @@ private struct ProteinOnlineFetchSheet: View {
     @State private var errorMessage: String? = nil
 
     var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("在线拉取蛋白三维结构 (RCSB PDB / AlphaFold DB / UniProt)")
+                    Text(L10n.t("在线拉取蛋白三维结构 (RCSB PDB / AlphaFold DB / UniProt)"))
                         .font(.system(size: 15, weight: .bold))
-                    Text("自动优先拉取完整 mmCIF (.cif) 坐标，保留实验配体或 AlphaFold 逐残基 pLDDT 置信度")
+                    Text(L10n.t("自动优先拉取完整 mmCIF (.cif) 坐标，保留实验配体或 AlphaFold 逐残基 pLDDT 置信度"))
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("关闭") { dismiss() }
+                Button(L10n.t("关闭")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
 
@@ -1748,9 +1753,9 @@ private struct ProteinOnlineFetchSheet: View {
             )
 
             HStack(spacing: 8) {
-                TextField(source == .rcsb ? "输入 4 位 PDB ID（如 1ATP、1UBQ）" : "输入 UniProt ID（如 P04637）", text: $identifier)
+                TextField(L10n.t(source == .rcsb ? "输入 4 位 PDB ID（如 1ATP、1UBQ）" : "输入 UniProt ID（如 P04637）"), text: $identifier)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 12.5, design: .monospaced))
+                    .font(.system(size: 12.5))
                 StudioCompactPillButton(title: "示例", icon: "sparkles", tint: .blue) {
                     identifier = source == .rcsb ? "1ATP" : "P04637"
                 }

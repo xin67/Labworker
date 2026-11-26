@@ -93,7 +93,7 @@ public struct QPCRAnalysisView: View {
             toolbar: [
                 .picker(
                     id: "qpcr_mode",
-                    label: "分析模式",
+                    label: L10n.t("分析模式"),
                     options: QPCRAnalysisMode.allCases.map { m in
                         StudioToolbarPickerOption(
                             id: m.title,
@@ -166,6 +166,9 @@ public struct QPCRAnalysisView: View {
         .onChange(of: appState.defaultQPCRMeltTolerance) { _, newVal in
             settings.meltTolerance = newVal
         }
+        .onChange(of: appState.appLanguage) { _, _ in
+            refreshAnalysisSnapshot()
+        }
     }
     
     private func consumePendingFinderQPCRFileIfNeeded() {
@@ -188,7 +191,7 @@ public struct QPCRAnalysisView: View {
         return StudioCard(
             title: "内参基因、对照组与质控阈值",
             headerTrailing: {
-                Toggle("自动剔除离群孔", isOn: $settings.excludeOutliers)
+                Toggle(L10n.t("自动剔除离群孔"), isOn: $settings.excludeOutliers)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 12))
             }
@@ -196,7 +199,7 @@ public struct QPCRAnalysisView: View {
             VStack(alignment: .leading, spacing: 10) {
                 // 内参基因多选胶囊（支持几何平均）
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("内参基因 (支持多选几何平均 Reference Ct):")
+                    Text(L10n.t("内参基因 (支持多选几何平均 Reference Ct):"))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
                     
@@ -220,7 +223,7 @@ public struct QPCRAnalysisView: View {
                 // 对照组选择
                 if !out.groups.isEmpty {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("基准对照组 (Control Group):")
+                        Text(L10n.t("基准对照组 (Control Group):"))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                         
@@ -245,7 +248,7 @@ public struct QPCRAnalysisView: View {
                 // QC 阈值与扩增效率校正（流式自动换行）
                 StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 8) {
                     HStack(spacing: 4) {
-                        Text("高 Ct 警告:")
+                        Text(L10n.t("高 Ct 警告:"))
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                         TextField("35", value: $settings.highCtThreshold, format: .number)
@@ -256,7 +259,7 @@ public struct QPCRAnalysisView: View {
                     }
                     
                     HStack(spacing: 4) {
-                        Text("NTC 阈值:")
+                        Text(L10n.t("NTC 阈值:"))
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                         TextField("35", value: $settings.ntcCtThreshold, format: .number)
@@ -278,7 +281,7 @@ public struct QPCRAnalysisView: View {
                     }
                     
                     HStack(spacing: 4) {
-                        Text("Tm 容差(℃):")
+                        Text(L10n.t("Tm 容差(℃):"))
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                         TextField("1.0", value: $settings.meltTolerance, format: .number)
@@ -289,7 +292,7 @@ public struct QPCRAnalysisView: View {
                     }
                     
                     HStack(spacing: 4) {
-                        Text("复孔 SD 阈值:")
+                        Text(L10n.t("复孔 SD 阈值:"))
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                         TextField("0.5", value: $settings.sdLimit, format: .number)
@@ -299,13 +302,13 @@ public struct QPCRAnalysisView: View {
                             .frame(width: 50)
                     }
                     
-                    Toggle("启用扩增效率校正", isOn: $settings.efficiencyCorrection)
+                    Toggle(L10n.t("启用扩增效率校正"), isOn: $settings.efficiencyCorrection)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 12.5))
                     
                     if settings.efficiencyCorrection {
                         HStack(spacing: 4) {
-                            Text("默认效率(%):")
+                            Text(L10n.t("默认效率(%):"))
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
                             TextField("100", value: $settings.defaultEfficiencyPct, format: .number)
@@ -317,7 +320,7 @@ public struct QPCRAnalysisView: View {
                     }
                     
                     HStack(spacing: 4) {
-                        Text("多组校正:")
+                        Text(L10n.t("多组校正:"))
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                         StudioMenuPicker(
@@ -331,7 +334,7 @@ public struct QPCRAnalysisView: View {
                     
                     if !poolManager.items.isEmpty {
                         StudioMenuPillButton(
-                            title: linkedPlasmidIDs.isEmpty ? "关联质粒池" : "已关联 \(linkedPlasmidIDs.count)",
+                            title: linkedPlasmidIDs.isEmpty ? L10n.t("关联质粒池") : L10n.tr("已关联 \(linkedPlasmidIDs.count)", "Linked (\(linkedPlasmidIDs.count))"),
                             icon: "link",
                             tint: linkedPlasmidIDs.isEmpty ? nil : .accentColor,
                             compact: true,
@@ -368,12 +371,12 @@ public struct QPCRAnalysisView: View {
         }
         
         return StudioCard(
-            title: "反应孔原始数据与 QC 质控 (\(wells.count) 孔)",
+            title: L10n.tr("反应孔原始数据与 QC 质控 (\(wells.count) 孔)", "Raw Reaction Wells & QC (\(wells.count) wells)"),
             headerTrailing: {
                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                    StudioMetricBadge(label: "格式", value: detectedInstrumentFormat.shortTitle, color: .teal)
+                    StudioMetricBadge(label: L10n.t("格式"), value: detectedInstrumentFormat.shortTitle, color: .teal)
                     if flaggedCount > 0 {
-                        StudioMetricBadge(label: "QC提醒", value: "\(flaggedCount)", color: .orange)
+                        StudioMetricBadge(label: L10n.t("QC提醒"), value: "\(flaggedCount)", color: .orange)
                     }
                     StudioSegmentedPillGroup(items: [
                         StudioPillGroupItem(title: showCSVEditor ? "收起粘贴框" : "粘贴/导入 CSV", icon: "doc.text") {
@@ -391,7 +394,7 @@ public struct QPCRAnalysisView: View {
                 if !flagCounts.isEmpty {
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 5) {
                         StudioActionPillButton(
-                            title: "全部 (\(wells.count))",
+                            title: L10n.tr("全部 (\(wells.count))", "All (\(wells.count))"),
                             icon: selectedQCFilter == nil ? "line.3.horizontal.decrease.circle.fill" : nil,
                             tint: selectedQCFilter == nil ? .blue : nil,
                             isProminent: selectedQCFilter == nil
@@ -415,7 +418,7 @@ public struct QPCRAnalysisView: View {
                 
                 if showCSVEditor {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("粘贴 CSV / TSV 表格（包含 well, sample, group, target, ct, tm, task, quantity 列）：")
+                        Text(L10n.t("粘贴 CSV / TSV 表格（包含 well, sample, group, target, ct, tm, task, quantity 列）："))
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                         
@@ -433,17 +436,17 @@ public struct QPCRAnalysisView: View {
                 
                 // 表头
                 HStack(spacing: 6) {
-                    Text("启用")
+                    Text(L10n.t("启用"))
                         .frame(width: 28, alignment: .leading)
-                    Text("孔位")
+                    Text(L10n.t("孔位"))
                         .frame(width: 32, alignment: .leading)
-                    Text("样品 / 类型")
+                    Text(L10n.t("样品 / 类型"))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Text("靶标")
+                    Text(L10n.t("靶标"))
                         .frame(width: 54, alignment: .leading)
                     Text("Ct / Tm")
                         .frame(width: 68, alignment: .trailing)
-                    Text("状态")
+                    Text(L10n.t("状态"))
                         .frame(width: 82, alignment: .trailing)
                 }
                 .font(.system(size: 11.5, weight: .bold))
@@ -513,7 +516,7 @@ public struct QPCRAnalysisView: View {
                                     if let flags = wellQC?.flags, !flags.isEmpty {
                                         let primaryFlag = flags.first!
                                         let isRed = (primaryFlag == .ntcAmplified || primaryFlag == .noRTAmplified || primaryFlag == .meltOutlier)
-                                        Text(primaryFlag.rawValue)
+                                        Text(L10n.t(primaryFlag.rawValue))
                                             .font(.system(size: 9.5, weight: .bold))
                                             .foregroundColor(isRed ? .red : .orange)
                                             .padding(.horizontal, 5)
@@ -521,18 +524,18 @@ public struct QPCRAnalysisView: View {
                                             .background(Capsule(style: .continuous).fill((isRed ? Color.red : Color.orange).opacity(0.14)))
                                             .lineLimit(1)
                                     } else if well.wellType == .standard {
-                                        Text("标准品")
+                                        Text(L10n.t("标准品"))
                                             .font(.system(size: 10, weight: .semibold))
                                             .foregroundColor(.blue)
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 2)
                                             .background(Capsule(style: .continuous).fill(Color.blue.opacity(0.12)))
                                     } else if well.wellType == .ntc || well.wellType == .noRT {
-                                        Text("阴性合格")
+                                        Text(L10n.t("阴性合格"))
                                             .font(.system(size: 10, weight: .medium))
                                             .foregroundColor(.green)
                                     } else {
-                                        Text("正常")
+                                        Text(L10n.t("正常"))
                                             .font(.system(size: 10.5, weight: .medium))
                                             .foregroundColor(.green)
                                     }
@@ -582,7 +585,7 @@ public struct QPCRAnalysisView: View {
     private var ddctChartCard: some View {
         let out = ddctOut
         return StudioCard(
-            title: "相对表达量柱状图 (2^-ΔΔCt Fold Change ± \(errorBarMode.title))",
+            title: L10n.tr("相对表达量柱状图 (2^-ΔΔCt Fold Change ± \(errorBarMode.title))", "Relative Expression (2^-ΔΔCt Fold Change ± \(L10n.t(errorBarMode.title)))"),
             headerTrailing: {
                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                     StudioMenuPicker(
@@ -594,8 +597,8 @@ public struct QPCRAnalysisView: View {
                         compact: true
                     )
                     
-                    StudioMetricBadge(label: "内参", value: out.references.joined(separator: "/"), color: .teal)
-                    StudioMetricBadge(label: "对照组", value: out.controlLabel, color: .blue)
+                    StudioMetricBadge(label: L10n.t("内参"), value: out.references.joined(separator: "/"), color: .teal)
+                    StudioMetricBadge(label: L10n.t("对照组"), value: out.controlLabel, color: .blue)
                 }
             }
         ) {
@@ -605,7 +608,7 @@ public struct QPCRAnalysisView: View {
                         Image(systemName: "exclamationmark.octagon.fill")
                             .foregroundColor(.red)
                             .font(.system(size: 13))
-                        Text("靶标 [\(out.contaminatedTargets.joined(separator: "、"))] 检出 NTC / no-RT 阴性对照污染起峰，该靶标定量结果存在假阳性或 gDNA 污染风险（NTC/no-RT 孔已自动排除在 ΔΔCt 计算外），请复核体系！")
+                        Text(L10n.tr("靶标 [\(out.contaminatedTargets.joined(separator: "、"))] 检出 NTC / no-RT 阴性对照污染起峰，该靶标定量结果存在假阳性或 gDNA 污染风险（NTC/no-RT 孔已自动排除在 ΔΔCt 计算外），请复核体系！", "Target(s) [\(out.contaminatedTargets.joined(separator: ", "))] showed amplification in NTC/no-RT negative controls, indicating potential contamination or gDNA carryover (control wells auto-excluded from ΔΔCt). Please verify reactions!"))
                             .font(.system(size: 11.5, weight: .medium))
                             .foregroundColor(.red)
                             .fixedSize(horizontal: false, vertical: true)
@@ -615,7 +618,7 @@ public struct QPCRAnalysisView: View {
                 }
                 
                 if out.groupResults.isEmpty {
-                    Text("暂无可计算的 ΔΔCt 分组结果，请检查内参基因与目的基因设置")
+                    Text(L10n.t("暂无可计算的 ΔΔCt 分组结果，请检查内参基因与目的基因设置"))
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                         .padding(.vertical, 24)
@@ -627,11 +630,11 @@ public struct QPCRAnalysisView: View {
                     
                     ForEach(out.groupResults) { item in
                         BarMark(
-                            x: .value("分组", item.category),
-                            y: .value("相对表达量 (Fold)", item.meanFold)
+                            x: .value(L10n.t("分组"), item.category),
+                            y: .value(L10n.t("相对表达量 (Fold)"), item.meanFold)
                         )
-                        .foregroundStyle(by: .value("目的基因", item.target))
-                        .position(by: .value("目的基因", item.target))
+                        .foregroundStyle(by: .value(L10n.t("目的基因"), item.target))
+                        .position(by: .value(L10n.t("目的基因"), item.target))
                         .cornerRadius(5)
                         .annotation(position: .top, spacing: 4) {
                             VStack(spacing: 1) {
@@ -641,7 +644,7 @@ public struct QPCRAnalysisView: View {
                                             .font(.system(size: 10, weight: .bold))
                                             .foregroundColor(item.significanceLabel.hasPrefix("*") ? .pink : .secondary)
                                     } else {
-                                        Text("n<2，未检验")
+                                        Text(L10n.t("n<2，未检验"))
                                             .font(.system(size: 9, weight: .medium))
                                             .foregroundColor(.secondary)
                                     }
@@ -655,11 +658,11 @@ public struct QPCRAnalysisView: View {
                         
                         if let bounds = errorBarBounds(for: item) {
                             RuleMark(
-                                x: .value("分组", item.category),
+                                x: .value(L10n.t("分组"), item.category),
                                 yStart: .value("Low", bounds.low),
                                 yEnd: .value("High", bounds.high)
                             )
-                            .position(by: .value("目的基因", item.target))
+                            .position(by: .value(L10n.t("目的基因"), item.target))
                             .lineStyle(StrokeStyle(lineWidth: 1.5))
                             .foregroundStyle(Color.primary.opacity(0.75))
                         }
@@ -678,7 +681,7 @@ public struct QPCRAnalysisView: View {
         return StudioCard(
             title: "统计显著性检验 (Welch's t-test) 与 ΔCt 热图",
             headerTrailing: {
-                Toggle("显示 ΔCt 热图矩阵", isOn: $showHeatmap)
+                Toggle(L10n.t("显示 ΔCt 热图矩阵"), isOn: $showHeatmap)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 12))
             }
@@ -687,8 +690,8 @@ public struct QPCRAnalysisView: View {
                 if showHeatmap && !out.heatmapCells.isEmpty {
                     Chart(out.heatmapCells) { cell in
                         RectangleMark(
-                            x: .value("靶基因", cell.target),
-                            y: .value("样品", cell.sample)
+                            x: .value(L10n.t("靶基因"), cell.target),
+                            y: .value(L10n.t("样品"), cell.sample)
                         )
                         .foregroundStyle(by: .value("ΔΔCt", cell.ddCt ?? 0.0))
                         .annotation(position: .overlay) {
@@ -704,11 +707,11 @@ public struct QPCRAnalysisView: View {
                 
                 // 表头说明：明确区分生物学重复数与技术复孔数及 Holm 校正
                 HStack {
-                    Text("分组 / 靶基因")
+                    Text(L10n.t("分组 / 靶基因"))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                     Spacer()
-                    Text("n（生物学重复）/ 复孔数 · 显著性星号基于 \(settings.multipleComparison == .holm ? "p (Holm)" : "p (raw)")")
+                    Text(L10n.tr("n（生物学重复）/ 复孔数 · 显著性星号基于 \(settings.multipleComparison == .holm ? "p (Holm)" : "p (raw)")", "n (biological replicates) / wells · Stars based on \(settings.multipleComparison == .holm ? "p (Holm)" : "p (raw)")"))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -717,14 +720,14 @@ public struct QPCRAnalysisView: View {
                 VStack(spacing: 6) {
                     ForEach(out.groupResults) { row in
                         let pRawText: String = {
-                            if row.isControl { return "对照基准" }
+                            if row.isControl { return L10n.t("对照基准") }
                             if let p = row.pValue { return String(format: "%.4f", p) }
-                            return "n<2，未检验"
+                            return L10n.t("n<2，未检验")
                         }()
                         let pHolmText: String = {
                             if row.isControl { return "Ref" }
                             if let pAdj = row.pAdjusted { return String(format: "%.4f (%@)", pAdj, row.significanceLabel) }
-                            return "n<2，未检验"
+                            return L10n.t("n<2，未检验")
                         }()
                         let ci95Text: String = {
                             if row.isControl { return "1.00 (Ref)" }
@@ -748,7 +751,7 @@ public struct QPCRAnalysisView: View {
                                     .foregroundColor(.teal)
                                     .frame(width: 62, alignment: .leading)
                                     .lineLimit(1)
-                                StudioMetricBadge(label: "n（生物学重复）/ 复孔数", value: "\(row.nBiological)/\(row.nTechnicalWells)", color: .secondary)
+                                StudioMetricBadge(label: L10n.t("n（生物学重复）/ 复孔数"), value: "\(row.nBiological)/\(row.nTechnicalWells)", color: .secondary)
                                 StudioMetricBadge(label: "Fold", value: String(format: "%.2f±%.2f", row.meanFold, row.semFold ?? 0), color: .blue)
                                 StudioMetricBadge(label: "Fold 95% CI", value: ci95Text, color: .indigo)
                                 StudioMetricBadge(label: "p (raw)", value: pRawText, color: .secondary)
@@ -765,7 +768,7 @@ public struct QPCRAnalysisView: View {
                                     Spacer()
                                 }
                                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
-                                    StudioMetricBadge(label: "n（生物学重复）/ 复孔数", value: "\(row.nBiological)/\(row.nTechnicalWells)", color: .secondary)
+                                    StudioMetricBadge(label: L10n.t("n（生物学重复）/ 复孔数"), value: "\(row.nBiological)/\(row.nTechnicalWells)", color: .secondary)
                                     StudioMetricBadge(label: "ΔCt", value: String(format: "%.2f±%.2f", row.meanDCt, row.sdDCt ?? 0), color: .indigo)
                                     StudioMetricBadge(label: "Fold", value: String(format: "%.2f±%.2f", row.meanFold, row.semFold ?? 0), color: .blue)
                                     StudioMetricBadge(label: "Fold 95% CI", value: ci95Text, color: .indigo)
@@ -786,7 +789,7 @@ public struct QPCRAnalysisView: View {
         return StudioCard(title: "标准曲线线性回归 (Ct vs. log10 Quantity)") {
             VStack(alignment: .leading, spacing: 12) {
                 if out.fits.isEmpty {
-                    Text("当前数据中未检测到含 Quantity 浓度的标准品孔（如示范数据底部的 STD-1..STD-5）")
+                    Text(L10n.t("当前数据中未检测到含 Quantity 浓度的标准品孔（如示范数据底部的 STD-1..STD-5）"))
                         .font(.system(size: 12.5))
                         .foregroundColor(.secondary)
                         .padding(.vertical, 20)
@@ -794,7 +797,7 @@ public struct QPCRAnalysisView: View {
                     ForEach(out.fits) { fit in
                         VStack(alignment: .leading, spacing: 8) {
                             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                                StudioMetricBadge(label: "靶标", value: fit.target, color: .teal)
+                                StudioMetricBadge(label: L10n.t("靶标"), value: fit.target, color: .teal)
                                 if let s = fit.slope {
                                     StudioMetricBadge(label: "Slope", value: String(format: "%.3f", s), color: .blue)
                                 }
@@ -805,7 +808,7 @@ public struct QPCRAnalysisView: View {
                                     StudioMetricBadge(label: "R²", value: String(format: "%.4f", r2), color: r2 >= 0.98 ? .green : .orange)
                                 }
                                 if let eff = fit.efficiencyPct {
-                                    StudioMetricBadge(label: "扩增效率 E", value: String(format: "%.1f%%", eff), color: (eff >= 90 && eff <= 110) ? .green : .orange)
+                                    StudioMetricBadge(label: L10n.t("扩增效率 E"), value: String(format: "%.1f%%", eff), color: (eff >= 90 && eff <= 110) ? .green : .orange)
                                 }
                             }
                             
@@ -847,7 +850,7 @@ public struct QPCRAnalysisView: View {
         let out = stdOut
         return StudioCard(title: "未知样品标准曲线绝对定量插值结果") {
             if out.samples.isEmpty {
-                Text("暂无可插值的未知样品数据")
+                Text(L10n.t("暂无可插值的未知样品数据"))
                     .font(.system(size: 12.5))
                     .foregroundColor(.secondary)
             } else {
@@ -856,10 +859,10 @@ public struct QPCRAnalysisView: View {
                         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                             Text(s.sample)
                                 .font(.system(size: 12.5, weight: .semibold))
-                            StudioMetricBadge(label: "靶标", value: s.target, color: .teal)
-                            StudioMetricBadge(label: "平均 Ct", value: String(format: "%.2f", s.meanCt), color: .secondary)
+                            StudioMetricBadge(label: L10n.t("靶标"), value: s.target, color: .teal)
+                            StudioMetricBadge(label: L10n.t("平均 Ct"), value: String(format: "%.2f", s.meanCt), color: .secondary)
                             StudioMetricBadge(label: "log10(Qty)", value: String(format: "%.3f", s.log10Quantity), color: .indigo)
-                            StudioMetricBadge(label: "绝对浓度/拷贝", value: String(format: "%.2e", s.quantity), color: .blue)
+                            StudioMetricBadge(label: L10n.t("绝对浓度/拷贝"), value: String(format: "%.2e", s.quantity), color: .blue)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .studioInnerBox(paddingH: 10, paddingV: 6)
@@ -872,11 +875,11 @@ public struct QPCRAnalysisView: View {
     @ViewBuilder
     private var miqeComplianceCard: some View {
         let rep = miqeReport
-        StudioCard(title: "MIQE 指南合规性自检清单 (\(rep.detectedFormat))") {
+        StudioCard(title: L10n.tr("MIQE 指南合规性自检清单 (\(rep.detectedFormat))", "MIQE Compliance Checklist (\(L10n.t(rep.detectedFormat)))")) {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
-                StudioMetricBadge(label: "合规", value: "\(rep.passCount)/\(rep.items.count)", color: rep.failCount == 0 ? .green : .orange)
+                StudioMetricBadge(label: L10n.t("合规"), value: "\(rep.passCount)/\(rep.items.count)", color: rep.failCount == 0 ? .green : .orange)
                 if rep.failCount > 0 {
-                    StudioMetricBadge(label: "告警", value: "\(rep.failCount)", color: .red)
+                    StudioMetricBadge(label: L10n.t("告警"), value: "\(rep.failCount)", color: .red)
                 }
                 StudioActionPillButton(title: "复制清单", icon: "doc.on.doc", tint: .blue, compact: true) {
                     NSPasteboard.general.clearContents()
@@ -963,7 +966,7 @@ public struct QPCRAnalysisView: View {
                 importMetaSummary = res.metadataSummary
                 wells = res.wells
                 syncDefaultRefAndControlIfNeeded()
-                appState.showToast("已解析 RDML 实验归档：\(url.lastPathComponent) (\(res.wells.count) 条反应孔)")
+                appState.showToast(L10n.tr("已解析 RDML 实验归档：\(url.lastPathComponent) (\(res.wells.count) 条反应孔)", "Parsed RDML archive: \(url.lastPathComponent) (\(res.wells.count) wells)"))
                 return
             }
         }
@@ -976,8 +979,8 @@ public struct QPCRAnalysisView: View {
                 importMetaSummary = res.metadataSummary
                 wells = res.wells
                 syncDefaultRefAndControlIfNeeded()
-                let skippedTip = res.skippedHeaderLines > 0 ? " · 自动跳过 \(res.skippedHeaderLines) 行仪器头" : ""
-                appState.showToast("已识别 \(res.format.shortTitle) 格式\(skippedTip)：\(url.lastPathComponent)")
+                let skippedTip = res.skippedHeaderLines > 0 ? L10n.tr(" · 自动跳过 \(res.skippedHeaderLines) 行仪器头", " · skipped \(res.skippedHeaderLines) header lines") : ""
+                appState.showToast(L10n.tr("已识别 \(res.format.shortTitle) 格式\(skippedTip)：\(url.lastPathComponent)", "Detected \(res.format.shortTitle) format\(skippedTip): \(url.lastPathComponent)"))
             }
         }
     }
@@ -994,9 +997,9 @@ public struct QPCRAnalysisView: View {
                     experimentName: url.deletingPathExtension().lastPathComponent,
                     to: url
                 )
-                appState.showToast("已导出 RDML 归档：\(url.lastPathComponent)")
+                appState.showToast(L10n.tr("已导出 RDML 归档：\(url.lastPathComponent)", "Exported RDML archive: \(url.lastPathComponent)"))
             } catch {
-                appState.showToast("导出 RDML 失败：\(error.localizedDescription)")
+                appState.showToast(L10n.tr("导出 RDML 失败：\(error.localizedDescription)", "RDML export failed: \(error.localizedDescription)"))
             }
         }
     }

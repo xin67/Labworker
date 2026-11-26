@@ -10,8 +10,8 @@ public struct CRISPRDeconvolutionPanelView: View {
 
     @State private var wtRecord: SangerAlignmentEngine.ChromatogramRecord? = nil
     @State private var editedRecord: SangerAlignmentEngine.ChromatogramRecord? = nil
-    @State private var wtFileName: String = "未选择 WT 对照 (.ab1)"
-    @State private var editedFileName: String = "未选择编辑池 (.ab1)"
+    @State private var wtFileName: String = L10n.t("未选择 WT 对照 (.ab1)")
+    @State private var editedFileName: String = L10n.t("未选择编辑池 (.ab1)")
 
     @State private var sgRNASpacer: String = ""
     @State private var hdrDonorSequence: String = ""
@@ -47,7 +47,7 @@ public struct CRISPRDeconvolutionPanelView: View {
 
     private var inputCard: some View {
         StudioCard(title: "WT 对照与编辑池 Sanger 文件 (Synthego ICE 风格 NNLS 解卷积)") {
-            StudioMetricBadge(label: "求解器", value: "Accelerate vDSP NNLS", color: .purple)
+            StudioMetricBadge(label: L10n.t("求解器"), value: "Accelerate vDSP NNLS", color: .purple)
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 AdaptiveTwoColumnWorkspace(breakpoint: 680, hasRight: true) {
@@ -55,7 +55,7 @@ public struct CRISPRDeconvolutionPanelView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "waveform.path")
                                 .foregroundStyle(.blue)
-                            Text("野生型对照 (WT Control)")
+                            Text(L10n.t("野生型对照 (WT Control)"))
                                 .font(.system(size: 12, weight: .bold))
                             Spacer()
                             StudioActionPillButton(
@@ -79,7 +79,7 @@ public struct CRISPRDeconvolutionPanelView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "waveform.path.ecg")
                                 .foregroundStyle(.purple)
-                            Text("编辑池样本 (Edited Pool)")
+                            Text(L10n.t("编辑池样本 (Edited Pool)"))
                                 .font(.system(size: 12, weight: .bold))
                             Spacer()
                             StudioActionPillButton(
@@ -106,36 +106,36 @@ public struct CRISPRDeconvolutionPanelView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .fixedSize()
-                        TextField("输入引导序列 (不含 PAM)，如 GGGCGAGGAGCTGTTCACCG", text: $sgRNASpacer)
+                        TextField(L10n.t("输入引导序列 (不含 PAM)，如 GGGCGAGGAGCTGTTCACCG"), text: $sgRNASpacer)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
                     }
                     VStack(alignment: .leading, spacing: 5) {
                         Text("20 bp sgRNA Spacer:")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
-                        TextField("输入 20 bp sgRNA Spacer (不含 PAM)", text: $sgRNASpacer)
+                        TextField(L10n.t("输入 20 bp sgRNA Spacer (不含 PAM)"), text: $sgRNASpacer)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.large)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 12))
                     }
                 }
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("可选 HDR Knock-in 预期序列 (留空则仅分析 NHEJ Indel):")
+                    Text(L10n.t("可选 HDR Knock-in 预期序列 (留空则仅分析 NHEJ Indel):"))
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                     SequenceEditorBox(
                         text: $hdrDonorSequence,
-                        placeholder: "可选：粘贴期望的 HDR 修复后扩增区序列...",
+                        placeholder: L10n.t("可选：粘贴期望的 HDR 修复后扩增区序列..."),
                         minHeight: 46
                     )
                 }
 
                 StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 8) {
                     HStack(spacing: 6) {
-                        Text("下游分析窗口:")
+                        Text(L10n.t("下游分析窗口:"))
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
                         Slider(value: $requestedWindowBp, in: 60...240, step: 10)
@@ -201,7 +201,7 @@ public struct CRISPRDeconvolutionPanelView: View {
             VStack(alignment: .leading, spacing: 10) {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
                     StudioMetricBadge(
-                        label: "总编辑效率",
+                        label: L10n.t("总编辑效率"),
                         value: String(format: "%.1f%%", res.totalEditedPercent),
                         color: .purple
                     )
@@ -211,7 +211,7 @@ public struct CRISPRDeconvolutionPanelView: View {
                         color: .orange
                     )
                     StudioMetricBadge(
-                        label: "KO Score (移码)",
+                        label: L10n.t("KO Score (移码)"),
                         value: String(format: "%.1f%%", res.koScore),
                         color: .red
                     )
@@ -226,12 +226,12 @@ public struct CRISPRDeconvolutionPanelView: View {
                         color: .green
                     )
                     StudioMetricBadge(
-                        label: "切点位置",
-                        value: "@\(res.cutIndex0Based + 1) bp (\(res.isReverseStrandSgRNA ? "-" : "+")链)",
+                        label: L10n.t("切点位置"),
+                        value: L10n.tr("@\(res.cutIndex0Based + 1) bp (\(res.isReverseStrandSgRNA ? "-" : "+")链)", "@\(res.cutIndex0Based + 1) bp (\(res.isReverseStrandSgRNA ? "-" : "+") strand)"),
                         color: .blue
                     )
                     StudioMetricBadge(
-                        label: "有效窗口",
+                        label: L10n.t("有效窗口"),
                         value: "\(res.effectiveWindowBp) / \(res.requestedWindowBp) bp",
                         color: .secondary
                     )
@@ -251,13 +251,13 @@ public struct CRISPRDeconvolutionPanelView: View {
 
                 if !res.dominantIndels.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("主导贡献分量 (>= 0.5%)")
+                        Text(L10n.t("主导贡献分量 (>= 0.5%)"))
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(.secondary)
                         StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                             ForEach(res.dominantIndels) { item in
                                 let col = contributionColor(item)
-                                let tag = item.isHDR ? "HDR" : (item.shiftBp == 0 ? "WT" : (item.isFrameshift ? "移码" : "框内"))
+                                let tag = item.isHDR ? "HDR" : (item.shiftBp == 0 ? "WT" : L10n.t(item.isFrameshift ? "移码" : "框内"))
                                 StudioMetricBadge(
                                     label: "\(item.label) (\(tag))",
                                     value: String(format: "%.1f%%", item.percent),
@@ -284,14 +284,14 @@ public struct CRISPRDeconvolutionPanelView: View {
             Chart {
                 ForEach(plottedContributions) { item in
                     BarMark(
-                        x: .value("分量", item.label),
-                        y: .value("占比 (%)", item.percent)
+                        x: .value(L10n.t("分量"), item.label),
+                        y: .value(L10n.t("占比 (%)"), item.percent)
                     )
                     .foregroundStyle(contributionColor(item))
                     .cornerRadius(3)
                 }
             }
-            .chartYAxisLabel("贡献比例 (%)")
+            .chartYAxisLabel(L10n.t("贡献比例 (%)"))
             .frame(minHeight: 200, maxHeight: 260)
         }
     }
@@ -305,23 +305,23 @@ public struct CRISPRDeconvolutionPanelView: View {
     private func warningDescription(_ w: CRISPRDeconvolutionEngine.DeconvolutionWarning) -> String {
         switch w {
         case .windowTruncatedAt3PrimeEnd:
-            return "测序末端长度有限，下游比对窗口已在 3' 端截断。"
+            return L10n.t("测序末端长度有限，下游比对窗口已在 3' 端截断。")
         case .lowFitRSquared:
-            return "拟合优度 R² < 0.75，请核查 WT 与编辑池测序起始质量及 sgRNA 链向。"
+            return L10n.t("拟合优度 R² < 0.75，请核查 WT 与编辑池测序起始质量及 sgRNA 链向。")
         case .sgRNANotFoundInWT:
-            return "未在 WT 对照序列中匹配到该 sgRNA Spacer（已自动检查正反两条链）。"
+            return L10n.t("未在 WT 对照序列中匹配到该 sgRNA Spacer（已自动检查正反两条链）。")
         case .cutSiteTooCloseTo5Prime:
-            return "Cas9 切点过于靠近测序读长 5' 端，可能影响大型缺失列构建。"
+            return L10n.t("Cas9 切点过于靠近测序读长 5' 端，可能影响大型缺失列构建。")
         case .insufficientDownstreamWindow:
-            return "切点下游有效测序碱基过短，不足以完成可靠解卷积。"
+            return L10n.t("切点下游有效测序碱基过短，不足以完成可靠解卷积。")
         case .hdrCollinearWithWT:
-            return "HDR 序列在分析窗口内与 WT 完全共线，已抑制重复 HDR 列。"
+            return L10n.t("HDR 序列在分析窗口内与 WT 完全共线，已抑制重复 HDR 列。")
         }
     }
 
     private func selectAB1File(isWT: Bool) {
         let panel = NSOpenPanel()
-        panel.title = isWT ? "选择野生型 WT 对照 (.ab1 / .abi / .seq)" : "选择编辑池样本 (.ab1 / .abi / .seq)"
+        panel.title = L10n.t(isWT ? "选择野生型 WT 对照 (.ab1 / .abi / .seq)" : "选择编辑池样本 (.ab1 / .abi / .seq)")
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
         var types: [UTType] = [.plainText]
@@ -345,7 +345,7 @@ public struct CRISPRDeconvolutionPanelView: View {
                     self.runDeconvolution()
                 }
             } catch {
-                appState.showToast("读取测序文件失败: \(error.localizedDescription)")
+                appState.showToast(L10n.tr("读取测序文件失败: \(error.localizedDescription)", "Failed to read trace: \(error.localizedDescription)"))
             }
         }
     }
@@ -367,7 +367,7 @@ public struct CRISPRDeconvolutionPanelView: View {
                 shiftRange: (-maxShiftBp)...maxShiftBp
             )
             self.result = res
-            appState.showToast(String(format: "ICE 反卷积完成：总编辑 %.1f%% (R²=%.3f)", res.totalEditedPercent, res.rSquared))
+            appState.showToast(String(format: L10n.tr("ICE 反卷积完成：总编辑 %.1f%% (R²=%.3f)", "ICE deconvolution complete: Total Indel %.1f%% (R²=%.3f)"), res.totalEditedPercent, res.rSquared))
         } else {
             loadMixedPoolDemo(keepInputs: true)
         }
@@ -390,8 +390,8 @@ public struct CRISPRDeconvolutionPanelView: View {
         if !keepInputs {
             wtRecord = nil
             editedRecord = nil
-            wtFileName = "内置示范 WT 对照 (EGFP 位点, 280 bp)"
-            editedFileName = "内置示范 编辑池 (45% WT + 30% -1bp + 10% +2bp + 15% HDR)"
+            wtFileName = L10n.t("内置示范 WT 对照 (EGFP 位点, 280 bp)")
+            editedFileName = L10n.t("内置示范 编辑池 (45% WT + 30% -1bp + 10% +2bp + 15% HDR)")
             sgRNASpacer = demoSpacer
             hdrDonorSequence = demoHDR
         }

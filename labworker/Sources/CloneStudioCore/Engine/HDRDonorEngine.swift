@@ -416,16 +416,16 @@ public enum HDRDonorEngine {
         let L = ref.count
 
         guard L >= 25 else {
-            throw HDRDonorError.invalidInput("参考序列长度不足（至少需要 25 bp）")
+            throw HDRDonorError.invalidInput(L10n.t("参考序列长度不足（至少需要 25 bp）"))
         }
         guard guide.count >= 15 else {
-            throw HDRDonorError.invalidInput("sgRNA protospacer 长度不足（至少需要 15 nt）")
+            throw HDRDonorError.invalidInput(L10n.t("sgRNA protospacer 长度不足（至少需要 15 nt）"))
         }
         guard strand == "+" || strand == "-" else {
-            throw HDRDonorError.invalidInput("strand 必须为 '+' 或 '-'")
+            throw HDRDonorError.invalidInput(L10n.t("strand 必须为 '+' 或 '-'"))
         }
         guard request.editStart0Based >= 0 && request.editEnd0Based >= request.editStart0Based && request.editEnd0Based <= L else {
-            throw HDRDonorError.invalidInput("编辑坐标 [editStart0Based, editEnd0Based) 越界")
+            throw HDRDonorError.invalidInput(L10n.t("编辑坐标 [editStart0Based, editEnd0Based) 越界"))
         }
 
         let editStart0 = request.editStart0Based
@@ -460,7 +460,7 @@ public enum HDRDonorEngine {
                 let db = abs(b.cut - editStart0)
                 return da != db ? da < db : a.pos < b.pos
             }) else {
-                throw HDRDonorError.sgRNANotFound("在参考序列正链上未找到 sgRNA \(guide) 及 3' PAM")
+                throw HDRDonorError.sgRNANotFound(L10n.tr("在参考序列正链上未找到 sgRNA \(guide) 及 3' PAM", "sgRNA \(guide) with 3' PAM not found on sense strand"))
             }
             wtPamStart0 = best.pos + gLen
             wtCutIndex0 = best.cut
@@ -489,7 +489,7 @@ public enum HDRDonorEngine {
                 let db = abs(b.cut - editStart0)
                 return da != db ? da < db : a.pos < b.pos
             }) else {
-                throw HDRDonorError.sgRNANotFound("在参考序列负链上未找到 sgRNA \(guide) 反向互补及 5' CCN PAM")
+                throw HDRDonorError.sgRNANotFound(L10n.tr("在参考序列负链上未找到 sgRNA \(guide) 反向互补及 5' CCN PAM", "Reverse-complement sgRNA \(guide) with 5' CCN PAM not found on antisense strand"))
             }
             wtPamStart0 = best.pos - 3
             wtCutIndex0 = best.cut
@@ -505,7 +505,7 @@ public enum HDRDonorEngine {
             let s0 = cs1 - 1
             let e0 = ce1
             guard s0 >= 0 && e0 <= L && s0 + 3 <= e0 else {
-                throw HDRDonorError.invalidInput("显式 CDS 区间 [cdsStart1Based, cdsEnd1Based] 非法或越界")
+                throw HDRDonorError.invalidInput(L10n.t("显式 CDS 区间 [cdsStart1Based, cdsEnd1Based] 非法或越界"))
             }
             if s0 <= wtCutIndex0 && wtCutIndex0 < e0 {
                 isInCDS = true
@@ -652,10 +652,10 @@ public enum HDRDonorEngine {
                 }
                 if blockingMutations.isEmpty {
                     blockingStrategy = .failedToBlock
-                    warnings.append("未能找到同义 PAM 或 Seed 阻断突变位点，请人工复核 Cas9 二次切割风险。")
+                    warnings.append(L10n.t("未能找到同义 PAM 或 Seed 阻断突变位点，请人工复核 Cas9 二次切割风险。"))
                 } else {
                     blockingStrategy = .seedSynonymousFallback
-                    warnings.append("PAM 位点无法在不改变氨基酸的前提下同义破坏，已回退并在近 PAM 8-nt Seed 区引入 \(blockingMutations.count) 处同义突变。")
+                    warnings.append(L10n.tr("PAM 位点无法在不改变氨基酸的前提下同义破坏，已回退并在近 PAM 8-nt Seed 区引入 \(blockingMutations.count) 处同义突变。", "PAM could not be synonymously disrupted; introduced \(blockingMutations.count) silent mutation(s) in proximal 8-nt Seed region."))
                 }
             }
         } else {
@@ -685,7 +685,7 @@ public enum HDRDonorEngine {
                 blockingStrategy = .pamNonCoding
             } else {
                 blockingStrategy = .failedToBlock
-                warnings.append("非编码区 PAM 关键碱基被用户编辑区间完全锁定，未能自动写入 PAM 阻断突变。")
+                warnings.append(L10n.t("非编码区 PAM 关键碱基被用户编辑区间完全锁定，未能自动写入 PAM 阻断突变。"))
             }
         }
 
@@ -697,7 +697,7 @@ public enum HDRDonorEngine {
         let rightArmEnd0InWT = min(L, editEnd0 + (rightArmEnd0InEdited - (editStart0 + rep.count)))
 
         if editStart0 - leftArmStart0 < reqLeftArm || rightArmEnd0InEdited - (editStart0 + rep.count) < reqRightArm {
-            warnings.append("参考序列在编辑位点侧翼长度不足，同源臂已按边界自动截断。")
+            warnings.append(L10n.t("参考序列在编辑位点侧翼长度不足，同源臂已按边界自动截断。"))
         }
 
         // 5. Optional RFLP design (destroy existing or create new silent enzyme site)
@@ -785,7 +785,7 @@ public enum HDRDonorEngine {
                                             rflpMutations = [rec]
                                             rflpMode = .destroyed
                                             rflpSelectedSpec = enz
-                                            rflpNote = "在 \(mutPos + 1) bp 处通过同义突变 (\(origCodon)->\(altCodon), \(aa)) 消除内源 \(enz.name) (\(enz.site)) 位点用于 RFLP 鉴定"
+                                            rflpNote = L10n.tr("在 \(mutPos + 1) bp 处通过同义突变 (\(origCodon)->\(altCodon), \(aa)) 消除内源 \(enz.name) (\(enz.site)) 位点用于 RFLP 鉴定", "Eliminated internal \(enz.name) (\(enz.site)) site at \(mutPos + 1) bp via silent mutation (\(origCodon)->\(altCodon), \(aa)) for RFLP")
                                             foundDestroy = true
                                             break
                                         }
@@ -864,7 +864,7 @@ public enum HDRDonorEngine {
                                         }
                                         rflpMode = .created
                                         rflpSelectedSpec = enz
-                                        rflpNote = "在 \(cs + 1)..\(cs + 3) bp 处引入同义密码子 (\(origCodon)->\(altCodon), \(aa)) 构建新 \(enz.name) (\(enz.site)) RFLP 鉴定位点"
+                                        rflpNote = L10n.tr("在 \(cs + 1)..\(cs + 3) bp 处引入同义密码子 (\(origCodon)->\(altCodon), \(aa)) 构建新 \(enz.name) (\(enz.site)) RFLP 鉴定位点", "Created \(enz.name) (\(enz.site)) RFLP site at \(cs + 1)..\(cs + 3) bp via silent codon (\(origCodon)->\(altCodon), \(aa))")
                                         foundCreate = true
                                         break
                                     }
@@ -873,7 +873,7 @@ public enum HDRDonorEngine {
                         }
                     }
                     if !foundCreate {
-                        warnings.append("在目标附近 ±\(radius) bp 窗口内未能通过同义密码子替换引入或消除 RFLP 酶切位点。")
+                        warnings.append(L10n.tr("在目标附近 ±\(radius) bp 窗口内未能通过同义密码子替换引入或消除 RFLP 酶切位点。", "Unable to create/remove a silent RFLP site within ±\(radius) bp window."))
                     }
                 }
             } else {
@@ -904,7 +904,7 @@ public enum HDRDonorEngine {
                                     ]
                                     rflpMode = .destroyed
                                     rflpSelectedSpec = enz
-                                    rflpNote = "在非编码区 \(mutPos + 1) bp 破坏 \(enz.name) (\(enz.site)) 位点用于 RFLP 鉴定"
+                                    rflpNote = L10n.tr("在非编码区 \(mutPos + 1) bp 破坏 \(enz.name) (\(enz.site)) 位点用于 RFLP 鉴定", "Disrupted non-coding \(enz.name) (\(enz.site)) site at \(mutPos + 1) bp for RFLP")
                                     foundNC = true
                                 }
                             }
@@ -939,7 +939,7 @@ public enum HDRDonorEngine {
                                         ]
                                         rflpMode = .created
                                         rflpSelectedSpec = enz
-                                        rflpNote = "在非编码区 \(pos + 1) bp 引入新 \(enz.name) (\(enz.site)) RFLP 鉴定位点"
+                                        rflpNote = L10n.tr("在非编码区 \(pos + 1) bp 引入新 \(enz.name) (\(enz.site)) RFLP 鉴定位点", "Introduced non-coding \(enz.name) (\(enz.site)) RFLP site at \(pos + 1) bp")
                                         foundNC = true
                                         break
                                     }
@@ -1014,8 +1014,8 @@ public enum HDRDonorEngine {
                 specificSequence: fwdSeq,
                 tm: fwdTm,
                 gcPercent: fwdGC,
-                targetPurpose: "HDR Out-Out PCR 正向分型引物",
-                notes: "位于左同源臂外侧 -\(leftArmStart0 - fwdEnd0) bp",
+                targetPurpose: L10n.t("HDR Out-Out PCR 正向分型引物"),
+                notes: L10n.tr("位于左同源臂外侧 -\(leftArmStart0 - fwdEnd0) bp", "-\(leftArmStart0 - fwdEnd0) bp outside left homology arm"),
                 sourceTool: "HDR Donor"
             )
             let revItem = PrimerItem(
@@ -1025,8 +1025,8 @@ public enum HDRDonorEngine {
                 specificSequence: revSeq,
                 tm: revTm,
                 gcPercent: revGC,
-                targetPurpose: "HDR Out-Out PCR 反向分型引物",
-                notes: "位于右同源臂外侧 +\(revStart0 - rightArmEnd0InWT) bp",
+                targetPurpose: L10n.t("HDR Out-Out PCR 反向分型引物"),
+                notes: L10n.tr("位于右同源臂外侧 +\(revStart0 - rightArmEnd0InWT) bp", "+\(revStart0 - rightArmEnd0InWT) bp outside right homology arm"),
                 sourceTool: "HDR Donor"
             )
 
@@ -1049,7 +1049,7 @@ public enum HDRDonorEngine {
                 rightMarginFromArmBp: revStart0 - rightArmEnd0InWT
             )
         } else {
-            warnings.append("侧翼序列长度不足以在左右同源臂外侧设计 Out-Out PCR 引物（需同源臂外侧至少各预留 28 bp）。")
+            warnings.append(L10n.t("侧翼序列长度不足以在左右同源臂外侧设计 Out-Out PCR 引物（需同源臂外侧至少各预留 28 bp）。"))
         }
 
         // 9. Finalize RFLP digest band prediction on amplicon (or full locus fallback)

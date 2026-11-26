@@ -13,10 +13,10 @@ public enum MolstarRenderStyle: String, CaseIterable, Identifiable, Hashable {
 
     public var title: String {
         switch self {
-        case .cartoon:              return "Cartoon 飘带"
-        case .cartoonSurface:       return "飘带 + 表面"
-        case .surfaceElectrostatic: return "表面静电势"
-        case .ballAndStick:         return "全原子球棍"
+        case .cartoon:              return L10n.t("Cartoon 飘带")
+        case .cartoonSurface:       return L10n.t("飘带 + 表面")
+        case .surfaceElectrostatic: return L10n.t("表面静电势")
+        case .ballAndStick:         return L10n.t("全原子球棍")
         }
     }
 }
@@ -31,10 +31,10 @@ public enum MolstarColorPreset: String, CaseIterable, Identifiable, Hashable {
 
     public var title: String {
         switch self {
-        case .plddt:          return "pLDDT / B因子"
-        case .secondary:      return "二级结构"
-        case .hydrophobicity: return "疏水性"
-        case .chain:          return "链编号"
+        case .plddt:          return L10n.t("pLDDT / B因子")
+        case .secondary:      return L10n.t("二级结构")
+        case .hydrophobicity: return L10n.t("疏水性")
+        case .chain:          return L10n.t("链编号")
         }
     }
 }
@@ -131,15 +131,20 @@ public struct MolstarWebView: NSViewRepresentable {
         if let hostURL = CloneStudioResourceLocator.url(forResource: "molstar_host", withExtension: "html") {
             webView.loadFileURL(hostURL, allowingReadAccessTo: hostURL.deletingLastPathComponent())
         } else {
+            let errHeading = L10n.tr("未找到离线 Mol* 资源 (molstar_host.html)", "Offline Mol* Resource Not Found (molstar_host.html)")
+            let errBody = L10n.tr(
+                L10n.t("请确认 Sources/CloneStudioCore/Resources 中已包含 molstar_host.html 与 molstar.js，或切换回原生 Canvas 模式。"),
+                "Verify molstar_host.html and molstar.js exist in Resources, or switch to Fast Canvas mode."
+            )
             let fallbackHTML = """
-            <!DOCTYPE html><html><body style="background:#111827;color:#fca5a5;font-family:-apple-system;padding:24px;">
-            <h3>未找到离线 Mol* 资源 (molstar_host.html)</h3>
-            <p>请确认 Sources/CloneStudioCore/Resources 中已包含 molstar_host.html 与 molstar.js，或切换回原生 Canvas 模式。</p>
+            <!DOCTYPE html><html><body style="background:#111827;color:#fca5a5;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;padding:24px;">
+            <h3>\(errHeading)</h3>
+            <p>\(errBody)</p>
             </body></html>
             """
             webView.loadHTMLString(fallbackHTML, baseURL: nil)
             DispatchQueue.main.async {
-                onStatusChange?("未找到离线 molstar_host.html 资源包", false)
+                onStatusChange?(L10n.t("未找到离线 molstar_host.html 资源包"), false)
             }
         }
         return webView
@@ -184,7 +189,7 @@ public struct MolstarWebView: NSViewRepresentable {
                     self.parent.onStatusChange?(note, false)
                 }
             case "error":
-                let msg = (dict["message"] as? String) ?? "Mol* 渲染失败"
+                let msg = (dict["message"] as? String) ?? L10n.t("Mol* 渲染失败")
                 DispatchQueue.main.async {
                     self.parent.onStatusChange?(msg, false)
                 }

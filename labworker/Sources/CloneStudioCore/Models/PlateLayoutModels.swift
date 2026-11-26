@@ -14,7 +14,7 @@ public enum PlateFormat: Int, CaseIterable, Identifiable, Codable, Sendable {
     public var id: Int { rawValue }
     
     public var title: String {
-        "\(rawValue) 孔板"
+        L10n.tr("\(rawValue) 孔板", "\(rawValue)-Well Plate")
     }
     
     public var rows: Int {

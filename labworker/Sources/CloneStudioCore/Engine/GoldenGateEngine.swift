@@ -381,16 +381,16 @@ public struct GoldenGateEngine: Sendable {
 
         for ov in normalized {
             if ov.count != 4 {
-                issues.append("接头 \(ov) 长度不为 4 bp")
+                issues.append(L10n.tr("接头 \(ov) 长度不为 4 bp", "Overhang \(ov) is not 4 bp long"))
                 continue
             }
             let rc = BioSequence.reverseComplement(ov)
             if ov == rc {
-                issues.append("接头 \(ov) 为回文序列，会导致载体/片段自连或反向组装")
+                issues.append(L10n.tr("接头 \(ov) 为回文序列，会导致载体/片段自连或反向组装", "Overhang \(ov) is palindromic, causing vector/insert self-ligation or inverted assembly"))
             }
             let canon = min(ov, rc)
             if seenCanonical.contains(canon) {
-                issues.append("接头 \(ov) 与已有接头重复或反向互补冲突")
+                issues.append(L10n.tr("接头 \(ov) 与已有接头重复或反向互补冲突", "Overhang \(ov) duplicates or reverse-complements an existing overhang"))
             }
             seenCanonical.insert(canon)
         }
@@ -462,7 +462,7 @@ public struct GoldenGateEngine: Sendable {
 
         var warnings: [String] = []
         if fragmentCount != clampedFrags {
-            warnings.append("片段数已调整至支持范围 2–6 (\(clampedFrags))。")
+            warnings.append(L10n.tr("片段数已调整至支持范围 2–6 (\(clampedFrags))。", "Fragment count clamped to supported range 2–6 (\(clampedFrags))."))
         }
 
         if ovLen == 3 {
@@ -482,17 +482,17 @@ public struct GoldenGateEngine: Sendable {
         for rawFixed in fixedOverhangs {
             let ov = BioSequence.clean(rawFixed)
             guard ov.count == 4 else {
-                warnings.append("已忽略长度非 4 bp 的固定接头: \(rawFixed)")
+                warnings.append(L10n.tr("已忽略长度非 4 bp 的固定接头: \(rawFixed)", "Ignored non-4-bp fixed overhang: \(rawFixed)"))
                 continue
             }
             let rc = BioSequence.reverseComplement(ov)
             if ov == rc {
-                warnings.append("已忽略回文固定接头: \(ov)")
+                warnings.append(L10n.tr("已忽略回文固定接头: \(ov)", "Ignored palindromic fixed overhang: \(ov)"))
                 continue
             }
             let canon = min(ov, rc)
             if usedCanonical.contains(canon) {
-                warnings.append("已忽略重复或互补冲突的固定接头: \(ov)")
+                warnings.append(L10n.tr("已忽略重复或互补冲突的固定接头: \(ov)", "Ignored duplicate/complementary fixed overhang: \(ov)"))
                 continue
             }
             if chosen.count < junctionCount {
@@ -567,7 +567,7 @@ public struct GoldenGateEngine: Sendable {
 
         let finalEval = evaluateOverhangSet(overhangs: chosen, matrix: mat)
         if finalEval.crossMismatchCount > 0 {
-            warnings.append("当前约束下存在 \(finalEval.crossMismatchCount) 组潜在交叉错配。")
+            warnings.append(L10n.tr("当前约束下存在 \(finalEval.crossMismatchCount) 组潜在交叉错配。", "\(finalEval.crossMismatchCount) potential cross-mismatch pair(s) remain under constraints."))
         }
 
         return GoldenGateOverhangPlan(
@@ -665,7 +665,7 @@ public struct GoldenGateEngine: Sendable {
                 chosen.append(p)
                 usedCanon.insert(min(p, BioSequence.reverseComplement(p)))
             } else {
-                warnings.append("SapI 3-bp 接头空间不足以完全无错配分配 \(junctionCount) 个位点。")
+                warnings.append(L10n.tr("SapI 3-bp 接头空间不足以完全无错配分配 \(junctionCount) 个位点。", "SapI 3-bp overhang space is insufficient for zero-mismatch assignment across \(junctionCount) junctions."))
                 break
             }
         }
@@ -793,7 +793,7 @@ public struct GoldenGateEngine: Sendable {
                                         originalBase: String(origChars[mutOffset]),
                                         mutatedBase: String(candChars[mutOffset]),
                                         isSynonymous: true,
-                                        note: "密码子 #\(codonIdx1) (\(aa)) \(origCodon)→\(candCodon) (pos \(mutPos0 + 1) \(origChars[mutOffset])>\(candChars[mutOffset])) 同义抹除 \(spec.name) (\(target.strand))"
+                                        note: L10n.tr("密码子 #\(codonIdx1) (\(aa)) \(origCodon)→\(candCodon) (pos \(mutPos0 + 1) \(origChars[mutOffset])>\(candChars[mutOffset])) 同义抹除 \(spec.name) (\(target.strand))", "Codon #\(codonIdx1) (\(aa)) \(origCodon)→\(candCodon) (pos \(mutPos0 + 1) \(origChars[mutOffset])>\(candChars[mutOffset])) removes \(spec.name) (\(target.strand)) synonymously")
                                     )
                                 )
                                 applied = true
@@ -830,7 +830,7 @@ public struct GoldenGateEngine: Sendable {
                                 originalBase: String(origCh),
                                 mutatedBase: String(candCh),
                                 isSynonymous: false,
-                                note: "非编码区位点 pos \(midPos0 + 1) \(origCh)>\(candCh) 破坏 \(spec.name) (\(target.strand))"
+                                note: L10n.tr("非编码区位点 pos \(midPos0 + 1) \(origCh)>\(candCh) 破坏 \(spec.name) (\(target.strand))", "Non-coding edit pos \(midPos0 + 1) \(origCh)>\(candCh) disrupts \(spec.name) (\(target.strand))")
                             )
                         )
                         applied = true

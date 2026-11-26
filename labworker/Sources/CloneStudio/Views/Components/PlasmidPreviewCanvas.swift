@@ -276,14 +276,14 @@ public enum PlasmidMapBuilder {
         }
         
         let junctions: [PlasmidJunctionBlock] = [
-            PlasmidJunctionBlock(title: "5' URS 接头", leftLabel: "URS", leftSeq: "ggatcttccagagat", midLabel: e5Site, midSeq: e5Site.lowercased(), rightLabel: "5'端", rightSeq: ins5),
-            PlasmidJunctionBlock(title: "3' DRS 接头", leftLabel: "3'端", leftSeq: ins3, midLabel: e3Site, midSeq: e3Site.lowercased(), rightLabel: "DRS", rightSeq: "atcgtcgaacggcag")
+            PlasmidJunctionBlock(title: L10n.t("5' URS 接头"), leftLabel: "URS", leftSeq: "ggatcttccagagat", midLabel: e5Site, midSeq: e5Site.lowercased(), rightLabel: L10n.t("5'端"), rightSeq: ins5),
+            PlasmidJunctionBlock(title: L10n.t("3' DRS 接头"), leftLabel: L10n.t("3'端"), leftSeq: ins3, midLabel: e3Site, midSeq: e3Site.lowercased(), rightLabel: "DRS", rightSeq: "atcgtcgaacggcag")
         ]
         
         let steps: [(String, String, Color)] = [
-            ("URS (15bp)", "左重组臂", .cyan),
+            ("URS (15bp)", L10n.t("左重组臂"), .cyan),
             ("Insert", "\(insertBp) bp", .green),
-            ("DRS (15bp)", "右重组臂", .cyan)
+            ("DRS (15bp)", L10n.t("右重组臂"), .cyan)
         ]
         
         // 微观单碱基窗口：5' URS 接头 & 3' DRS 接头
@@ -291,16 +291,16 @@ public enum PlasmidMapBuilder {
         let win3Seq = String(clean.suffix(48)) + e3Site.uppercased() + "ATCGTCGAACGGCAG"
         let microWindows: [MicroscopicSequenceWindow] = [
             MicroscopicSequenceWindow(
-                title: "5' URS 接头",
-                subtitle: "pCE2 左重组臂 + 插入基因 5' 端",
+                title: L10n.t("5' URS 接头"),
+                subtitle: L10n.t("pCE2 左重组臂 + 插入基因 5' 端"),
                 startBp: 1,
                 sequence: win5Seq,
                 homologyHighlightRange: 0..<15,
-                homologyLabel: "15 bp URS 通用同源臂",
+                homologyLabel: L10n.t("15 bp URS 通用同源臂"),
                 focalHighlightRange: 15..<min(win5Seq.count, 15 + max(e5Site.count, 18)),
-                focalLabel: hasEnzymes ? "酶切位点 + 5'插入端" : "插入基因 5' 起始区",
+                focalLabel: L10n.t(hasEnzymes ? "酶切位点 + 5'插入端" : "插入基因 5' 起始区"),
                 enzymeCuts: [
-                    MicroscopicEnzymeCut(name: hasEnzymes ? (enzyme5?.name ?? "URS") : "URS切点", topSnipOffset: 15, bottomSnipOffset: 15 + min(4, e5Site.count))
+                    MicroscopicEnzymeCut(name: hasEnzymes ? (enzyme5?.name ?? "URS") : L10n.t("URS切点"), topSnipOffset: 15, bottomSnipOffset: 15 + min(4, e5Site.count))
                 ],
                 primers: primerF != nil ? [
                     MicroscopicPrimerOverlay(name: primerF!.name, isForward: true, startOffset: 0, endOffset: min(win5Seq.count, primerF!.fullSequence.count), homologyArmLength: 15, tmText: String(format: "%.1f℃", primerF!.tm ?? 60), sequence: primerF!.fullSequence)
@@ -308,16 +308,16 @@ public enum PlasmidMapBuilder {
                 readingFrameOffset: (15 + e5Site.count) % 3
             ),
             MicroscopicSequenceWindow(
-                title: "3' DRS 接头",
-                subtitle: "插入基因 3' 端 + pCE2 右重组臂",
+                title: L10n.t("3' DRS 接头"),
+                subtitle: L10n.t("插入基因 3' 端 + pCE2 右重组臂"),
                 startBp: max(1, insertBp - 32),
                 sequence: win3Seq,
                 homologyHighlightRange: (win3Seq.count - 15)..<win3Seq.count,
-                homologyLabel: "15 bp DRS 通用同源臂",
+                homologyLabel: L10n.t("15 bp DRS 通用同源臂"),
                 focalHighlightRange: max(0, win3Seq.count - 15 - max(e3Site.count, 18))..<(win3Seq.count - 15),
-                focalLabel: "插入基因 3' 末端区",
+                focalLabel: L10n.t("插入基因 3' 末端区"),
                 enzymeCuts: [
-                    MicroscopicEnzymeCut(name: hasEnzymes ? (enzyme3?.name ?? "DRS") : "DRS切点", topSnipOffset: win3Seq.count - 15 - e3Site.count, bottomSnipOffset: win3Seq.count - 15)
+                    MicroscopicEnzymeCut(name: hasEnzymes ? (enzyme3?.name ?? "DRS") : L10n.t("DRS切点"), topSnipOffset: win3Seq.count - 15 - e3Site.count, bottomSnipOffset: win3Seq.count - 15)
                 ],
                 primers: primerR != nil ? [
                     MicroscopicPrimerOverlay(name: primerR!.name, isForward: false, startOffset: max(0, win3Seq.count - primerR!.fullSequence.count), endOffset: win3Seq.count, homologyArmLength: 15, tmText: String(format: "%.1f℃", primerR!.tm ?? 60), sequence: primerR!.fullSequence)
@@ -362,9 +362,9 @@ public enum PlasmidMapBuilder {
         let vectorBp = max(cleanVec.count, 5369)
         let totalBp = vectorBp + insertBp
         
-        let e5Name = mode == .single ? (enzymeSingle?.name ?? "Enz") : (mode == .double ? (enzyme5?.name ?? "Enz1") : "5'端")
+        let e5Name = mode == .single ? (enzymeSingle?.name ?? "Enz") : (mode == .double ? (enzyme5?.name ?? "Enz1") : L10n.t("5'端"))
         let e5Site = mode == .single ? (enzymeSingle?.site ?? "") : (mode == .double ? (enzyme5?.site ?? "") : "")
-        let e3Name = mode == .single ? (enzymeSingle?.name ?? "Enz") : (mode == .double ? (enzyme3?.name ?? "Enz2") : "3'端")
+        let e3Name = mode == .single ? (enzymeSingle?.name ?? "Enz") : (mode == .double ? (enzyme3?.name ?? "Enz2") : L10n.t("3'端"))
         let e3Site = mode == .single ? (enzymeSingle?.site ?? "") : (mode == .double ? (enzyme3?.site ?? "") : "")
         
         let vec5Arm = cleanVec.count >= 18 ? String(cleanVec.prefix(18)).lowercased() : "cggccgctcgagcatgga"
@@ -372,9 +372,9 @@ public enum PlasmidMapBuilder {
         
         let features: [PlasmidFeatureItem] = [
             PlasmidFeatureItem(name: "Promoter", lengthBp: 580, startRatio: 0.88, endRatio: 0.975, color: Color(red: 0.96, green: 0.26, blue: 0.38)),
-            PlasmidFeatureItem(name: "5' 载体臂", lengthBp: 18, startRatio: 0.975, endRatio: 0.025, color: .cyan, isHighlight: true, sequenceSnippet: vec5Arm),
+            PlasmidFeatureItem(name: L10n.t("5' 载体臂"), lengthBp: 18, startRatio: 0.975, endRatio: 0.025, color: .cyan, isHighlight: true, sequenceSnippet: vec5Arm),
             PlasmidFeatureItem(name: "Insert (\(insertBp)bp)", lengthBp: insertBp, startRatio: 0.025, endRatio: 0.31, color: Color(red: 0.10, green: 0.82, blue: 0.54), isHighlight: true, sequenceSnippet: String(cleanIns.prefix(36))),
-            PlasmidFeatureItem(name: "3' 载体臂", lengthBp: 18, startRatio: 0.31, endRatio: 0.355, color: .cyan, isHighlight: true, sequenceSnippet: vec3Arm),
+            PlasmidFeatureItem(name: L10n.t("3' 载体臂"), lengthBp: 18, startRatio: 0.31, endRatio: 0.355, color: .cyan, isHighlight: true, sequenceSnippet: vec3Arm),
             PlasmidFeatureItem(name: "AmpR", lengthBp: 860, startRatio: 0.44, endRatio: 0.65, color: Color(red: 0.55, green: 0.36, blue: 0.96)),
             PlasmidFeatureItem(name: "ori", lengthBp: 620, startRatio: 0.70, endRatio: 0.83, color: Color(red: 0.96, green: 0.62, blue: 0.05), direction: .counterClockwise)
         ]
@@ -394,14 +394,14 @@ public enum PlasmidMapBuilder {
         }
         
         let junctions: [PlasmidJunctionBlock] = [
-            PlasmidJunctionBlock(title: "5' 重组接头", leftLabel: "载体臂", leftSeq: vec5Arm, midLabel: e5Name, midSeq: e5Site.lowercased(), rightLabel: "片段5'", rightSeq: String(cleanIns.prefix(18))),
-            PlasmidJunctionBlock(title: "3' 重组接头", leftLabel: "片段3'", leftSeq: String(cleanIns.suffix(18)), midLabel: e3Name, midSeq: e3Site.lowercased(), rightLabel: "载体臂", rightSeq: vec3Arm)
+            PlasmidJunctionBlock(title: L10n.t("5' 重组接头"), leftLabel: L10n.t("载体臂"), leftSeq: vec5Arm, midLabel: e5Name, midSeq: e5Site.lowercased(), rightLabel: L10n.t("片段5'"), rightSeq: String(cleanIns.prefix(18))),
+            PlasmidJunctionBlock(title: L10n.t("3' 重组接头"), leftLabel: L10n.t("片段3'"), leftSeq: String(cleanIns.suffix(18)), midLabel: e3Name, midSeq: e3Site.lowercased(), rightLabel: L10n.t("载体臂"), rightSeq: vec3Arm)
         ]
         
         let steps: [(String, String, Color)] = [
-            ("5' 同源臂", vec5Arm, .cyan),
+            (L10n.t("5' 同源臂"), vec5Arm, .cyan),
             ("Insert", "\(insertBp) bp", .green),
-            ("3' 同源臂", vec3Arm, .cyan)
+            (L10n.t("3' 同源臂"), vec3Arm, .cyan)
         ]
         
         let armLen = vec5Arm.count
@@ -412,14 +412,14 @@ public enum PlasmidMapBuilder {
         
         let microWindows: [MicroscopicSequenceWindow] = [
             MicroscopicSequenceWindow(
-                title: "5' 重组接头",
-                subtitle: "载体 5' 同源臂 + \(e5Name) + 插入基因 5' 端",
+                title: L10n.t("5' 重组接头"),
+                subtitle: L10n.tr("载体 5' 同源臂 + \(e5Name) + 插入基因 5' 端", "Vector 5' Arm + \(e5Name) + Insert 5' End"),
                 startBp: 1,
                 sequence: win5Seq,
                 homologyHighlightRange: 0..<(armLen + e5Site.count),
-                homologyLabel: "\(armLen) bp 载体同源臂",
+                homologyLabel: L10n.tr("\(armLen) bp 载体同源臂", "\(armLen) bp Vector Homology Arm"),
                 focalHighlightRange: (armLen + e5Site.count)..<min(win5Seq.count, armLen + e5Site.count + 18),
-                focalLabel: "插入基因 5' 特异结合区",
+                focalLabel: L10n.t("插入基因 5' 特异结合区"),
                 enzymeCuts: [
                     MicroscopicEnzymeCut(name: e5Name, topSnipOffset: armLen + 1, bottomSnipOffset: armLen + max(1, e5Site.count - 1))
                 ],
@@ -429,14 +429,14 @@ public enum PlasmidMapBuilder {
                 readingFrameOffset: (armLen + e5Site.count) % 3
             ),
             MicroscopicSequenceWindow(
-                title: "3' 重组接头",
-                subtitle: "插入基因 3' 端 + \(e3Name) + 载体 3' 同源臂",
+                title: L10n.t("3' 重组接头"),
+                subtitle: L10n.tr("插入基因 3' 端 + \(e3Name) + 载体 3' 同源臂", "Insert 3' End + \(e3Name) + Vector 3' Arm"),
                 startBp: max(1, insertBp - 30),
                 sequence: win3Seq,
                 homologyHighlightRange: (win3Seq.count - armLen - e3Site.count)..<win3Seq.count,
-                homologyLabel: "\(armLen) bp 载体同源臂",
+                homologyLabel: L10n.tr("\(armLen) bp 载体同源臂", "\(armLen) bp Vector Homology Arm"),
                 focalHighlightRange: max(0, win3Seq.count - armLen - e3Site.count - 18)..<(win3Seq.count - armLen - e3Site.count),
-                focalLabel: "插入基因 3' 特异结合区",
+                focalLabel: L10n.t("插入基因 3' 特异结合区"),
                 enzymeCuts: [
                     MicroscopicEnzymeCut(name: e3Name, topSnipOffset: win3Seq.count - armLen - e3Site.count + 1, bottomSnipOffset: win3Seq.count - armLen - 1)
                 ],
@@ -532,14 +532,14 @@ public enum PlasmidMapBuilder {
             let seamSeq = f1Tail + f2Head
             microWindows.append(
                 MicroscopicSequenceWindow(
-                    title: "Frag1-Frag2 拼接缝",
-                    subtitle: "片段 1 末端与片段 2 起始端无缝重叠区",
+                    title: L10n.t("Frag1-Frag2 拼接缝"),
+                    subtitle: L10n.t("片段 1 末端与片段 2 起始端无缝重叠区"),
                     startBp: max(1, validFrags[0].count - 35),
                     sequence: seamSeq,
                     homologyHighlightRange: 18..<54,
-                    homologyLabel: "片段间 18 bp 同源重叠臂",
+                    homologyLabel: L10n.t("片段间 18 bp 同源重叠臂"),
                     focalHighlightRange: 34..<38,
-                    focalLabel: "Frag1/Frag2 缝合切点",
+                    focalLabel: L10n.t("Frag1/Frag2 缝合切点"),
                     enzymeCuts: [
                         MicroscopicEnzymeCut(name: "Frag1|Frag2", topSnipOffset: 36, bottomSnipOffset: 36)
                     ],
@@ -589,7 +589,7 @@ public enum PlasmidMapBuilder {
         ]
         
         let enzymes: [PlasmidEnzymeMarker] = [
-            PlasmidEnzymeMarker(name: "★ 突变位点", recognitionSite: mutLabel, ratioPosition: 0.142, positionBp: upClean.count + 1, color: .red)
+            PlasmidEnzymeMarker(name: L10n.t("★ 突变位点"), recognitionSite: mutLabel, ratioPosition: 0.142, positionBp: upClean.count + 1, color: .red)
         ]
         
         var pMarkers: [PlasmidPrimerMarker] = []
@@ -602,7 +602,7 @@ public enum PlasmidMapBuilder {
         }
         
         let junctions: [PlasmidJunctionBlock] = [
-            PlasmidJunctionBlock(title: "突变位点局部放大", leftLabel: "上游", leftSeq: String(upClean.suffix(14)), midLabel: "★", midSeq: mutLabel, rightLabel: "下游", rightSeq: String(downClean.prefix(14)))
+            PlasmidJunctionBlock(title: L10n.t("突变位点局部放大"), leftLabel: L10n.t("上游"), leftSeq: String(upClean.suffix(14)), midLabel: "★", midSeq: mutLabel, rightLabel: L10n.t("下游"), rightSeq: String(downClean.prefix(14)))
         ]
         
         // 微观单碱基窗口：围绕突变点的 72bp 局部双链 + 密码子翻译 + 18bp 重叠同源臂高亮
@@ -645,14 +645,14 @@ public enum PlasmidMapBuilder {
         
         let microWindows: [MicroscopicSequenceWindow] = [
             MicroscopicSequenceWindow(
-                title: "★ 突变位点微观双链",
-                subtitle: siteClean.isEmpty ? "定点缺失突变 (Δ)" : "定点突变 (\(siteClean)) 与氨基酸密码子核验",
+                title: L10n.t("★ 突变位点微观双链"),
+                subtitle: siteClean.isEmpty ? L10n.t("定点缺失突变 (Δ)") : L10n.tr("定点突变 (\(siteClean)) 与氨基酸密码子核验", "Site-Directed Mutagenesis (\(siteClean)) & Codon Check"),
                 startBp: max(1, upClean.count - flankUp.count + 1),
                 sequence: winSeq,
                 homologyHighlightRange: homStartOff..<homEndOff,
-                homologyLabel: "18 bp 突变环化重叠同源臂",
+                homologyLabel: L10n.t("18 bp 突变环化重叠同源臂"),
                 focalHighlightRange: mutStartOff..<min(winSeq.count, mutEndOff),
-                focalLabel: siteClean.isEmpty ? "Δ 缺失切点" : "★ 突变碱基 (\(siteClean))",
+                focalLabel: siteClean.isEmpty ? L10n.t("Δ 缺失切点") : L10n.tr("★ 突变碱基 (\(siteClean))", "★ Mutant Bases (\(siteClean))"),
                 enzymeCuts: [
                     MicroscopicEnzymeCut(name: "★\(mutLabel)", topSnipOffset: mutStartOff, bottomSnipOffset: min(winSeq.count, mutEndOff))
                 ],
@@ -671,7 +671,7 @@ public enum PlasmidMapBuilder {
             enzymes: enzymes,
             primers: pMarkers,
             junctions: junctions,
-            linearSummarySteps: [("上游", "\(upClean.count)bp", .blue), ("★ 突变", mutLabel, .red), ("下游", "\(downClean.count)bp", .green)],
+            linearSummarySteps: [(L10n.t("上游"), "\(upClean.count)bp", .blue), (L10n.t("★ 突变"), mutLabel, .red), (L10n.t("下游"), "\(downClean.count)bp", .green)],
             microscopicWindows: microWindows
         )
     }
@@ -696,13 +696,13 @@ public enum PlasmidMapBuilder {
         let endR = min(1.0, ratioPos + 0.03)
         
         let features: [PlasmidFeatureItem] = [
-            PlasmidFeatureItem(name: "保留骨架上游", lengthBp: delStart, startRatio: 0.0, endRatio: startR, color: Color(red: 0.20, green: 0.60, blue: 0.95)),
-            PlasmidFeatureItem(name: "Δ 缺失切点 (\(delLen) bp)", lengthBp: 18, startRatio: startR, endRatio: endR, color: Color(red: 1.0, green: 0.30, blue: 0.43), isHighlight: true, sequenceSnippet: "Junction: \(delStart)-\(delStart)"),
-            PlasmidFeatureItem(name: "保留骨架下游", lengthBp: max(0, newLen - delStart), startRatio: endR, endRatio: 1.0, color: Color(red: 0.20, green: 0.75, blue: 0.50))
+            PlasmidFeatureItem(name: L10n.t("保留骨架上游"), lengthBp: delStart, startRatio: 0.0, endRatio: startR, color: Color(red: 0.20, green: 0.60, blue: 0.95)),
+            PlasmidFeatureItem(name: L10n.tr("Δ 缺失切点 (\(delLen) bp)", "Δ Deletion Junction (\(delLen) bp)"), lengthBp: 18, startRatio: startR, endRatio: endR, color: Color(red: 1.0, green: 0.30, blue: 0.43), isHighlight: true, sequenceSnippet: "Junction: \(delStart)-\(delStart)"),
+            PlasmidFeatureItem(name: L10n.t("保留骨架下游"), lengthBp: max(0, newLen - delStart), startRatio: endR, endRatio: 1.0, color: Color(red: 0.20, green: 0.75, blue: 0.50))
         ]
         
         let enzymes: [PlasmidEnzymeMarker] = [
-            PlasmidEnzymeMarker(name: "Δ 切点", recognitionSite: "Junction", ratioPosition: ratioPos, positionBp: delStart, color: .red)
+            PlasmidEnzymeMarker(name: L10n.t("Δ 切点"), recognitionSite: "Junction", ratioPosition: ratioPos, positionBp: delStart, color: .red)
         ]
         
         var primerMarkers: [PlasmidPrimerMarker] = []
@@ -720,13 +720,13 @@ public enum PlasmidMapBuilder {
         let cutOff = leftUp36.count
         
         let junctions: [PlasmidJunctionBlock] = [
-            PlasmidJunctionBlock(title: "缺失接缝结构 (Deletion Junction)", leftLabel: "上游断点", leftSeq: String(leftUp36.suffix(18)), midLabel: "Δ 移除 \(delLen)bp", midSeq: "---", rightLabel: "下游断点", rightSeq: String(rightDown36.prefix(18)))
+            PlasmidJunctionBlock(title: L10n.t("缺失接缝结构 (Deletion Junction)"), leftLabel: L10n.t("上游断点"), leftSeq: String(leftUp36.suffix(18)), midLabel: L10n.tr("Δ 移除 \(delLen)bp", "Δ \(delLen)bp"), midSeq: "---", rightLabel: L10n.t("下游断点"), rightSeq: String(rightDown36.prefix(18)))
         ]
         
         let steps: [(String, String, Color)] = [
-            ("上游保留区", "1 ~ \(max(1, delStart - 1)) bp", .blue),
-            ("Δ 缺失敲除", "\(delLen) bp 移除", .red),
-            ("下游保留区", "\(delStart) ~ \(newLen) bp", .green)
+            (L10n.t("上游保留区"), "1 ~ \(max(1, delStart - 1)) bp", .blue),
+            (L10n.t("Δ 缺失敲除"), L10n.tr("\(delLen) bp 移除", "\(delLen) bp deleted"), .red),
+            (L10n.t("下游保留区"), "\(delStart) ~ \(newLen) bp", .green)
         ]
         
         var microPrimers: [MicroscopicPrimerOverlay] = []
@@ -760,16 +760,16 @@ public enum PlasmidMapBuilder {
         
         let microWindows: [MicroscopicSequenceWindow] = [
             MicroscopicSequenceWindow(
-                title: "Δ 敲除缝合断点微观双链",
-                subtitle: "已精确移除 \(delStart)..\(delEnd) (\(delLen) bp) 后的环化接缝与读码框核验",
+                title: L10n.t("Δ 敲除缝合断点微观双链"),
+                subtitle: L10n.tr("已精确移除 \(delStart)..\(delEnd) (\(delLen) bp) 后的环化接缝与读码框核验", "Circularized junction after deleting \(delStart)..\(delEnd) (\(delLen) bp) & reading frame check"),
                 startBp: max(1, delStart - leftUp36.count),
                 sequence: seamWindowSeq,
                 homologyHighlightRange: max(0, cutOff - 9)..<min(seamWindowSeq.count, cutOff + 9),
-                homologyLabel: "18 bp 跨断点无缝环化同源臂",
+                homologyLabel: L10n.t("18 bp 跨断点无缝环化同源臂"),
                 focalHighlightRange: max(0, cutOff - 2)..<min(seamWindowSeq.count, cutOff + 2),
-                focalLabel: "Δ 缺失缝合切点",
+                focalLabel: L10n.t("Δ 缺失缝合切点"),
                 enzymeCuts: [
-                    MicroscopicEnzymeCut(name: "Δ移除\(delLen)bp", topSnipOffset: cutOff, bottomSnipOffset: cutOff)
+                    MicroscopicEnzymeCut(name: L10n.tr("Δ移除\(delLen)bp", "Δ\(delLen)bp"), topSnipOffset: cutOff, bottomSnipOffset: cutOff)
                 ],
                 primers: microPrimers,
                 readingFrameOffset: 0
@@ -835,21 +835,21 @@ public enum PlasmidMapBuilder {
         ]
         
         let junctions: [PlasmidJunctionBlock] = [
-            PlasmidJunctionBlock(title: "Top Oligo (5'→3')", leftLabel: "悬垂", leftSeq: "caccg", midLabel: "Spacer", midSeq: clean, rightLabel: "", rightSeq: ""),
-            PlasmidJunctionBlock(title: "Bottom Oligo (5'→3')", leftLabel: "悬垂", leftSeq: "aaac", midLabel: "互补", midSeq: BioSequence.reverseComplement(clean), rightLabel: "", rightSeq: "c")
+            PlasmidJunctionBlock(title: "Top Oligo (5'→3')", leftLabel: L10n.t("悬垂"), leftSeq: "caccg", midLabel: "Spacer", midSeq: clean, rightLabel: "", rightSeq: ""),
+            PlasmidJunctionBlock(title: "Bottom Oligo (5'→3')", leftLabel: L10n.t("悬垂"), leftSeq: "aaac", midLabel: L10n.t("互补"), midSeq: BioSequence.reverseComplement(clean), rightLabel: "", rightSeq: "c")
         ]
         
         let sgWinSeq = "CACCG" + clean + "GTTTTAGAGCTAGAAATAGCAAGTTAAAATAAGGCT"
         let microWindows: [MicroscopicSequenceWindow] = [
             MicroscopicSequenceWindow(
-                title: "sgRNA 退火双链与黏性末端",
-                subtitle: "\(enzName) 4nt 悬垂端 + 20nt Spacer + gRNA Scaffold",
+                title: L10n.t("sgRNA 退火双链与黏性末端"),
+                subtitle: L10n.tr("\(enzName) 4nt 悬垂端 + 20nt Spacer + gRNA Scaffold", "\(enzName) 4nt overhang + 20nt Spacer + gRNA Scaffold"),
                 startBp: 245,
                 sequence: sgWinSeq,
                 homologyHighlightRange: 0..<5,
-                homologyLabel: "\(enzName) 5' 黏性悬垂端 (CACCG)",
+                homologyLabel: L10n.tr("\(enzName) 5' 黏性悬垂端 (CACCG)", "\(enzName) 5' overhang (CACCG)"),
                 focalHighlightRange: 5..<25,
-                focalLabel: "20 nt CRISPR 靶向 Spacer",
+                focalLabel: L10n.t("20 nt CRISPR 靶向 Spacer"),
                 enzymeCuts: [
                     MicroscopicEnzymeCut(name: enzName, topSnipOffset: 1, bottomSnipOffset: 5)
                 ],
@@ -869,7 +869,7 @@ public enum PlasmidMapBuilder {
             enzymes: enzymes,
             primers: primers,
             junctions: junctions,
-            linearSummarySteps: [("hU6", "启动子", .red), ("Spacer", "\(activeGene) (20nt)", .green), ("Scaffold", "骨架", .cyan)],
+            linearSummarySteps: [("hU6", L10n.t("启动子"), .red), ("Spacer", "\(activeGene) (20nt)", .green), ("Scaffold", L10n.t("骨架"), .cyan)],
             microscopicWindows: microWindows
         )
     }
@@ -918,14 +918,14 @@ public enum PlasmidMapBuilder {
         
         let microWindows: [MicroscopicSequenceWindow] = [
             MicroscopicSequenceWindow(
-                title: "pLKO.1 shRNA 发夹盒微观双链",
-                subtitle: "AgeI 悬垂 + Sense + \(loop) 茎环 + Antisense + EcoRI 悬垂",
+                title: L10n.t("pLKO.1 shRNA 发夹盒微观双链"),
+                subtitle: L10n.tr("AgeI 悬垂 + Sense + \(loop) 茎环 + Antisense + EcoRI 悬垂", "AgeI overhang + Sense + \(loop) loop + Antisense + EcoRI overhang"),
                 startBp: 1,
                 sequence: topSeq + "AATT",
                 homologyHighlightRange: 4..<(4 + clean.count),
-                homologyLabel: "\(clean.count) nt Sense 正义链",
+                homologyLabel: L10n.tr("\(clean.count) nt Sense 正义链", "\(clean.count) nt Sense Strand"),
                 focalHighlightRange: (4 + clean.count)..<(4 + clean.count + loop.count),
-                focalLabel: "茎环 Loop (\(loop))",
+                focalLabel: L10n.tr("茎环 Loop (\(loop))", "Hairpin Loop (\(loop))"),
                 enzymeCuts: [
                     MicroscopicEnzymeCut(name: "AgeI", topSnipOffset: 0, bottomSnipOffset: 4),
                     MicroscopicEnzymeCut(name: "EcoRI", topSnipOffset: topSeq.count, bottomSnipOffset: topSeq.count + 4)
@@ -1079,21 +1079,21 @@ public enum PlasmidMapBuilder {
         
         let junctions: [PlasmidJunctionBlock] = [
             PlasmidJunctionBlock(
-                title: "5' 重组接头 (@\(clampedStart) bp)",
-                leftLabel: "载体 5' 骨架",
+                title: L10n.tr("5' 重组接头 (@\(clampedStart) bp)", "5' Recombination Junction (@\(clampedStart) bp)"),
+                leftLabel: L10n.t("载体 5' 骨架"),
                 leftSeq: vec5Arm,
-                midLabel: "5' 接头同源臂",
+                midLabel: L10n.t("5' 接头同源臂"),
                 midSeq: primers.first?.fullSequence.prefix(18).lowercased() ?? "---",
-                rightLabel: "插入基因 5' 端",
+                rightLabel: L10n.t("插入基因 5' 端"),
                 rightSeq: String(cleanIns.prefix(20))
             ),
             PlasmidJunctionBlock(
-                title: "3' 重组接头 (@\(insEnd) bp)",
-                leftLabel: "插入基因 3' 端",
+                title: L10n.tr("3' 重组接头 (@\(insEnd) bp)", "3' Recombination Junction (@\(insEnd) bp)"),
+                leftLabel: L10n.t("插入基因 3' 端"),
                 leftSeq: String(cleanIns.suffix(20)),
-                midLabel: "3' 接头同源臂",
+                midLabel: L10n.t("3' 接头同源臂"),
                 midSeq: primers.count > 1 ? primers[1].fullSequence.prefix(18).lowercased() : "---",
-                rightLabel: "载体 3' 骨架",
+                rightLabel: L10n.t("载体 3' 骨架"),
                 rightSeq: vec3Arm
             )
         ]
@@ -1102,14 +1102,14 @@ public enum PlasmidMapBuilder {
         let win3Seq = String(cleanIns.suffix(54)) + vec3Arm
         let microWindows: [MicroscopicSequenceWindow] = [
             MicroscopicSequenceWindow(
-                title: "5' SnapGene 重组接头 (@\(clampedStart) bp)",
-                subtitle: "\(vectorInfo.fileName) 5' 臂 + \(insertName) 5' 端",
+                title: L10n.tr("5' SnapGene 重组接头 (@\(clampedStart) bp)", "5' SnapGene Junction (@\(clampedStart) bp)"),
+                subtitle: L10n.tr("\(vectorInfo.fileName) 5' 臂 + \(insertName) 5' 端", "\(vectorInfo.fileName) 5' arm + \(insertName) 5' end"),
                 startBp: max(1, insStart - vec5Arm.count),
                 sequence: win5Seq,
                 homologyHighlightRange: 0..<vec5Arm.count,
-                homologyLabel: "18 bp 载体同源臂",
+                homologyLabel: L10n.t("18 bp 载体同源臂"),
                 focalHighlightRange: vec5Arm.count..<min(win5Seq.count, vec5Arm.count + 18),
-                focalLabel: "\(insertName) 5' 起始区",
+                focalLabel: L10n.tr("\(insertName) 5' 起始区", "\(insertName) 5' Start"),
                 enzymeCuts: [
                     MicroscopicEnzymeCut(name: "5'Junction", topSnipOffset: vec5Arm.count, bottomSnipOffset: vec5Arm.count)
                 ],
@@ -1118,14 +1118,14 @@ public enum PlasmidMapBuilder {
                 ] : []
             ),
             MicroscopicSequenceWindow(
-                title: "3' SnapGene 重组接头 (@\(insEnd) bp)",
-                subtitle: "\(insertName) 3' 端 + \(vectorInfo.fileName) 3' 臂",
+                title: L10n.tr("3' SnapGene 重组接头 (@\(insEnd) bp)", "3' SnapGene Junction (@\(insEnd) bp)"),
+                subtitle: L10n.tr("\(insertName) 3' 端 + \(vectorInfo.fileName) 3' 臂", "\(insertName) 3' end + \(vectorInfo.fileName) 3' arm"),
                 startBp: max(1, insEnd - 53),
                 sequence: win3Seq,
                 homologyHighlightRange: (win3Seq.count - vec3Arm.count)..<win3Seq.count,
-                homologyLabel: "18 bp 载体同源臂",
+                homologyLabel: L10n.t("18 bp 载体同源臂"),
                 focalHighlightRange: max(0, win3Seq.count - vec3Arm.count - 18)..<(win3Seq.count - vec3Arm.count),
-                focalLabel: "\(insertName) 3' 末端区",
+                focalLabel: L10n.tr("\(insertName) 3' 末端区", "\(insertName) 3' End"),
                 enzymeCuts: [
                     MicroscopicEnzymeCut(name: "3'Junction", topSnipOffset: win3Seq.count - vec3Arm.count, bottomSnipOffset: win3Seq.count - vec3Arm.count)
                 ],
@@ -1147,8 +1147,8 @@ public enum PlasmidMapBuilder {
             primers: primerMarkers,
             junctions: junctions,
             linearSummarySteps: [
-                ("载体保留骨架", "\(vecLen - cutLen)bp (Δ\(cutLen)bp @\(clampedStart)..\(clampedEnd))", .blue),
-                (insertName.isEmpty ? "插入片段" : insertName, "\(insLen)bp (@\(insStart)..\(insEnd))", Color(red: 0.10, green: 0.82, blue: 0.54))
+                (L10n.t("载体保留骨架"), "\(vecLen - cutLen)bp (Δ\(cutLen)bp @\(clampedStart)..\(clampedEnd))", .blue),
+                (insertName.isEmpty ? L10n.t("插入片段") : insertName, "\(insLen)bp (@\(insStart)..\(insEnd))", Color(red: 0.10, green: 0.82, blue: 0.54))
             ],
             microscopicWindows: microWindows
         )
@@ -1212,11 +1212,11 @@ public enum PlasmidMapBuilder {
                     }
                     microWindows.append(MicroscopicSequenceWindow(
                         title: "\(f.name) (\(s)..\(e))",
-                        subtitle: "\(f.type) · \(e - s + 1) bp · 点击任意密码子/氨基酸可直接设定突变",
+                        subtitle: L10n.tr("\(f.type) · \(e - s + 1) bp · 点击任意密码子/氨基酸可直接设定突变", "\(f.type) · \(e - s + 1) bp · Click any codon/residue to mutate"),
                         startBp: s,
                         sequence: winSeq,
                         focalHighlightRange: focRange,
-                        focalLabel: focRange != nil ? "当前选中突变位点" : "",
+                        focalLabel: focRange != nil ? L10n.t("当前选中突变位点") : "",
                         readingFrameOffset: 0
                     ))
                 }
@@ -1267,9 +1267,9 @@ public enum PlasmidMapBuilder {
             junctions: [],
             linearSummarySteps: [
                 (cleanTitle, "\(totalBp) bp", .blue),
-                ("特征数", "\(info.featuresCount) 个", .green),
-                ("引物数", "\(info.validBoundPrimers.count) 条", .orange),
-                ("唯一酶切", "\(uniqueCuts.count) 个", .purple)
+                (L10n.t("特征数"), L10n.tr("\(info.featuresCount) 个", "\(info.featuresCount)"), .green),
+                (L10n.t("引物数"), L10n.tr("\(info.validBoundPrimers.count) 条", "\(info.validBoundPrimers.count)"), .orange),
+                (L10n.t("唯一酶切"), L10n.tr("\(uniqueCuts.count) 个", "\(uniqueCuts.count)"), .purple)
             ],
             microscopicWindows: microWindows
         )
@@ -1446,22 +1446,22 @@ public struct PlasmidPreviewPanel: View {
                         Image(systemName: "circle.circle.fill")
                             .foregroundStyle(.cyan)
                             .font(.system(size: 13))
-                        Text(data.insertLengthBp == 0 ? "原始质粒全景图谱：\(data.constructTitle)" : "重组质粒全景图谱")
+                        Text(data.insertLengthBp == 0 ? L10n.tr("原始质粒全景图谱：\(data.constructTitle)", "Original Plasmid Map: \(data.constructTitle)") : L10n.t("重组质粒全景图谱"))
                             .font(.system(size: 13.5, weight: .bold))
                             .lineLimit(1)
                     }
                     .help(onMutateCodon != nil
-                          ? "在序列或氨基酸带中按住拖拽选区，可在底部直接点选目标氨基酸进行定点突变"
-                          : "在序列或密码子带上直接按住拖拽选区，实时测算坐标、氨基酸序列与 Tm 值")
+                          ? L10n.t("在序列或氨基酸带中按住拖拽选区，可在底部直接点选目标氨基酸进行定点突变")
+                          : L10n.t("在序列或密码子带上直接按住拖拽选区，实时测算坐标、氨基酸序列与 Tm 值"))
                     
                     Spacer(minLength: 4)
                     
                     HStack(spacing: 5) {
-                        StudioMetricBadge(label: "总长", value: "\(data.totalLengthBp) bp", color: .blue)
+                        StudioMetricBadge(label: L10n.t("总长"), value: "\(data.totalLengthBp) bp", color: .blue)
                         if data.insertLengthBp > 0 {
-                            StudioMetricBadge(label: "插入", value: "\(data.insertLengthBp) bp", color: .green)
+                            StudioMetricBadge(label: L10n.t("插入"), value: "\(data.insertLengthBp) bp", color: .green)
                         } else {
-                            StudioMetricBadge(label: "特征", value: "\(data.features.count) 个", color: .green)
+                            StudioMetricBadge(label: L10n.t("特征"), value: L10n.tr("\(data.features.count) 个", "\(data.features.count)"), color: .green)
                         }
                         StudioMetricBadge(label: "GC", value: "\(String(format: "%.0f", data.gcPercent))%", color: .purple)
                     }
@@ -1481,7 +1481,7 @@ public struct PlasmidPreviewPanel: View {
                         Image(systemName: "circle.circle.fill")
                             .foregroundStyle(.cyan)
                             .font(.system(size: 13))
-                        Text(data.insertLengthBp == 0 ? "原始质粒：\(data.constructTitle)" : data.constructTitle)
+                        Text(data.insertLengthBp == 0 ? L10n.tr("原始质粒：\(data.constructTitle)", "Original Plasmid: \(data.constructTitle)") : data.constructTitle)
                             .font(.system(size: 13.5, weight: .bold))
                             .lineLimit(1)
                         
@@ -1493,11 +1493,11 @@ public struct PlasmidPreviewPanel: View {
                         }
                     }
                     HStack(spacing: 5) {
-                        StudioMetricBadge(label: "总长", value: "\(data.totalLengthBp) bp", color: .blue)
+                        StudioMetricBadge(label: L10n.t("总长"), value: "\(data.totalLengthBp) bp", color: .blue)
                         if data.insertLengthBp > 0 {
-                            StudioMetricBadge(label: "插入", value: "\(data.insertLengthBp) bp", color: .green)
+                            StudioMetricBadge(label: L10n.t("插入"), value: "\(data.insertLengthBp) bp", color: .green)
                         } else {
-                            StudioMetricBadge(label: "特征", value: "\(data.features.count) 个", color: .green)
+                            StudioMetricBadge(label: L10n.t("特征"), value: L10n.tr("\(data.features.count) 个", "\(data.features.count)"), color: .green)
                         }
                         StudioMetricBadge(label: "GC", value: "\(String(format: "%.0f", data.gcPercent))%", color: .purple)
                     }
@@ -1534,7 +1534,7 @@ public struct PlasmidPreviewPanel: View {
             
             // 底栏：极简元件胶囊与旋转滑块
             HStack(spacing: 6) {
-                Text("元件:")
+                Text(L10n.t("元件:"))
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.secondary)
                 
@@ -1575,7 +1575,7 @@ public struct PlasmidPreviewPanel: View {
                     Slider(value: $rotationDegrees, in: 0...360)
                         .frame(width: 64)
                         .controlSize(.mini)
-                        .help("旋转环形质粒图谱视角")
+                        .help(L10n.t("旋转环形质粒图谱视角"))
                 }
             }
             
@@ -1585,7 +1585,7 @@ public struct PlasmidPreviewPanel: View {
                !feat.sequenceSnippet.isEmpty {
                 let legibleCol = feat.color.studioLegibleAccent(isDark: isDark)
                 Text("\(feat.name): 5'- \(feat.sequenceSnippet) -3'")
-                    .font(.system(size: 10.5, design: .monospaced))
+                    .font(.system(size: 10.5))
                     .foregroundColor(legibleCol)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -1696,7 +1696,7 @@ public struct PlasmidPreviewPanel: View {
         ) {
             PlasmidWindowPresenter.shared.openPreviewWindow(
                 data: data,
-                title: "🧬 质粒独立窗口预览 — \(data.constructTitle) (\(data.totalLengthBp) bp)",
+                title: L10n.tr("🧬 质粒独立窗口预览 — \(data.constructTitle) (\(data.totalLengthBp) bp)", "🧬 Plasmid Preview Window — \(data.constructTitle) (\(data.totalLengthBp) bp)"),
                 onMutateCodon: onMutateCodon
             )
         }
@@ -1805,7 +1805,7 @@ public struct PlasmidPreviewPanel: View {
                     }
                 }
                 Button(action: {
-                    appState.showToast("已将「\(data.constructTitle)」环形图谱快照复制至剪贴板")
+                    appState.showToast(L10n.tr("已将「\(data.constructTitle)」环形图谱快照复制至剪贴板", "Copied circular map snapshot of \"\(data.constructTitle)\" to clipboard"))
                 }) {
                     if compactCamera {
                         Image(systemName: "camera")
@@ -1817,7 +1817,7 @@ public struct PlasmidPreviewPanel: View {
                     }
                 }
                 .studioGlassButton(isCircle: compactCamera, controlSize: .regular)
-                .help("导出高分辨率 PNG 图谱")
+                .help(L10n.t("导出高分辨率 PNG 图谱"))
             }
         }
     }
@@ -2352,11 +2352,11 @@ public struct PlasmidPreviewPanel: View {
                 if !data.primers.isEmpty {
                     VStack(alignment: .leading, spacing: 5) {
                         HStack {
-                            Text("绑定引物列表 (\(data.primers.count))")
+                            Text(L10n.tr("绑定引物列表 (\(data.primers.count))", "Bound Primers (\(data.primers.count))"))
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text("5' → 3' 方向 · 青底正向 F / 橙底反向 R")
+                            Text(L10n.t("5' → 3' 方向 · 青底正向 F / 橙底反向 R"))
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary)
                         }
@@ -2375,7 +2375,7 @@ public struct PlasmidPreviewPanel: View {
                                     .truncationMode(.middle)
                                     .frame(minWidth: 115, maxWidth: 175, alignment: .leading)
                                 Text(p.sequence)
-                                    .font(.system(size: 10.5, design: .monospaced))
+                                    .font(.system(size: 10.5))
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                                     .textSelection(.enabled)
@@ -2399,12 +2399,12 @@ public struct PlasmidPreviewPanel: View {
     private var linearConstructTrackCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("线性特征与引物分布图 (0 – \(data.totalLengthBp) bp)")
+                Text(L10n.tr("线性特征与引物分布图 (0 – \(data.totalLengthBp) bp)", "Linear Feature & Primer Map (0 – \(data.totalLengthBp) bp)"))
                     .font(.system(size: 10.5, weight: .semibold))
                     .monospacedDigit()
                     .foregroundColor(.secondary)
                 Spacer()
-                Text("\(data.features.count) 元件 · \(data.primers.count) 引物")
+                Text(L10n.tr("\(data.features.count) 元件 · \(data.primers.count) 引物", "\(data.features.count) features · \(data.primers.count) primers"))
                     .font(.system(size: 10))
                     .monospacedDigit()
                     .foregroundColor(.secondary)
@@ -2544,7 +2544,7 @@ public final class PlasmidWindowPresenter: NSObject, NSWindowDelegate {
         onMutateCodon: ((InteractiveCodonMutationPayload) -> Void)? = nil
     ) {
         let previewData = PlasmidMapBuilder.forRawSnapGeneFile(info: info, highlightRange: highlightRange)
-        let winTitle = "🧬 【\(roleLabel)】\(info.fileName) (\(info.length) bp · \(info.featuresCount) 个特征 · \(info.validBoundPrimers.count) 条引物)"
+        let winTitle = L10n.tr("🧬 【\(roleLabel)】\(info.fileName) (\(info.length) bp · \(info.featuresCount) 个特征 · \(info.validBoundPrimers.count) 条引物)", "🧬 [\(L10n.t(roleLabel))] \(info.fileName) (\(info.length) bp · \(info.featuresCount) features · \(info.validBoundPrimers.count) primers)")
         openPreviewWindow(data: previewData, title: winTitle, onMutateCodon: onMutateCodon)
     }
     
@@ -2576,7 +2576,7 @@ public final class PlasmidWindowPresenter: NSObject, NSWindowDelegate {
             onMutateCodon: onMutateCodon
         )
         window.appearance = NSApplication.shared.appearance
-        window.contentView = NSHostingView(rootView: rootView)
+        window.contentView = NSHostingView(rootView: StudioLocalizedWindowHost { rootView })
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)

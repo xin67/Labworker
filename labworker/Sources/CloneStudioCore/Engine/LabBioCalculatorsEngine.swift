@@ -176,7 +176,7 @@ public enum LabDNAConverter {
         let concUgMl = od260 * sampleType.factor * dilutionFactor
         let outOfRange = od260 > 0 && (od260 < 0.1 || od260 > 1.0)
         let warn: String? = outOfRange
-            ? "大多数分光光度计在低于 0.1 OD 单位或高于 1.0 OD 单位时精度下降，建议调整稀释倍数重新测读。"
+            ? L10n.t("大多数分光光度计在低于 0.1 OD 单位或高于 1.0 OD 单位时精度下降，建议调整稀释倍数重新测读。")
             : nil
         return OD260Result(
             od260: od260,
@@ -377,7 +377,7 @@ public enum LabBiochemCalculator {
                 displayValue: massG,
                 displayUnit: "g",
                 formattedMass: "--",
-                warningMessage: "超出质量可显示上限（> 10⁶ g）。",
+                warningMessage: L10n.t("超出质量可显示上限（> 10⁶ g）。"),
                 exceedsDisplayLimit: true
             )
         }
@@ -409,7 +409,7 @@ public enum LabBiochemCalculator {
                 displayValue: scaled,
                 displayUnit: "µg",
                 formattedMass: "\(BioMathFormatter.format(scaled)) µg",
-                warningMessage: "请考虑配置浓度更高的母液，然后稀释到您所需的最终浓度。",
+                warningMessage: L10n.t("请考虑配置浓度更高的母液，然后稀释到您所需的最终浓度。"),
                 exceedsDisplayLimit: false
             )
         }
@@ -441,7 +441,7 @@ public enum LabBiochemCalculator {
                 formattedStockVolume: "--",
                 formattedDiluentVolume: "--",
                 warningMessage: nil,
-                errorMessage: "您输入的母液浓度低于稀释液浓度，需要将母液浓缩 \(BioMathFormatter.format(neededConcentrate)) 倍。",
+                errorMessage: L10n.tr("您输入的母液浓度低于稀释液浓度，需要将母液浓缩 \(BioMathFormatter.format(neededConcentrate)) 倍。", "Stock concentration is below target; concentrate stock by \(BioMathFormatter.format(neededConcentrate))x."),
                 isValid: false
             )
         }
@@ -502,7 +502,7 @@ public enum LabBiochemCalculator {
                 displayUnit: "nL",
                 formattedStockVolume: "\(BioMathFormatter.format(scaled, fixedDecimals: 0)) nL",
                 formattedDiluentVolume: diluentFormatted,
-                warningMessage: "通常，移液器很难准确移取该体积，您需要考虑将母液预稀释。",
+                warningMessage: L10n.t("通常，移液器很难准确移取该体积，您需要考虑将母液预稀释。"),
                 errorMessage: nil,
                 isValid: true
             )
@@ -516,7 +516,7 @@ public enum LabBiochemCalculator {
                 displayUnit: "pL",
                 formattedStockVolume: "\(BioMathFormatter.format(scaled, fixedDecimals: 0)) pL",
                 formattedDiluentVolume: diluentFormatted,
-                warningMessage: "通常，移液器很难准确移取该体积，您需要考虑将母液预稀释。",
+                warningMessage: L10n.t("通常，移液器很难准确移取该体积，您需要考虑将母液预稀释。"),
                 errorMessage: nil,
                 isValid: true
             )
@@ -530,7 +530,7 @@ public enum LabBiochemCalculator {
                 formattedStockVolume: "< 1 pL",
                 formattedDiluentVolume: diluentFormatted,
                 warningMessage: nil,
-                errorMessage: "所需体积小于 1 pL，请确保输入正确；建议将母液大幅预稀释后再制备所需工作液。",
+                errorMessage: L10n.t("所需体积小于 1 pL，请确保输入正确；建议将母液大幅预稀释后再制备所需工作液。"),
                 isValid: false
             )
         }
@@ -567,7 +567,7 @@ public enum LabBiochemCalculator {
                 celsius: round2(c),
                 kelvin: round2(k),
                 isBelowAbsoluteZero: true,
-                errorMessage: "温度低于绝对零度（0 K / -273.16 °C），请检查输入值。"
+                errorMessage: L10n.t("温度低于绝对零度（0 K / -273.16 °C），请检查输入值。")
             )
         }
         return TemperatureResult(

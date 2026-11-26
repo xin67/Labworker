@@ -819,8 +819,9 @@ public struct StudioNoAutoFocusSearchField: NSViewRepresentable {
         field.maximumNumberOfLines = 1
         field.font = .systemFont(ofSize: 13)
         field.textColor = .labelColor
+        let localizedPlaceholder = L10n.t(placeholder)
         field.placeholderAttributedString = NSAttributedString(
-            string: placeholder,
+            string: localizedPlaceholder,
             attributes: [
                 .foregroundColor: NSColor.secondaryLabelColor,
                 .font: NSFont.systemFont(ofSize: 13)
@@ -847,9 +848,10 @@ public struct StudioNoAutoFocusSearchField: NSViewRepresentable {
         if nsView.stringValue != text {
             nsView.stringValue = text
         }
-        if nsView.placeholderString != placeholder {
+        let localizedPlaceholder = L10n.t(placeholder)
+        if nsView.placeholderString != localizedPlaceholder {
             nsView.placeholderAttributedString = NSAttributedString(
-                string: placeholder,
+                string: localizedPlaceholder,
                 attributes: [
                     .foregroundColor: NSColor.secondaryLabelColor,
                     .font: NSFont.systemFont(ofSize: 13)
@@ -1061,13 +1063,14 @@ public struct StudioSegmentedPillGroup: View {
     
     @ViewBuilder
     private func itemLabel(_ item: StudioPillGroupItem) -> some View {
-        if let icon = item.icon, !icon.isEmpty, !item.title.isEmpty {
-            Label(item.title, systemImage: icon)
+        let displayTitle = L10n.t(item.title)
+        if let icon = item.icon, !icon.isEmpty, !displayTitle.isEmpty {
+            Label(displayTitle, systemImage: icon)
         } else if let icon = item.icon, !icon.isEmpty {
             Image(systemName: icon)
-                .accessibilityLabel(item.help ?? "操作")
+                .accessibilityLabel(L10n.t(item.help ?? "操作"))
         } else {
-            Text(item.title)
+            Text(displayTitle)
         }
     }
     
@@ -1097,7 +1100,7 @@ public struct StudioSegmentedPillGroup: View {
                 }
                 .buttonStyle(StudioJoinedSegmentButtonStyle(isLight: isLight, isDisabled: item.isDisabled))
                 .disabled(item.isDisabled)
-                .help(item.help ?? item.title)
+                .help(L10n.t(item.help ?? item.title))
             }
         }
         .fixedSize(horizontal: !expandEqually, vertical: false)
@@ -1107,6 +1110,7 @@ public struct StudioSegmentedPillGroup: View {
 
 /// 独立胶囊按钮（直接由 macOS 27 原生 `.buttonStyle(.glass / .glassProminent)` 驱动）
 public struct StudioActionPillButton: View {
+    @Environment(\.appLanguage) private var appLanguage
     public let title: String
     public var icon: String? = nil
     public var tint: Color? = nil
@@ -1140,7 +1144,9 @@ public struct StudioActionPillButton: View {
     }
     
     public var body: some View {
-        let isIconOnly = title.isEmpty && (icon?.isEmpty == false)
+        let _ = appLanguage
+        let displayTitle = L10n.t(title)
+        let isIconOnly = displayTitle.isEmpty && (icon?.isEmpty == false)
         let fgColor: Color? = isDisabled
             ? .secondary.opacity(0.60)
             : (isProminent ? nil : (tint ?? .primary))
@@ -1150,8 +1156,8 @@ public struct StudioActionPillButton: View {
                     Image(systemName: icon)
                         .font(.system(size: compact ? 10.5 : 12, weight: .semibold))
                 }
-                if !title.isEmpty {
-                    Text(title)
+                if !displayTitle.isEmpty {
+                    Text(displayTitle)
                         .font(.system(size: compact ? 11 : 12, weight: isProminent ? .semibold : .medium))
                         .lineLimit(1)
                         .fixedSize(horizontal: !fillWidth, vertical: false)
@@ -1171,7 +1177,7 @@ public struct StudioActionPillButton: View {
         )
         
         if let helpText = help, !helpText.isEmpty {
-            btn.help(helpText)
+            btn.help(L10n.t(helpText))
         } else {
             btn
         }
@@ -1180,6 +1186,7 @@ public struct StudioActionPillButton: View {
 
 /// 紧凑内联胶囊按钮（`.controlSize(.regular)` 24pt 标准原生尺寸，专用于密集列表行与卡片副操作）
 public struct StudioCompactPillButton: View {
+    @Environment(\.appLanguage) private var appLanguage
     public let title: String
     public var icon: String? = nil
     public var dotColor: Color? = nil
@@ -1213,7 +1220,9 @@ public struct StudioCompactPillButton: View {
     }
 
     public var body: some View {
-        let isIconOnly = title.isEmpty && (icon?.isEmpty == false) && dotColor == nil
+        let _ = appLanguage
+        let displayTitle = L10n.t(title)
+        let isIconOnly = displayTitle.isEmpty && (icon?.isEmpty == false) && dotColor == nil
         let isActiveHighlight = (isProminent || isSelected) && !isDisabled
         let fgColor: Color? = isDisabled
             ? .secondary.opacity(0.60)
@@ -1229,8 +1238,8 @@ public struct StudioCompactPillButton: View {
                     Image(systemName: icon)
                         .font(.system(size: 10.5, weight: .semibold))
                 }
-                if !title.isEmpty {
-                    Text(title)
+                if !displayTitle.isEmpty {
+                    Text(displayTitle)
                         .font(.system(size: 11, weight: isActiveHighlight ? .semibold : .medium))
                         .monospacedDigit()
                         .lineLimit(1)
@@ -1250,7 +1259,7 @@ public struct StudioCompactPillButton: View {
         )
 
         if let helpText = help, !helpText.isEmpty {
-            btn.help(helpText)
+            btn.help(L10n.t(helpText))
         } else {
             btn
         }
@@ -1287,6 +1296,8 @@ public struct StudioMenuPillButton<MenuContent: View>: View {
     }
 
     public var body: some View {
+        let _ = appState.appLanguage
+        let displayTitle = L10n.t(title)
         let menu = Menu {
             menuContent
         } label: {
@@ -1295,8 +1306,8 @@ public struct StudioMenuPillButton<MenuContent: View>: View {
                     Image(systemName: icon)
                         .font(.system(size: compact ? 10.5 : 11.5, weight: .semibold))
                 }
-                if !title.isEmpty {
-                    Text(title)
+                if !displayTitle.isEmpty {
+                    Text(displayTitle)
                         .font(.system(size: compact ? 11 : 12, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -1308,13 +1319,13 @@ public struct StudioMenuPillButton<MenuContent: View>: View {
         .studioGlassMenu(
             tint: tint,
             isDisabled: isDisabled,
-            isCircle: title.isEmpty,
+            isCircle: displayTitle.isEmpty,
             controlSize: compact ? .regular : .large,
-            hideIndicator: title.isEmpty
+            hideIndicator: displayTitle.isEmpty
         )
 
         if let helpText = help, !helpText.isEmpty {
-            menu.help(helpText)
+            menu.help(L10n.t(helpText))
         } else {
             menu
         }
@@ -1335,6 +1346,7 @@ public struct StudioMenuPickerOption<Value: Hashable>: Identifiable {
 
 /// 统一胶囊下拉选择器（替代样式错落的 `.pickerStyle(.menu)` + `.controlSize`）
 public struct StudioMenuPicker<Value: Hashable>: View {
+    @Environment(\.appLanguage) private var appLanguage
     @Binding public var selection: Value
     public let options: [StudioMenuPickerOption<Value>]
     public var prefix: String? = nil
@@ -1362,8 +1374,9 @@ public struct StudioMenuPicker<Value: Hashable>: View {
     }
 
     public var body: some View {
-        let activeTitle = options.first(where: { $0.value == selection })?.title ?? ""
-        let label = (prefix != nil && !prefix!.isEmpty) ? "\(prefix!): \(activeTitle)" : activeTitle
+        let _ = appLanguage
+        let activeTitle = L10n.t(options.first(where: { $0.value == selection })?.title ?? "")
+        let label = (prefix != nil && !prefix!.isEmpty) ? "\(L10n.t(prefix!)): \(activeTitle)" : activeTitle
         StudioMenuPillButton(
             title: label,
             icon: icon,
@@ -1376,9 +1389,9 @@ public struct StudioMenuPicker<Value: Hashable>: View {
                     selection = opt.value
                 } label: {
                     if selection == opt.value {
-                        Label(opt.title, systemImage: "checkmark")
+                        Label(L10n.t(opt.title), systemImage: "checkmark")
                     } else {
-                        Text(opt.title)
+                        Text(L10n.t(opt.title))
                     }
                 }
             }
@@ -1739,6 +1752,9 @@ public struct StudioOverflowToolbar: View {
                 .allowedDynamicRange(StudioGlassSupport.dynamicRange(for: appState))
                 .opacity(availableWidth > 1 ? 1 : 0)
             }
+            .onChange(of: appState.appLanguage) { _, _ in
+                measuredWidths.removeAll()
+            }
     }
     
     @ViewBuilder
@@ -1746,6 +1762,7 @@ public struct StudioOverflowToolbar: View {
         HStack(spacing: 4) {
             ForEach(list) { item in
                 intrinsicItemView(item)
+                    .id("\(item.id)_\(appState.appLanguage.rawValue)")
                     .fixedSize(horizontal: true, vertical: false)
                     .studioOnGeometryChangeCompat(for: CGFloat.self) { proxy in
                         ceil(proxy.size.width)
@@ -1843,9 +1860,9 @@ public struct StudioOverflowToolbar: View {
                     ForEach(menuItems) { sub in
                         Button(action: sub.action) {
                             if let subIcon = sub.icon {
-                                Label(sub.title, systemImage: subIcon)
+                                Label(L10n.t(sub.title), systemImage: subIcon)
                             } else {
-                                Text(sub.title)
+                                Text(L10n.t(sub.title))
                             }
                         }
                         .disabled(sub.isDisabled)
@@ -1860,7 +1877,7 @@ public struct StudioOverflowToolbar: View {
                     controlSize: .large,
                     hideIndicator: isIconOnly
                 )
-                .help(help ?? title)
+                .help(L10n.t(help ?? title))
             } else {
                 Button(action: action) {
                     actionLabel(title: title, icon: icon, hasMenu: hasMenu, fgColor: fgColor)
@@ -1872,7 +1889,7 @@ public struct StudioOverflowToolbar: View {
                     isCircle: isIconOnly,
                     controlSize: .large
                 )
-                .help(help ?? title)
+                .help(L10n.t(help ?? title))
             }
             
         case let .plasmidToggle(isOn, isAvailable):
@@ -1906,9 +1923,9 @@ public struct StudioOverflowToolbar: View {
                     ForEach(menuItems) { sub in
                         Button(action: sub.action) {
                             if let subIcon = sub.icon {
-                                Label(sub.title, systemImage: subIcon)
+                                Label(L10n.t(sub.title), systemImage: subIcon)
                             } else {
-                                Text(sub.title)
+                                Text(L10n.t(sub.title))
                             }
                         }
                         .disabled(sub.isDisabled)
@@ -1923,7 +1940,7 @@ public struct StudioOverflowToolbar: View {
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .disabled(isDisabled)
-                .help(help ?? title)
+                .help(L10n.t(help ?? title))
             } else {
                 Button(action: action) {
                     actionLabel(title: title, icon: icon, hasMenu: false, fgColor: fgColor)
@@ -1933,7 +1950,7 @@ public struct StudioOverflowToolbar: View {
                 }
                 .buttonStyle(StudioJoinedSegmentButtonStyle(isLight: isLight, isDisabled: isDisabled))
                 .disabled(isDisabled)
-                .help(help ?? title)
+                .help(L10n.t(help ?? title))
             }
         }
     }
@@ -1945,13 +1962,14 @@ public struct StudioOverflowToolbar: View {
         hasMenu: Bool,
         fgColor: Color?
     ) -> some View {
-        HStack(spacing: title.isEmpty ? 0 : 4.5) {
+        let displayTitle = L10n.t(title)
+        HStack(spacing: displayTitle.isEmpty ? 0 : 4.5) {
             if !icon.isEmpty {
                 Image(systemName: icon)
                     .font(.system(size: 11.5, weight: .semibold))
             }
-            if !title.isEmpty {
-                Text(title)
+            if !displayTitle.isEmpty {
+                Text(displayTitle)
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
             }
@@ -1996,22 +2014,22 @@ public struct StudioOverflowToolbar: View {
             controlSize: .large,
             hideIndicator: true
         )
-        .help("展开其余工具按钮")
+        .help(L10n.t("展开其余工具按钮"))
     }
     
     @ViewBuilder
     private func overflowMenuItemView(_ item: StudioToolbarItem) -> some View {
         switch item.payload {
         case let .action(_, title, icon, _, _, isDisabled, help, menuItems, action):
-            let displayTitle = title.isEmpty ? (help ?? "操作") : title
+            let displayTitle = L10n.t(title.isEmpty ? (help ?? "操作") : title)
             if let menuItems, !menuItems.isEmpty {
                 Menu {
                     ForEach(menuItems) { sub in
                         Button(action: sub.action) {
                             if let subIcon = sub.icon {
-                                Label(sub.title, systemImage: subIcon)
+                                Label(L10n.t(sub.title), systemImage: subIcon)
                             } else {
-                                Text(sub.title)
+                                Text(L10n.t(sub.title))
                             }
                         }
                         .disabled(sub.isDisabled)
@@ -2032,12 +2050,13 @@ public struct StudioOverflowToolbar: View {
                 isOn.wrappedValue.toggle()
             } label: {
                 Label(
-                    isOn.wrappedValue ? "隐藏质粒图谱" : "显示质粒图谱",
+                    isOn.wrappedValue ? L10n.t("隐藏质粒图谱") : L10n.t("显示质粒图谱"),
                     systemImage: isOn.wrappedValue ? "circle.circle.fill" : "circle.circle"
                 )
             }
             
         case let .plasmidFile(roleTitle, _, info, onLoadURL, onPreview):
+            let locRole = L10n.t(roleTitle)
             Menu {
                 Button {
                     FinderFileDropHelper.presentOpenPanel { url in
@@ -2049,13 +2068,15 @@ public struct StudioOverflowToolbar: View {
                     }
                 } label: {
                     Label(
-                        info != nil ? "更换\(roleTitle) (\(info!.fileName))" : "从 Finder 选择\(roleTitle)...",
+                        info != nil
+                            ? L10n.tr("更换\(locRole) (\(info!.fileName))", "Replace \(locRole) (\(info!.fileName))")
+                            : L10n.tr("从 Finder 选择\(locRole)...", "Select \(locRole) in Finder..."),
                         systemImage: "folder.badge.plus"
                     )
                 }
                 
                 if !poolManager.items.isEmpty {
-                    Menu("从质粒池选择\(roleTitle)") {
+                    Menu(L10n.tr("从质粒池选择\(locRole)", "Select \(locRole) from Plasmid Pool")) {
                         ForEach(poolManager.items) { poolItem in
                             Button("\(poolItem.name) (\(poolItem.dnaInfo.length) bp)") {
                                 AppState.shared.showPlasmidPreview = true
@@ -2064,7 +2085,7 @@ public struct StudioOverflowToolbar: View {
                             }
                         }
                         Divider()
-                        Button("打开质粒池...") {
+                        Button(L10n.t("打开质粒池...")) {
                             AppState.shared.selectedNav = .plasmidPool
                         }
                     }
@@ -2073,37 +2094,38 @@ public struct StudioOverflowToolbar: View {
                 if let loaded = info {
                     Divider()
                     Button(action: onPreview) {
-                        Label("预览\(roleTitle)质粒图谱", systemImage: "eye.fill")
+                        Label(L10n.tr("预览\(locRole)质粒图谱", "Preview \(locRole) Plasmid Map"), systemImage: "eye.fill")
                     }
                     Button {
                         FinderFileDropHelper.revealInFinder(path: loaded.filePath)
                     } label: {
-                        Label("在 Finder 中定位", systemImage: "folder")
+                        Label(L10n.t("在 Finder 中定位"), systemImage: "folder")
                     }
                 }
             } label: {
                 Label(
                     info != nil
-                        ? "\(roleTitle): \(info!.fileName.replacingOccurrences(of: ".dna", with: ""))"
-                        : "载入\(roleTitle) (.dna)",
+                        ? "\(locRole): \(info!.fileName.replacingOccurrences(of: ".dna", with: ""))"
+                        : L10n.tr("载入\(locRole) (.dna)", "Load \(locRole) (.dna)"),
                     systemImage: info != nil ? "checkmark.circle.fill" : "folder.badge.plus"
                 )
             }
             
         case let .picker(label, options):
-            let activeTitle = options.first(where: \.isSelected)?.title ?? label
+            let locLabel = L10n.t(label)
+            let activeTitle = L10n.t(options.first(where: \.isSelected)?.title ?? label)
             Menu {
                 ForEach(options) { opt in
                     Button(action: opt.action) {
                         if opt.isSelected {
-                            Label(opt.title, systemImage: "checkmark")
+                            Label(L10n.t(opt.title), systemImage: "checkmark")
                         } else {
-                            Text(opt.title)
+                            Text(L10n.t(opt.title))
                         }
                     }
                 }
             } label: {
-                Label("\(label): \(activeTitle)", systemImage: "line.3.horizontal.decrease.circle")
+                Label("\(locLabel): \(activeTitle)", systemImage: "line.3.horizontal.decrease.circle")
             }
         }
     }
@@ -2139,7 +2161,7 @@ public struct StudioPageLayout<TrailingContent: View, BodyContent: View>: View {
         }
         .studioSafeAreaTopBarCompat {
             HStack(alignment: .center, spacing: 12) {
-                Text(title)
+                Text(L10n.t(title))
                     .font(.system(size: 17, weight: .bold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
@@ -2182,6 +2204,7 @@ extension StudioPageLayout where TrailingContent == StudioOverflowToolbar {
 }
 
 public struct StudioPageHeader<TrailingContent: View>: View {
+    @Environment(\.appLanguage) private var appLanguage
     public let title: String
     public let trailingContent: TrailingContent
     
@@ -2194,8 +2217,9 @@ public struct StudioPageHeader<TrailingContent: View>: View {
     }
     
     public var body: some View {
+        let _ = appLanguage
         HStack(alignment: .center, spacing: 12) {
-            Text(title)
+            Text(L10n.t(title))
                 .font(.system(size: 18, weight: .bold))
                 .foregroundColor(.primary)
                 .lineLimit(1)
@@ -2240,9 +2264,10 @@ public struct StudioCard<HeaderTrailing: View, Content: View>: View {
         let cardShape = RoundedRectangle(cornerRadius: StudioRadius.card, style: .continuous)
         VStack(alignment: .leading, spacing: 11) {
             if !title.isEmpty {
+                let displayTitle = L10n.t(title)
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .center, spacing: 8) {
-                        Text(title)
+                        Text(displayTitle)
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.primary)
                             .lineLimit(1)
@@ -2256,7 +2281,7 @@ public struct StudioCard<HeaderTrailing: View, Content: View>: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 7) {
-                        Text(title)
+                        Text(displayTitle)
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.primary)
                             .lineLimit(1)
@@ -2385,7 +2410,7 @@ public struct StudioGlassSegmentedBar<T: Hashable>: View {
                         selection = opt.value
                     }
                 } label: {
-                    Text(opt.title)
+                    Text(L10n.t(opt.title))
                         .font(.system(size: fontSize, weight: isSelected ? .semibold : .medium))
                         .lineLimit(1)
                         .foregroundStyle(
@@ -2439,6 +2464,7 @@ public struct StudioGlassSegmentedBar<T: Hashable>: View {
 }
 
 public struct StudioSegmentedPicker<T: Hashable>: View {
+    @Environment(\.appLanguage) private var appLanguage
     @Binding public var selection: T
     public let options: [StudioSegmentedOption<T>]
     
@@ -2448,6 +2474,7 @@ public struct StudioSegmentedPicker<T: Hashable>: View {
     }
     
     public var body: some View {
+        let _ = appLanguage
         ViewThatFits(in: .horizontal) {
             StudioGlassSegmentedBar(
                 selection: $selection,
@@ -2463,7 +2490,7 @@ public struct StudioSegmentedPicker<T: Hashable>: View {
                             selection = opt.value
                         }
                     } label: {
-                        Text(opt.title)
+                        Text(L10n.t(opt.title))
                     }
                     .studioGlassButton(
                         tint: opt.hasCustomTint ? opt.tint : nil,
@@ -2479,6 +2506,7 @@ public struct StudioSegmentedPicker<T: Hashable>: View {
 
 // MARK: - 4. 物种切换分段控制器 (macOS 27 Liquid Glass 分段条)
 public struct SpeciesSwitchBar: View {
+    @Environment(\.appLanguage) private var appLanguage
     @Binding public var species: TargetSpecies
     public var onChanged: (() -> Void)? = nil
     
@@ -2488,12 +2516,13 @@ public struct SpeciesSwitchBar: View {
     }
     
     public var body: some View {
+        let _ = appLanguage
         StudioGlassSegmentedBar(
             selection: $species,
             options: TargetSpecies.allCases.map { spec in
                 StudioSegmentedOption(
                     value: spec,
-                    title: spec == .human ? "人源 (hg38)" : "鼠源 (mm39)"
+                    title: spec == .human ? L10n.tr("人源 (hg38)", "Human (hg38)") : L10n.tr("鼠源 (mm39)", "Mouse (mm39)")
                 )
             },
             controlSize: .large
@@ -2518,14 +2547,15 @@ public struct StudioMetricBadge: View {
     }
     
     public var body: some View {
+        let _ = appState.appLanguage
         let isLight = appState.isLightAppearance
         HStack(spacing: 4) {
             if !label.isEmpty {
-                Text(label)
+                Text(L10n.t(label))
                     .font(.system(size: 11.5, weight: .medium))
                     .foregroundColor(.secondary)
             }
-            Text(value)
+            Text(L10n.t(value))
                 .font(.system(size: 12, weight: .semibold))
                 .monospacedDigit()
                 .foregroundColor(color)
@@ -2550,6 +2580,7 @@ public struct SequenceEditorBox: View {
     @Binding public var text: String
     public let placeholder: String
     public var minHeight: CGFloat = 84
+    public var cleanAsDNA: Bool = true
     public var onDropDNAFile: ((URL) -> Void)? = nil
     
     @State private var isDropTargeted: Bool = false
@@ -2558,11 +2589,13 @@ public struct SequenceEditorBox: View {
         text: Binding<String>,
         placeholder: String,
         minHeight: CGFloat = 84,
+        cleanAsDNA: Bool = true,
         onDropDNAFile: ((URL) -> Void)? = nil
     ) {
         self._text = text
         self.placeholder = placeholder
         self.minHeight = minHeight
+        self.cleanAsDNA = cleanAsDNA
         self.onDropDNAFile = onDropDNAFile
     }
     
@@ -2570,7 +2603,8 @@ public struct SequenceEditorBox: View {
         let isLight = appState.isLightAppearance
         ZStack(alignment: .topLeading) {
             TextEditor(text: $text)
-                .font(.system(size: 13, weight: .regular, design: .monospaced))
+                .font(.system(size: 13, weight: .regular))
+                .monospacedDigit()
                 .scrollContentBackground(.hidden)
                 .padding(8)
                 .frame(minHeight: minHeight)
@@ -2586,7 +2620,7 @@ public struct SequenceEditorBox: View {
             
             if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 HStack(spacing: 8) {
-                    Text(placeholder)
+                    Text(L10n.t(placeholder))
                         .font(.system(size: 12.5))
                         .foregroundColor(.secondary.opacity(0.60))
                         .lineLimit(1)
@@ -2597,9 +2631,16 @@ public struct SequenceEditorBox: View {
                     StudioSegmentedPillGroup(items: [
                         StudioPillGroupItem(title: "粘贴", icon: "doc.on.clipboard") {
                             if let str = NSPasteboard.general.string(forType: .string) {
-                                let cleaned = BioSequence.clean(str)
-                                if !cleaned.isEmpty {
-                                    text = cleaned
+                                if cleanAsDNA {
+                                    let cleaned = BioSequence.clean(str)
+                                    if !cleaned.isEmpty {
+                                        text = cleaned
+                                    }
+                                } else {
+                                    let trimmed = str.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    if !trimmed.isEmpty {
+                                        text = trimmed
+                                    }
                                 }
                             }
                         },
@@ -2611,7 +2652,11 @@ public struct SequenceEditorBox: View {
                                     Task { @MainActor in
                                         await FinderFileDropHelper.loadSequence(from: url) { extractedSeq, fileName in
                                             self.text = extractedSeq
-                                            AppState.shared.showToast("已导入 \(fileName) (\(BioSequence.clean(extractedSeq).count) bp)")
+                                            let bpCount = BioSequence.clean(extractedSeq).count
+                                            AppState.shared.showToast(L10n.tr(
+                                                "已导入 \(fileName) (\(bpCount) bp)",
+                                                "Imported \(fileName) (\(bpCount) bp)"
+                                            ))
                                         }
                                     }
                                 }
@@ -2627,7 +2672,7 @@ public struct SequenceEditorBox: View {
                 HStack(spacing: 6) {
                     Image(systemName: "folder.fill.badge.plus")
                         .foregroundColor(.accentColor)
-                    Text("松开导入序列或 .dna 质粒")
+                    Text(L10n.t("松开导入序列或 .dna 质粒"))
                         .font(.system(size: 12.5, weight: .semibold))
                         .foregroundColor(.accentColor)
                 }
@@ -2647,12 +2692,61 @@ public struct SequenceEditorBox: View {
                     Task { @MainActor in
                         await FinderFileDropHelper.loadSequence(from: url) { extractedSeq, fileName in
                             self.text = extractedSeq
-                            AppState.shared.showToast("已导入 \(fileName) (\(BioSequence.clean(extractedSeq).count) bp)")
+                            let bpCount = BioSequence.clean(extractedSeq).count
+                            AppState.shared.showToast(L10n.tr(
+                                "已导入 \(fileName) (\(bpCount) bp)",
+                                "Imported \(fileName) (\(bpCount) bp)"
+                            ))
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/// 采用 macOS 默认系统字体的固定步距对齐字符网格（用于引物二级结构 ASCII 配对图与 Sanger 逐位点比对矩阵，保持列对齐而不使用 `design: .monospaced`）
+public struct StudioAlignedCharGridView: View {
+    public let text: String
+    public var fontSize: CGFloat = 11
+    public var foregroundColor: Color = .primary.opacity(0.92)
+    public var padding: CGFloat = 7
+
+    public init(
+        text: String,
+        fontSize: CGFloat = 11,
+        foregroundColor: Color = .primary.opacity(0.92),
+        padding: CGFloat = 7
+    ) {
+        self.text = text
+        self.fontSize = fontSize
+        self.foregroundColor = foregroundColor
+        self.padding = padding
+    }
+
+    public var body: some View {
+        let lines = text.components(separatedBy: "\n")
+        let maxCols = max(1, lines.map(\.count).max() ?? 1)
+        let cellW = ceil(fontSize * 0.65)
+        let lineH = ceil(fontSize * 1.38)
+        let totalW = CGFloat(maxCols) * cellW + padding * 2
+        let totalH = CGFloat(max(1, lines.count)) * lineH + padding * 2
+
+        Canvas { ctx, _ in
+            for (rowIdx, line) in lines.enumerated() {
+                let y = padding + (CGFloat(rowIdx) + 0.5) * lineH
+                for (colIdx, ch) in line.enumerated() where ch != " " {
+                    let x = padding + (CGFloat(colIdx) + 0.5) * cellW
+                    let resolved = ctx.resolve(
+                        Text(String(ch))
+                            .font(.system(size: fontSize))
+                            .foregroundStyle(foregroundColor)
+                    )
+                    ctx.draw(resolved, at: CGPoint(x: x, y: y), anchor: .center)
+                }
+            }
+        }
+        .frame(width: totalW, height: totalH)
     }
 }
 
@@ -2761,8 +2855,13 @@ public struct StudioResponsiveSplitLayout: Layout {
             let leftW = floor(avail * leftRatio)
             let rightW = avail - leftW
             let leftSize = subviews[0].sizeThatFits(ProposedViewSize(width: leftW, height: nil))
-            let rightSize = subviews[1].sizeThatFits(ProposedViewSize(width: rightW, height: nil))
-            return CGSize(width: totalW, height: max(leftSize.height, rightSize.height))
+            var rightTotalH: CGFloat = 0
+            for idx in 1..<subviews.count {
+                if idx > 1 { rightTotalH += spacing }
+                let sz = subviews[idx].sizeThatFits(ProposedViewSize(width: rightW, height: nil))
+                rightTotalH += sz.height
+            }
+            return CGSize(width: totalW, height: max(leftSize.height, rightTotalH))
         } else {
             var totalH: CGFloat = 0
             for (idx, subview) in subviews.enumerated() {
@@ -2783,18 +2882,22 @@ public struct StudioResponsiveSplitLayout: Layout {
             let leftW = floor(avail * leftRatio)
             let rightW = avail - leftW
             let leftSize = subviews[0].sizeThatFits(ProposedViewSize(width: leftW, height: nil))
-            let rightSize = subviews[1].sizeThatFits(ProposedViewSize(width: rightW, height: nil))
             
             subviews[0].place(
                 at: CGPoint(x: bounds.minX, y: bounds.minY),
                 anchor: .topLeading,
                 proposal: ProposedViewSize(width: leftW, height: leftSize.height)
             )
-            subviews[1].place(
-                at: CGPoint(x: bounds.minX + leftW + spacing, y: bounds.minY),
-                anchor: .topLeading,
-                proposal: ProposedViewSize(width: rightW, height: rightSize.height)
-            )
+            var curRightY = bounds.minY
+            for idx in 1..<subviews.count {
+                let sz = subviews[idx].sizeThatFits(ProposedViewSize(width: rightW, height: nil))
+                subviews[idx].place(
+                    at: CGPoint(x: bounds.minX + leftW + spacing, y: curRightY),
+                    anchor: .topLeading,
+                    proposal: ProposedViewSize(width: rightW, height: sz.height)
+                )
+                curRightY += sz.height + spacing
+            }
         } else {
             var curY = bounds.minY
             for subview in subviews {
@@ -2847,8 +2950,12 @@ public struct AdaptiveTwoColumnWorkspace<Left: View, Right: View>: View {
                         .frame(maxWidth: .infinity)
                 } else {
                     StudioResponsiveSplitLayout(breakpoint: minDualColumnWidth, spacing: 14, leftRatio: 0.50) {
-                        left
-                        right
+                        VStack(alignment: .leading, spacing: 14) {
+                            left
+                        }
+                        VStack(alignment: .leading, spacing: 14) {
+                            right
+                        }
                     }
                 }
             } else {
@@ -2872,6 +2979,7 @@ public struct PlasmidPreviewToggle: View {
     }
     
     public var body: some View {
+        let _ = appState.appLanguage
         let active = (isOn && isAvailable)
         Button {
             isOn.toggle()
@@ -2879,7 +2987,7 @@ public struct PlasmidPreviewToggle: View {
             HStack(spacing: 4) {
                 Image(systemName: active ? "circle.circle.fill" : "circle.circle")
                     .font(.system(size: 11.5, weight: .semibold))
-                Text("图谱")
+                Text(L10n.t("图谱"))
                     .font(.system(size: 12, weight: active ? .semibold : .medium))
                     .fixedSize(horizontal: true, vertical: false)
             }
@@ -2893,12 +3001,13 @@ public struct PlasmidPreviewToggle: View {
             controlSize: .large
         )
         .opacity(isAvailable ? 1.0 : 0.78)
-        .help("切换质粒图谱预览抽屉")
+        .help(L10n.t("切换质粒图谱预览抽屉"))
     }
 }
 
 // MARK: - 9. 模块分区清除按钮 (圆形原生 Liquid Glass HDR)
 public struct StudioSectionClearButton: View {
+    @Environment(\.appLanguage) private var appLanguage
     public let title: String
     public let isDisabled: Bool
     public let action: () -> Void
@@ -2924,10 +3033,11 @@ public struct StudioSectionClearButton: View {
     }
     
     private var isResetIcon: Bool {
-        title.contains("重置")
+        title.contains("重置") || title.localizedCaseInsensitiveContains("reset")
     }
     
     public var body: some View {
+        let _ = appLanguage
         Button(action: action) {
             Image(systemName: isResetIcon ? "arrow.counterclockwise" : "trash")
                 .font(.system(size: 11.5, weight: .semibold))
@@ -2939,12 +3049,13 @@ public struct StudioSectionClearButton: View {
             isCircle: true,
             controlSize: .large
         )
-        .help(title)
+        .help(L10n.t(title))
     }
 }
 
 // MARK: - 10. Finder 快捷交互组件 (原生 Liquid Glass 圆形/胶囊按钮)
 public struct FinderRevealButton: View {
+    @Environment(\.appLanguage) private var appLanguage
     public let filePath: String
     public var label: String = "Finder"
     
@@ -2954,6 +3065,7 @@ public struct FinderRevealButton: View {
     }
     
     public var body: some View {
+        let _ = appLanguage
         let iconOnly = label.isEmpty || label == "Finder"
         Button {
             FinderFileDropHelper.revealInFinder(path: filePath)
@@ -2962,7 +3074,7 @@ public struct FinderRevealButton: View {
                 Image(systemName: "folder")
                     .font(.system(size: 11.5, weight: .semibold))
             } else {
-                Label(label, systemImage: "folder")
+                Label(L10n.t(label), systemImage: "folder")
                     .font(.system(size: 12, weight: .medium))
             }
         }
@@ -2970,12 +3082,13 @@ public struct FinderRevealButton: View {
             isCircle: iconOnly,
             controlSize: .large
         )
-        .help("在 Finder 中定位: \(filePath)")
+        .help(L10n.tr("在 Finder 中定位: \(filePath)", "Reveal in Finder: \(filePath)"))
     }
 }
 
 // MARK: - 10B. 高辨识度主操作按钮 (直用 macOS 27 原生 `.buttonStyle(.glassProminent)` HDR)
 public struct StudioPrimaryActionButton: View {
+    @Environment(\.appLanguage) private var appLanguage
     public let title: String
     public var icon: String = "sparkles"
     public var tint: Color = .blue
@@ -3006,6 +3119,7 @@ public struct StudioPrimaryActionButton: View {
     }
     
     public var body: some View {
+        let _ = appLanguage
         let inactive = isDisabled || isLoading
         Button(action: action) {
             HStack(spacing: 6) {
@@ -3017,7 +3131,7 @@ public struct StudioPrimaryActionButton: View {
                     Image(systemName: icon)
                         .font(.system(size: 12.5, weight: .bold))
                 }
-                Text(title)
+                Text(L10n.t(title))
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
             }
@@ -3038,6 +3152,7 @@ public struct StudioPrimaryActionButton: View {
 
 /// 全局工作台居左紧凑主操作栏（Plan A：主按钮内容自适应宽度 + 次级中性玻璃按钮并排，窄屏自动折行，禁止全宽长条横幅）
 public struct StudioActionBar<Content: View>: View {
+    @Environment(\.appLanguage) private var appLanguage
     public let statusText: String?
     public let content: Content
     
@@ -3050,10 +3165,11 @@ public struct StudioActionBar<Content: View>: View {
     }
     
     public var body: some View {
+        let _ = appLanguage
         StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 8) {
             content
             if let statusText, !statusText.isEmpty {
-                Text(statusText)
+                Text(L10n.t(statusText))
                     .font(.system(size: 11.5))
                     .foregroundColor(.secondary)
                     .monospacedDigit()
@@ -3092,6 +3208,7 @@ public struct PlasmidFileToolbarGroup: View {
     
     @ViewBuilder
     private var openFileButton: some View {
+        let locRole = L10n.t(roleTitle)
         Button(action: {
             FinderFileDropHelper.presentOpenPanel { url in
                 AppState.shared.showPlasmidPreview = true
@@ -3105,7 +3222,7 @@ public struct PlasmidFileToolbarGroup: View {
                 Image(systemName: info != nil ? "checkmark.circle.fill" : "folder.badge.plus")
                     .font(.system(size: 11.5, weight: .semibold))
                     .foregroundStyle(info != nil ? StudioGlassSupport.hdrColor(tint, exposure: 0.25, appState: appState) : .primary)
-                Text(info != nil ? info!.fileName.replacingOccurrences(of: ".dna", with: "") : roleTitle)
+                Text(info != nil ? info!.fileName.replacingOccurrences(of: ".dna", with: "") : locRole)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
@@ -3116,13 +3233,18 @@ public struct PlasmidFileToolbarGroup: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(StudioJoinedSegmentButtonStyle(isLight: appState.isLightAppearance, isDisabled: false))
-        .help(info != nil ? "更换\(roleTitle)文件 (当前: \(info!.fileName))" : "从 Finder 选择或拖入\(roleTitle) .dna 文件")
+        .help(
+            info != nil
+                ? L10n.tr("更换\(locRole)文件 (当前: \(info!.fileName))", "Replace \(locRole) file (Current: \(info!.fileName))")
+                : L10n.tr("从 Finder 选择或拖入\(locRole) .dna 文件", "Select or drop \(locRole) .dna file from Finder")
+        )
     }
     
     @ViewBuilder
     private var poolMenu: some View {
+        let locRole = L10n.t(roleTitle)
         Menu {
-            Text("从质粒池选择\(roleTitle)")
+            Text(L10n.tr("从质粒池选择\(locRole)", "Select \(locRole) from Plasmid Pool"))
             Divider()
             ForEach(poolManager.items) { item in
                 Button("\(item.name) (\(item.dnaInfo.length) bp)") {
@@ -3132,7 +3254,7 @@ public struct PlasmidFileToolbarGroup: View {
                 }
             }
             Divider()
-            Button("打开质粒池...") {
+            Button(L10n.t("打开质粒池...")) {
                 AppState.shared.selectedNav = .plasmidPool
             }
         } label: {
@@ -3146,10 +3268,12 @@ public struct PlasmidFileToolbarGroup: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("从质粒池选择\(roleTitle)")
+        .help(L10n.tr("从质粒池选择\(locRole)", "Select \(locRole) from Plasmid Pool"))
     }
     
     public var body: some View {
+        let _ = appState.appLanguage
+        let locRole = L10n.t(roleTitle)
         let isLight = appState.isLightAppearance
         HStack(spacing: 0) {
             openFileButton
@@ -3175,7 +3299,7 @@ public struct PlasmidFileToolbarGroup: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(StudioJoinedSegmentButtonStyle(isLight: isLight, isDisabled: false))
-                .help("预览\(roleTitle)质粒图谱")
+                .help(L10n.tr("预览\(locRole)质粒图谱", "Preview \(locRole) Plasmid Map"))
 
                 Rectangle()
                     .fill(StudioPalette.hairline(isLight: isLight))
@@ -3192,7 +3316,7 @@ public struct PlasmidFileToolbarGroup: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(StudioJoinedSegmentButtonStyle(isLight: isLight, isDisabled: false))
-                .help("在 Finder 中定位: \(loaded.filePath)")
+                .help(L10n.tr("在 Finder 中定位: \(loaded.filePath)", "Reveal in Finder: \(loaded.filePath)"))
             }
         }
         .studioJoinedGlassCapsule(
@@ -3246,8 +3370,8 @@ public enum FinderFileDropHelper {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = [UTType(filenameExtension: "dna") ?? .data]
-        panel.message = message
-        panel.prompt = prompt
+        panel.message = L10n.t(message)
+        panel.prompt = L10n.t(prompt)
         panel.begin { response in
             if response == .OK, let url = panel.url {
                 completion(url)
@@ -3261,7 +3385,7 @@ public enum FinderFileDropHelper {
         onSelected: @escaping (URL) -> Void
     ) {
         let panel = NSOpenPanel()
-        panel.title = "从 Finder 选择实验文件 (.dna / .ab1 / .tif / .pdb / .csv / .fasta)"
+        panel.title = L10n.t("从 Finder 选择实验文件 (.dna / .ab1 / .tif / .pdb / .csv / .fasta)")
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -3368,9 +3492,12 @@ public enum FinderFileDropHelper {
             do {
                 try content.write(to: url, atomically: true, encoding: .utf8)
                 onSavedURL?(url)
-                AppState.shared.showToast("\(toastPrefix): \(url.lastPathComponent)")
+                AppState.shared.showToast("\(L10n.t(toastPrefix)): \(url.lastPathComponent)")
             } catch {
-                AppState.shared.showToast("导出失败: \(error.localizedDescription)")
+                AppState.shared.showToast(L10n.tr(
+                    "导出失败: \(error.localizedDescription)",
+                    "Export failed: \(error.localizedDescription)"
+                ))
             }
         }
     }
@@ -3422,14 +3549,22 @@ public enum FinderFileDropHelper {
             return "<div class=\"prov-line\">\(pf)</div>"
         }()
         
+        let htmlLang = L10n.isEnglish ? "en" : "zh-CN"
+        let reportTitleSuffix = L10n.tr("Labworker 离线实验报告", "Labworker Offline Scientific Report")
+        let generatedLabel = L10n.tr("生成时间", "Generated")
+        let sec1Title = L10n.tr("1. 核心实验与构象指标汇总", "1. Key Experimental & Structural Metrics")
+        let sec2Title = L10n.tr("2. 结构/数据体检与科学可信度说明（所有降级可见）", "2. Data Diagnostics & Scientific Credibility Notes")
+        let sec3Title = L10n.tr("3. 定量与构象明细数据表", "3. Quantitative & Conformation Details")
+        let footerText = L10n.tr("Generated locally by Labworker macOS Native Workbench · 数据100%留在本机", "Generated locally by Labworker macOS Native Workbench · 100% Local Processing")
+
         return """
         <!DOCTYPE html>
-        <html lang="zh-CN">
+        <html lang="\(htmlLang)">
         <head>
           <meta charset="UTF-8">
-          <title>\(title) — Labworker 离线实验报告</title>
+          <title>\(title) — \(reportTitleSuffix)</title>
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; margin: 32px auto; max-width: 980px; color: #1d1d1f; background: #f5f6f8; line-height: 1.55; padding: 0 20px; }
+            body { font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; margin: 32px auto; max-width: 980px; color: #1d1d1f; background: #f5f6f8; line-height: 1.55; padding: 0 20px; }
             .report-box { background: #ffffff; border-radius: 14px; padding: 28px 32px; box-shadow: 0 4px 18px rgba(0,0,0,0.06); }
             h1 { font-size: 22px; margin: 0 0 6px 0; color: #0f172a; }
             .sub { font-size: 13px; color: #64748b; margin-bottom: 18px; }
@@ -3443,7 +3578,7 @@ public enum FinderFileDropHelper {
             table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
             th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-variant-numeric: tabular-nums; }
             th { background: #f1f5f9; color: #334155; font-weight: 600; }
-            .code-box { background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 8px; font-size: 12px; overflow-x: auto; }
+            .code-box { font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 8px; font-size: 12px; overflow-x: auto; }
             .prov-line { margin-top: 18px; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 11.5px; color: #475569; }
             .footer { margin-top: 8px; font-size: 11.5px; color: #94a3b8; text-align: right; }
           </style>
@@ -3451,24 +3586,24 @@ public enum FinderFileDropHelper {
         <body>
           <div class="report-box">
             <h1>\(title)</h1>
-            <div class="sub">\(subtitle) · 生成时间: \(nowStr) · Labworker \(reportAppVersion) (Offline Scientific Report)</div>
+            <div class="sub">\(subtitle) · \(generatedLabel): \(nowStr) · Labworker \(reportAppVersion) (Offline Scientific Report)</div>
             <div class="badge">\(credibilityBadge)</div>
-            <h2>1. 核心实验与构象指标汇总</h2>
+            <h2>\(sec1Title)</h2>
             <div class="metrics-grid">
               \(metricsHTML)
             </div>
-            <h2>2. 结构/数据体检与科学可信度说明（所有降级可见）</h2>
+            <h2>\(sec2Title)</h2>
             <ul class="warn-box">
               \(warnHTML)
             </ul>
-            <h2>3. 定量与构象明细数据表</h2>
+            <h2>\(sec3Title)</h2>
             <table>
               <thead><tr>\(thHTML)</tr></thead>
               <tbody>\(trHTML)</tbody>
             </table>
             \(preSection)
             \(provLine)
-            <div class="footer">Generated locally by Labworker macOS Native Workbench · 数据100%留在本机</div>
+            <div class="footer">\(footerText)</div>
           </div>
         </body>
         </html>
@@ -3485,8 +3620,24 @@ public enum FinderFileDropHelper {
             content: htmlContent,
             defaultFileName: defaultFileName,
             contentType: .html,
-            toastPrefix: "已导出离线中文 HTML 报告",
+            toastPrefix: "已导出离线 HTML 报告",
             onSavedURL: onSavedURL
         )
+    }
+}
+
+/// 独立窗口宿主视图包装器：确保通过 `NSHostingView` 弹出的独立窗口也能实时响应系统界面语言切换
+public struct StudioLocalizedWindowHost<Content: View>: View {
+    @ObservedObject private var appState = AppState.shared
+    private let content: () -> Content
+
+    public init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+
+    public var body: some View {
+        content()
+            .environment(\.appLanguage, appState.appLanguage)
+            .environment(\.locale, appState.appLanguage.locale)
     }
 }

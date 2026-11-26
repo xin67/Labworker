@@ -93,7 +93,7 @@ public struct SangerVerificationView: View {
                     menuItems: DemoPreset.allCases.map { preset in
                         StudioToolbarMenuItem(
                             id: preset.id,
-                            title: "加载示例：\(preset.rawValue)",
+                            title: L10n.tr("加载示例：\(preset.rawValue)", "Load Sample: \(L10n.t(preset.rawValue))"),
                             icon: "sparkles"
                         ) {
                             loadBuiltinDemo(preset)
@@ -185,10 +185,10 @@ public struct SangerVerificationView: View {
         StudioCard(title: "批量克隆测序验证看板 (Batch Clone Verification Kanban)") {
             if let res = batchResult {
                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
-                    StudioMetricBadge(label: "克隆总数", value: "\(res.cloneSummaries.count)", color: .blue)
-                    StudioMetricBadge(label: "测序 Reads", value: "\(res.reads.count)", color: .teal)
+                    StudioMetricBadge(label: L10n.t("克隆总数"), value: "\(res.cloneSummaries.count)", color: .blue)
+                    StudioMetricBadge(label: L10n.t("测序 Reads"), value: "\(res.reads.count)", color: .teal)
                     let passCnt = res.cloneSummaries.filter { $0.verdict == .pass }.count
-                    StudioMetricBadge(label: "100% 通过", value: "\(passCnt)", color: .green)
+                    StudioMetricBadge(label: L10n.t("100% 通过"), value: "\(passCnt)", color: .green)
                 }
             }
         } content: {
@@ -200,7 +200,7 @@ public struct SangerVerificationView: View {
                             total: Double(max(1, batchProgressTotal))
                         )
                         .frame(maxWidth: 260)
-                        Text("正在并发比对测序文件 \(batchProgressDone) / \(batchProgressTotal)...")
+                        Text(L10n.tr("正在并发比对测序文件 \(batchProgressDone) / \(batchProgressTotal)...", "Aligning sequencing traces \(batchProgressDone) / \(batchProgressTotal)..."))
                             .font(.system(size: 11.5))
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
@@ -247,7 +247,7 @@ public struct SangerVerificationView: View {
 
                     let filteredClones = filteredCloneSummaries(res)
                     if filteredClones.isEmpty {
-                        Text("当前筛选条件下暂无克隆记录")
+                        Text(L10n.t("当前筛选条件下暂无克隆记录"))
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
                             .padding(.vertical, 6)
@@ -280,24 +280,24 @@ public struct SangerVerificationView: View {
             }
 
             HStack(spacing: 8) {
-                Text("参考: \(clone.referenceName)")
+                Text(L10n.tr("参考: \(clone.referenceName)", "Ref: \(clone.referenceName)"))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Spacer()
-                Text(String(format: "覆盖 %.1f%% (%d/%d bp)", clone.coveragePercent, clone.coveredBp, clone.referenceLengthBp))
+                Text(String(format: L10n.tr("覆盖 %.1f%% (%d/%d bp)", "Cov %.1f%% (%d/%d bp)"), clone.coveragePercent, clone.coveredBp, clone.referenceLengthBp))
                     .font(.system(size: 11, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(.teal)
             }
 
             HStack(spacing: 8) {
-                Text(String(format: "均值一致率 %.1f%%", clone.meanIdentityPercent))
+                Text(String(format: L10n.tr("均值一致率 %.1f%%", "Mean Identity %.1f%%"), clone.meanIdentityPercent))
                     .font(.system(size: 10.5))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(clone.snpCount) SNP · \(clone.indelCount) Indel · \(clone.doublePeakCount) 双峰")
+                Text(L10n.tr("\(clone.snpCount) SNP · \(clone.indelCount) Indel · \(clone.doublePeakCount) 双峰", "\(clone.snpCount) SNP · \(clone.indelCount) Indel · \(clone.doublePeakCount) Mixed"))
                     .font(.system(size: 10.5, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle((clone.snpCount + clone.indelCount + clone.doublePeakCount) == 0 ? .green : .orange)
@@ -343,28 +343,28 @@ public struct SangerVerificationView: View {
         let verdictColor = colorForVerdict(rep.verdict)
         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
             StudioMetricBadge(
-                label: "综合结论",
-                value: "\(shortVerdictTitle(rep.verdict)) (\(rep.isReverseComplement ? "-" : "+")链)",
+                label: L10n.t("综合结论"),
+                value: L10n.tr("\(shortVerdictTitle(rep.verdict)) (\(rep.isReverseComplement ? "-" : "+")链)", "\(shortVerdictTitle(rep.verdict)) (\(rep.isReverseComplement ? "-" : "+") strand)"),
                 color: verdictColor
             )
             StudioMetricBadge(
-                label: "序列一致率",
+                label: L10n.t("序列一致率"),
                 value: String(format: "%.1f%% (%d/%d bp)", rep.identityPercent, rep.matchCount, rep.alignedLength),
                 color: rep.identityPercent >= 99.5 ? .green : (rep.identityPercent >= 95.0 ? .orange : .red)
             )
             StudioMetricBadge(
-                label: "高质读长",
+                label: L10n.t("高质读长"),
                 value: "\(rep.chromatogram.trimmedLength) / \(rep.chromatogram.rawLength) bp",
                 color: .blue
             )
             StudioMetricBadge(
-                label: "平均质量",
+                label: L10n.t("平均质量"),
                 value: String(format: "Q%.1f (Q20 %.0f%%)", rep.chromatogram.meanQualityTrimmed, rep.chromatogram.q20Percent),
                 color: rep.chromatogram.meanQualityTrimmed >= 30 ? .teal : .orange
             )
             StudioMetricBadge(
-                label: "变异与双峰",
-                value: "\(rep.mismatchCount) SNP · \(rep.insertionCount + rep.deletionCount) Indel · \(rep.doublePeakCount) 双峰",
+                label: L10n.t("变异与双峰"),
+                value: L10n.tr("\(rep.mismatchCount) SNP · \(rep.insertionCount + rep.deletionCount) Indel · \(rep.doublePeakCount) 双峰", "\(rep.mismatchCount) SNP · \(rep.insertionCount + rep.deletionCount) Indel · \(rep.doublePeakCount) Mixed"),
                 color: rep.variants.isEmpty ? .green : .orange
             )
         }
@@ -392,7 +392,7 @@ public struct SangerVerificationView: View {
                         Image(systemName: "arrow.left.and.right.square")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
-                        Text("峰距缩放")
+                        Text(L10n.t("峰距缩放"))
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                         Slider(value: $horizontalZoom, in: 0.8...2.4, step: 0.1)
@@ -407,7 +407,7 @@ public struct SangerVerificationView: View {
 
                     // 两端修剪 Q 阈值
                     HStack(spacing: 5) {
-                        Text("5'/3' 修剪阈值")
+                        Text(L10n.t("5'/3' 修剪阈值"))
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                         Slider(value: $trimQualityThreshold, in: 10...30, step: 2)
@@ -428,7 +428,7 @@ public struct SangerVerificationView: View {
                         Label(chrom.sampleName, systemImage: chrom.isBinaryAB1 ? "doc.zipper" : "doc.text")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(.primary)
-                        Text(chrom.isBinaryAB1 ? "ABIF 原生二进制四通道" : "序列合成高斯峰预览")
+                        Text(L10n.t(chrom.isBinaryAB1 ? "ABIF 原生二进制四通道" : "序列合成高斯峰预览"))
                             .font(.system(size: 10, weight: .medium))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -438,12 +438,12 @@ public struct SangerVerificationView: View {
                         if let selPos = selectedReadPos1Based,
                            selPos >= 1, selPos <= chrom.calledPeaks.count {
                             let pk = chrom.calledPeaks[selPos - 1]
-                            Text("当前选中: Read #\(selPos) (\(String(pk.base))) · Q\(pk.phredQuality)" + (pk.secondaryBase != nil ? " · 次峰 \(String(pk.secondaryBase!)) (\(Int(pk.secondaryRatio * 100))%)" : ""))
+                            Text(L10n.tr("当前选中: Read #\(selPos) (\(String(pk.base))) · Q\(pk.phredQuality)", "Selected: Read #\(selPos) (\(String(pk.base))) · Q\(pk.phredQuality)") + (pk.secondaryBase != nil ? L10n.tr(" · 次峰 \(String(pk.secondaryBase!)) (\(Int(pk.secondaryRatio * 100))%)", " · Secondary \(String(pk.secondaryBase!)) (\(Int(pk.secondaryRatio * 100))%)") : ""))
                                 .font(.system(size: 11, weight: .semibold))
                                 .monospacedDigit()
                                 .foregroundStyle(.orange)
                         } else {
-                            Text("提示：点击下方或右侧任意变异胶囊可自动滚动定位至对应荧光峰")
+                            Text(L10n.t("提示：点击下方或右侧任意变异胶囊可自动滚动定位至对应荧光峰"))
                                 .font(.system(size: 10.5))
                                 .foregroundStyle(.secondary)
                         }
@@ -483,7 +483,7 @@ public struct SangerVerificationView: View {
                     // 快速跳转按钮条（5' 有效起点 / 各变异位点 / 3' 有效终点）
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                         StudioCompactPillButton(
-                            title: "5' 起点 #\(chrom.trimStart0 + 1)",
+                            title: L10n.tr("5' 起点 #\(chrom.trimStart0 + 1)", "5' Trim #\(chrom.trimStart0 + 1)"),
                             icon: "arrow.left.to.line",
                             help: "跳至 5' 高质起点"
                         ) {
@@ -509,7 +509,7 @@ public struct SangerVerificationView: View {
                         }
 
                         StudioCompactPillButton(
-                            title: "3' 终点 #\(chrom.trimEnd0)",
+                            title: L10n.tr("3' 终点 #\(chrom.trimEnd0)", "3' Trim #\(chrom.trimEnd0)"),
                             icon: "arrow.right.to.line",
                             help: "跳至 3' 高质终点"
                         ) {
@@ -519,7 +519,7 @@ public struct SangerVerificationView: View {
                         }
                     }
                 } else {
-                    Text("请拖入 .ab1 / .seq 测序文件或点击右上角「示范峰图」")
+                    Text(L10n.t("请拖入 .ab1 / .seq 测序文件或点击右上角「示范峰图」"))
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, minHeight: 200)
@@ -541,7 +541,7 @@ public struct SangerVerificationView: View {
                             icon: "tray.2.fill",
                             help: "从质粒池或内置选择参考载体"
                         ) {
-                            Button("内置 EGFP-CDS 标准参考载体 (360 bp)") {
+                            Button(L10n.t("内置 EGFP-CDS 标准参考载体 (360 bp)")) {
                                 selectedPoolPlasmidID = ""
                                 referenceName = "EGFP-CDS 标准参考载体"
                                 referenceSequence = Self.defaultReferencePlasmid
@@ -580,13 +580,13 @@ public struct SangerVerificationView: View {
                     }
 
                     HStack(spacing: 10) {
-                        Text("参考长度: \(BioSequence.clean(referenceSequence).count) bp")
+                        Text(L10n.tr("参考长度: \(BioSequence.clean(referenceSequence).count) bp", "Reference Length: \(BioSequence.clean(referenceSequence).count) bp"))
                             .font(.system(size: 11, weight: .medium))
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
                         Spacer()
                         HStack(spacing: 4) {
-                            Text("CDS 起始位点:")
+                            Text(L10n.t("CDS 起始位点:"))
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                             TextField("1", text: $cdsStart1BasedText)
@@ -601,7 +601,7 @@ public struct SangerVerificationView: View {
                     DisclosureGroup(isExpanded: $isReferenceEditorExpanded) {
                         VStack(alignment: .leading, spacing: 6) {
                             TextEditor(text: $referenceSequence)
-                                .font(.system(size: 11, design: .monospaced))
+                                .font(.system(size: 11))
                                 .frame(height: 82)
                                 .scrollContentBackground(.hidden)
                                 .padding(6)
@@ -628,7 +628,7 @@ public struct SangerVerificationView: View {
                         }
                         .padding(.top, 6)
                     } label: {
-                        Text("展开查看 / 手动编辑参考序列文本")
+                        Text(L10n.t("展开查看 / 手动编辑参考序列文本"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
@@ -659,10 +659,10 @@ public struct SangerVerificationView: View {
                                     .font(.system(size: 18))
                                     .foregroundStyle(.green)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("高质测序区 100% 匹配无误")
+                                    Text(L10n.t("高质测序区 100% 匹配无误"))
                                         .font(.system(size: 12.5, weight: .bold))
                                         .foregroundStyle(.green)
-                                    Text("未检出任何错配替换 (SNP)、移码缺失/插入 (Indel) 或杂合双峰。")
+                                    Text(L10n.t("未检出任何错配替换 (SNP)、移码缺失/插入 (Indel) 或杂合双峰。"))
                                         .font(.system(size: 11))
                                         .foregroundStyle(.secondary)
                                 }
@@ -686,7 +686,7 @@ public struct SangerVerificationView: View {
                                                     .frame(minWidth: 78, alignment: .leading)
 
                                                 VStack(alignment: .leading, spacing: 2) {
-                                                    Text(v.kind.rawValue)
+                                                    Text(L10n.t(v.kind.rawValue))
                                                         .font(.system(size: 11, weight: .semibold))
                                                         .foregroundStyle(.primary)
                                                     Text(v.codonImpactNote)
@@ -732,22 +732,26 @@ public struct SangerVerificationView: View {
     private func alignmentDetailDrawer(_ rep: SangerAlignmentEngine.VerificationReport) -> some View {
         StudioCard(title: "逐位点双序列比对详情 (Base-by-Base Alignment)") {
             DisclosureGroup(isExpanded: $isAlignmentTextExpanded) {
-                ScrollView(.horizontal, showsIndicators: true) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(formatAlignmentBlock(rep))
-                            .font(.system(size: 11.5, design: .monospaced))
-                            .textSelection(.enabled)
-                            .padding(8)
+                let alignedBlock = formatAlignmentBlock(rep)
+                ZStack(alignment: .topTrailing) {
+                    ScrollView(.horizontal, showsIndicators: true) {
+                        StudioAlignedCharGridView(text: alignedBlock, fontSize: 11.5, padding: 8)
                     }
+                    StudioCompactPillButton(title: "复制比对", icon: "doc.on.doc", tint: .blue) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(alignedBlock, forType: .string)
+                        appState.showToast("已复制逐碱基比对文本")
+                    }
+                    .padding(6)
                 }
                 .studioInnerBox(paddingH: 8, paddingV: 8)
                 .padding(.top, 6)
             } label: {
                 HStack {
-                    Text("展开查看全长逐位点比对矩阵（Ref \(rep.matchedRefStart1Based)..\(rep.matchedRefEnd1Based) bp vs Read \(rep.chromatogram.trimStart0 + 1)..\(rep.chromatogram.trimEnd0)）")
+                    Text(L10n.tr("展开查看全长逐位点比对矩阵（Ref \(rep.matchedRefStart1Based)..\(rep.matchedRefEnd1Based) bp vs Read \(rep.chromatogram.trimStart0 + 1)..\(rep.chromatogram.trimEnd0)）", "Expand full base-by-base alignment (Ref \(rep.matchedRefStart1Based)..\(rep.matchedRefEnd1Based) bp vs Read \(rep.chromatogram.trimStart0 + 1)..\(rep.chromatogram.trimEnd0))"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
-                    Text("\(rep.alignedLength) 列")
+                    Text(L10n.tr("\(rep.alignedLength) 列", "\(rep.alignedLength) cols"))
                         .font(.system(size: 11))
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
@@ -870,12 +874,12 @@ public struct SangerVerificationView: View {
         if let first = items.first {
             selectBatchReadItem(first)
         }
-        appState.showToast("已加载批量测序验证示范：\(summaries.count) 个克隆 (\(items.count) 条 Reads)")
+        appState.showToast(L10n.tr("已加载批量测序验证示范：\(summaries.count) 个克隆 (\(items.count) 条 Reads)", "Loaded batch verification sample: \(summaries.count) clones (\(items.count) reads)"))
     }
 
     private func selectSangerFileFromFinder() {
         let panel = NSOpenPanel()
-        panel.title = "选择 Sanger 测序峰图文件或包含多个 .ab1 的文件夹"
+        panel.title = L10n.t("选择 Sanger 测序峰图文件或包含多个 .ab1 的文件夹")
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
@@ -962,7 +966,7 @@ public struct SangerVerificationView: View {
                 if let first = result.reads.first {
                     self.selectBatchReadItem(first)
                 }
-                self.appState.showToast("批量验证完成：共 \(result.cloneSummaries.count) 个克隆 (\(result.reads.count) 条测序读长)")
+                self.appState.showToast(L10n.tr("批量验证完成：共 \(result.cloneSummaries.count) 个克隆 (\(result.reads.count) 条测序读长)", "Batch verification complete: \(result.cloneSummaries.count) clones (\(result.reads.count) reads)"))
             }
         }
     }
@@ -994,13 +998,13 @@ public struct SangerVerificationView: View {
     private func filterTitle(_ f: CloneBatchFilter, in res: SangerBatchEngine.BatchVerificationResult) -> String {
         switch f {
         case .all:
-            return "全部 (\(res.cloneSummaries.count))"
+            return L10n.tr("全部 (\(res.cloneSummaries.count))", "All (\(res.cloneSummaries.count))")
         case .pass:
-            return "通过 (\(res.cloneSummaries.filter { $0.verdict == .pass }.count))"
+            return L10n.tr("通过 (\(res.cloneSummaries.filter { $0.verdict == .pass }.count))", "Pass (\(res.cloneSummaries.filter { $0.verdict == .pass }.count))")
         case .needsReview:
-            return "复核 (\(res.cloneSummaries.filter { $0.verdict == .needsReview || $0.verdict == .unmatched }.count))"
+            return L10n.tr("复核 (\(res.cloneSummaries.filter { $0.verdict == .needsReview || $0.verdict == .unmatched }.count))", "Review (\(res.cloneSummaries.filter { $0.verdict == .needsReview || $0.verdict == .unmatched }.count))")
         case .failed:
-            return "失败 (\(res.cloneSummaries.filter { $0.verdict == .failed }.count))"
+            return L10n.tr("失败 (\(res.cloneSummaries.filter { $0.verdict == .failed }.count))", "Fail (\(res.cloneSummaries.filter { $0.verdict == .failed }.count))")
         }
     }
 
@@ -1054,9 +1058,9 @@ public struct SangerVerificationView: View {
                 selectedReadPos1Based = firstVar
                 scrollTargetReadPos1 = firstVar
             }
-            appState.showToast("已载入测序文件「\(rec.sampleName)」(\(rec.rawLength) bp)")
+            appState.showToast(L10n.tr("已载入测序文件「\(rec.sampleName)」(\(rec.rawLength) bp)", "Loaded trace \"\(rec.sampleName)\" (\(rec.rawLength) bp)"))
         } catch {
-            appState.showToast("读取测序文件失败：\(error.localizedDescription)")
+            appState.showToast(L10n.tr("读取测序文件失败：\(error.localizedDescription)", "Failed to read trace: \(error.localizedDescription)"))
         }
     }
 
@@ -1073,11 +1077,11 @@ public struct SangerVerificationView: View {
                         self.cdsStart1BasedText = "\(start)"
                     }
                     self.recomputeVerification()
-                    appState.showToast("已载入参考质粒「\(self.referenceName)」(\(info.length) bp)")
+                    appState.showToast(L10n.tr("已载入参考质粒「\(self.referenceName)」(\(info.length) bp)", "Loaded reference \"\(self.referenceName)\" (\(info.length) bp)"))
                 }
             } catch {
                 await MainActor.run {
-                    appState.showToast("解析参考 .dna 失败：\(error.localizedDescription)")
+                    appState.showToast(L10n.tr("解析参考 .dna 失败：\(error.localizedDescription)", "Failed to parse reference .dna: \(error.localizedDescription)"))
                 }
             }
         }
@@ -1140,7 +1144,7 @@ public struct SangerVerificationView: View {
         }()
         FinderFileDropHelper.saveTextToFile(
             content: text,
-            defaultFileName: "\(safeSample)_Sanger验证报告.txt",
+            defaultFileName: "\(safeSample)_Sanger_Verification.txt",
             contentType: .plainText,
             toastPrefix: "已导出 Sanger 验证报告与 .run.json 溯源记录"
         ) { savedURL in
@@ -1188,11 +1192,11 @@ public struct SangerVerificationView: View {
 
     private func shortVerdictTitle(_ v: SangerAlignmentEngine.VerificationVerdict) -> String {
         switch v {
-        case .verifiedPass:      return "100% 匹配通过"
-        case .pointMutation:     return "检出点突变 SNP"
-        case .indelOrFrameshift: return "检出移码 Indel"
-        case .doublePeakWarning: return "检出杂合双峰"
-        case .unaligned:         return "未匹配参考序列"
+        case .verifiedPass:      return L10n.t("100% 匹配通过")
+        case .pointMutation:     return L10n.t("检出点突变 SNP")
+        case .indelOrFrameshift: return L10n.t("检出移码 Indel")
+        case .doublePeakWarning: return L10n.t("检出杂合双峰")
+        case .unaligned:         return L10n.t("未匹配参考序列")
         }
     }
 
@@ -1220,6 +1224,7 @@ public struct SangerVerificationView: View {
 // MARK: - 四色荧光毛细管电泳色谱条画布 (ChromatogramTraceStripView)
 
 private struct ChromatogramTraceStripView: View {
+    @Environment(\.appLanguage) private var appLanguage
     let chromatogram: SangerAlignmentEngine.ChromatogramRecord
     let report: SangerAlignmentEngine.VerificationReport?
     let baseColumnWidth: CGFloat
@@ -1230,6 +1235,7 @@ private struct ChromatogramTraceStripView: View {
     @Binding var selectedReadPos1: Int?
 
     var body: some View {
+        let _ = appLanguage
         let peaks = chromatogram.calledPeaks
         let totalWidth = max(640, CGFloat(max(1, peaks.count)) * baseColumnWidth + 24)
         let refMap = buildReadToColumnMap()
@@ -1329,13 +1335,14 @@ private struct ChromatogramTraceStripView: View {
                         // 读长位置刻度（每 10 bp 显示一次）
                         if pk.id == 1 || pk.id % 10 == 0 {
                             Text("\(pk.id)")
-                                .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                                .font(.system(size: 8.5, weight: .medium))
+                                .monospacedDigit()
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                                 .fixedSize()
                         } else {
                             Text(" ")
-                                .font(.system(size: 8.5, design: .monospaced))
+                                .font(.system(size: 8.5))
                         }
 
                         // Phred Q 值柱状条
@@ -1347,18 +1354,18 @@ private struct ChromatogramTraceStripView: View {
 
                         // 测序识别碱基
                         Text(String(pk.base))
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(colorForBase(pk.base, isTrimmed: pk.isTrimmed))
 
                         // 参考序列对比行
                         if let col = colInfo {
                             if col.eventKind == .match {
                                 Text("·")
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 10, weight: .bold))
                                     .foregroundStyle(.secondary.opacity(0.6))
                             } else {
                                 Text(String(col.refBase))
-                                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                                    .font(.system(size: 10, weight: .heavy))
                                     .foregroundStyle(.white)
                                     .frame(width: max(12, baseColumnWidth - 2), height: 13)
                                     .background(

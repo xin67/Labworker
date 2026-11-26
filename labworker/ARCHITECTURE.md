@@ -11,6 +11,7 @@
 
 | 文件路径 | 核心用途说明 |
 | :--- | :--- |
+| `../AGENTS.md` | Labworker 仓库级工程开发规范：强制全应用 macOS 默认系统字体、分栏防重叠与响应式排版、简体中文/学术英文双语本地化与验证门禁铁律 |
 | `../LICENSE` | 项目根目录许可协议文件（PolyForm Noncommercial License 1.0.0，SPDX: `PolyForm-Noncommercial-1.0.0`，禁止商业用途） |
 | `../NOTICE` | PolyForm Noncommercial License 1.0.0 要求的 `Required Notice:` 版权声明及禁止商用与商业授权联系说明 |
 | `../README.md` | GitHub 项目主页图文展示文档：含应用图标、7 张内置公开示例实机界面截图、Mermaid 架构工作流、18 模块速览、MCP 配置、参考项目致谢、`v20261120` DMG 下载、源码构建及禁止商用声明 |
@@ -43,7 +44,7 @@
 | :--- | :--- |
 | `CloneStudioApp.swift` | 应用入口、菜单栏命令快捷键、macOS 系统深浅色 / 强调色 / 辅助透明 / Liquid Glass 强度广播与激活刷新监听、状态栏 `NSStatusItem` 快捷工作台及退出进度保存提示 |
 | `Views/Main/ContentView.swift` | 主窗口容器：透明窗口底色 + 原生 `NSVisualEffectView(.sidebar, .behindWindow)` 磨砂侧边栏、单一像素级 `.separatorColor` 可拖拽调宽（双击重置）分栏线、顶部搜索框（macOS 26+ 原生 Liquid Glass 折射 / macOS 14–15 `.regularMaterial` 降级）+ SDK 圆形导入按钮、全局拖拽导入遮罩与兼容 Toast 通知 |
-| `Views/Components/DesignSystem.swift` | 全局 macOS 14.0+ 跨版本兼容 & macOS 26/27 Liquid Glass 渐进增强设计系统与复用组件库：`StudioPalette`（系统语义 `NSColor` 黑白/浅灰背景与分割线）、全局标准 macOS 系统字体与 `.monospacedDigit()` 等宽数字规范（仅序列/比对网格/ASCII 二级结构/raw FASTA 编辑器/JSON 保留等宽）、`StudioGlassSupport`（`#if compiler(>=6.2)` + `@available(macOS 26.0, *)` 隔离 `.constrainedHigh` / `buttonGlass` / `glassEffect`，macOS 14–15 自动回退 `StudioLegacyMaterialButtonStyle` 与 `.regularMaterial` 胶囊）、`StudioGlassContainerCompat` / `studioGlassSurfaceCompat` / `studioSafeAreaTopBarCompat` / `studioOnGeometryChangeCompat`（兼容 macOS 14 GeometryReader 回退与 macOS 15+ `onGeometryChange`）、`StudioNativeOrManualGlassButtonModifier`、`StudioNativeOrManualGlassMenuModifier`、`StudioJoinedGlassCapsuleModifier`、`StudioNoAutoFocusSearchField`、`StudioPageLayout`、`StudioOverflowToolbar`、`StudioGlassSegmentedBar`、`StudioCard`、`StudioSegmentedPicker`、`StudioSegmentedPillGroup`、`StudioActionPillButton`、`StudioCompactPillButton`、`StudioMenuPillButton`、`StudioPrimaryActionButton`、`StudioActionBar`、`StudioSectionClearButton`、`FinderRevealButton`、`SpeciesSwitchBar`、`StudioMetricBadge`、`SequenceEditorBox`、`StudioFlowLayout`、`StudioResponsiveSplitLayout`、`AdaptiveTwoColumnWorkspace`、`PlasmidPreviewToggle`、`PlasmidFileToolbarGroup`、`StudioRadius`、`StandardLinkerPreset`、`FinderFileDropHelper` |
+| `Views/Components/DesignSystem.swift` | 全局 macOS 14.0+ 跨版本兼容 & macOS 26/27 Liquid Glass 渐进增强设计系统与复用组件库：`StudioPalette`（系统语义 `NSColor` 黑白/浅灰背景与分割线）、全局 100% macOS 默认系统字体与 `.monospacedDigit()` 等宽数字规范（全应用禁止 `design: .monospaced`，配对图/比对矩阵统一走固定步距 `StudioAlignedCharGridView` 网格）、`StudioGlassSupport`（`#if compiler(>=6.2)` + `@available(macOS 26.0, *)` 隔离 `.constrainedHigh` / `buttonGlass` / `glassEffect`，macOS 14–15 自动回退 `StudioLegacyMaterialButtonStyle` 与 `.regularMaterial` 胶囊）、`StudioGlassContainerCompat` / `studioGlassSurfaceCompat` / `studioSafeAreaTopBarCompat` / `studioOnGeometryChangeCompat`（兼容 macOS 14 GeometryReader 回退与 macOS 15+ `onGeometryChange`）、`StudioNativeOrManualGlassButtonModifier`、`StudioNativeOrManualGlassMenuModifier`、`StudioJoinedGlassCapsuleModifier`、`StudioNoAutoFocusSearchField`、`StudioPageLayout`、`StudioOverflowToolbar`、`StudioGlassSegmentedBar`、`StudioCard`、`StudioSegmentedPicker`、`StudioSegmentedPillGroup`、`StudioActionPillButton`、`StudioCompactPillButton`、`StudioMenuPillButton`、`StudioPrimaryActionButton`、`StudioActionBar`、`StudioSectionClearButton`、`FinderRevealButton`、`SpeciesSwitchBar`、`StudioMetricBadge`、`SequenceEditorBox`、`StudioAlignedCharGridView`、`StudioFlowLayout`、`StudioResponsiveSplitLayout`、`AdaptiveTwoColumnWorkspace`、`PlasmidPreviewToggle`、`PlasmidFileToolbarGroup`、`StudioRadius`、`StandardLinkerPreset`、`FinderFileDropHelper` |
 | `Views/Components/PlasmidPreviewCanvas.swift` | 质粒全景图谱引擎：对齐系统语义深浅色底与 `StudioGlassSegmentedBar` 分段切换的 `PlasmidPreviewPanel` 同屏双视工作台（无冗余折叠/关闭按钮）、OVE 同心多轨环形质粒图（工具按钮适配 `.colorScheme` 与高亮白显对比度）、`PlasmidMapBuilder` 图谱构建器与沉浸式透明标题栏（`.fullSizeContentView`）独立预览窗口控制器 `PlasmidWindowPresenter` |
 | `Views/Components/SequenceRowCanvasView.swift` | 微观单碱基双链序列画布：对齐系统语义浅白/深灰炭底（同步 `.colorScheme`）与 `StatusGlassContainerCompat` / `StudioGlassContainerCompat` 视口/功能按钮的 `LazyVStack` 视口虚拟化画布、静态序列层与选区浮层分离、互补链、氨基酸密码子带、内切酶裂解切口与 120Hz 拖拽选区 |
 | `Views/Components/SequenceMinimapView.swift` | 全长序列缩略图导航条与视口快速定位滑块 |
@@ -141,6 +142,7 @@
 - `Models/GenomicTarget.swift`、`TargetScore.swift`、`CHOPCHOPResult.swift`、`BroadGPPResult.swift`、`OrderFormProfile.swift`：多源基因组靶点（`hg38` / `mm39` / `mm10` / `Mus_musculus_GRCm39` / NCBI Taxon）、sgRNA 三源共识合并模型、Broad GPP TRC shRNA 克隆与评分数据模型。
 - `Models/PlateLayoutModels.swift`：6～384 孔板几何规格、孔位分配模型、排布规则与科研分组调色板定义。
 - `Models/AnalysisRun.swift`：科学分析可复现溯源记录模型（`schemaVersion = 2`、`AnyCodableValue`、CryptoKit `SHA256` 文件指纹、`ManualEdit` 手动编辑记录、`Exclusion` 剔除记录、`linkedPlasmidIDs` 关联质粒 ID 列表与 `.run.json` 伴随文件写入器 + `AnalysisRunIndexStore` 跨模块索引）。
+- `Models/AppLocalization.swift`：全应用简体中文 / 学术英文双语本地化调度中心（`AppLanguage`、`EnvironmentValues.appLanguage`、线程安全 `L10n.t(...)` / `L10n.tr(...)` 引擎）。
 
 ### 3.5 基础服务 (`Services/`)
 - `Services/WorkspaceSessionManager.swift`：全模块工作区进度自动保存、异常退出看门狗保护恢复与 Finder 打开文件路由（支持 `.dna`/`.ab1`/`.abi`/`.seq`/`.fasta`/`.fastq`/`.gb`/`.pdb`/`.cif`/`.rdml`/`.json`/`.jsonld`）。
@@ -154,7 +156,7 @@
 
 ### 3.6 打包资源 (`Resources/`)
 - 图标资源：`AppIcon.icns`、`AppIcon_Light.icns`、`AppIcon_Dark.icns`、`AppIcon_1024.png`、`AppIcon_Light_1024.png`、`AppIcon_Dark_1024.png`、`StatusBarIcon.png`、`StatusBarIcon@2x.png`。
-- 数据库与配置：`Libraries.sqlite`（离线基因组 `sgrna`/`shrna` 靶点库、**1,415** 个真实公共质粒元件 `plasmid_features` 特征库及 `neb_t4_overhang_stats`/`neb_t4_ligase_fidelity` 连接保真度矩阵）、`select.json`。
+- 数据库与配置：`Libraries.sqlite`（离线基因组 `sgrna`/`shrna` 靶点库、**1,415** 个真实公共质粒元件 `plasmid_features` 特征库及 `neb_t4_overhang_stats`/`neb_t4_ligase_fidelity` 连接保真度矩阵）、`select.json`、`en_translations.json`（全应用生命科学/分子生物学学术英文映射词典）。
 - Python 桥接脚本：`snapgene_bridge.py`、`export_order.py`、`chopchop_query.py`、`clonestudio_mcp_server.py`（MCP 20261120 标准协议服务端，暴露 23 项工具含 `deconvolute_crispr_sanger`、`auto_annotate_sequence`、`design_golden_gate_assembly`、`design_hdr_donor` 四大高阶复合引擎，带严格 Pydantic / TypedDict 与 JSON `inputSchema`/`outputSchema` 校验）。
 - 离线 3D 渲染静态资源：`molstar.js`、`molstar.css`（Mol* Viewer v5.13.1，MIT 许可）、`molstar_host.html`（无外网依赖本地 `WKWebView` 宿主页）。
 - 商业订购表母版：`擎科引物合成订购表.xlsx`、`擎科测序订购表专属电子订单.xlsx`、`生工DNA测序订购表.xlsx`、`DNA测序订购表_V9(1).xlsx`。

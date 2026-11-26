@@ -26,14 +26,14 @@ public struct OnlineDatabaseFetchSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("在线数据库直拉质粒 / 基因序列")
+                    Text(L10n.t("在线数据库直拉质粒 / 基因序列"))
                         .font(.system(size: 16, weight: .bold))
-                    Text("支持直接输入 Addgene 质粒编号或 NCBI GenBank / RefSeq 登录号，解析后一键入库本地质粒池")
+                    Text(L10n.t("支持直接输入 Addgene 质粒编号或 NCBI GenBank / RefSeq 登录号，解析后一键入库本地质粒池"))
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("关闭") { dismiss() }
+                Button(L10n.t("关闭")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
 
@@ -51,11 +51,11 @@ public struct OnlineDatabaseFetchSheet: View {
 
                     HStack(spacing: 8) {
                         TextField(
-                            source == .ncbi ? "输入 NCBI 登录号 (如 L09137 / NM_000546)" : "输入 Addgene 编号 (如 52961)",
+                            source == .ncbi ? L10n.t("输入 NCBI 登录号 (如 L09137 / NM_000546)") : L10n.t("输入 Addgene 编号 (如 52961)"),
                             text: $queryID
                         )
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 12.5, design: .monospaced))
+                        .font(.system(size: 12.5))
 
                         StudioCompactPillButton(title: "填入示例", icon: "sparkles", tint: .blue) {
                             queryID = (source == .ncbi) ? "L09137" : "52961"
@@ -84,7 +84,10 @@ public struct OnlineDatabaseFetchSheet: View {
             }
 
             if let res = fetchedResult {
-                StudioCard(title: "解析结果预览 (\(res.source) \(res.identifier))") {
+                StudioCard(title: L10n.tr(
+                    L10n.tr("解析结果预览 (\(res.source) \(res.identifier))", "Parsed Preview (\(res.source) \(res.identifier))"),
+                    "Fetched Result Preview (\(res.source) \(res.identifier))"
+                )) {
                     StudioActionPillButton(
                         title: "写入本地质粒池",
                         icon: "tray.and.arrow.down.fill",
@@ -92,18 +95,21 @@ public struct OnlineDatabaseFetchSheet: View {
                         isProminent: true
                     ) {
                         let item = pool.importFetchedDNAInfo(res.dnaInfo, displayName: res.dnaInfo.fileName.replacingOccurrences(of: ".gb", with: ""))
-                        appState.showToast("已将 \(item.name) (\(res.dnaInfo.length) bp, \(res.dnaInfo.featuresCount) 特征) 入库！")
+                        appState.showToast(L10n.tr(
+                            L10n.tr("已将 \(item.name) (\(res.dnaInfo.length) bp, \(res.dnaInfo.featuresCount) 特征) 入库！", "Added \(item.name) (\(res.dnaInfo.length) bp, \(res.dnaInfo.featuresCount) features) to Plasmid Pool!"),
+                            "Added \(item.name) (\(res.dnaInfo.length) bp, \(res.dnaInfo.featuresCount) features) to Pool!"
+                        ))
                         dismiss()
                     }
                 } content: {
                     VStack(alignment: .leading, spacing: 8) {
                         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                            StudioMetricBadge(label: "名称", value: res.dnaInfo.fileName, color: .blue)
-                            StudioMetricBadge(label: "长度", value: "\(res.dnaInfo.length) bp", color: .teal)
-                            StudioMetricBadge(label: "拓扑", value: res.dnaInfo.isCircular ? "环状质粒" : "线性序列", color: .purple)
-                            StudioMetricBadge(label: "特征注释", value: "\(res.dnaInfo.featuresCount) 条", color: .green)
+                            StudioMetricBadge(label: L10n.t("名称"), value: res.dnaInfo.fileName, color: .blue)
+                            StudioMetricBadge(label: L10n.t("长度"), value: "\(res.dnaInfo.length) bp", color: .teal)
+                            StudioMetricBadge(label: L10n.t("拓扑"), value: res.dnaInfo.isCircular ? L10n.t("环状质粒") : L10n.t("线性序列"), color: .purple)
+                            StudioMetricBadge(label: L10n.t("特征注释"), value: L10n.tr("\(res.dnaInfo.featuresCount) 条", "\(res.dnaInfo.featuresCount)"), color: .green)
                             if res.autoAnnotatedCount > 0 {
-                                StudioMetricBadge(label: "自动补全", value: "+\(res.autoAnnotatedCount) 元件", color: .indigo)
+                                StudioMetricBadge(label: L10n.t("自动补全"), value: L10n.tr("+\(res.autoAnnotatedCount) 元件", "+\(res.autoAnnotatedCount) features"), color: .indigo)
                             }
                         }
 

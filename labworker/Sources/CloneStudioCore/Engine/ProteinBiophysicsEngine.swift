@@ -91,7 +91,7 @@ public struct ProteinPocketInfo: Identifiable, Codable, Equatable, Sendable {
         enclosureRatio: Double = 0.72,
         hydrophobicRatio: Double,
         netChargeAtPh: Double,
-        evidenceSource: String = "LIGSITE P-S-P 七方向扫描",
+        evidenceSource: String = L10n.t("LIGSITE P-S-P 七方向扫描"),
         residueIndices: [Int]
     ) {
         self.id = id
@@ -263,20 +263,20 @@ public enum ProteinBiophysicsEngine {
     public static let builtinExamples: [ProteinPresetExample] = [
         ProteinPresetExample(
             id: "tp53_core",
-            name: "TP53 (肿瘤抑制蛋白核心 DNA 结合域)",
-            subtitle: "112 aa · Rossmann 核苷酸结合折叠域 (含底物结合口袋)",
+            name: L10n.t("TP53 (肿瘤抑制蛋白核心 DNA 结合域)"),
+            subtitle: L10n.t("112 aa · Rossmann 核苷酸结合折叠域 (含底物结合口袋)"),
             sequence: "MVSRGEEFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTLTYGVQCFSRYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEV"
         ),
         ProteinPresetExample(
             id: "ubic_core",
-            name: "Ubiquitin (泛素标准球状折叠蛋白 1UBQ)",
-            subtitle: "76 aa · 经典 β-grasp 折叠基准结构",
+            name: L10n.t("Ubiquitin (泛素标准球状折叠蛋白 1UBQ)"),
+            subtitle: L10n.t("76 aa · 经典 β-grasp 折叠基准结构"),
             sequence: "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG"
         ),
         ProteinPresetExample(
             id: "trpcage",
-            name: "Trp-Cage (微蛋白快速折叠模型 1L2Y)",
-            subtitle: "20 aa · 分子动力学温度/pH 相变经典序列",
+            name: L10n.t("Trp-Cage (微蛋白快速折叠模型 1L2Y)"),
+            subtitle: L10n.t("20 aa · 分子动力学温度/pH 相变经典序列"),
             sequence: "NLYIQWLKDGGPSSGRPPPS"
         )
     ]
@@ -585,9 +585,9 @@ public enum ProteinBiophysicsEngine {
             let mutCharge = netCharge(sequence: mutSeq, atPH: env.ph)
             let score = min(99.0, max(20.0, 82.0 - ddgSum * 9.5))
             let verdict: String = {
-                if ddgSum <= -0.4 { return "经验稳定化倾向 (Empirical Stabilizing)" }
-                if ddgSum <= 0.5  { return "经验中性耐受 (Empirical Neutral)" }
-                return "经验去稳定化风险 (Empirical Destabilizing)"
+                if ddgSum <= -0.4 { return L10n.t("经验稳定化倾向 (Empirical Stabilizing)") }
+                if ddgSum <= 0.5  { return L10n.t("经验中性耐受 (Empirical Neutral)") }
+                return L10n.t("经验去稳定化风险 (Empirical Destabilizing)")
             }()
             let label = validTokens.isEmpty ? trimmed : validTokens.joined(separator: " + ")
             results.append(
@@ -1106,14 +1106,14 @@ public enum ProteinBiophysicsEngine {
     ) -> ([ProteinPocketInfo], ProteinDockingBoxRecommendation) {
         guard !residues.isEmpty else {
             let emptyBox = ProteinDockingBoxRecommendation(
-                sourceTitle: "无可用结构",
-                sourceNote: "未检测到有效残基坐标",
+                sourceTitle: L10n.t("无可用结构"),
+                sourceNote: L10n.t("未检测到有效残基坐标"),
                 centerX: 0, centerY: 0, centerZ: 0,
                 sizeX: 20, sizeY: 20, sizeZ: 20,
                 volumeA3: 8000,
                 recommendedExhaustiveness: 8,
                 recommendedFlexResidues: [],
-                runtimeEstimateNote: "标准刚性对接耗时 1.0×"
+                runtimeEstimateNote: L10n.t("标准刚性对接耗时 1.0×")
             )
             return ([], emptyBox)
         }
@@ -1298,8 +1298,8 @@ public enum ProteinBiophysicsEngine {
         // 3. 严格对齐 `boxes.py` 的证据优先与 Consensus 共识融合决策树
         var rawCX = geomCX, rawCY = geomCY, rawCZ = geomCZ
         var rawSX = 22.0, rawSY = 22.0, rawSZ = 22.0
-        var boxSourceTitle = "LIGSITE P-S-P 几何口袋"
-        var boxSourceNote = "基于七方向蛋白质–溶剂–蛋白质包埋度扫描 (探针 1.4 Å，边距 ±\(String(format: "%.1f", DockFlowBoxConstants.pocketMargin)) Å) 自动定位"
+        var boxSourceTitle = L10n.t("LIGSITE P-S-P 几何口袋")
+        var boxSourceNote = L10n.tr("基于七方向蛋白质–溶剂–蛋白质包埋度扫描 (探针 1.4 Å，边距 ±\(String(format: "%.1f", DockFlowBoxConstants.pocketMargin)) Å) 自动定位", "7-direction LIGSITE P-S-P pocket scan (probe 1.4 Å, padding ±\(String(format: "%.1f", DockFlowBoxConstants.pocketMargin)) Å)")
         
         if !pocketPts.isEmpty {
             let pBox = boundingBoxFromCoords(pocketPts, margin: DockFlowBoxConstants.pocketMargin)
@@ -1315,14 +1315,14 @@ public enum ProteinBiophysicsEngine {
                 let cBox = boundingBoxFromCoords(merged, margin: DockFlowBoxConstants.ligandMargin)
                 rawCX = cBox.cx; rawCY = cBox.cy; rawCZ = cBox.cz
                 rawSX = cBox.sx; rawSY = cBox.sy; rawSZ = cBox.sz
-                boxSourceTitle = "共晶配体 (\(ligName)) + LIGSITE 共识融合盒"
-                boxSourceNote = "配体与高分口袋重叠率 \(String(format: "%.0f%%", overlap.coverage * 100)) (≥35% 阈值)，已合并配体与邻近 4.0 Å 口袋点并外扩 ±\(String(format: "%.1f", DockFlowBoxConstants.ligandMargin)) Å"
+                boxSourceTitle = L10n.tr("共晶配体 (\(ligName)) + LIGSITE 共识融合盒", "Co-crystal Ligand (\(ligName)) + LIGSITE Consensus")
+                boxSourceNote = L10n.tr("配体与高分口袋重叠率 \(String(format: "%.0f%%", overlap.coverage * 100)) (≥35% 阈值)，已合并配体与邻近 4.0 Å 口袋点并外扩 ±\(String(format: "%.1f", DockFlowBoxConstants.ligandMargin)) Å", "Ligand-pocket overlap \(String(format: "%.0f%%", overlap.coverage * 100)) (>=35%); merged with pocket points within 4.0 Å ± \(String(format: "%.1f", DockFlowBoxConstants.ligandMargin)) Å padding")
             } else {
                 let lBox = boundingBoxFromCoords(pdbMeta.coCrystalCoords, margin: DockFlowBoxConstants.ligandMargin)
                 rawCX = lBox.cx; rawCY = lBox.cy; rawCZ = lBox.cz
                 rawSX = lBox.sx; rawSY = lBox.sy; rawSZ = lBox.sz
-                boxSourceTitle = "实验共晶配体 (\(ligName)) 优先"
-                boxSourceNote = "直接基于实验共晶配体重原子包围盒外扩 ±\(String(format: "%.1f", DockFlowBoxConstants.ligandMargin)) Å (口袋重叠率 \(String(format: "%.0f%%", overlap.coverage * 100)))"
+                boxSourceTitle = L10n.tr("实验共晶配体 (\(ligName)) 优先", "Co-crystal Ligand (\(ligName)) Priority")
+                boxSourceNote = L10n.tr("直接基于实验共晶配体重原子包围盒外扩 ±\(String(format: "%.1f", DockFlowBoxConstants.ligandMargin)) Å (口袋重叠率 \(String(format: "%.0f%%", overlap.coverage * 100)))", "Heavy-atom bounding box of co-crystal ligand ± \(String(format: "%.1f", DockFlowBoxConstants.ligandMargin)) Å (pocket overlap \(String(format: "%.0f%%", overlap.coverage * 100)))")
             }
         } else if !pdbMeta.siteSeqNums.isEmpty {
             let siteRes = residues.filter { pdbMeta.siteSeqNums.contains($0.index) }
@@ -1334,14 +1334,14 @@ public enum ProteinBiophysicsEngine {
                     let sBox = boundingBoxFromCoords(merged, margin: DockFlowBoxConstants.pocketMargin)
                     rawCX = sBox.cx; rawCY = sBox.cy; rawCZ = sBox.cz
                     rawSX = sBox.sx; rawSY = sBox.sy; rawSZ = sBox.sz
-                    boxSourceTitle = "PDB SITE + LIGSITE 共识融合盒"
-                    boxSourceNote = "PDB SITE 位点 (\(siteRes.count) 残基) 与几何口袋重叠率 \(String(format: "%.0f%%", overlap.coverage * 100)) (≥50% 阈值)，已合并邻近口袋点并外扩 ±\(String(format: "%.1f", DockFlowBoxConstants.pocketMargin)) Å"
+                    boxSourceTitle = L10n.t("PDB SITE + LIGSITE 共识融合盒")
+                    boxSourceNote = L10n.tr("PDB SITE 位点 (\(siteRes.count) 残基) 与几何口袋重叠率 \(String(format: "%.0f%%", overlap.coverage * 100)) (≥50% 阈值)，已合并邻近口袋点并外扩 ±\(String(format: "%.1f", DockFlowBoxConstants.pocketMargin)) Å", "PDB SITE (\(siteRes.count) residues) + pocket overlap \(String(format: "%.0f%%", overlap.coverage * 100)) (>=50%) ± \(String(format: "%.1f", DockFlowBoxConstants.pocketMargin)) Å")
                 } else {
                     let sBox = boundingBoxFromCoords(siteCoords, margin: DockFlowBoxConstants.sitePadding)
                     rawCX = sBox.cx; rawCY = sBox.cy; rawCZ = sBox.cz
                     rawSX = sBox.sx; rawSY = sBox.sy; rawSZ = sBox.sz
-                    boxSourceTitle = "PDB SITE 记录优先"
-                    boxSourceNote = "依据 PDB SITE 活性位点残基 (\(siteRes.count) 个) 包围盒外扩 ±\(String(format: "%.1f", DockFlowBoxConstants.sitePadding)) Å"
+                    boxSourceTitle = L10n.t("PDB SITE 记录优先")
+                    boxSourceNote = L10n.tr("依据 PDB SITE 活性位点残基 (\(siteRes.count) 个) 包围盒外扩 ±\(String(format: "%.1f", DockFlowBoxConstants.sitePadding)) Å", "PDB SITE active-site residues (\(siteRes.count)) bounding box ± \(String(format: "%.1f", DockFlowBoxConstants.sitePadding)) Å")
                 }
             }
         }
@@ -1393,8 +1393,8 @@ public enum ProteinBiophysicsEngine {
         let exhaustiveness = boxVol > 12000 ? 12 : 8
         let flexMult = max(1, topFlex.count) * exhaustiveness
         let runtimeNote = topFlex.isEmpty
-            ? "刚性受体模式 (exhaustiveness=\(exhaustiveness))，单配体约 3–8 秒"
-            : "推荐保留 \(topFlex.count) 个近端柔性侧链 (--flex)，搜索空间约为刚性模式的 \(flexMult / 8)×（QuickVina 2 不支持 --flex，请使用 Vina 1.2.7 或 Smina）"
+            ? L10n.tr("刚性受体模式 (exhaustiveness=\(exhaustiveness))，单配体约 3–8 秒", "Rigid receptor (exhaustiveness=\(exhaustiveness)), ~3–8 s/ligand")
+            : L10n.tr("推荐保留 \(topFlex.count) 个近端柔性侧链 (--flex)，搜索空间约为刚性模式的 \(flexMult / 8)×（QuickVina 2 不支持 --flex，请使用 Vina 1.2.7 或 Smina）", "Include \(topFlex.count) proximal --flex residues (~\(flexMult / 8)x search space; requires Vina 1.2.7/Smina)")
         
         let pocket = ProteinPocketInfo(
             id: 1,
@@ -1440,33 +1440,33 @@ public enum ProteinBiophysicsEngine {
     ) -> ProteinStructureHealthCard {
         var warnings: [String] = []
         if !hasValidPDB {
-            warnings.append("当前未导入外部实验/AlphaFold PDB，三维坐标由本地 SPICE 构象解算生成（适合理化趋势与口袋初筛，正式分子对接请导入实验或 AlphaFold PDB）。")
+            warnings.append(L10n.t("当前未导入外部实验/AlphaFold PDB，三维坐标由本地 SPICE 构象解算生成（适合理化趋势与口袋初筛，正式分子对接请导入实验或 AlphaFold PDB）。"))
         }
         if pdbMeta.stoppedAtFirstModel {
-            warnings.append("检测到多构象/多模型记录 (MODEL/ENDMDL)，已按 DockFlowLab 规范自动仅提取第 1 个构象模型 (first_model=True)。")
+            warnings.append(L10n.t("检测到多构象/多模型记录 (MODEL/ENDMDL)，已按 DockFlowLab 规范自动仅提取第 1 个构象模型 (first_model=True)。"))
         }
         if pdbMeta.missingResidueGapCount > 0 {
-            warnings.append("检测到 \(pdbMeta.missingResidueGapCount) 处残基编号断链（缺失残基），对接前建议用 PDBFixer 补全。")
+            warnings.append(L10n.tr("检测到 \(pdbMeta.missingResidueGapCount) 处残基编号断链（缺失残基），对接前建议用 PDBFixer 补全。", "Detected \(pdbMeta.missingResidueGapCount) missing-residue backbone break(s); consider completing with PDBFixer."))
         }
         if !pdbMeta.nonStandardResidues.isEmpty {
-            warnings.append("含非标准残基 (\(pdbMeta.nonStandardResidues.joined(separator: ", ")))，已自动映射为标准氨基酸。")
+            warnings.append(L10n.tr("含非标准残基 (\(pdbMeta.nonStandardResidues.joined(separator: ", ")))，已自动映射为标准氨基酸。", "Non-standard residues (\(pdbMeta.nonStandardResidues.joined(separator: ", "))) mapped to standard amino acids."))
         }
         if !pdbMeta.metalIons.isEmpty {
-            warnings.append("检测到金属离子 (\(pdbMeta.metalIons.joined(separator: ", ")))，Vina 标准评分无专门金属配位项，若金属参与催化请保留离子并谨慎解读打分。")
+            warnings.append(L10n.tr("检测到金属离子 (\(pdbMeta.metalIons.joined(separator: ", ")))，Vina 标准评分无专门金属配位项，若金属参与催化请保留离子并谨慎解读打分。", "Metal ions detected (\(pdbMeta.metalIons.joined(separator: ", "))); interpret standard Vina scoring cautiously."))
         }
         if pdbMeta.hasAltLoc {
-            warnings.append("检测到多构象原子记录 (altloc)，已自动保留 A 主构象。")
+            warnings.append(L10n.t("检测到多构象原子记录 (altloc)，已自动保留 A 主构象。"))
         }
         if dockingBox.volumeA3 > DockFlowBoxConstants.maxVolumeWarning {
-            warnings.append("对接盒子体积 (\(String(format: "%.0f", dockingBox.volumeA3)) Å³) 超过 40,000 Å³ 告警阈值，盲对接搜索空间过大可能降低命中率，建议缩小盒子或增加 exhaustiveness。")
+            warnings.append(L10n.tr("对接盒子体积 (\(String(format: "%.0f", dockingBox.volumeA3)) Å³) 超过 40,000 Å³ 告警阈值，盲对接搜索空间过大可能降低命中率，建议缩小盒子或增加 exhaustiveness。", "Docking box volume (\(String(format: "%.0f", dockingBox.volumeA3)) Å³) exceeds 40,000 Å³; reduce box size or raise exhaustiveness."))
         } else if dockingBox.volumeA3 < DockFlowBoxConstants.minVolumeWarning {
-            warnings.append("对接盒子体积 (\(String(format: "%.0f", dockingBox.volumeA3)) Å³) 小于 1,500 Å³ 告警阈值，可能限制配体构象翻转。")
+            warnings.append(L10n.tr("对接盒子体积 (\(String(format: "%.0f", dockingBox.volumeA3)) Å³) 小于 1,500 Å³ 告警阈值，可能限制配体构象翻转。", "Docking box volume (\(String(format: "%.0f", dockingBox.volumeA3)) Å³) is below 1,500 Å³ and may constrain ligand rotation."))
         }
         if warnings.isEmpty {
-            warnings.append("结构完整性良好：主链连续无断点，盒子体积处于理想区间 (1,500–40,000 Å³)。")
+            warnings.append(L10n.t("结构完整性良好：主链连续无断点，盒子体积处于理想区间 (1,500–40,000 Å³)。"))
         }
         
-        let coordSource = hasValidPDB ? "外部实验 / AlphaFold PDB 坐标" : "SPICE 启发式三维折叠模型"
+        let coordSource = L10n.t(hasValidPDB ? "外部实验 / AlphaFold PDB 坐标" : "SPICE 启发式三维折叠模型")
         let summary = "\(coordSource) · 盒子依据：\(dockingBox.sourceTitle)"
         return ProteinStructureHealthCard(
             coordinateSource: coordSource,

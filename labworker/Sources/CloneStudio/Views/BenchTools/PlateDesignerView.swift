@@ -49,7 +49,7 @@ public struct PlateDesignerView: View {
     
     private var formatOptions: [StudioSegmentedOption<PlateFormat>] {
         PlateFormat.allCases.map { fmt in
-            StudioSegmentedOption(value: fmt, title: "\(fmt.rawValue)孔", tint: .blue)
+            StudioSegmentedOption(value: fmt, title: L10n.tr("\(fmt.rawValue)孔", "\(fmt.rawValue)-well"), tint: .blue)
         }
     }
     
@@ -74,11 +74,11 @@ public struct PlateDesignerView: View {
             toolbar: [
                 .picker(
                     id: "plate_format",
-                    label: "孔板规格",
+                    label: L10n.t("孔板规格"),
                     options: PlateFormat.allCases.map { fmt in
                         StudioToolbarPickerOption(
                             id: "\(fmt.rawValue)",
-                            title: "\(fmt.rawValue)孔",
+                            title: L10n.tr("\(fmt.rawValue)孔", "\(fmt.rawValue)-well"),
                             tint: .blue,
                             isSelected: store.format == fmt
                         ) {
@@ -90,12 +90,12 @@ public struct PlateDesignerView: View {
                 ),
                 .action(title: "重排", icon: "dice.fill", tint: .blue, help: "按新随机种子生成孔位排布") {
                     store.randomizeWithNewSeed()
-                    appState.showToast("已按新随机种子 #\(store.rules.seed) 生成孔板排布")
+                    appState.showToast(L10n.tr("已按新随机种子 #\(store.rules.seed) 生成孔板排布", "Generated plate layout with random seed #\(store.rules.seed)"))
                 },
                 .action(title: "导出", icon: "square.and.arrow.up", help: "导出微孔板映射 CSV", action: exportPlateCSVToFile),
                 .action(title: "qPCR", icon: "chart.bar.xaxis", tint: .teal, help: "将当前孔位映射同步至 qPCR 定量模块") {
                     appState.selectedNav = .qpcrAnalysis
-                    appState.showToast("已将当前 \(store.format.title) 孔位映射同步至 qPCR 定量模块")
+                    appState.showToast(L10n.tr("已将当前 \(store.format.title) 孔位映射同步至 qPCR 定量模块", "Synced \(L10n.t(store.format.title)) well mapping to qPCR module"))
                 }
             ]
         ) {
@@ -167,7 +167,7 @@ public struct PlateDesignerView: View {
                 StudioFlowLayout(horizontalSpacing: 14, verticalSpacing: 8) {
                     Stepper(value: $store.rules.replicates, in: 1...12) {
                         HStack(spacing: 4) {
-                            Text("默认复孔:")
+                            Text(L10n.t("默认复孔:"))
                                 .font(.system(size: 12.5))
                                 .foregroundColor(.secondary)
                             Text("\(store.rules.replicates)")
@@ -180,7 +180,7 @@ public struct PlateDesignerView: View {
                     
                     Stepper(value: $store.rules.controls, in: 0...48) {
                         HStack(spacing: 4) {
-                            Text("对照孔:")
+                            Text(L10n.t("对照孔:"))
                                 .font(.system(size: 12.5))
                                 .foregroundColor(.secondary)
                             Text("\(store.rules.controls)")
@@ -193,7 +193,7 @@ public struct PlateDesignerView: View {
                     
                     Stepper(value: $store.rules.blanks, in: 0...48) {
                         HStack(spacing: 4) {
-                            Text("空白孔:")
+                            Text(L10n.t("空白孔:"))
                                 .font(.system(size: 12.5))
                                 .foregroundColor(.secondary)
                             Text("\(store.rules.blanks)")
@@ -206,7 +206,7 @@ public struct PlateDesignerView: View {
                 }
                 
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    Text("复孔聚拢方式:")
+                    Text(L10n.t("复孔聚拢方式:"))
                         .font(.system(size: 12.5))
                         .foregroundColor(.secondary)
                     
@@ -220,29 +220,29 @@ public struct PlateDesignerView: View {
                 }
                 
                 StudioFlowLayout(horizontalSpacing: 14, verticalSpacing: 8) {
-                    Toggle("同样品复孔保持相邻", isOn: $store.rules.keepTogether)
+                    Toggle(L10n.t("同样品复孔保持相邻"), isOn: $store.rules.keepTogether)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 12.5))
                         .onChange(of: store.rules.keepTogether) { _, _ in store.regenerateLayout() }
                     
-                    Toggle("样品优先避开边缘孔", isOn: $store.rules.avoidEdge)
+                    Toggle(L10n.t("样品优先避开边缘孔"), isOn: $store.rules.avoidEdge)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 12.5))
                         .onChange(of: store.rules.avoidEdge) { _, _ in store.regenerateLayout() }
                     
-                    Toggle("外圈固定标为预留孔 (PBS/水封)", isOn: $store.rules.reserveEdge)
+                    Toggle(L10n.t("外圈固定标为预留孔 (PBS/水封)"), isOn: $store.rules.reserveEdge)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 12.5))
                         .onChange(of: store.rules.reserveEdge) { _, _ in store.regenerateLayout() }
                     
-                    Toggle("随机打乱样品顺序", isOn: $store.rules.randomize)
+                    Toggle(L10n.t("随机打乱样品顺序"), isOn: $store.rules.randomize)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 12.5))
                         .onChange(of: store.rules.randomize) { _, _ in store.regenerateLayout() }
                 }
                 
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    Text("确定性种子:")
+                    Text(L10n.t("确定性种子:"))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
                     
@@ -263,7 +263,7 @@ public struct PlateDesignerView: View {
     
     private var samplesCard: some View {
         StudioCard(
-            title: "实验样品清单 (\(store.samples.count))",
+            title: L10n.tr("实验样品清单 (\(store.samples.count))", "Sample List (\(store.samples.count))"),
             headerTrailing: {
                 StudioSegmentedPillGroup(items: [
                     StudioPillGroupItem(title: "批量粘贴 CSV", icon: "doc.on.clipboard") {
@@ -286,7 +286,7 @@ public struct PlateDesignerView: View {
             VStack(alignment: .leading, spacing: 10) {
                 if showPasteCSVSheet {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("粘贴 CSV / TSV 样品列表（支持 sample, group, replicates 列）：")
+                        Text(L10n.t("粘贴 CSV / TSV 样品列表（支持 sample, group, replicates 列）："))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                         
@@ -300,7 +300,7 @@ public struct PlateDesignerView: View {
                                     activeSampleIDForPaint = parsed.first?.id ?? ""
                                     store.regenerateLayout()
                                     showPasteCSVSheet = false
-                                    appState.showToast("已导入 \(parsed.count) 个实验样品")
+                                    appState.showToast(L10n.tr("已导入 \(parsed.count) 个实验样品", "Imported \(parsed.count) samples"))
                                 }
                             }
                             StudioActionPillButton(title: "追加到现有列表", icon: "plus.circle") {
@@ -309,7 +309,7 @@ public struct PlateDesignerView: View {
                                     store.samples.append(contentsOf: parsed)
                                     store.regenerateLayout()
                                     showPasteCSVSheet = false
-                                    appState.showToast("已追加 \(parsed.count) 个实验样品")
+                                    appState.showToast(L10n.tr("已追加 \(parsed.count) 个实验样品", "Appended \(parsed.count) samples"))
                                 }
                             }
                         }
@@ -320,12 +320,12 @@ public struct PlateDesignerView: View {
                 // 声明式自适应新增样品栏：宽窗口同行排列，窄窗口自动折行
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 6) {
-                        TextField("新增样品名称 (如 TP53-Mut)", text: $newSampleName)
+                        TextField(L10n.t("新增样品名称 (如 TP53-Mut)"), text: $newSampleName)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 12.5))
                             .frame(minWidth: 120)
                         
-                        TextField("分组 (Group)", text: $newSampleGroup)
+                        TextField(L10n.t("分组 (Group)"), text: $newSampleGroup)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 12.5))
                             .frame(width: 105)
@@ -342,12 +342,12 @@ public struct PlateDesignerView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 6) {
-                        TextField("新增样品名称 (如 TP53-Mut)", text: $newSampleName)
+                        TextField(L10n.t("新增样品名称 (如 TP53-Mut)"), text: $newSampleName)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 12.5))
                         
                         HStack(spacing: 6) {
-                            TextField("分组 (Group)", text: $newSampleGroup)
+                            TextField(L10n.t("分组 (Group)"), text: $newSampleGroup)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(size: 12.5))
                             
@@ -365,7 +365,7 @@ public struct PlateDesignerView: View {
                 }
                 
                 if store.samples.isEmpty {
-                    Text("当前无样品，请添加样品或点击「批量粘贴 CSV」")
+                    Text(L10n.t("当前无样品，请添加样品或点击「批量粘贴 CSV」"))
                         .font(.system(size: 12.5))
                         .foregroundColor(.secondary)
                         .padding(.vertical, 12)
@@ -458,10 +458,10 @@ public struct PlateDesignerView: View {
         let emptyWells = max(0, store.format.totalWells - assignedValues.count)
         
         return StudioCard(
-            title: "\(store.format.title)孔位交互画布",
+            title: L10n.tr("\(store.format.title)孔位交互画布", "\(L10n.t(store.format.title)) Interactive Canvas"),
             headerTrailing: {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    Toggle("显示标签", isOn: $store.showWellLabels)
+                    Toggle(L10n.t("显示标签"), isOn: $store.showWellLabels)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 12))
                     
@@ -471,11 +471,11 @@ public struct PlateDesignerView: View {
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    StudioMetricBadge(label: "总孔数", value: "\(store.format.totalWells)", color: .blue)
-                    StudioMetricBadge(label: "样品孔", value: "\(sampleWells)", color: .teal)
-                    StudioMetricBadge(label: "对照孔", value: "\(ctrlWells)", color: .purple)
-                    StudioMetricBadge(label: "空白孔", value: "\(blankWells)", color: .secondary)
-                    StudioMetricBadge(label: "空余孔", value: "\(emptyWells)", color: .orange)
+                    StudioMetricBadge(label: L10n.t("总孔数"), value: "\(store.format.totalWells)", color: .blue)
+                    StudioMetricBadge(label: L10n.t("样品孔"), value: "\(sampleWells)", color: .teal)
+                    StudioMetricBadge(label: L10n.t("对照孔"), value: "\(ctrlWells)", color: .purple)
+                    StudioMetricBadge(label: L10n.t("空白孔"), value: "\(blankWells)", color: .secondary)
+                    StudioMetricBadge(label: L10n.t("空余孔"), value: "\(emptyWells)", color: .orange)
                 }
                 
                 ScrollView([.horizontal, .vertical], showsIndicators: true) {
@@ -591,7 +591,7 @@ public struct PlateDesignerView: View {
                 }
                 
                 if store.showWellLabels, let a = assignment {
-                    Text(a.type == .reserved ? "预留" : a.sampleName)
+                    Text(a.type == .reserved ? L10n.t("预留") : a.sampleName)
                         .font(.system(size: store.format == .well384 ? 8 : 10, weight: .semibold))
                         .foregroundColor(.white)
                         .lineLimit(1)
@@ -634,20 +634,20 @@ public struct PlateDesignerView: View {
             VStack(alignment: .leading, spacing: 10) {
                 if let selWell = selectedWellID {
                     StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                        StudioMetricBadge(label: "当前选中孔", value: selWell, color: .blue)
+                        StudioMetricBadge(label: L10n.t("当前选中孔"), value: selWell, color: .blue)
                         if let a = store.assignments[selWell] {
-                            StudioMetricBadge(label: "类型", value: a.type.displayName, color: .teal)
+                            StudioMetricBadge(label: L10n.t("类型"), value: a.type.displayName, color: .teal)
                             if !a.sampleName.isEmpty {
-                                StudioMetricBadge(label: "样品", value: a.sampleName, color: .indigo)
+                                StudioMetricBadge(label: L10n.t("样品"), value: a.sampleName, color: .indigo)
                             }
                             if !a.group.isEmpty {
-                                StudioMetricBadge(label: "分组", value: a.group, color: .purple)
+                                StudioMetricBadge(label: L10n.t("分组"), value: a.group, color: .purple)
                             }
                             if a.replicate > 0 {
-                                StudioMetricBadge(label: "复孔序号", value: "#\(a.replicate)", color: .orange)
+                                StudioMetricBadge(label: L10n.t("复孔序号"), value: "#\(a.replicate)", color: .orange)
                             }
                         } else {
-                            StudioMetricBadge(label: "状态", value: "空孔（未分配样品）", color: .secondary)
+                            StudioMetricBadge(label: L10n.t("状态"), value: "空孔（未分配样品）", color: .secondary)
                         }
                     }
                 }
@@ -656,7 +656,7 @@ public struct PlateDesignerView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark.seal.fill")
                             .foregroundColor(.green)
-                        Text("所有样品复孔、相邻性与边缘避让规则均通过校验！")
+                        Text(L10n.t("所有样品复孔、相邻性与边缘避让规则均通过校验！"))
                             .font(.system(size: 12.5, weight: .medium))
                             .foregroundColor(.secondary)
                     }
@@ -711,7 +711,7 @@ public struct PlateDesignerView: View {
         store.samples = imported
         activeSampleIDForPaint = imported.first?.id ?? ""
         store.regenerateLayout()
-        appState.showToast("已从本地质粒池带入 \(imported.count) 个载体样品")
+        appState.showToast(L10n.tr("已从本地质粒池带入 \(imported.count) 个载体样品", "Imported \(imported.count) constructs from Plasmid Pool"))
     }
     
     private func handleWellTap(wellID: String, row: Int, col: Int) {
@@ -777,7 +777,7 @@ public struct PlateDesignerView: View {
         let csv = PlateLayoutEngine.exportPlateCSV(format: store.format, assignments: store.assignments)
         FinderFileDropHelper.saveTextToFile(
             content: csv,
-            defaultFileName: "\(store.title)_\(store.format.rawValue)孔板映射.csv",
+            defaultFileName: "\(store.title)_\(store.format.rawValue)-well_PlateMap.csv",
             contentType: .commaSeparatedText,
             toastPrefix: "已导出微孔板 CSV"
         )

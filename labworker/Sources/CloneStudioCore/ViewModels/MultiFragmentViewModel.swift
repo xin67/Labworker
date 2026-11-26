@@ -91,9 +91,9 @@ public final class MultiFragmentViewModel: ObservableObject {
             } else {
                 applyVectorTargetRange(start: 1, end: 0)
             }
-            AppState.shared.showToast("已解析载体 \(info.fileName) (\(info.featuresCount) 个特征，\(availableVectorCutSites.filter { $0.isUnique }.count) 个唯一酶切位点)")
+            AppState.shared.showToast(L10n.tr("已解析载体 \(info.fileName) (\(info.featuresCount) 个特征，\(availableVectorCutSites.filter { $0.isUnique }.count) 个唯一酶切位点)", "Parsed vector \(info.fileName) (\(info.featuresCount) features, \(availableVectorCutSites.filter { $0.isUnique }.count) unique cutters)"))
         } catch {
-            alertMessage = "解析载体失败: \(error.localizedDescription)"
+            alertMessage = L10n.tr("解析载体失败: \(error.localizedDescription)", "Failed to parse vector: \(error.localizedDescription)")
             showAlert = true
         }
     }
@@ -170,9 +170,9 @@ public final class MultiFragmentViewModel: ObservableObject {
                 fragments[index] = info.sequence
                 fragmentNames[index] = info.fileName.replacingOccurrences(of: ".dna", with: "")
             }
-            AppState.shared.showToast("片段 \(index + 1) 已解析供体 \(info.fileName) (\(info.featuresCount) 个特征)")
+            AppState.shared.showToast(L10n.tr("片段 \(index + 1) 已解析供体 \(info.fileName) (\(info.featuresCount) 个特征)", "Fragment \(index + 1): parsed donor \(info.fileName) (\(info.featuresCount) features)"))
         } catch {
-            alertMessage = "解析片段 \(index + 1) 供体失败: \(error.localizedDescription)"
+            alertMessage = L10n.tr("解析片段 \(index + 1) 供体失败: \(error.localizedDescription)", "Failed to parse donor for fragment \(index + 1): \(error.localizedDescription)")
             showAlert = true
         }
     }
@@ -213,7 +213,7 @@ public final class MultiFragmentViewModel: ObservableObject {
         let validFrags = fragments.map { BioSequence.clean($0) }
         for (i, f) in validFrags.enumerated() {
             if f.count < 50 {
-                alertMessage = "插入片段 \(i + 1) 的有效长度小于 50 bp（当前：\(f.count) bp）"
+                alertMessage = L10n.tr("插入片段 \(i + 1) 的有效长度小于 50 bp（当前：\(f.count) bp）", "Insert fragment #\(i + 1) is shorter than 50 bp (current: \(f.count) bp)")
                 showAlert = true
                 return
             }
@@ -251,7 +251,7 @@ public final class MultiFragmentViewModel: ObservableObject {
                     fragmentExtra5Bases: fragmentExtra5Bases,
                     terminalExtra3Bases: terminalExtra3Bases
                 )
-                AppState.shared.showToast("已生成 \(self.primers.count) 条多片段无缝克隆引物（同源臂: \(homologyLength) bp）")
+                AppState.shared.showToast(L10n.tr("已生成 \(self.primers.count) 条多片段无缝克隆引物（同源臂: \(homologyLength) bp）", "Generated \(self.primers.count) multi-fragment primers (Homology Arm: \(homologyLength) bp)"))
             } else {
                 let res = try await CloneOnlineAPIClient.shared.requestMultiFragmentClone(
                     fragments: validFrags,
@@ -282,9 +282,9 @@ public final class MultiFragmentViewModel: ObservableObject {
                             homologyArm: armF,
                             specificSequence: specF,
                             tm: tmF,
-                            targetPurpose: "\(pair.2) 正向扩增引物",
-                            notes: "5' 同源臂 (\(armF.count)bp) + 特异序列 (Tm: \(tmF)℃)",
-                            sourceTool: "多片段克隆"
+                            targetPurpose: L10n.tr("\(pair.2) 正向扩增引物", "\(L10n.t(pair.2)) Forward Primer"),
+                            notes: L10n.tr("5' 同源臂 (\(armF.count)bp) + 特异序列 (Tm: \(tmF)℃)", "5' Homology Arm (\(armF.count) bp) + Specific (Tm: \(tmF) °C)"),
+                            sourceTool: L10n.t("多片段克隆")
                         ))
                     }
                     if let r = pair.1, !r.isEmpty {
@@ -298,9 +298,9 @@ public final class MultiFragmentViewModel: ObservableObject {
                             homologyArm: armR,
                             specificSequence: specR,
                             tm: tmR,
-                            targetPurpose: "\(pair.2) 反向扩增引物",
-                            notes: (armR.isEmpty ? "" : "3' 载体同源臂 (\(armR.count)bp) + ") + "特异序列 (Tm: \(tmR)℃)",
-                            sourceTool: "多片段克隆"
+                            targetPurpose: L10n.tr("\(pair.2) 反向扩增引物", "\(L10n.t(pair.2)) Reverse Primer"),
+                            notes: (armR.isEmpty ? "" : L10n.tr("3' 载体同源臂 (\(armR.count)bp) + ", "3' Vector Arm (\(armR.count) bp) + ")) + L10n.tr("特异序列 (Tm: \(tmR)℃)", "Specific (Tm: \(tmR) °C)"),
+                            sourceTool: L10n.t("多片段克隆")
                         ))
                     }
                 }
@@ -318,7 +318,7 @@ public final class MultiFragmentViewModel: ObservableObject {
     
     public func generateRecombinantDNAAndOpen() async {
         guard let vecInfo = vectorDNAInfo else {
-            alertMessage = "请先载入目标载体 .dna 文件"
+            alertMessage = L10n.t("请先载入目标载体 .dna 文件")
             showAlert = true
             return
         }
@@ -349,10 +349,10 @@ public final class MultiFragmentViewModel: ObservableObject {
                 primers: primers,
                 outputURL: outURL
             )
-            AppState.shared.showToast("已生成多片段重组质粒：\(outName) (\(res.recombinantLength) bp)")
+            AppState.shared.showToast(L10n.tr("已生成多片段重组质粒：\(outName) (\(res.recombinantLength) bp)", "Generated multi-fragment plasmid: \(outName) (\(res.recombinantLength) bp)"))
             SnapGeneService.shared.openInSnapGene(url: outURL)
         } catch {
-            alertMessage = "生成多片段重组质粒失败: \(error.localizedDescription)"
+            alertMessage = L10n.tr("生成多片段重组质粒失败: \(error.localizedDescription)", "Failed to assemble multi-fragment plasmid: \(error.localizedDescription)")
             showAlert = true
         }
     }
@@ -459,7 +459,7 @@ extension MultiFragmentViewModel {
         }
         primers = updated
         WorkspaceSessionManager.shared.autoSaveInBackground()
-        AppState.shared.showToast("已成对重命名引物为 \(pfx)-F / \(pfx)-R")
+        AppState.shared.showToast(L10n.tr("已成对重命名引物为 \(pfx)-F / \(pfx)-R", "Renamed primer pair to \(pfx)-F / \(pfx)-R"))
     }
     
     public func renameSinglePrimer(at index: Int, newName: String) {
@@ -508,14 +508,14 @@ extension MultiFragmentViewModel {
     }
     
     public func sendLengthsToCalculator(navigate: Bool = true) {
-        let vecName = vectorDNAInfo?.fileName.replacingOccurrences(of: ".dna", with: "") ?? "多片段线性化载体"
+        let vecName = vectorDNAInfo?.fileName.replacingOccurrences(of: ".dna", with: "") ?? L10n.t("多片段线性化载体")
         let vecBp = effectiveVectorBackboneLengthBp > 0 ? effectiveVectorBackboneLengthBp : 5000
         let insItems: [(String, Int)] = fragments.enumerated().map { idx, seq in
             let len = BioSequence.clean(seq).count
             let rawName = fragmentNames[idx]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let customName = (!rawName.isEmpty && rawName != "Frag\(idx + 1)")
                 ? rawName
-                : "片段 \(idx + 1)"
+                : L10n.tr("片段 \(idx + 1)", "Fragment \(idx + 1)")
             return (customName, len > 0 ? len : 1000)
         }
         WorkspaceSessionManager.shared.calculatorVM.syncFromHomologousCloning(

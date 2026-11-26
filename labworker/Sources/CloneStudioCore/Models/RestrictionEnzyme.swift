@@ -568,13 +568,13 @@ public final class RestrictionEnzymeDatabase: @unchecked Sendable {
         ),
         EnzymePresetGroup(
             name: "Unique Cutters",
-            displayTitle: "SET: UNIQUE CUTTERS (单酶切)",
+            displayTitle: L10n.t("SET: UNIQUE CUTTERS (单酶切)"),
             enzymeNames: commonEnzymeNames,
             isDynamicUnique: true
         ),
         EnzymePresetGroup(
             name: "Standard Lab Cloning",
-            displayTitle: "SET: LAB CLONING (18 常用酶)",
+            displayTitle: L10n.t("SET: LAB CLONING (18 常用酶)"),
             enzymeNames: commonEnzymeNames
         ),
         EnzymePresetGroup(
@@ -584,7 +584,7 @@ public final class RestrictionEnzymeDatabase: @unchecked Sendable {
         ),
         EnzymePresetGroup(
             name: "Blunt End Cutters",
-            displayTitle: "SET: BLUNT END (平末端)",
+            displayTitle: L10n.t("SET: BLUNT END (平末端)"),
             enzymeNames: ["EcoRV", "SmaI", "HpaI", "DraI", "PvuII", "ScaI", "StuI", "NaeI", "HaeIII", "HincII"]
         ),
         EnzymePresetGroup(

@@ -88,14 +88,14 @@ public struct CodonOptimizationPanelView: View {
                         compact: true
                     )
 
-                    Toggle("优化 5' 前 45bp 发夹 (ΔG ≥ -3.0)", isOn: $optimizeFivePrime)
+                    Toggle(L10n.t("优化 5' 前 45bp 发夹 (ΔG ≥ -3.0)"), isOn: $optimizeFivePrime)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 11.5, weight: .medium))
                 }
 
                 // 禁用酶切位点切换
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("自动规避禁区酶切位点 (正向与反向互补均检测):")
+                    Text(L10n.t("自动规避禁区酶切位点 (正向与反向互补均检测):"))
                         .font(.system(size: 11.5, weight: .semibold))
                         .foregroundStyle(.secondary)
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
@@ -117,7 +117,7 @@ public struct CodonOptimizationPanelView: View {
                 // 滑动窗 GC% 与同聚物 / 自定义禁忌序列
                 StudioFlowLayout(horizontalSpacing: 14, verticalSpacing: 8) {
                     HStack(spacing: 6) {
-                        Text("50bp 窗 GC 下限")
+                        Text(L10n.t("50bp 窗 GC 下限"))
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
                         Stepper("\(Int(minWindowGC))%", value: $minWindowGC, in: 20...50, step: 5)
@@ -125,7 +125,7 @@ public struct CodonOptimizationPanelView: View {
                             .monospacedDigit()
                     }
                     HStack(spacing: 6) {
-                        Text("上限")
+                        Text(L10n.t("上限"))
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
                         Stepper("\(Int(maxWindowGC))%", value: $maxWindowGC, in: 55...80, step: 5)
@@ -133,7 +133,7 @@ public struct CodonOptimizationPanelView: View {
                             .monospacedDigit()
                     }
                     HStack(spacing: 6) {
-                        Text("同聚物阈值")
+                        Text(L10n.t("同聚物阈值"))
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
                         Stepper("<\(maxHomopolymer) bp", value: $maxHomopolymer, in: 4...9)
@@ -141,7 +141,7 @@ public struct CodonOptimizationPanelView: View {
                             .monospacedDigit()
                     }
                     HStack(spacing: 6) {
-                        Text("重复子串阈值")
+                        Text(L10n.t("重复子串阈值"))
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
                         Stepper("<\(maxRepeatLen) bp", value: $maxRepeatLen, in: 8...18)
@@ -151,12 +151,12 @@ public struct CodonOptimizationPanelView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("额外禁用 Motif (逗号分隔):")
+                    Text(L10n.t("额外禁用 Motif (逗号分隔):"))
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(.secondary)
-                    TextField("例如 ATTAAA, GCCACC", text: $customForbiddenText)
+                    TextField(L10n.t("例如 ATTAAA, GCCACC"), text: $customForbiddenText)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 11.5, design: .monospaced))
+                        .font(.system(size: 11.5))
                         .frame(maxWidth: 260)
                 }
             }
@@ -164,7 +164,7 @@ public struct CodonOptimizationPanelView: View {
     }
 
     private var actionBar: some View {
-        StudioActionBar(statusText: report.map { "蛋白长度 \($0.proteinSequence.count) aa · 修改 \($0.codonChangesCount) 处同义密码子" }) {
+        StudioActionBar(statusText: report.map { L10n.tr("蛋白长度 \($0.proteinSequence.count) aa · 修改 \($0.codonChangesCount) 处同义密码子", "Protein \($0.proteinSequence.count) aa · \($0.codonChangesCount) synonymous codon edits") }) {
             StudioPrimaryActionButton(
                 title: "执行多约束密码子优化",
                 icon: "wand.and.stars",
@@ -177,7 +177,7 @@ public struct CodonOptimizationPanelView: View {
                 StudioActionPillButton(title: "复制优化序列", icon: "doc.on.doc", tint: .blue) {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(rep.optimizedDNA, forType: .string)
-                    appState.showToast("已复制 \(rep.lengthBp) bp 优化 DNA 序列")
+                    appState.showToast(L10n.tr("已复制 \(rep.lengthBp) bp 优化 DNA 序列", "Copied \(rep.lengthBp) bp optimized DNA sequence"))
                 }
 
                 StudioActionPillButton(title: "导出 FASTA", icon: "square.and.arrow.up", tint: .teal) {
@@ -204,7 +204,7 @@ public struct CodonOptimizationPanelView: View {
     private func metricsSummaryCard(_ rep: CodonOptimizationEngine.OptimizationReport) -> some View {
         StudioCard(title: "密码子适应度 (CAI) 与合成合规概览") {
             StudioMetricBadge(
-                label: "合成就绪",
+                label: L10n.t("合成就绪"),
                 value: rep.isSynthesisReady ? "全部约束通过" : "存在局部残留",
                 color: rep.isSynthesisReady ? .green : .orange
             )
@@ -212,21 +212,21 @@ public struct CodonOptimizationPanelView: View {
             VStack(alignment: .leading, spacing: 8) {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
                     if let c0 = rep.originalCAI {
-                        StudioMetricBadge(label: "CAI (优化前→后)", value: String(format: "%.3f → %.3f", c0, rep.optimizedCAI), color: .mint)
+                        StudioMetricBadge(label: L10n.t("CAI (优化前→后)"), value: String(format: "%.3f → %.3f", c0, rep.optimizedCAI), color: .mint)
                     } else {
-                        StudioMetricBadge(label: "优化后 CAI", value: String(format: "%.3f", rep.optimizedCAI), color: .mint)
+                        StudioMetricBadge(label: L10n.t("优化后 CAI"), value: String(format: "%.3f", rep.optimizedCAI), color: .mint)
                     }
                     if let g0 = rep.originalGCPercent {
-                        StudioMetricBadge(label: "总 GC%", value: String(format: "%.1f%% → %.1f%%", g0, rep.optimizedGCPercent), color: .blue)
+                        StudioMetricBadge(label: L10n.t("总 GC%"), value: String(format: "%.1f%% → %.1f%%", g0, rep.optimizedGCPercent), color: .blue)
                     } else {
-                        StudioMetricBadge(label: "总 GC%", value: String(format: "%.1f%%", rep.optimizedGCPercent), color: .blue)
+                        StudioMetricBadge(label: L10n.t("总 GC%"), value: String(format: "%.1f%%", rep.optimizedGCPercent), color: .blue)
                     }
                     if let dg0 = rep.originalFivePrimeDG {
-                        StudioMetricBadge(label: "5' 发夹 ΔG", value: String(format: "%.2f → %.2f", dg0, rep.optimizedFivePrimeDG), color: rep.optimizedFivePrimeDG >= -3.0 ? .green : .orange)
+                        StudioMetricBadge(label: L10n.t("5' 发夹 ΔG"), value: String(format: "%.2f → %.2f", dg0, rep.optimizedFivePrimeDG), color: rep.optimizedFivePrimeDG >= -3.0 ? .green : .orange)
                     } else {
-                        StudioMetricBadge(label: "5' 发夹 ΔG", value: String(format: "%.2f kcal/mol", rep.optimizedFivePrimeDG), color: rep.optimizedFivePrimeDG >= -3.0 ? .green : .orange)
+                        StudioMetricBadge(label: L10n.t("5' 发夹 ΔG"), value: String(format: "%.2f kcal/mol", rep.optimizedFivePrimeDG), color: rep.optimizedFivePrimeDG >= -3.0 ? .green : .orange)
                     }
-                    StudioMetricBadge(label: "蛋白一致性", value: "100.0% 守恒", color: .purple)
+                    StudioMetricBadge(label: L10n.t("蛋白一致性"), value: "100.0% 守恒", color: .purple)
                 }
 
                 ForEach(rep.notices, id: \.self) { note in
@@ -239,25 +239,25 @@ public struct CodonOptimizationPanelView: View {
     }
 
     private func gcComparisonChartCard(_ rep: CodonOptimizationEngine.OptimizationReport) -> some View {
-        StudioCard(title: "50 bp 滑动窗局部 GC% 分布对比 (参考区间 \(Int(minWindowGC))%–\(Int(maxWindowGC))%)") {
+        StudioCard(title: L10n.tr("50 bp 滑动窗局部 GC% 分布对比 (参考区间 \(Int(minWindowGC))%–\(Int(maxWindowGC))%)", "50 bp Sliding-Window GC% Distribution (Target \(Int(minWindowGC))%–\(Int(maxWindowGC))%)")) {
             if rep.gcProfileAfter.isEmpty {
-                Text("序列较短，无多窗口剖面")
+                Text(L10n.t("序列较短，无多窗口剖面"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             } else {
                 Chart {
-                    RuleMark(y: .value("上限", maxWindowGC))
+                    RuleMark(y: .value(L10n.t("上限"), maxWindowGC))
                         .foregroundStyle(.orange.opacity(0.6))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                    RuleMark(y: .value("下限", minWindowGC))
+                    RuleMark(y: .value(L10n.t("下限"), minWindowGC))
                         .foregroundStyle(.orange.opacity(0.6))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
 
                     ForEach(rep.gcProfileBefore) { pt in
                         LineMark(
-                            x: .value("位置 (bp)", pt.centerBp),
+                            x: .value(L10n.t("位置 (bp)"), pt.centerBp),
                             y: .value("GC%", pt.gcPercent),
-                            series: .value("序列", "优化前")
+                            series: .value(L10n.t("序列"), L10n.t("优化前"))
                         )
                         .foregroundStyle(Color.secondary.opacity(0.55))
                         .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
@@ -265,17 +265,17 @@ public struct CodonOptimizationPanelView: View {
 
                     ForEach(rep.gcProfileAfter) { pt in
                         LineMark(
-                            x: .value("位置 (bp)", pt.centerBp),
+                            x: .value(L10n.t("位置 (bp)"), pt.centerBp),
                             y: .value("GC%", pt.gcPercent),
-                            series: .value("序列", "优化后")
+                            series: .value(L10n.t("序列"), L10n.t("优化后"))
                         )
                         .foregroundStyle(Color.mint)
                         .lineStyle(StrokeStyle(lineWidth: 2.2))
                     }
                 }
                 .chartYScale(domain: 10...90)
-                .chartXAxisLabel("核苷酸坐标 (bp)")
-                .chartYAxisLabel("局部 GC (%)")
+                .chartXAxisLabel(L10n.t("核苷酸坐标 (bp)"))
+                .chartYAxisLabel(L10n.t("局部 GC (%)"))
                 .frame(height: 190)
             }
         }
@@ -305,11 +305,11 @@ public struct CodonOptimizationPanelView: View {
     }
 
     private func optimizedOutputCard(_ rep: CodonOptimizationEngine.OptimizationReport) -> some View {
-        StudioCard(title: "优化后 DNA 序列 (\(rep.lengthBp) bp)") {
-            StudioMetricBadge(label: "宿主", value: rep.host.shortTitle, color: .mint)
+        StudioCard(title: L10n.tr("优化后 DNA 序列 (\(rep.lengthBp) bp)", "Optimized DNA Sequence (\(rep.lengthBp) bp)")) {
+            StudioMetricBadge(label: L10n.t("宿主"), value: rep.host.shortTitle, color: .mint)
         } content: {
             Text(rep.optimizedDNA)
-                .font(.system(size: 12.5, weight: .medium, design: .monospaced))
+                .font(.system(size: 12.5, weight: .medium))
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .studioInnerBox(paddingH: 10, paddingV: 10)

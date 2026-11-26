@@ -81,10 +81,10 @@ public final class ShRNADesignViewModel: ObservableObject {
         syncLocalTargetsToGlobalComparePool()
         
         if targets.isEmpty {
-            AppState.shared.showToast("未在\(species.shortName)文库中找到基因「\(q)」")
+            AppState.shared.showToast(L10n.tr("未在\(species.shortName)文库中找到基因「\(q)」", "Gene \"\(q)\" not found in \(species.shortName) library"))
         } else {
             let topTierCount = targets.filter { $0.scoreTier == .excellent || $0.scoreTier == .good }.count
-            AppState.shared.showToast("检索到 \(targets.count) 条靶点（包含 \(topTierCount) 条序列评分高）")
+            AppState.shared.showToast(L10n.tr("检索到 \(targets.count) 条靶点（包含 \(topTierCount) 条序列评分高）", "Found \(targets.count) targets (\(topTierCount) high-scoring)"))
         }
     }
     
@@ -123,7 +123,7 @@ public final class ShRNADesignViewModel: ObservableObject {
             .map { $0.id }
         selectedTargetIDs = Set(highTierIDs)
         syncLocalTargetsToGlobalComparePool()
-        AppState.shared.showToast("已自动勾选 \(highTierIDs.count) 条序列评分高靶点")
+        AppState.shared.showToast(L10n.tr("已自动勾选 \(highTierIDs.count) 条序列评分高靶点", "Auto-selected \(highTierIDs.count) high-scoring target(s)"))
     }
     
     public func toggleTarget(_ target: GenomicTarget) {
@@ -141,9 +141,9 @@ public final class ShRNADesignViewModel: ObservableObject {
         if isCustomInputMode || (searchResults.isEmpty && !customSequence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
             let clean = BioSequence.clean(customSequence)
             if clean.count >= 15 {
-                let geneLabel = customGeneName.trimmingCharacters(in: .whitespaces).isEmpty ? "自定义" : customGeneName
+                let geneLabel = customGeneName.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.t("自定义") : customGeneName
                 items.append(LocalCompareTarget(
-                    label: "本地\(geneLabel) shRNA",
+                    label: L10n.tr("本地\(geneLabel) shRNA", "Local \(geneLabel) shRNA"),
                     sequence: clean,
                     sourceType: .shRNA,
                     isSelectedOrGenerated: true
@@ -155,7 +155,7 @@ public final class ShRNADesignViewModel: ObservableObject {
                 let isSel = selectedTargetIDs.contains(target.id)
                 if isSel {
                     items.append(LocalCompareTarget(
-                        label: "本地已选 sh#\(selIdx)",
+                        label: L10n.tr("本地已选 sh#\(selIdx)", "Local sh#\(selIdx)"),
                         sequence: target.sequence,
                         sourceType: .shRNA,
                         isSelectedOrGenerated: true
@@ -163,7 +163,7 @@ public final class ShRNADesignViewModel: ObservableObject {
                     selIdx += 1
                 } else {
                     items.append(LocalCompareTarget(
-                        label: "本地文库 shRNA",
+                        label: L10n.t("本地文库 shRNA"),
                         sequence: target.sequence,
                         sourceType: .shRNA,
                         isSelectedOrGenerated: false
@@ -219,7 +219,7 @@ public final class ShRNADesignViewModel: ObservableObject {
         case .custom:
             let clean = BioSequence.clean(customSequence)
             guard clean.count >= 18 && clean.count <= 26 else {
-                errorMessage = "自定义 shRNA 靶点长度通常为 19～21 bp（当前：\(clean.count) bp）"
+                errorMessage = L10n.tr("自定义 shRNA 靶点长度通常为 19～21 bp（当前：\(clean.count) bp）", "Custom shRNA target should be 19–21 bp (current: \(clean.count) bp)")
                 showErrorAlert = true
                 return
             }
@@ -239,7 +239,7 @@ public final class ShRNADesignViewModel: ObservableObject {
             let gppVM = WorkspaceSessionManager.shared.broadGPPVM
             let selected = gppVM.sortedTargets.filter { gppVM.selectedTargetIDs.contains($0.id) }
             guard !selected.isEmpty else {
-                errorMessage = "请先在「Broad GPP」中检索基因，并至少勾选一条 TRC shRNA 克隆！"
+                errorMessage = L10n.t("请先在「Broad GPP」中检索基因，并至少勾选一条 TRC shRNA 克隆！")
                 showErrorAlert = true
                 return
             }
@@ -284,7 +284,7 @@ public final class ShRNADesignViewModel: ObservableObject {
         case .library:
             let selectedTargets = searchResults.filter { selectedTargetIDs.contains($0.id) }
             guard !selectedTargets.isEmpty else {
-                errorMessage = "请先搜索基因，并至少勾选一条需要生成的 shRNA 靶点！"
+                errorMessage = L10n.t("请先搜索基因，并至少勾选一条需要生成的 shRNA 靶点！")
                 showErrorAlert = true
                 return
             }
@@ -305,7 +305,7 @@ public final class ShRNADesignViewModel: ObservableObject {
         
         self.generatedPrimers = list
         syncLocalTargetsToGlobalComparePool()
-        AppState.shared.showToast("已成功生成 \(list.count) 条 shRNA 配对引物（已同步至对比高亮池）！")
+        AppState.shared.showToast(L10n.tr("已成功生成 \(list.count) 条 shRNA 配对引物（已同步至对比高亮池）！", "Generated \(list.count) shRNA primer pair(s) (synced to comparison pool)!"))
     }
     
     public func addAllToCart() {

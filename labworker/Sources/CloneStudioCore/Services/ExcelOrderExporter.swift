@@ -190,14 +190,14 @@ public final class ExcelOrderExporter {
         var templatePath = "-"
         if template.requiresBundledXLSXTemplate {
             guard let bundled = locateTemplate(name: template.filename) else {
-                throw NSError(domain: "ExcelExport", code: -1, userInfo: [NSLocalizedDescriptionKey: "未找到母版文件：\(template.filename)"])
+                throw NSError(domain: "ExcelExport", code: -1, userInfo: [NSLocalizedDescriptionKey: L10n.tr("未找到母版文件：\(template.filename)", "Template file not found: \(template.filename)")])
             }
             templatePath = bundled
         } else if template == .customJSON && customTemplate == nil {
-            throw NSError(domain: "ExcelExport", code: -4, userInfo: [NSLocalizedDescriptionKey: "自定义列映射导出需要提供有效的 CustomOrderTemplateSpec 配置。"])
+            throw NSError(domain: "ExcelExport", code: -4, userInfo: [NSLocalizedDescriptionKey: L10n.t("自定义列映射导出需要提供有效的 CustomOrderTemplateSpec 配置。")])
         }
         guard let scriptPath = locateScript() else {
-            throw NSError(domain: "ExcelExport", code: -2, userInfo: [NSLocalizedDescriptionKey: "未找到导出脚本 export_order.py"])
+            throw NSError(domain: "ExcelExport", code: -2, userInfo: [NSLocalizedDescriptionKey: L10n.t("未找到导出脚本 export_order.py")])
         }
         
         let resolvedFormat: OrderOutputFileFormat = template.requiresBundledXLSXTemplate ? .xlsx : fileFormat
@@ -322,8 +322,8 @@ public final class ExcelOrderExporter {
         guard process.terminationStatus == 0 else {
             let errStr = String(data: errData, encoding: .utf8) ?? ""
             let outStr = String(data: outData, encoding: .utf8) ?? ""
-            let errMsg = errStr.isEmpty ? (outStr.isEmpty ? "未知导出错误" : outStr) : errStr
-            throw NSError(domain: "ExcelExport", code: -3, userInfo: [NSLocalizedDescriptionKey: "导出处理失败：\(errMsg)"])
+            let errMsg = errStr.isEmpty ? (outStr.isEmpty ? L10n.t("未知导出错误") : outStr) : errStr
+            throw NSError(domain: "ExcelExport", code: -3, userInfo: [NSLocalizedDescriptionKey: L10n.tr("导出处理失败：\(errMsg)", "Export failed: \(errMsg)")])
         }
         
         return outputPath

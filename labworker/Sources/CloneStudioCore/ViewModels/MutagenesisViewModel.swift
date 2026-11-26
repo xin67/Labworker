@@ -111,9 +111,9 @@ public final class MutagenesisViewModel: ObservableObject {
                 translateRawPlasmidRange(startBp: 1, endBp: min(info.length, 900), isReverse: false, frameOffset: 0)
             }
             AppState.shared.showPlasmidPreview = true
-            AppState.shared.showToast("已载入质粒 \(info.fileName) (\(info.length) bp)，可在预览图谱或下方氨基酸列表中直接点选密码子进行突变")
+            AppState.shared.showToast(L10n.tr("已载入质粒 \(info.fileName) (\(info.length) bp)，可在预览图谱或下方氨基酸列表中直接点选密码子进行突变", "Loaded plasmid \(info.fileName) (\(info.length) bp); click codons in map preview or list to mutate"))
         } catch {
-            alertMessage = "解析 SnapGene 质粒失败: \(error.localizedDescription)"
+            alertMessage = L10n.tr("解析 SnapGene 质粒失败: \(error.localizedDescription)", "Failed to parse SnapGene plasmid: \(error.localizedDescription)")
             showAlert = true
         }
     }
@@ -203,13 +203,13 @@ public final class MutagenesisViewModel: ObservableObject {
                 let (aa, _) = CodonTranslator.translateTriplet(chosenCodon)
                 targetLabel = "\(aa)(\(chosenCodon))"
             } else if chosenCodon.isEmpty {
-                targetLabel = "Δ缺失"
+                targetLabel = L10n.t("Δ缺失")
             } else {
                 targetLabel = chosenCodon
             }
         } else if self.selectedTargetAA == "Δ" {
             chosenCodon = ""
-            targetLabel = "Δ缺失"
+            targetLabel = L10n.t("Δ缺失")
         } else if let opt = CodonTranslator.aminoAcidOptions.first(where: { String($0.singleLetter) == self.selectedTargetAA }) {
             chosenCodon = opt.preferredCodon
             targetLabel = "\(opt.singleLetter)(\(chosenCodon))"
@@ -267,7 +267,7 @@ public final class MutagenesisViewModel: ObservableObject {
         if let matched = translatedResidues.first(where: { $0.plasmidStartBp == payload.startBp }) {
             self.selectedResidueIndex = matched.residueIndex1Based
         }
-        AppState.shared.showToast("已在预览中选定突变：\(self.mutationSummaryLabel)")
+        AppState.shared.showToast(L10n.tr("已在预览中选定突变：\(self.mutationSummaryLabel)", "Selected mutation in preview: \(self.mutationSummaryLabel)"))
     }
     
     public func design() async {
@@ -276,12 +276,12 @@ public final class MutagenesisViewModel: ObservableObject {
         let cleanSite = BioSequence.clean(mutSite)
         
         guard cleanUp.count >= 50 else {
-            alertMessage = "突变位点上游序列至少输入 50 bp（当前：\(cleanUp.count) bp）"
+            alertMessage = L10n.tr("突变位点上游序列至少输入 50 bp（当前：\(cleanUp.count) bp）", "Upstream flank must be >= 50 bp (current: \(cleanUp.count) bp)")
             showAlert = true
             return
         }
         guard cleanDown.count >= 50 else {
-            alertMessage = "突变位点下游序列至少输入 50 bp（当前：\(cleanDown.count) bp）"
+            alertMessage = L10n.tr("突变位点下游序列至少输入 50 bp（当前：\(cleanDown.count) bp）", "Downstream flank must be >= 50 bp (current: \(cleanDown.count) bp)")
             showAlert = true
             return
         }
@@ -302,7 +302,7 @@ public final class MutagenesisViewModel: ObservableObject {
                     tolerance: tol
                 )
                 self.primers = [res.primerF, res.primerR]
-                AppState.shared.showToast("已成功生成定点突变引物（\(mutationSummaryLabel.isEmpty ? "同源重叠臂: \(homologyLength) bp" : mutationSummaryLabel)）")
+                AppState.shared.showToast(L10n.tr("已成功生成定点突变引物（\(mutationSummaryLabel.isEmpty ? "同源重叠臂: \(homologyLength) bp" : mutationSummaryLabel)）", "Designed mutagenesis primers (\(mutationSummaryLabel.isEmpty ? "Overlap Arm: \(homologyLength) bp" : mutationSummaryLabel))"))
             } else {
                 // 在线官方请求 (15 bp 国标模式)
                 let res = try await CloneOnlineAPIClient.shared.requestSingleMutation(
@@ -322,9 +322,9 @@ public final class MutagenesisViewModel: ObservableObject {
                         homologyArm: armF,
                         specificSequence: specF,
                         tm: tmF,
-                        targetPurpose: "定点突变正向引物",
-                        notes: "5' 突变同源臂 (\(armF.count)bp) + 3' 特异结合端 (Tm: \(tmF)℃)",
-                        sourceTool: "定点突变"
+                        targetPurpose: L10n.t("定点突变正向引物"),
+                        notes: L10n.tr("5' 突变同源臂 (\(armF.count)bp) + 3' 特异结合端 (Tm: \(tmF)℃)", "5' Mutant Arm (\(armF.count) bp) + 3' Binding (Tm: \(tmF) °C)"),
+                        sourceTool: L10n.t("定点突变")
                     ))
                 }
                 if let r = res.PrimerRvalue, !r.isEmpty {
@@ -337,9 +337,9 @@ public final class MutagenesisViewModel: ObservableObject {
                         homologyArm: armR,
                         specificSequence: specR,
                         tm: tmR,
-                        targetPurpose: "定点突变反向引物",
-                        notes: "5' 突变同源臂 (\(armR.count)bp) + 3' 特异结合端 (Tm: \(tmR)℃)",
-                        sourceTool: "定点突变"
+                        targetPurpose: L10n.t("定点突变反向引物"),
+                        notes: L10n.tr("5' 突变同源臂 (\(armR.count)bp) + 3' 特异结合端 (Tm: \(tmR)℃)", "5' Mutant Arm (\(armR.count) bp) + 3' Binding (Tm: \(tmR) °C)"),
+                        sourceTool: L10n.t("定点突变")
                     ))
                 }
                 self.primers = list
@@ -350,7 +350,7 @@ public final class MutagenesisViewModel: ObservableObject {
             
             // 记录定点突变节点到构建谱系树
             if !self.primers.isEmpty {
-                let mutLabel = !mutationSummaryLabel.isEmpty ? mutationSummaryLabel : (cleanSite.isEmpty ? "Δ缺失" : "★\(cleanSite)")
+                let mutLabel = !mutationSummaryLabel.isEmpty ? mutationSummaryLabel : (cleanSite.isEmpty ? L10n.t("Δ缺失") : "★\(cleanSite)")
                 let prodSeq = cleanUp + cleanSite + cleanDown
                 let origBp = plasmidDNAInfo?.length ?? (cleanUp.count + cleanDown.count)
                 let baseFeats: [(String, Int, Int)] = [
@@ -377,7 +377,7 @@ public final class MutagenesisViewModel: ObservableObject {
                     productLengthBp: origBp + cleanSite.count - max(0, mutTargetEndBp - mutTargetStartBp + 1),
                     homologyArmLength: homologyLength,
                     junctionOverhangs: [
-                        JunctionOverhangDetail(title: "突变位点环化重叠臂", topStrandSnippet: ovhTop, bottomStrandSnippet: BioSequence.complement(ovhTop), enzymeOrArmName: mutLabel, homologyLength: homologyLength)
+                        JunctionOverhangDetail(title: L10n.t("突变位点环化重叠臂"), topStrandSnippet: ovhTop, bottomStrandSnippet: BioSequence.complement(ovhTop), enzymeOrArmName: mutLabel, homologyLength: homologyLength)
                     ],
                     featureShifts: shifts,
                     primers: self.primers,
@@ -394,7 +394,7 @@ public final class MutagenesisViewModel: ObservableObject {
     /// 生成定点突变后的新 .dna 质粒文件并在 SnapGene 中打开
     public func generateMutantDNAAndOpen() async {
         guard let info = plasmidDNAInfo else {
-            alertMessage = "请先载入待突变的模板质粒 .dna 文件"
+            alertMessage = L10n.t("请先载入待突变的模板质粒 .dna 文件")
             showAlert = true
             return
         }
@@ -430,12 +430,12 @@ public final class MutagenesisViewModel: ObservableObject {
                     outputURL: outURL
                 )
             }
-            AppState.shared.showToast("已生成突变质粒：\(outName)")
+            AppState.shared.showToast(L10n.tr("已生成突变质粒：\(outName)", "Generated mutant plasmid: \(outName)"))
             if AppState.shared.autoOpenInSnapGene {
                 SnapGeneService.shared.openInSnapGene(url: outURL)
             }
         } catch {
-            alertMessage = "生成突变质粒失败: \(error.localizedDescription)"
+            alertMessage = L10n.tr("生成突变质粒失败: \(error.localizedDescription)", "Failed to generate mutant plasmid: \(error.localizedDescription)")
             showAlert = true
         }
     }
@@ -496,7 +496,7 @@ extension MutagenesisViewModel {
         }
         primers = updated
         WorkspaceSessionManager.shared.autoSaveInBackground()
-        AppState.shared.showToast("已成对重命名引物为 \(pfx)-F / \(pfx)-R")
+        AppState.shared.showToast(L10n.tr("已成对重命名引物为 \(pfx)-F / \(pfx)-R", "Renamed primer pair to \(pfx)-F / \(pfx)-R"))
     }
     
     public func renameSinglePrimer(at index: Int, newName: String) {

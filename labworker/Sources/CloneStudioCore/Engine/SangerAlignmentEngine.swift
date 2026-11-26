@@ -776,13 +776,13 @@ public struct SangerAlignmentEngine {
                     impact = inferCodonImpact(refChars: Array(cleanRef), refPos1Based: wrappedRef1, newBase: qChar, cdsStart1Based: cdsStart1Based)
                 case .insertion:
                     hgvs = "g.\(wrappedRef1)ins\(qChar)"
-                    impact = "单碱基插入（若位于 CDS 区将导致 3n+1 移码突变）"
+                    impact = L10n.t("单碱基插入（若位于 CDS 区将导致 3n+1 移码突变）")
                 case .deletion:
                     hgvs = "g.\(wrappedRef1)del\(rChar)"
-                    impact = "单碱基缺失（若位于 CDS 区将导致 3n-1 移码突变）"
+                    impact = L10n.t("单碱基缺失（若位于 CDS 区将导致 3n-1 移码突变）")
                 case .doublePeak:
                     hgvs = "g.\(wrappedRef1)\(rChar)/\(secBase ?? "N")"
-                    impact = "主峰 \(qChar) 伴随 \(Int((secRatio * 100).rounded()))% 次峰 \(secBase ?? "N")（提示菌落不纯或杂合突变）"
+                    impact = L10n.tr("主峰 \(qChar) 伴随 \(Int((secRatio * 100).rounded()))% 次峰 \(secBase ?? "N")（提示菌落不纯或杂合突变）", "Primary peak \(qChar) with \(Int((secRatio * 100).rounded()))% secondary \(secBase ?? "N") (mixed colony or heterozygote)")
                 case .match:
                     hgvs = ""
                     impact = ""
@@ -818,13 +818,13 @@ public struct SangerAlignmentEngine {
         }
 
         var notes: [String] = [
-            "有效高质读长 \(trimmedRead.count) bp (原始 \(chromatogram.rawLength) bp，已修剪 5' 端 \(trimStart0) bp / 3' 端 \(chromatogram.rawLength - trimEnd0) bp)",
-            "匹配方向：\(isReverse ? "反向互补链 (-)" : "正向链 (+)") · 覆盖参考质粒 \(firstMatchedRef1 ?? 1)..\(lastMatchedRef1 ?? 1) bp · 一致率 \(String(format: "%.1f", identity))%"
+            L10n.tr("有效高质读长 \(trimmedRead.count) bp (原始 \(chromatogram.rawLength) bp，已修剪 5' 端 \(trimStart0) bp / 3' 端 \(chromatogram.rawLength - trimEnd0) bp)", "High-quality read \(trimmedRead.count) bp (raw \(chromatogram.rawLength) bp, trimmed 5' \(trimStart0) bp / 3' \(chromatogram.rawLength - trimEnd0) bp)"),
+            L10n.tr("匹配方向：\(isReverse ? "反向互补链 (-)" : "正向链 (+)") · 覆盖参考质粒 \(firstMatchedRef1 ?? 1)..\(lastMatchedRef1 ?? 1) bp · 一致率 \(String(format: "%.1f", identity))%", "Orientation: \(L10n.t(isReverse ? "反向互补链 (-)" : "正向链 (+)")) · Ref \(firstMatchedRef1 ?? 1)..\(lastMatchedRef1 ?? 1) bp · Identity \(String(format: "%.1f", identity))%")
         ]
         if variants.isEmpty {
-            notes.append("质检通过：高质比对窗口内无任何错配、缺失/插入或杂合双峰。")
+            notes.append(L10n.t("质检通过：高质比对窗口内无任何错配、缺失/插入或杂合双峰。"))
         } else {
-            notes.append("检出 \(mismatchCount) 处错配替换、\(insertionCount + deletionCount) 处 Indel、\(doublePeakCount) 处杂合双峰，请点击下方变异胶囊定位峰图核查。")
+            notes.append(L10n.tr("检出 \(mismatchCount) 处错配替换、\(insertionCount + deletionCount) 处 Indel、\(doublePeakCount) 处杂合双峰，请点击下方变异胶囊定位峰图核查。", "Detected \(mismatchCount) SNP(s), \(insertionCount + deletionCount) indel(s), \(doublePeakCount) mixed peak(s); click variant pills below to inspect."))
         }
 
         return VerificationReport(
@@ -978,11 +978,11 @@ public struct SangerAlignmentEngine {
         let start1 = cdsStart1Based ?? 1
         let rel0 = refPos1Based - start1
         guard rel0 >= 0, refPos1Based - 1 < refChars.count else {
-            return "单碱基替换"
+            return L10n.t("单碱基替换")
         }
         let codonIdx0 = (rel0 / 3) * 3 + (start1 - 1)
         guard codonIdx0 >= 0, codonIdx0 + 2 < refChars.count else {
-            return "单碱基替换"
+            return L10n.t("单碱基替换")
         }
         var wtCodonChars = [refChars[codonIdx0], refChars[codonIdx0 + 1], refChars[codonIdx0 + 2]]
         let posInCodon = rel0 % 3
@@ -993,9 +993,9 @@ public struct SangerAlignmentEngine {
         let mutAA = CodonTranslator.standardTable[mutCodon]?.0 ?? "?"
         let aaIndex1 = (rel0 / 3) + 1
         if wtAA == mutAA {
-            return "同义突变 p.\(wtAA)\(aaIndex1)= (\(wtCodon)→\(mutCodon))"
+            return L10n.tr("同义突变 p.\(wtAA)\(aaIndex1)= (\(wtCodon)→\(mutCodon))", "Synonymous p.\(wtAA)\(aaIndex1)= (\(wtCodon)→\(mutCodon))")
         } else {
-            return "错义/无义突变 p.\(wtAA)\(aaIndex1)\(mutAA) (\(wtCodon)→\(mutCodon))"
+            return L10n.tr("错义/无义突变 p.\(wtAA)\(aaIndex1)\(mutAA) (\(wtCodon)→\(mutCodon))", "Missense/Nonsense p.\(wtAA)\(aaIndex1)\(mutAA) (\(wtCodon)→\(mutCodon))")
         }
     }
 
@@ -1019,7 +1019,7 @@ public struct SangerAlignmentEngine {
             doublePeakCount: 0,
             identityPercent: 0.0,
             verdict: .unaligned,
-            summaryNotes: ["未能在参考质粒中找到高置信同源匹配区，请检查是否选错参考载体或测序反应失败。"],
+            summaryNotes: [L10n.t("未能在参考质粒中找到高置信同源匹配区，请检查是否选错参考载体或测序反应失败。")],
             columns: [],
             variants: []
         )
@@ -1029,15 +1029,15 @@ public struct SangerAlignmentEngine {
 
     public static func formatVerificationReportText(_ rep: VerificationReport) -> String {
         var lines: [String] = [
-            "【Labworker Sanger 测序比对质检报告】",
-            "测序样本：\(rep.chromatogram.sampleName) (原始 \(rep.chromatogram.rawLength) bp，高质有效 \(rep.chromatogram.trimmedLength) bp，平均 Q\(String(format: "%.1f", rep.chromatogram.meanQualityTrimmed)))",
-            "参考质粒：\(rep.referenceName) (\(rep.referenceLength) bp)",
-            "比对区间：\(rep.matchedRefStart1Based)..\(rep.matchedRefEnd1Based) bp (\(rep.isReverseComplement ? "反向互补链 -" : "正向链 +"))",
-            "序列一致率：\(String(format: "%.1f%%", rep.identityPercent)) (\(rep.matchCount)/\(rep.alignedLength) bp)",
-            "综合结论：\(rep.verdict.rawValue)"
+            L10n.t("【Labworker Sanger 测序比对质检报告】"),
+            L10n.tr("测序样本：\(rep.chromatogram.sampleName) (原始 \(rep.chromatogram.rawLength) bp，高质有效 \(rep.chromatogram.trimmedLength) bp，平均 Q\(String(format: "%.1f", rep.chromatogram.meanQualityTrimmed)))", "Sample: \(rep.chromatogram.sampleName) (Raw \(rep.chromatogram.rawLength) bp, Trimmed \(rep.chromatogram.trimmedLength) bp, Mean Q\(String(format: "%.1f", rep.chromatogram.meanQualityTrimmed)))"),
+            L10n.tr("参考质粒：\(rep.referenceName) (\(rep.referenceLength) bp)", "Reference: \(rep.referenceName) (\(rep.referenceLength) bp)"),
+            L10n.tr("比对区间：\(rep.matchedRefStart1Based)..\(rep.matchedRefEnd1Based) bp (\(rep.isReverseComplement ? "反向互补链 -" : "正向链 +"))", "Aligned Span: \(rep.matchedRefStart1Based)..\(rep.matchedRefEnd1Based) bp (\(L10n.t(rep.isReverseComplement ? "反向互补链 -" : "正向链 +")))"),
+            L10n.tr("序列一致率：\(String(format: "%.1f%%", rep.identityPercent)) (\(rep.matchCount)/\(rep.alignedLength) bp)", "Identity: \(String(format: "%.1f%%", rep.identityPercent)) (\(rep.matchCount)/\(rep.alignedLength) bp)"),
+            L10n.tr("综合结论：\(rep.verdict.rawValue)", "Verdict: \(L10n.t(rep.verdict.rawValue))")
         ]
         if !rep.variants.isEmpty {
-            lines.append("检出变异明细：")
+            lines.append(L10n.t("检出变异明细："))
             for v in rep.variants {
                 lines.append("  - \(v.hgvsNotation) [\(v.kind.rawValue)] Read #\(v.readPos1Based ?? 0) (Q\(v.phredQuality)): \(v.codonImpactNote)")
             }
@@ -1098,10 +1098,10 @@ public struct SangerAlignmentEngine {
 
         var exclusions: [AnalysisRun.Exclusion] = []
         if chrom.trimStart0 > 0 {
-            exclusions.append(AnalysisRun.Exclusion(itemID: "5prime_trim_1..\(chrom.trimStart0)", reason: "5'端低质量修剪 (Q < \(trimQualityThreshold))"))
+            exclusions.append(AnalysisRun.Exclusion(itemID: "5prime_trim_1..\(chrom.trimStart0)", reason: L10n.tr("5'端低质量修剪 (Q < \(trimQualityThreshold))", "5' low-quality trim (Q < \(trimQualityThreshold))")))
         }
         if chrom.trimEnd0 < chrom.rawLength {
-            exclusions.append(AnalysisRun.Exclusion(itemID: "3prime_trim_\(chrom.trimEnd0 + 1)..\(chrom.rawLength)", reason: "3'端低质量修剪 (Q < \(trimQualityThreshold))"))
+            exclusions.append(AnalysisRun.Exclusion(itemID: "3prime_trim_\(chrom.trimEnd0 + 1)..\(chrom.rawLength)", reason: L10n.tr("3'端低质量修剪 (Q < \(trimQualityThreshold))", "3' low-quality trim (Q < \(trimQualityThreshold))")))
         }
 
         return AnalysisRun(

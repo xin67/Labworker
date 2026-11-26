@@ -71,15 +71,20 @@ final class CloneStudioAppDelegate: NSObject, NSApplicationDelegate {
                     btn.image = CloneStudioIconProvider.statusBarTemplateImage
                     btn.target = self
                     btn.action = #selector(toggleStatusPopover(_:))
-                    btn.toolTip = "Labworker 实验随手算与快捷入口"
+                    btn.toolTip = L10n.t("Labworker 实验随手算与快捷入口")
                 }
                 statusItem = item
             }
             statusItem?.isVisible = true
+            syncStatusBarTooltip()
         } else {
             statusPopover?.performClose(nil)
             statusItem?.isVisible = false
         }
+    }
+
+    func syncStatusBarTooltip() {
+        statusItem?.button?.toolTip = L10n.t("Labworker 实验随手算与快捷入口")
     }
     
     @objc private func toggleStatusPopover(_ sender: AnyObject?) {
@@ -129,11 +134,11 @@ final class CloneStudioAppDelegate: NSObject, NSApplicationDelegate {
         
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = "退出前是否保存当前工作进度？"
-        alert.informativeText = "选择「保存并退出」，下次打开 Labworker 时将自动恢复当前各模块的质粒、序列与引物设计进度；若选择「不保存退出」，将清空本次临时进度。"
-        alert.addButton(withTitle: "保存并退出")
-        alert.addButton(withTitle: "不保存退出")
-        alert.addButton(withTitle: "取消")
+        alert.messageText = L10n.t("退出前是否保存当前工作进度？")
+        alert.informativeText = L10n.t("选择「保存并退出」，下次打开 Labworker 时将自动恢复当前各模块的质粒、序列与引物设计进度；若选择「不保存退出」，将清空本次临时进度。")
+        alert.addButton(withTitle: L10n.t("保存并退出"))
+        alert.addButton(withTitle: L10n.t("不保存退出"))
+        alert.addButton(withTitle: L10n.t("取消"))
         
         let response = alert.runModal()
         switch response {
@@ -152,6 +157,7 @@ final class CloneStudioAppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct CloneStudioApp: App {
     @NSApplicationDelegateAdaptor(CloneStudioAppDelegate.self) private var appDelegate
+    @ObservedObject private var appState = AppState.shared
     
     init() {
         ProcessInfo.processInfo.processName = "Labworker"
@@ -160,6 +166,8 @@ struct CloneStudioApp: App {
     var body: some Scene {
         WindowGroup("Labworker") {
             ContentView()
+                .environment(\.appLanguage, appState.appLanguage)
+                .environment(\.locale, appState.appLanguage.locale)
                 .onOpenURL { url in
                     WorkspaceSessionManager.shared.handleFinderOpenURLs([url])
                     Task {
@@ -171,12 +179,12 @@ struct CloneStudioApp: App {
         .defaultSize(width: 1180, height: 780)
         .commands {
             CommandGroup(after: .newItem) {
-                Button("从 Finder 智能打开实验文件 (.dna / .tif / .pdb / .csv)...") {
+                Button(L10n.t("从 Finder 智能打开实验文件 (.dna / .tif / .pdb / .csv)...")) {
                     Self.presentOpenDNAFilesPanel()
                 }
                 .keyboardShortcut("o", modifiers: [.command])
                 
-                Button("保存当前工作进度") {
+                Button(L10n.t("保存当前工作进度")) {
                     WorkspaceSessionManager.shared.autoSaveInBackground()
                     AppState.shared.showToast("已保存当前工作区进度")
                 }
@@ -184,88 +192,90 @@ struct CloneStudioApp: App {
                 
                 Divider()
                 
-                Button("清空当前模块") {
+                Button(L10n.t("清空当前模块")) {
                     clearCurrentActiveModule()
                 }
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
             }
             
             CommandGroup(after: .toolbar) {
-                Button("显示 / 隐藏质粒图谱") {
+                Button(L10n.t("显示 / 隐藏质粒图谱")) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         AppState.shared.showPlasmidPreview.toggle()
                     }
                 }
                 .keyboardShortcut("p", modifiers: [.command])
                 
-                Button("切换 3bp 密码子吸附") {
+                Button(L10n.t("切换 3bp 密码子吸附")) {
                     AppState.shared.defaultSnapToCodonMode.toggle()
                 }
                 .keyboardShortcut("k", modifiers: [.command, .shift])
             }
             
-            CommandMenu("功能模块") {
-                Section("分子克隆与质粒") {
-                    Button("质粒池 & 载体库") { AppState.shared.selectedNav = .plasmidPool }
+            CommandMenu(L10n.t("功能模块")) {
+                Section(L10n.t("分子克隆与质粒")) {
+                    Button(L10n.t("质粒池 & 载体库")) { AppState.shared.selectedNav = .plasmidPool }
                         .keyboardShortcut("m", modifiers: [.command, .shift])
-                    Button("入门克隆设计") { AppState.shared.selectedNav = .entryClone }
+                    Button(L10n.t("入门克隆设计")) { AppState.shared.selectedNav = .entryClone }
                         .keyboardShortcut("1", modifiers: [.command])
-                    Button("单片段同源重组/酶切") { AppState.shared.selectedNav = .singleFragment }
+                    Button(L10n.t("单片段同源重组/酶切")) { AppState.shared.selectedNav = .singleFragment }
                         .keyboardShortcut("2", modifiers: [.command])
-                    Button("多片段无缝组装") { AppState.shared.selectedNav = .multiFragment }
+                    Button(L10n.t("多片段无缝组装")) { AppState.shared.selectedNav = .multiFragment }
                         .keyboardShortcut("3", modifiers: [.command])
-                    Button("定点突变设计") { AppState.shared.selectedNav = .mutagenesis }
+                    Button(L10n.t("定点突变设计")) { AppState.shared.selectedNav = .mutagenesis }
                         .keyboardShortcut("4", modifiers: [.command])
-                    Button("质粒片段删除") { AppState.shared.selectedNav = .fragmentDeletion }
+                    Button(L10n.t("质粒片段删除")) { AppState.shared.selectedNav = .fragmentDeletion }
                         .keyboardShortcut("5", modifiers: [.command])
-                    Button("Sanger 测序比对验证") { AppState.shared.selectedNav = .sangerVerify }
+                    Button(L10n.t("Sanger 测序比对验证")) { AppState.shared.selectedNav = .sangerVerify }
                         .keyboardShortcut("s", modifiers: [.command, .shift])
                 }
                 
                 Divider()
                 
-                Section("基因编辑与靶点") {
-                    Button("sgRNA (CRISPR) 设计") { AppState.shared.selectedNav = .sgRNADesign }
+                Section(L10n.t("基因编辑与靶点")) {
+                    Button(L10n.t("sgRNA (CRISPR) 设计")) { AppState.shared.selectedNav = .sgRNADesign }
                         .keyboardShortcut("6", modifiers: [.command])
-                    Button("shRNA (RNAi) 设计") { AppState.shared.selectedNav = .shRNADesign }
+                    Button(L10n.t("shRNA (RNAi) 设计")) { AppState.shared.selectedNav = .shRNADesign }
                         .keyboardShortcut("7", modifiers: [.command])
                 }
                 
                 Divider()
                 
-                Section("电泳与图像定量") {
-                    Button("WB 灰度定量 (16-bit)") { AppState.shared.selectedNav = .westernBlot }
+                Section(L10n.t("电泳与图像定量")) {
+                    Button(L10n.t("WB 灰度定量 (16-bit)")) { AppState.shared.selectedNav = .westernBlot }
                         .keyboardShortcut("w", modifiers: [.command, .shift])
-                    Button("凝胶分子量回归") { AppState.shared.selectedNav = .gelFigure }
+                    Button(L10n.t("凝胶分子量回归")) { AppState.shared.selectedNav = .gelFigure }
                         .keyboardShortcut("g", modifiers: [.command, .shift])
                 }
                 
                 Divider()
                 
-                Section("定量与蛋白工具") {
-                    Button("微孔板布局设计") { AppState.shared.selectedNav = .plateDesigner }
-                    Button("qPCR 荧光定量") { AppState.shared.selectedNav = .qpcrAnalysis }
+                Section(L10n.t("定量与蛋白工具")) {
+                    Button(L10n.t("微孔板布局设计")) { AppState.shared.selectedNav = .plateDesigner }
+                    Button(L10n.t("qPCR 荧光定量")) { AppState.shared.selectedNav = .qpcrAnalysis }
                         .keyboardShortcut("q", modifiers: [.command, .shift])
-                    Button("蛋白质工作台 (3D/理化)") { AppState.shared.selectedNav = .proteinWorkbench }
+                    Button(L10n.t("蛋白质工作台 (3D/理化)")) { AppState.shared.selectedNav = .proteinWorkbench }
                         .keyboardShortcut("b", modifiers: [.command, .shift])
-                    Button("生物计算器 (用量与换算)") { AppState.shared.selectedNav = .dnaCalculator }
+                    Button(L10n.t("生物计算器 (用量与换算)")) { AppState.shared.selectedNav = .dnaCalculator }
                         .keyboardShortcut("8", modifiers: [.command])
-                    Button("序列与 Tm 工具") { AppState.shared.selectedNav = .sequenceTools }
+                    Button(L10n.t("序列与 Tm 工具")) { AppState.shared.selectedNav = .sequenceTools }
                         .keyboardShortcut("9", modifiers: [.command])
                 }
                 
                 Divider()
                 
-                Section("合成订购与设置") {
-                    Button("商业订购中心") { AppState.shared.selectedNav = .orderCenter }
+                Section(L10n.t("合成订购与设置")) {
+                    Button(L10n.t("商业订购中心")) { AppState.shared.selectedNav = .orderCenter }
                         .keyboardShortcut("0", modifiers: [.command])
-                    Button("系统设置") { AppState.shared.selectedNav = .settings }
+                    Button(L10n.t("系统设置")) { AppState.shared.selectedNav = .settings }
                 }
             }
         }
         
         Settings {
             SettingsView()
+                .environment(\.appLanguage, appState.appLanguage)
+                .environment(\.locale, appState.appLanguage.locale)
                 .frame(minWidth: 820, minHeight: 560)
         }
     }

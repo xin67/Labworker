@@ -763,7 +763,7 @@ public final class PlasmidPoolManager: ObservableObject {
             selectedItemID = items.first?.id
         }
         if !silent {
-            AppState.shared.showToast("已成功解析并入库 \(builtItems.count) 个质粒到质粒池！")
+            AppState.shared.showToast(L10n.tr("已成功解析并入库 \(builtItems.count) 个质粒到质粒池！", "Imported \(builtItems.count) construct(s) into Plasmid Pool!"))
         }
     }
     
@@ -884,7 +884,7 @@ public final class PlasmidPoolManager: ObservableObject {
             vm.vectorDNAInfo = item.dnaInfo
             vm.vectorSeq = item.dnaInfo.sequence
             AppState.shared.selectedNav = .singleFragment
-            AppState.shared.showToast("已将「\(item.name)」设为单片段克隆载体")
+            AppState.shared.showToast(L10n.tr("已将「\(item.name)」设为单片段克隆载体", "Set \"\(item.name)\" as Single-Fragment Vector"))
         }
     }
     
@@ -901,7 +901,7 @@ public final class PlasmidPoolManager: ObservableObject {
             vm.insertSeq = item.dnaInfo.sequence
             vm.insertGeneName = item.name
             AppState.shared.selectedNav = .singleFragment
-            AppState.shared.showToast("已将「\(item.name)」设为单片段克隆供体")
+            AppState.shared.showToast(L10n.tr("已将「\(item.name)」设为单片段克隆供体", "Set \"\(item.name)\" as Single-Fragment Donor"))
         }
     }
     
@@ -917,7 +917,7 @@ public final class PlasmidPoolManager: ObservableObject {
             vm.vectorDNAInfo = item.dnaInfo
             vm.vectorSeq = item.dnaInfo.sequence
             AppState.shared.selectedNav = .multiFragment
-            AppState.shared.showToast("已将「\(item.name)」设为多片段克隆载体")
+            AppState.shared.showToast(L10n.tr("已将「\(item.name)」设为多片段克隆载体", "Set \"\(item.name)\" as Multi-Fragment Vector"))
         }
     }
     
@@ -932,7 +932,7 @@ public final class PlasmidPoolManager: ObservableObject {
         } else {
             vm.plasmidDNAInfo = item.dnaInfo
             AppState.shared.selectedNav = .mutagenesis
-            AppState.shared.showToast("已将「\(item.name)」载入定点突变")
+            AppState.shared.showToast(L10n.tr("已将「\(item.name)」载入定点突变", "Loaded \"\(item.name)\" into Site-Directed Mutagenesis"))
         }
     }
     
@@ -949,7 +949,7 @@ public final class PlasmidPoolManager: ObservableObject {
             vm.plasmidSeq = item.dnaInfo.sequence
             vm.selectedDNAFileName = item.name
             AppState.shared.selectedNav = .fragmentDeletion
-            AppState.shared.showToast("已将「\(item.name)」载入片段删除")
+            AppState.shared.showToast(L10n.tr("已将「\(item.name)」载入片段删除", "Loaded \"\(item.name)\" into Fragment Deletion"))
         }
     }
     
@@ -1054,7 +1054,7 @@ public final class PlasmidPoolManager: ObservableObject {
         }
         
         if !installedNames.isEmpty {
-            AppState.shared.showToast("已自动注入 Labworker MCP 20261120 至：\(installedNames.joined(separator: "、"))")
+            AppState.shared.showToast(L10n.tr("已自动注入 Labworker MCP 20261120 至：\(installedNames.joined(separator: "、"))", "Configured Labworker MCP 20261120 for: \(installedNames.joined(separator: ", "))"))
         } else {
             copyMCPConfigToClipboard()
         }
@@ -1314,7 +1314,7 @@ public final class PlasmidPoolManager: ObservableObject {
         
         self.lastMCPActivitySummary = payload.actionSummary
         if showToast {
-            AppState.shared.showToast("🤖 MCP AI 指令已同步：\(payload.actionSummary)")
+            AppState.shared.showToast(L10n.tr("🤖 MCP AI 指令已同步：\(payload.actionSummary)", "🤖 MCP AI command synced: \(payload.actionSummary)"))
         }
     }
 }

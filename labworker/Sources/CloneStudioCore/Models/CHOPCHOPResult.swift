@@ -88,25 +88,25 @@ public struct CHOPCHOPLocalMatchResult: Hashable, Sendable {
     }
     
     public var badgeText: String {
-        let prefix = matchedTarget.isSelectedOrGenerated ? "★ \(matchedTarget.label)" : "📚 本地文库 \(matchedTarget.sourceType.rawValue)"
+        let prefix = matchedTarget.isSelectedOrGenerated ? "★ \(matchedTarget.label)" : L10n.tr("📚 本地文库 \(matchedTarget.sourceType.rawValue)", "📚 Local Library \(matchedTarget.sourceType.rawValue)")
         switch kind {
         case .exact:
-            return "\(prefix) (完全一致)"
+            return L10n.tr("\(prefix) (完全一致)", "\(prefix) (Exact Match)")
         case .coreOverlap(let bp):
-            return "\(prefix) (同链重合\(bp)bp)"
+            return L10n.tr("\(prefix) (同链重合\(bp)bp)", "\(prefix) (Sense \(bp)bp)")
         case .reverseComplementOverlap(let bp):
-            return "\(prefix) (互补链重合\(bp)bp)"
+            return L10n.tr("\(prefix) (互补链重合\(bp)bp)", "\(prefix) (Antisense \(bp)bp)")
         }
     }
     
     public var detailText: String {
         switch kind {
         case .exact:
-            return "与\(matchedTarget.label) [\(matchedTarget.cleanSequence)] 序列 100% 完全一致"
+            return L10n.tr("与\(matchedTarget.label) [\(matchedTarget.cleanSequence)] 序列 100% 完全一致", "100% identical to \(matchedTarget.label) [\(matchedTarget.cleanSequence)]")
         case .coreOverlap(let bp):
-            return "与\(matchedTarget.label) [\(matchedTarget.cleanSequence)] 在同一正/负链连续重合 \(bp) bp"
+            return L10n.tr("与\(matchedTarget.label) [\(matchedTarget.cleanSequence)] 在同一正/负链连续重合 \(bp) bp", "Overlaps \(matchedTarget.label) [\(matchedTarget.cleanSequence)] on the same strand for \(bp) bp")
         case .reverseComplementOverlap(let bp):
-            return "与\(matchedTarget.label) [\(matchedTarget.cleanSequence)] 的反向互补链在同一基因组位点连续重合 \(bp) bp"
+            return L10n.tr("与\(matchedTarget.label) [\(matchedTarget.cleanSequence)] 的反向互补链在同一基因组位点连续重合 \(bp) bp", "Overlaps reverse complement of \(matchedTarget.label) [\(matchedTarget.cleanSequence)] for \(bp) bp")
         }
     }
     
@@ -467,7 +467,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             offTargetPts = max(0.0, min(45.0, offTargetPts))
             let offInt = Int(round(offTargetPts))
             tags.append(ScoreTag(
-                name: "脱靶安全 (\(mm0)/\(mm1)/\(mm2)/\(mm3))",
+                name: L10n.tr("脱靶安全 (\(mm0)/\(mm1)/\(mm2)/\(mm3))", "Off-Target Safety (\(mm0)/\(mm1)/\(mm2)/\(mm3))"),
                 points: offInt,
                 type: (mm0 == 0 && mm1 == 0) ? .bonus : (mm0 > 0 ? .fatal : .penalty)
             ))
@@ -476,7 +476,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             let effNormalized = max(0.0, min(35.0, (efficiency / 75.0) * 35.0))
             let effInt = Int(round(effNormalized))
             tags.append(ScoreTag(
-                name: "Doench效率 (\(String(format: "%.1f", efficiency)))",
+                name: L10n.tr("Doench效率 (\(String(format: "%.1f", efficiency)))", "Doench Eff. (\(String(format: "%.1f", efficiency)))"),
                 points: effInt,
                 type: efficiency >= 50.0 ? .bonus : .penalty
             ))
@@ -488,7 +488,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             }
             let seqInt = Int(round(seqPts))
             tags.append(ScoreTag(
-                name: "序列与转录规则",
+                name: L10n.t("序列与转录规则"),
                 points: seqInt,
                 type: localScore.hasFatalIssue ? .fatal : (localScore.score >= 65.0 ? .bonus : .penalty)
             ))
@@ -497,7 +497,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             var fatalMsg = localScore.fatalWarning
             
             if mm0 > 0 {
-                fatalMsg = "存在 \(mm0) 个全基因组 0 错配重复位点 (MM0 > 0)，严禁用于特异性敲除"
+                fatalMsg = L10n.tr("存在 \(mm0) 个全基因组 0 错配重复位点 (MM0 > 0)，严禁用于特异性敲除", "Contains \(mm0) zero-mismatch genomic sites (MM0 > 0); unsuitable for specific knockout")
                 total = min(total, 35.0)
             } else if localScore.hasFatalIssue {
                 total = min(total, 35.0)
@@ -515,7 +515,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
                 tier = .fair
             }
             
-            let summaryText = "全维综合评分 \(Int(total)) 分 = 脱靶安全 \(offInt)/45 + Doench效率 \(effInt)/35 + 序列规则 \(seqInt)/20"
+            let summaryText = L10n.tr("全维综合评分 \(Int(total)) 分 = 脱靶安全 \(offInt)/45 + Doench效率 \(effInt)/35 + 序列规则 \(seqInt)/20", "Composite Score \(Int(total)) = Off-Target \(offInt)/45 + Doench Eff. \(effInt)/35 + Sequence Rules \(seqInt)/20")
             return TargetScore(
                 score: total,
                 tier: tier,
@@ -536,7 +536,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             if mm3 > 0 { chopOff -= min(12.0, Double(mm3) * 1.2) }
             offTargetPts = max(0.0, min(45.0, chopOff))
             tags.append(ScoreTag(
-                name: "CHOP 脱靶 (\(mm0)/\(mm1)/\(mm2)/\(mm3))",
+                name: L10n.tr("CHOP 脱靶 (\(mm0)/\(mm1)/\(mm2)/\(mm3))", "CHOP Off-Target (\(mm0)/\(mm1)/\(mm2)/\(mm3))"),
                 points: Int(round(offTargetPts)),
                 type: (mm0 == 0 && mm1 == 0) ? .bonus : (mm0 > 0 ? .fatal : .penalty)
             ))
@@ -551,7 +551,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
                 vbcSpec = max(0.0, min(45.0, vbcSpec))
                 specSamples.append(vbcSpec)
                 tags.append(ScoreTag(
-                    name: "VBC 特异性 (VL:\(vbcVeryLikelyOT ?? 0)/L:\(vbcLikelyOT ?? 0))",
+                    name: L10n.tr("VBC 特异性 (VL:\(vbcVeryLikelyOT ?? 0)/L:\(vbcLikelyOT ?? 0))", "VBC Specificity (VL:\(vbcVeryLikelyOT ?? 0)/L:\(vbcLikelyOT ?? 0))"),
                     points: Int(round(vbcSpec)),
                     type: (mm0 == 0 && (vbcVeryLikelyOT ?? 0) == 0) ? .bonus : (mm0 > 0 ? .fatal : .penalty)
                 ))
@@ -560,7 +560,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
                 let mitSpec = max(0.0, min(45.0, (Double(mit) / 90.0) * 45.0))
                 specSamples.append(mitSpec)
                 tags.append(ScoreTag(
-                    name: "MIT 特异性 (\(mit))",
+                    name: L10n.tr("MIT 特异性 (\(mit))", "MIT Specificity (\(mit))"),
                     points: Int(round(mitSpec)),
                     type: mit >= 60 ? .bonus : .penalty
                 ))
@@ -576,7 +576,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             let chopEff = max(0.0, min(35.0, (efficiency / 75.0) * 35.0))
             effSamples.append(chopEff)
             tags.append(ScoreTag(
-                name: "Doench效率 (\(String(format: "%.1f", efficiency)))",
+                name: L10n.tr("Doench效率 (\(String(format: "%.1f", efficiency)))", "Doench Eff. (\(String(format: "%.1f", efficiency)))"),
                 points: Int(round(chopEff)),
                 type: efficiency >= 50.0 ? .bonus : .penalty
             ))
@@ -585,7 +585,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             let vbcEff = max(0.0, min(35.0, (0.65 * vbc + 0.35 * (vbcActivity ?? vbc)) * 35.0))
             effSamples.append(vbcEff)
             tags.append(ScoreTag(
-                name: "VBC 敲除分 (\(String(format: "%.2f", vbc)))",
+                name: L10n.tr("VBC 敲除分 (\(String(format: "%.2f", vbc)))", "VBC Score (\(String(format: "%.2f", vbc)))"),
                 points: Int(round(vbcEff)),
                 type: vbc >= 0.60 ? .bonus : .penalty
             ))
@@ -595,7 +595,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             let crisEff = max(0.0, min(35.0, (pct / 100.0) * 35.0))
             effSamples.append(crisEff)
             tags.append(ScoreTag(
-                name: "CRISPOR 效率 (\(String(format: "%.0f%%", pct)))",
+                name: L10n.tr("CRISPOR 效率 (\(String(format: "%.0f%%", pct)))", "CRISPOR Eff. (\(String(format: "%.0f%%", pct)))"),
                 points: Int(round(crisEff)),
                 type: pct >= 55.0 ? .bonus : .penalty
             ))
@@ -611,7 +611,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
         }
         let seqInt = Int(round(seqPts))
         tags.append(ScoreTag(
-            name: "序列与转录规则",
+            name: L10n.t("序列与转录规则"),
             points: seqInt,
             type: localScore.hasFatalIssue ? .fatal : (localScore.score >= 65.0 ? .bonus : .penalty)
         ))
@@ -619,7 +619,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
         let consensusBonus: Double = sources.count >= 3 ? 5.0 : (sources.count == 2 ? 3.0 : 0.0)
         if consensusBonus > 0 {
             tags.append(ScoreTag(
-                name: "多源共识 (\(sources.count) 站命中)",
+                name: L10n.tr("多源共识 (\(sources.count) 站命中)", "Consensus (\(sources.count) sources)"),
                 points: Int(consensusBonus),
                 type: .bonus
             ))
@@ -629,7 +629,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
         var fatalMsg = localScore.fatalWarning
         
         if mm0 > 0 {
-            fatalMsg = "存在 \(mm0) 个全基因组 0 错配重复位点 (MM0 > 0)，严禁用于特异性敲除"
+            fatalMsg = L10n.tr("存在 \(mm0) 个全基因组 0 错配重复位点 (MM0 > 0)，严禁用于特异性敲除", "Contains \(mm0) zero-mismatch genomic sites (MM0 > 0); unsuitable for specific knockout")
             total = min(total, 35.0)
         } else if localScore.hasFatalIssue {
             total = min(total, 35.0)
@@ -648,8 +648,8 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
         }
         
         let srcDesc = sources.map(\.shortTitle).joined(separator: "+")
-        let bonusDesc = consensusBonus > 0 ? " + 共识 +\(Int(consensusBonus))" : ""
-        let summaryText = "[\(srcDesc)] 全维综合评分 \(Int(total)) 分 = 特异性 \(offInt)/45 + 效率 \(effInt)/35 + 序列规则 \(seqInt)/20\(bonusDesc)"
+        let bonusDesc = consensusBonus > 0 ? L10n.tr(" + 共识 +\(Int(consensusBonus))", " + Consensus +\(Int(consensusBonus))") : ""
+        let summaryText = L10n.tr("[\(srcDesc)] 全维综合评分 \(Int(total)) 分 = 特异性 \(offInt)/45 + 效率 \(effInt)/35 + 序列规则 \(seqInt)/20\(bonusDesc)", "[\(srcDesc)] Composite Score \(Int(total)) = Specificity \(offInt)/45 + Efficiency \(effInt)/35 + Sequence Rules \(seqInt)/20\(bonusDesc)")
         return TargetScore(
             score: total,
             tier: tier,

@@ -29,7 +29,7 @@ public struct EntryCloneView: View {
                         Task { @MainActor in
                             await FinderFileDropHelper.loadSequence(from: url) { seq, name in
                                 vm.sequence = seq
-                                AppState.shared.showToast("已导入 \(name) (\(seq.count) bp)")
+                                AppState.shared.showToast(L10n.tr("已导入 \(name) (\(seq.count) bp)", "Imported \(name) (\(seq.count) bp)"))
                             }
                         }
                     }
@@ -79,12 +79,12 @@ public struct EntryCloneView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                                 StudioMetricBadge(
-                                    label: "pCE2 载体",
+                                    label: L10n.t("pCE2 载体"),
                                     value: "3957 bp (3.96 kb)",
                                     color: .blue
                                 )
                                 StudioMetricBadge(
-                                    label: "插入基因",
+                                    label: L10n.t("插入基因"),
                                     value: "\(vm.cleanLength) bp (\(String(format: "%.2f", Double(vm.cleanLength) / 1000.0)) kb)",
                                     color: vm.cleanLength >= 50 ? .green : .orange
                                 )
@@ -100,7 +100,7 @@ public struct EntryCloneView: View {
                             
                             SequenceEditorBox(
                                 text: $vm.sequence,
-                                placeholder: "输入或拖入插入片段序列 (≥ 50 bp)",
+                                placeholder: L10n.t("输入或拖入插入片段序列 (≥ 50 bp)"),
                                 minHeight: 115
                             )
                         }
@@ -119,14 +119,14 @@ public struct EntryCloneView: View {
                                 ViewThatFits(in: .horizontal) {
                                     HStack(spacing: 14) {
                                         HStack(spacing: 8) {
-                                            Text("5' 位点:")
+                                            Text(L10n.t("5' 位点:"))
                                                 .font(.system(size: 13, weight: .medium))
                                                 .foregroundColor(.secondary)
                                                 .fixedSize()
                                             enzymePicker(selection: $vm.enzyme5)
                                         }
                                         HStack(spacing: 8) {
-                                            Text("3' 位点:")
+                                            Text(L10n.t("3' 位点:"))
                                                 .font(.system(size: 13, weight: .medium))
                                                 .foregroundColor(.secondary)
                                                 .fixedSize()
@@ -136,14 +136,14 @@ public struct EntryCloneView: View {
                                     
                                     VStack(alignment: .leading, spacing: 8) {
                                         HStack(spacing: 8) {
-                                            Text("5' 位点:")
+                                            Text(L10n.t("5' 位点:"))
                                                 .font(.system(size: 13, weight: .medium))
                                                 .foregroundColor(.secondary)
                                                 .fixedSize()
                                             enzymePicker(selection: $vm.enzyme5)
                                         }
                                         HStack(spacing: 8) {
-                                            Text("3' 位点:")
+                                            Text(L10n.t("3' 位点:"))
                                                 .font(.system(size: 13, weight: .medium))
                                                 .foregroundColor(.secondary)
                                                 .fixedSize()
@@ -153,8 +153,8 @@ public struct EntryCloneView: View {
                                 }
                             } else {
                                 HStack(spacing: 8) {
-                                    StudioMetricBadge(label: "5' 接头", value: "URS (15 bp)", color: .cyan)
-                                    StudioMetricBadge(label: "3' 接头", value: "DRS (15 bp)", color: .cyan)
+                                    StudioMetricBadge(label: L10n.t("5' 接头"), value: "URS (15 bp)", color: .cyan)
+                                    StudioMetricBadge(label: L10n.t("3' 接头"), value: "DRS (15 bp)", color: .cyan)
                                     Spacer()
                                 }
                             }
@@ -239,8 +239,8 @@ public struct EntryCloneView: View {
                     }
                 }
         }
-        .alert("提示", isPresented: $vm.showAlert) {
-            Button("好的", role: .cancel) {}
+        .alert(L10n.t("提示"), isPresented: $vm.showAlert) {
+            Button(L10n.t("好的"), role: .cancel) {}
         } message: {
             Text(vm.alertMessage ?? "")
         }

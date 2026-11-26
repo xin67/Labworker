@@ -52,9 +52,9 @@ public struct GelFigureEditorView: View {
     
     private var selectedPlasmidHelp: String {
         if let item = plasmidPool.items.first(where: { $0.id == selectedPlasmidID }) {
-            return "待酶切质粒：\(item.name) (\(item.dnaInfo.length) bp)"
+            return L10n.tr("待酶切质粒：\(item.name) (\(item.dnaInfo.length) bp)", "Plasmid to Digest: \(item.name) (\(item.dnaInfo.length) bp)")
         }
-        return "待酶切质粒：示例质粒 (pETDuet-Demo)"
+        return L10n.t("待酶切质粒：示例质粒 (pETDuet-Demo)")
     }
     
     private var activeLadder: GelMarkerLadderPreset {
@@ -141,7 +141,7 @@ public struct GelFigureEditorView: View {
                 .action(title: "导入", icon: "photo.badge.plus", tint: .cyan, help: "导入电泳胶图", action: importGelImage),
                 .action(title: "拟合", icon: "wand.and.stars", tint: .blue, help: "自动寻道并拟合 Ladder 标准曲线") {
                     runAutoDetection()
-                    appState.showToast("已完成泳道寻峰与 \(activeLadder.name) 标准曲线拟合")
+                    appState.showToast(L10n.tr("已完成泳道寻峰与 \(activeLadder.name) 标准曲线拟合", "Completed lane peak detection & \(activeLadder.name) standard curve fitting"))
                 },
                 .action(title: "预测道", icon: "sparkles.rectangle.stack", tint: .teal, help: "按当前所选模块叠加虚拟电泳预测道", action: injectActivePredictionSource),
                 .action(title: "导出", icon: "square.and.arrow.up", help: "导出条带分子量回归 CSV", action: exportGelCSV)
@@ -217,7 +217,7 @@ public struct GelFigureEditorView: View {
                     options: ladderPickerOptions,
                     icon: "ruler",
                     tint: .blue,
-                    help: "\(activeLadder.name) — 切换 DNA / 蛋白质 Marker 并重算所有条带"
+                    help: L10n.tr("\(activeLadder.name) — 切换 DNA / 蛋白质 Marker 并重算所有条带", "\(activeLadder.name) — Switch DNA / Protein Ladder & Recalculate Bands")
                 )
             }
         ) {
@@ -225,19 +225,19 @@ public struct GelFigureEditorView: View {
                 if let fit = calibrationFit {
                     StudioFlowLayout(horizontalSpacing: GelUI.chip, verticalSpacing: GelUI.chip) {
                         StudioMetricBadge(label: "R²", value: String(format: "%.4f", fit.r2), color: fit.r2 >= 0.98 ? .green : .orange)
-                            .help("标准曲线拟合优度 R²")
-                        StudioMetricBadge(label: "斜率", value: String(format: "%.3f", fit.slope), color: .blue)
-                            .help("对数迁移率回归斜率 (Slope)")
-                        StudioMetricBadge(label: "截距", value: String(format: "%.2f", fit.intercept), color: .teal)
-                            .help("对数迁移率回归截距 (Intercept)")
-                        StudioMetricBadge(label: "点数", value: "\(fit.n)", color: .secondary)
-                            .help("参与拟合的 Marker 校准点数")
+                            .help(L10n.t("标准曲线拟合优度 R²"))
+                        StudioMetricBadge(label: L10n.t("斜率"), value: String(format: "%.3f", fit.slope), color: .blue)
+                            .help(L10n.t("对数迁移率回归斜率 (Slope)"))
+                        StudioMetricBadge(label: L10n.t("截距"), value: String(format: "%.2f", fit.intercept), color: .teal)
+                            .help(L10n.t("对数迁移率回归截距 (Intercept)"))
+                        StudioMetricBadge(label: L10n.t("点数"), value: "\(fit.n)", color: .secondary)
+                            .help(L10n.t("参与拟合的 Marker 校准点数"))
                     }
                     
                     Chart {
                         ForEach(Array(fit.points.enumerated()), id: \.offset) { _, pt in
                             PointMark(
-                                x: .value("迁移率 Y", pt.y),
+                                x: .value(L10n.t("迁移率 Y"), pt.y),
                                 y: .value("log10(\(activeLadder.kind.unit))", pt.log10Size)
                             )
                             .foregroundStyle(Color.cyan)
@@ -245,13 +245,13 @@ public struct GelFigureEditorView: View {
                         }
                         
                         LineMark(
-                            x: .value("迁移率 Y", 0.15),
+                            x: .value(L10n.t("迁移率 Y"), 0.15),
                             y: .value("log10(\(activeLadder.kind.unit))", fit.slope * 0.15 + fit.intercept)
                         )
                         .foregroundStyle(Color.blue)
                         
                         LineMark(
-                            x: .value("迁移率 Y", 0.85),
+                            x: .value(L10n.t("迁移率 Y"), 0.85),
                             y: .value("log10(\(activeLadder.kind.unit))", fit.slope * 0.85 + fit.intercept)
                         )
                         .foregroundStyle(Color.blue)
@@ -273,7 +273,7 @@ public struct GelFigureEditorView: View {
                         title: "\(virtualLaneCount)",
                         icon: "trash",
                         tint: .red,
-                        help: "清空全部 \(virtualLaneCount) 条虚拟预测泳道"
+                        help: L10n.tr("清空全部 \(virtualLaneCount) 条虚拟预测泳道", "Clear all \(virtualLaneCount) virtual predicted lanes")
                     ) {
                         lanes.removeAll(where: \.isVirtualDigestLane)
                         lanes = GelAnalysisEngine.layoutVirtualLanes(lanes)
@@ -285,7 +285,7 @@ public struct GelFigureEditorView: View {
         ) {
             VStack(alignment: .leading, spacing: GelUI.section) {
                 VStack(alignment: .leading, spacing: GelUI.chip) {
-                    Text("来源")
+                    Text(L10n.t("来源"))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
                     
@@ -297,8 +297,8 @@ public struct GelFigureEditorView: View {
                                     return "手动输入条带分子量并叠加虚拟预测泳道"
                                 }
                                 return isReady
-                                    ? "\(src.title)（绿点表示该模块已有可用数据，可叠加多条预测泳道同胶对比）"
-                                    : "\(src.title)（尚未载入数据，可用示范数据预览）"
+                                    ? L10n.tr("\(src.title)（绿点表示该模块已有可用数据，可叠加多条预测泳道同胶对比）", "\(L10n.t(src.title)) (Green dot indicates active workspace data ready for multi-lane gel overlay)")
+                                    : L10n.tr("\(src.title)（尚未载入数据，可用示范数据预览）", "\(L10n.t(src.title)) (No active data loaded; sample preview available)")
                             }()
                             StudioCompactPillButton(
                                 title: src.title,
@@ -332,7 +332,7 @@ public struct GelFigureEditorView: View {
                                     .foregroundColor(lane.isLadderLane ? .orange : (lane.isVirtualDigestLane ? .cyan : .blue))
                                     .frame(minWidth: 26, alignment: .leading)
                                 
-                                TextField("泳道名称", text: $lane.name)
+                                TextField(L10n.t("泳道名称"), text: $lane.name)
                                     .textFieldStyle(.roundedBorder)
                                     .controlSize(.small)
                                     .font(.system(size: 12))
@@ -523,7 +523,7 @@ public struct GelFigureEditorView: View {
                         icon: "plus.viewfinder",
                         tint: .teal,
                         isProminent: true,
-                        help: "将「\(moduleName)」当前配置的理论条带映射到胶图",
+                        help: L10n.tr("将「\(moduleName)」当前配置的理论条带映射到胶图", "Overlay predicted bands from \"\(L10n.t(moduleName))\" onto gel"),
                         action: onPredictLive
                     )
                     
@@ -542,16 +542,16 @@ public struct GelFigureEditorView: View {
                     StudioActionPillButton(
                         title: "",
                         icon: "arrow.up.right.square",
-                        help: "前往\(moduleName)模块"
+                        help: L10n.tr("前往\(moduleName)模块", "Go to \(L10n.t(moduleName))")
                     ) {
                         appState.selectedNav = targetNav
                     }
                 }
             } else {
-                Label("暂无数据", systemImage: "tray")
+                Label(L10n.t("暂无数据"), systemImage: "tray")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
-                    .help("「\(moduleName)」尚未载入质粒或输入序列，可前往配置或直接用示范参数预测")
+                    .help(L10n.tr("「\(moduleName)」尚未载入质粒或输入序列，可前往配置或直接用示范参数预测", "\"\(L10n.t(moduleName))\" has no plasmid or sequence loaded yet; configure module or preview with sample data"))
                 
                 StudioFlowLayout(horizontalSpacing: GelUI.row, verticalSpacing: GelUI.row) {
                     StudioActionPillButton(
@@ -559,14 +559,14 @@ public struct GelFigureEditorView: View {
                         icon: "sparkles",
                         tint: .teal,
                         isProminent: true,
-                        help: "使用示范参数生成「\(moduleName)」虚拟预测泳道",
+                        help: L10n.tr("使用示范参数生成「\(moduleName)」虚拟预测泳道", "Generate virtual lane for \"\(L10n.t(moduleName))\" with sample parameters"),
                         action: onPredictDemo
                     )
                     
                     StudioActionPillButton(
                         title: "",
                         icon: "arrow.up.right.square",
-                        help: "前往\(moduleName)模块"
+                        help: L10n.tr("前往\(moduleName)模块", "Go to \(L10n.t(moduleName))")
                     ) {
                         appState.selectedNav = targetNav
                     }
@@ -581,13 +581,13 @@ public struct GelFigureEditorView: View {
         return VStack(alignment: .leading, spacing: GelUI.row) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: GelUI.row) {
-                    TextField("泳道名", text: $customLaneName)
+                    TextField(L10n.t("泳道名"), text: $customLaneName)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                         .font(.system(size: 12))
                         .frame(minWidth: 88, idealWidth: 120, maxWidth: 160)
                     
-                    TextField("条带大小 (\(unit)，逗号/空格分隔)", text: $customBandSizesText)
+                    TextField(L10n.tr("条带大小 (\(unit)，逗号/空格分隔)", "Band sizes (\(unit), comma/space-separated)"), text: $customBandSizesText)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                         .font(.system(size: 12))
@@ -596,12 +596,12 @@ public struct GelFigureEditorView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: GelUI.chip) {
-                    TextField("泳道名", text: $customLaneName)
+                    TextField(L10n.t("泳道名"), text: $customLaneName)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                         .font(.system(size: 12))
                     
-                    TextField("条带大小 (\(unit)，逗号/空格分隔)", text: $customBandSizesText)
+                    TextField(L10n.tr("条带大小 (\(unit)，逗号/空格分隔)", "Band sizes (\(unit), comma/space-separated)"), text: $customBandSizesText)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                         .font(.system(size: 12))
@@ -651,8 +651,8 @@ public struct GelFigureEditorView: View {
                 )
                 
                 if !parsed.isEmpty {
-                    StudioMetricBadge(label: "", value: "\(parsed.count) 条带 · \(unit)", color: .cyan)
-                        .help("已解析 \(parsed.count) 条自定义条带，单位 \(unit)")
+                    StudioMetricBadge(label: "", value: L10n.tr("\(parsed.count) 条带 · \(unit)", "\(parsed.count) bands · \(unit)"), color: .cyan)
+                        .help(L10n.tr("已解析 \(parsed.count) 条自定义条带，单位 \(unit)", "Parsed \(parsed.count) custom bands (unit: \(unit))"))
                 }
             }
         }
@@ -662,13 +662,13 @@ public struct GelFigureEditorView: View {
     private var singleFragmentSummaryBadges: [(label: String, value: String, color: Color)] {
         var list: [(String, String, Color)] = []
         if singleVM.effectiveVectorBackboneLengthBp > 0 {
-            list.append(("载体", "\(singleVM.effectiveVectorBackboneLengthBp) bp", .blue))
+            list.append((L10n.t("载体"), "\(singleVM.effectiveVectorBackboneLengthBp) bp", .blue))
         }
         if singleVM.cleanInsertLengthBp > 0 {
-            let name = singleVM.insertGeneName.isEmpty ? "插入" : singleVM.insertGeneName
+            let name = singleVM.insertGeneName.isEmpty ? L10n.t("插入") : singleVM.insertGeneName
             list.append((name, "\(singleVM.cleanInsertLengthBp) bp", .green))
         }
-        list.append(("同源臂", "\(singleVM.homologyLength) bp", .teal))
+        list.append((L10n.t("同源臂"), "\(singleVM.homologyLength) bp", .teal))
         return list
     }
     
@@ -676,22 +676,22 @@ public struct GelFigureEditorView: View {
         let validCount = multiVM.fragments.filter { BioSequence.clean($0).count >= 50 }.count
         var list: [(String, String, Color)] = []
         if multiVM.effectiveVectorBackboneLengthBp > 0 {
-            list.append(("载体", "\(multiVM.effectiveVectorBackboneLengthBp) bp", .blue))
+            list.append((L10n.t("载体"), "\(multiVM.effectiveVectorBackboneLengthBp) bp", .blue))
         }
-        list.append(("有效片段", "\(validCount) 个", .green))
-        list.append(("同源臂", "\(multiVM.homologyLength) bp", .teal))
+        list.append((L10n.t("有效片段"), L10n.tr("\(validCount) 个", "\(validCount)"), .green))
+        list.append((L10n.t("同源臂"), "\(multiVM.homologyLength) bp", .teal))
         return list
     }
     
     private var entryCloneSummaryBadges: [(label: String, value: String, color: Color)] {
         var list: [(String, String, Color)] = [
-            ("载体", "pCE2 (3957 bp)", .blue),
-            ("目的基因", "\(entryVM.cleanLength) bp", .green)
+            (L10n.t("载体"), "pCE2 (3957 bp)", .blue),
+            (L10n.t("目的基因"), "\(entryVM.cleanLength) bp", .green)
         ]
         if entryVM.hasEnzymes {
-            let e5 = entryVM.enzyme5?.name ?? "5'酶"
-            let e3 = entryVM.enzyme3?.name ?? "3'酶"
-            list.append(("酶切位点", "\(e5)/\(e3)", .teal))
+            let e5 = entryVM.enzyme5?.name ?? L10n.t("5'酶")
+            let e3 = entryVM.enzyme3?.name ?? L10n.t("3'酶")
+            list.append((L10n.t("酶切位点"), "\(e5)/\(e3)", .teal))
         }
         return list
     }
@@ -699,9 +699,9 @@ public struct GelFigureEditorView: View {
     private var fragmentDeletionSummaryBadges: [(label: String, value: String, color: Color)] {
         let pLen = deletionVM.plasmidDNAInfo?.length ?? BioSequence.clean(deletionVM.plasmidSeq).count
         return [
-            ("原质粒", "\(pLen) bp", .blue),
-            ("删除长度", "Δ\(deletionVM.estimatedDeletionLengthBp) bp", .orange),
-            ("同源臂", "\(deletionVM.homologyLength) bp", .teal)
+            (L10n.t("原质粒"), "\(pLen) bp", .blue),
+            (L10n.t("删除长度"), "Δ\(deletionVM.estimatedDeletionLengthBp) bp", .orange),
+            (L10n.t("同源臂"), "\(deletionVM.homologyLength) bp", .teal)
         ]
     }
     
@@ -709,11 +709,11 @@ public struct GelFigureEditorView: View {
         let pLen = mutagenesisVM.plasmidDNAInfo?.length
             ?? (BioSequence.clean(mutagenesisVM.mutUp).count + BioSequence.clean(mutagenesisVM.mutDown).count)
         var list: [(String, String, Color)] = [
-            ("模板", "\(pLen) bp", .blue),
-            ("重叠臂", "\(mutagenesisVM.homologyLength) bp", .teal)
+            (L10n.t("模板"), "\(pLen) bp", .blue),
+            (L10n.t("重叠臂"), "\(mutagenesisVM.homologyLength) bp", .teal)
         ]
         if !mutagenesisVM.mutationSummaryLabel.isEmpty {
-            list.append(("突变", mutagenesisVM.mutationSummaryLabel, .purple))
+            list.append((L10n.t("突变"), mutagenesisVM.mutationSummaryLabel, .purple))
         }
         return list
     }
@@ -729,7 +729,7 @@ public struct GelFigureEditorView: View {
                         value: "\(lanes.count) 泳道 · \(activeLadder.kind.unit)",
                         color: .cyan
                     )
-                    .help("共 \(lanes.count) 个泳道，分子量单位 \(activeLadder.kind.unit)")
+                    .help(L10n.tr("共 \(lanes.count) 个泳道，分子量单位 \(activeLadder.kind.unit)", "\(lanes.count) total lanes (MW unit: \(activeLadder.kind.unit))"))
                     
                     StudioActionPillButton(
                         title: "标尺",
@@ -845,11 +845,11 @@ public struct GelFigureEditorView: View {
                 
                 StudioFlowLayout(horizontalSpacing: GelUI.chip, verticalSpacing: GelUI.chip) {
                     StudioMetricBadge(label: "", value: "Marker", color: .orange)
-                        .help("橙色标尺：Marker 标准品校准带")
+                        .help(L10n.t("橙色标尺：Marker 标准品校准带"))
                     StudioMetricBadge(label: "", value: "实测", color: .green)
-                        .help("绿色实线：实测样品条带及回归推算分子量")
+                        .help(L10n.t("绿色实线：实测样品条带及回归推算分子量"))
                     StudioMetricBadge(label: "", value: "预测", color: .cyan)
-                        .help("青色虚线：理论预测对照带（酶切/克隆模块/自定义）")
+                        .help(L10n.t("青色虚线：理论预测对照带（酶切/克隆模块/自定义）"))
                 }
             }
         }
@@ -936,7 +936,7 @@ public struct GelFigureEditorView: View {
         appendVirtualLanes(
             [vLane],
             sourceKey: GelVirtualPredictionSource.plasmidDigest.rawValue,
-            toastMessage: "已叠加「\(name)」(\(enzDesc)) 理论酶切预测道"
+            toastMessage: L10n.tr("已叠加「\(name)」(\(enzDesc)) 理论酶切预测道", "Added simulated digest lane for \"\(name)\" (\(enzDesc))")
         )
     }
     
@@ -973,7 +973,7 @@ public struct GelFigureEditorView: View {
         }
         let vLanes = GelAnalysisEngine.buildVirtualLanesFromSimulation(
             sim,
-            sourceTag: "单片段",
+            sourceTag: L10n.t("单片段"),
             fit: calibrationFit,
             startingLaneIndex: lanes.count + 1,
             includeMixedControl: includeMixedControlLane
@@ -981,7 +981,7 @@ public struct GelFigureEditorView: View {
         appendVirtualLanes(
             vLanes,
             sourceKey: GelVirtualPredictionSource.singleFragment.rawValue,
-            toastMessage: "已叠加单片段克隆 \(vLanes.count) 条虚拟预测泳道"
+            toastMessage: L10n.tr("已叠加单片段克隆 \(vLanes.count) 条虚拟预测泳道", "Added \(vLanes.count) Single-Fragment Cloning virtual lanes")
         )
     }
     
@@ -1016,7 +1016,7 @@ public struct GelFigureEditorView: View {
         }
         let vLanes = GelAnalysisEngine.buildVirtualLanesFromSimulation(
             sim,
-            sourceTag: "多片段",
+            sourceTag: L10n.t("多片段"),
             fit: calibrationFit,
             startingLaneIndex: lanes.count + 1,
             includeMixedControl: includeMixedControlLane
@@ -1024,7 +1024,7 @@ public struct GelFigureEditorView: View {
         appendVirtualLanes(
             vLanes,
             sourceKey: GelVirtualPredictionSource.multiFragment.rawValue,
-            toastMessage: "已叠加多片段组装 \(vLanes.count) 条虚拟预测泳道"
+            toastMessage: L10n.tr("已叠加多片段组装 \(vLanes.count) 条虚拟预测泳道", "Added \(vLanes.count) Multi-Fragment Assembly virtual lanes")
         )
     }
     
@@ -1053,7 +1053,7 @@ public struct GelFigureEditorView: View {
         }
         let vLanes = GelAnalysisEngine.buildVirtualLanesFromSimulation(
             sim,
-            sourceTag: "入门",
+            sourceTag: L10n.t("入门"),
             fit: calibrationFit,
             startingLaneIndex: lanes.count + 1,
             includeMixedControl: includeMixedControlLane
@@ -1061,7 +1061,7 @@ public struct GelFigureEditorView: View {
         appendVirtualLanes(
             vLanes,
             sourceKey: GelVirtualPredictionSource.entryClone.rawValue,
-            toastMessage: "已叠加入门克隆 \(vLanes.count) 条虚拟预测泳道"
+            toastMessage: L10n.tr("已叠加入门克隆 \(vLanes.count) 条虚拟预测泳道", "Added \(vLanes.count) Entry Clone virtual lanes")
         )
     }
     
@@ -1086,7 +1086,7 @@ public struct GelFigureEditorView: View {
         }
         let vLanes = GelAnalysisEngine.buildVirtualLanesFromSimulation(
             sim,
-            sourceTag: "删除",
+            sourceTag: L10n.t("删除"),
             fit: calibrationFit,
             startingLaneIndex: lanes.count + 1,
             includeMixedControl: includeMixedControlLane
@@ -1094,7 +1094,7 @@ public struct GelFigureEditorView: View {
         appendVirtualLanes(
             vLanes,
             sourceKey: GelVirtualPredictionSource.fragmentDeletion.rawValue,
-            toastMessage: "已叠加片段删除 \(vLanes.count) 条虚拟预测泳道"
+            toastMessage: L10n.tr("已叠加片段删除 \(vLanes.count) 条虚拟预测泳道", "Added \(vLanes.count) Fragment Deletion virtual lanes")
         )
     }
     
@@ -1151,7 +1151,7 @@ public struct GelFigureEditorView: View {
         appendVirtualLanes(
             [vLane],
             sourceKey: GelVirtualPredictionSource.customSizes.rawValue,
-            toastMessage: "已叠加自定义预测泳道「\(vLane.name)」(\(sizes.count) 条带)"
+            toastMessage: L10n.tr("已叠加自定义预测泳道「\(vLane.name)」(\(sizes.count) 条带)", "Added custom virtual lane \"\(vLane.name)\" (\(sizes.count) bands)")
         )
     }
     

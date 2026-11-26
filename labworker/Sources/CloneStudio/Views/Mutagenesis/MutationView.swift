@@ -97,29 +97,29 @@ public struct MutationView: View {
                                         .padding(.vertical, 2.5)
                                         .background(Capsule().fill(Color.pink.opacity(0.12)))
                                 }
-                                StudioMetricBadge(label: "上游", value: "\(upCount) bp", color: upCount >= 50 ? .green : .orange)
-                                StudioSectionClearButton(label: "一键清除", action: vm.clearUpstreamSection)
+                                StudioMetricBadge(label: L10n.t("上游"), value: "\(upCount) bp", color: upCount >= 50 ? .green : .orange)
+                                StudioSectionClearButton(label: L10n.t("一键清除"), action: vm.clearUpstreamSection)
                             }
                         } content: {
-                            SequenceEditorBox(text: $vm.mutUp, placeholder: "5' 上游序列 (≥ 50 bp)", minHeight: 60)
+                            SequenceEditorBox(text: $vm.mutUp, placeholder: L10n.t("5' 上游序列 (≥ 50 bp)"), minHeight: 60)
                         }
                         
                         // 2. 目标突变序列
                         StudioCard(title: "突变位点碱基") {
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                                StudioMetricBadge(label: "", value: siteCount == 0 ? "缺失 (Δ)" : "\(siteCount) bp", color: .pink)
-                                StudioSectionClearButton(label: "一键清除", action: vm.clearMutationSiteSection)
+                                StudioMetricBadge(label: "", value: siteCount == 0 ? L10n.t("缺失 (Δ)") : "\(siteCount) bp", color: .pink)
+                                StudioSectionClearButton(label: L10n.t("一键清除"), action: vm.clearMutationSiteSection)
                             }
                         } content: {
                             HStack(spacing: 10) {
-                                TextField("目标碱基 (留空为缺失 Δ)", text: $vm.mutSite)
+                                TextField(L10n.t("目标碱基 (留空为缺失 Δ)"), text: $vm.mutSite)
                                     .font(.system(size: 13, weight: .bold))
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: 220)
                                 
                                 if siteCount == 3 {
                                     let (aa, three) = CodonTranslator.translateTriplet(vm.mutSite)
-                                    StudioMetricBadge(label: "氨基酸", value: "\(three) (\(String(aa)))", color: .pink)
+                                    StudioMetricBadge(label: L10n.t("氨基酸"), value: "\(three) (\(String(aa)))", color: .pink)
                                 }
                                 Spacer()
                             }
@@ -128,11 +128,11 @@ public struct MutationView: View {
                         // 3. 下游序列
                         StudioCard(title: "3' 下游序列") {
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                                StudioMetricBadge(label: "下游", value: "\(downCount) bp", color: downCount >= 50 ? .green : .orange)
-                                StudioSectionClearButton(label: "一键清除", action: vm.clearDownstreamSection)
+                                StudioMetricBadge(label: L10n.t("下游"), value: "\(downCount) bp", color: downCount >= 50 ? .green : .orange)
+                                StudioSectionClearButton(label: L10n.t("一键清除"), action: vm.clearDownstreamSection)
                             }
                         } content: {
-                            SequenceEditorBox(text: $vm.mutDown, placeholder: "3' 下游序列 (≥ 50 bp)", minHeight: 60)
+                            SequenceEditorBox(text: $vm.mutDown, placeholder: L10n.t("3' 下游序列 (≥ 50 bp)"), minHeight: 60)
                         }
                         
                         // 4. 突变重叠同源臂长度
@@ -144,17 +144,17 @@ public struct MutationView: View {
                                         StudioSegmentedOption(value: $0, title: "\($0) bp", tint: .pink)
                                     }
                                 )
-                                StudioSectionClearButton(label: "一键重置") {
+                                StudioSectionClearButton(label: L10n.t("一键重置")) {
                                     vm.homologyLength = 20
                                 }
                             }
                         } content: {
                             HStack {
-                                Text("当前突变重叠臂: \(vm.homologyLength) bp")
+                                Text(L10n.tr("当前突变重叠臂: \(vm.homologyLength) bp", "Overlap Arm: \(vm.homologyLength) bp"))
                                     .font(.system(size: 11.5, weight: .semibold))
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Text("目标 Tm: \(String(format: "%.1f", appState.mutationTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) ℃")
+                                Text(L10n.tr("目标 Tm: \(String(format: "%.1f", appState.mutationTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) ℃", "Target Tm: \(String(format: "%.1f", appState.mutationTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) °C"))
                                     .font(.system(size: 11))
                                     .monospacedDigit()
                                     .foregroundColor(.secondary)
@@ -197,9 +197,9 @@ public struct MutationView: View {
                         if !vm.primers.isEmpty {
                             StudioCard(title: "生成的引物结果") {
                                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                                    StudioMetricBadge(label: "数量", value: "\(vm.primers.count) 条", color: .green)
+                                    StudioMetricBadge(label: L10n.t("数量"), value: L10n.tr("\(vm.primers.count) 条", "\(vm.primers.count)"), color: .green)
                                     injectPrimersButton
-                                    StudioSectionClearButton(label: "一键清除引物", action: vm.clearPrimersSection)
+                                    StudioSectionClearButton(label: L10n.t("一键清除引物"), action: vm.clearPrimersSection)
                                 }
                             } content: {
                                 VStack(spacing: 10) {
@@ -249,8 +249,8 @@ public struct MutationView: View {
                     }
                 }
         }
-        .alert("提示", isPresented: $vm.showAlert) {
-            Button("好的", role: .cancel) {}
+        .alert(L10n.t("提示"), isPresented: $vm.showAlert) {
+            Button(L10n.t("好的"), role: .cancel) {}
         } message: {
             Text(vm.alertMessage ?? "")
         }
@@ -321,7 +321,7 @@ public struct MutationView: View {
                         AppState.shared.showToast("已成功向原质粒写入定点突变引物（已备份）")
                         SnapGeneService.shared.openInSnapGene(url: url)
                     } catch {
-                        AppState.shared.showToast("写入失败: \(error.localizedDescription)")
+                        AppState.shared.showToast(L10n.tr("写入失败: \(error.localizedDescription)", "Write failed: \(error.localizedDescription)"))
                     }
                 }
             } else {
@@ -332,7 +332,7 @@ public struct MutationView: View {
                             AppState.shared.showToast("已成功向质粒写入定点突变引物（已备份）")
                             SnapGeneService.shared.openInSnapGene(url: url)
                         } catch {
-                            AppState.shared.showToast("写入失败: \(error.localizedDescription)")
+                            AppState.shared.showToast(L10n.tr("写入失败: \(error.localizedDescription)", "Write failed: \(error.localizedDescription)"))
                         }
                     }
                 }
@@ -348,11 +348,11 @@ public struct MutationView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "doc.text.magnifyingglass")
                         .foregroundColor(.pink)
-                    Text("已载入质粒: \(info.fileName)")
+                    Text(L10n.tr("已载入质粒: \(info.fileName)", "Loaded Plasmid: \(info.fileName)"))
                         .font(.system(size: 12, weight: .bold))
                         .lineLimit(1)
                         .truncationMode(.middle)
-                    Text("(\(info.length) bp · \(info.featuresCount) 个特征)")
+                    Text(L10n.tr("(\(info.length) bp · \(info.featuresCount) 个特征)", "(\(info.length) bp · \(info.featuresCount) features)"))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -366,7 +366,7 @@ public struct MutationView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.text.magnifyingglass")
                             .foregroundColor(.pink)
-                        Text("已载入质粒: \(info.fileName)")
+                        Text(L10n.tr("已载入质粒: \(info.fileName)", "Loaded Plasmid: \(info.fileName)"))
                             .font(.system(size: 12, weight: .bold))
                             .lineLimit(1)
                             .truncationMode(.middle)
@@ -374,7 +374,7 @@ public struct MutationView: View {
                         closePlasmidCardButton
                     }
                     HStack(spacing: 8) {
-                        Text("\(info.length) bp · \(info.featuresCount) 个特征")
+                        Text(L10n.tr("\(info.length) bp · \(info.featuresCount) 个特征", "\(info.length) bp · \(info.featuresCount) features"))
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                         Spacer()
@@ -388,7 +388,7 @@ public struct MutationView: View {
             if !feats.isEmpty {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        Text("选择目标基因/特征:")
+                        Text(L10n.t("选择目标基因/特征:"))
                             .font(.system(size: 11.5, weight: .medium))
                             .fixedSize()
                         featurePicker(feats: feats)
@@ -396,7 +396,7 @@ public struct MutationView: View {
                         
                         Spacer(minLength: 4)
                         
-                        Text("阅读框:")
+                        Text(L10n.t("阅读框:"))
                             .font(.system(size: 11.5, weight: .medium))
                             .foregroundColor(.secondary)
                             .fixedSize()
@@ -405,14 +405,14 @@ public struct MutationView: View {
                     
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
-                            Text("选择目标基因/特征:")
+                            Text(L10n.t("选择目标基因/特征:"))
                                 .font(.system(size: 11.5, weight: .medium))
                                 .fixedSize()
                             featurePicker(feats: feats)
                                 .frame(maxWidth: .infinity)
                         }
                         HStack(spacing: 8) {
-                            Text("阅读框切换:")
+                            Text(L10n.t("阅读框切换:"))
                                 .font(.system(size: 11.5, weight: .medium))
                                 .foregroundColor(.secondary)
                                 .fixedSize()
@@ -427,10 +427,10 @@ public struct MutationView: View {
             if !vm.translatedResidues.isEmpty {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        Text("待突变氨基酸/密码子 (共 \(vm.translatedResidues.count) aa):")
+                        Text(L10n.tr("待突变氨基酸/密码子 (共 \(vm.translatedResidues.count) aa):", "Target Residue/Codon (\(vm.translatedResidues.count) aa total):"))
                             .font(.system(size: 11.5, weight: .semibold))
                             .fixedSize()
-                        TextField("搜索位点如 42 / K42 / AAG...", text: $vm.residueSearchText)
+                        TextField(L10n.t("搜索位点如 42 / K42 / AAG..."), text: $vm.residueSearchText)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 11))
                             .frame(width: 175)
@@ -440,13 +440,13 @@ public struct MutationView: View {
                     
                     VStack(alignment: .leading, spacing: 5) {
                         HStack(spacing: 8) {
-                            Text("点击选择待突变的氨基酸/密码子 (共 \(vm.translatedResidues.count) aa):")
+                            Text(L10n.tr("点击选择待突变的氨基酸/密码子 (共 \(vm.translatedResidues.count) aa):", "Click a residue/codon to mutate (\(vm.translatedResidues.count) aa total):"))
                                 .font(.system(size: 11.5, weight: .semibold))
                                 .lineLimit(1)
                             Spacer()
                             currentResidueBadge
                         }
-                        TextField("搜索位点如 42 / K42 / AAG...", text: $vm.residueSearchText)
+                        TextField(L10n.t("搜索位点如 42 / K42 / AAG..."), text: $vm.residueSearchText)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 11))
                             .frame(maxWidth: 260)
@@ -504,7 +504,7 @@ public struct MutationView: View {
                 
                 // 4. 选择目标突变氨基酸或密码子 — 采用自适应多行网格 (LazyVGrid)，全量展示 20 种氨基酸 + 终止子 + Δ缺失，彻底告别右侧截断！
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("突变为目标氨基酸 (点击直接替换):")
+                    Text(L10n.t("突变为目标氨基酸 (点击直接替换):"))
                         .font(.system(size: 11.5, weight: .semibold))
                     
                     LazyVGrid(
@@ -551,10 +551,10 @@ public struct MutationView: View {
                             )
                         }) {
                             VStack(spacing: 1) {
-                                Text("Δ 缺失")
+                                Text(L10n.t("Δ 缺失"))
                                     .font(.system(size: 10, weight: .bold))
                                     .lineLimit(1)
-                                Text("删除3bp")
+                                Text(L10n.t("删除3bp"))
                                     .font(.system(size: 8.5))
                             }
                             .frame(maxWidth: .infinity)
@@ -574,7 +574,7 @@ public struct MutationView: View {
                    chosenOpt.allCodons.count > 1 {
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 6) {
-                            Text("\(chosenOpt.chineseName) (\(chosenOpt.threeLetter)) 同义密码子切换:")
+                            Text(L10n.tr("\(chosenOpt.chineseName) (\(chosenOpt.threeLetter)) 同义密码子切换:", "Synonymous Codons for \(chosenOpt.threeLetter):"))
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                                 .fixedSize()
@@ -585,7 +585,7 @@ public struct MutationView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(chosenOpt.chineseName) (\(chosenOpt.threeLetter)) 同义密码子切换:")
+                            Text(L10n.tr("\(chosenOpt.chineseName) (\(chosenOpt.threeLetter)) 同义密码子切换:", "Synonymous Codons for \(chosenOpt.threeLetter):"))
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                             HStack(spacing: 6) {
@@ -625,7 +625,7 @@ public struct MutationView: View {
     }
     
     private var closePlasmidCardButton: some View {
-        StudioSectionClearButton(label: "一键清除质粒", action: vm.clearPlasmidSection)
+        StudioSectionClearButton(label: L10n.t("一键清除质粒"), action: vm.clearPlasmidSection)
     }
     
     private func featurePicker(feats: [SnapGeneFeature]) -> some View {
@@ -636,7 +636,7 @@ public struct MutationView: View {
             ForEach(feats) { f in
                 let s = f.segments.first?.start ?? 1
                 let e = f.segments.last?.end ?? 1
-                let dir = f.directionality == "2" ? "← 反义链" : "→ 正义链"
+                let dir = L10n.t(f.directionality == "2" ? "← 反义链" : "→ 正义链")
                 Text("\(f.name) [\(s)..\(e), \(e - s + 1) bp \(dir)] (\(f.type))").tag(f.id)
             }
         }
@@ -660,7 +660,7 @@ public struct MutationView: View {
     @ViewBuilder
     private var currentResidueBadge: some View {
         if let cur = vm.currentSelectedResidue {
-            Text("当前选中: \(cur.threeLetter)\(cur.residueIndex1Based) (\(cur.codon), @\(cur.plasmidStartBp)..\(cur.plasmidEndBp) bp)")
+            Text(L10n.tr("当前选中: \(cur.threeLetter)\(cur.residueIndex1Based) (\(cur.codon), @\(cur.plasmidStartBp)..\(cur.plasmidEndBp) bp)", "Selected: \(cur.threeLetter)\(cur.residueIndex1Based) (\(cur.codon), @\(cur.plasmidStartBp)..\(cur.plasmidEndBp) bp)"))
                 .font(.system(size: 11, weight: .bold))
                 .monospacedDigit()
                 .foregroundColor(.pink)

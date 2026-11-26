@@ -110,13 +110,13 @@ public final class CalculatorViewModel: ObservableObject {
     
     public var remainingWaterFormatted: String {
         let w = remainingWaterVolumeUl
-        return String(format: "%.2f μL (补齐至 20 μL)", w)
+        return String(format: L10n.tr("%.2f μL (补齐至 20 μL)", "%.2f μL (adjust to 20 μL)"), w)
     }
     
     public func addInsertSlot() {
         guard insertLengths.count < 11 else { return }
         let nextIdx = insertLengths.count + 1
-        insertNames.append("片段 \(nextIdx)")
+        insertNames.append(L10n.tr("片段 \(nextIdx)", "Fragment \(nextIdx)"))
         insertLengths.append("1.0")
         insertConcs.append("20")
         insertCustomNgs.append("")
@@ -145,7 +145,7 @@ public final class CalculatorViewModel: ObservableObject {
         }
         if !inserts.isEmpty {
             self.insertNames = inserts.enumerated().map { idx, item in
-                item.name.isEmpty ? "片段 \(idx + 1)" : item.name
+                item.name.isEmpty ? L10n.tr("片段 \(idx + 1)", "Fragment \(idx + 1)") : item.name
             }
             self.insertLengths = inserts.map { item in
                 let bp = max(50, item.lengthBp)
@@ -162,9 +162,9 @@ public final class CalculatorViewModel: ObservableObject {
             WorkspaceSessionManager.shared.bioCalculatorVM.selectedCategory = .cloningAndLigation
             AppState.shared.selectedNav = .dnaCalculator
         }
-        let vecDesc = vectorLengthBp > 0 ? "载体 \(vectorLengthBp) bp" : "载体未设"
+        let vecDesc = vectorLengthBp > 0 ? L10n.tr("载体 \(vectorLengthBp) bp", "Vector \(vectorLengthBp) bp") : L10n.t("载体未设")
         let insDesc = inserts.map { "\($0.name.isEmpty ? "片段" : $0.name) \($0.lengthBp) bp" }.joined(separator: " + ")
-        AppState.shared.showToast("已同步至用量计算：\(vecDesc)，\(insDesc)")
+        AppState.shared.showToast(L10n.tr("已同步至用量计算：\(vecDesc)，\(insDesc)", "Synced to Dosage Calculator: \(vecDesc), \(insDesc)"))
     }
 }
 
@@ -561,7 +561,7 @@ public final class BioCalculatorSuiteViewModel: ObservableObject {
         switch selectedCategory {
         case .cloningAndLigation:
             let calc = WorkspaceSessionManager.shared.calculatorVM
-            calc.vectorName = "pET-28a 线性化"
+            calc.vectorName = L10n.t("pET-28a 线性化")
             calc.vectorLengthKb = "5.369"
             calc.vectorConcentration = "50"
             calc.ligationVectorPmol = "0.03"

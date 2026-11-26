@@ -25,15 +25,15 @@ public final class BroadGPPCompareViewModel: ObservableObject {
         public var ruleExplanation: String {
             switch self {
             case .smartRecommend:
-                return "优先置顶命中本地 TRC 文库/自定义 shRNA 的序列；其余优先展示不匹配其他基因且综合评分最高的 TRC 克隆。"
+                return L10n.t("优先置顶命中本地 TRC 文库/自定义 shRNA 的序列；其余优先展示不匹配其他基因且综合评分最高的 TRC 克隆。")
             case .adjustedScoreDesc:
-                return "严格按 Broad GPP 特异性校正分（Adjusted Score = Intrinsic Score × Specificity Factor）从高到低排列。"
+                return L10n.t("严格按 Broad GPP 特异性校正分（Adjusted Score = Intrinsic Score × Specificity Factor）从高到低排列。")
             case .intrinsicScoreDesc:
-                return "按 Broad GPP 原始效能分（Intrinsic Score）从高到低排列。"
+                return L10n.t("按 Broad GPP 原始效能分（Intrinsic Score）从高到低排列。")
             case .combinedScoreDesc:
-                return "按融合物种特异性（45%）+ Broad 敲低效价（35%）+ 热力学与 Pol III 规则（20%）的综合评分降序排列。"
+                return L10n.t("按融合物种特异性（45%）+ Broad 敲低效价（35%）+ 热力学与 Pol III 规则（20%）的综合评分降序排列。")
             case .transcriptCountDesc:
-                return "优先展示可覆盖当前基因最多野生型转录本异构体的 shRNA 克隆。"
+                return L10n.t("优先展示可覆盖当前基因最多野生型转录本异构体的 shRNA 克隆。")
             }
         }
     }
@@ -101,7 +101,7 @@ public final class BroadGPPCompareViewModel: ObservableObject {
         var newItems: [LocalCompareTarget] = []
         for (i, seq) in parts.enumerated() {
             newItems.append(LocalCompareTarget(
-                label: "手动 sh#\(existingCount + i + 1)",
+                label: L10n.tr("手动 sh#\(existingCount + i + 1)", "Manual sh#\(existingCount + i + 1)"),
                 sequence: seq,
                 sourceType: .shRNA,
                 isSelectedOrGenerated: true
@@ -110,7 +110,7 @@ public final class BroadGPPCompareViewModel: ObservableObject {
         AppState.shared.syncLocalCompareTargets(newItems, replaceSourceType: nil)
         manualCompareInput = ""
         recomputeLocalMatches()
-        AppState.shared.showToast("已添加 \(newItems.count) 条 shRNA 序列至 Broad GPP 高亮对比池")
+        AppState.shared.showToast(L10n.tr("已添加 \(newItems.count) 条 shRNA 序列至 Broad GPP 高亮对比池", "Added \(newItems.count) shRNA sequence(s) to Broad GPP comparison"))
     }
     
     public func removeLocalCompareTarget(_ item: LocalCompareTarget) {
@@ -155,7 +155,7 @@ public final class BroadGPPCompareViewModel: ObservableObject {
             let existingSeqs = Set(pool.map { $0.cleanSequence })
             for sh in libSh where !existingSeqs.contains(sh.sequence.uppercased()) {
                 pool.append(LocalCompareTarget(
-                    label: "本地文库 shRNA",
+                    label: L10n.t("本地文库 shRNA"),
                     sequence: sh.sequence,
                     sourceType: .shRNA,
                     isSelectedOrGenerated: false
@@ -178,7 +178,7 @@ public final class BroadGPPCompareViewModel: ObservableObject {
     public func fetchTargets(forceRefresh: Bool = false) {
         let clean = gene.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else {
-            errorMessage = "请输入需要查询的基因名或 NCBI ID"
+            errorMessage = L10n.t("请输入需要查询的基因名或 NCBI ID")
             showErrorAlert = true
             return
         }
@@ -189,7 +189,7 @@ public final class BroadGPPCompareViewModel: ObservableObject {
         let targetSpecies = species
         
         isLoading = true
-        progressMessage = "正在从 Broad GPP Public Portal 检索「\(clean)」..."
+        progressMessage = L10n.tr("正在从 Broad GPP Public Portal 检索「\(clean)」...", "Querying Broad GPP Public Portal for \"\(clean)\"...")
         errorMessage = nil
         
         activeTask = Task { [weak self] in
@@ -223,9 +223,9 @@ public final class BroadGPPCompareViewModel: ObservableObject {
                 
                 let hitCount = self.matchMap.count
                 if hitCount > 0 {
-                    AppState.shared.showToast("Broad GPP 已加载 \(res.targets.count) 条 TRC shRNA（命中本地 \(hitCount) 条）")
+                    AppState.shared.showToast(L10n.tr("Broad GPP 已加载 \(res.targets.count) 条 TRC shRNA（命中本地 \(hitCount) 条）", "Loaded \(res.targets.count) Broad GPP TRC shRNAs (\(hitCount) local hit(s))"))
                 } else {
-                    AppState.shared.showToast("Broad GPP 已加载 \(res.targets.count) 条 \(res.geneSymbol) TRC shRNA")
+                    AppState.shared.showToast(L10n.tr("Broad GPP 已加载 \(res.targets.count) 条 \(res.geneSymbol) TRC shRNA", "Loaded \(res.targets.count) TRC shRNAs for \(res.geneSymbol)"))
                 }
             } catch {
                 guard self.activeQueryToken == token, !Task.isCancelled else { return }
@@ -330,7 +330,7 @@ public final class BroadGPPCompareViewModel: ObservableObject {
     public func selectLocalHitsOnly() {
         let hitIDs = targets.filter { matchMap[$0.id] != nil }.map(\.id)
         selectedTargetIDs = Set(hitIDs)
-        AppState.shared.showToast("已勾选全部 \(hitIDs.count) 条本地命中克隆")
+        AppState.shared.showToast(L10n.tr("已勾选全部 \(hitIDs.count) 条本地命中克隆", "Selected all \(hitIDs.count) matching local clone(s)"))
     }
     
     public func toggleTarget(_ target: BroadGPPShRNATarget) {
@@ -345,7 +345,7 @@ public final class BroadGPPCompareViewModel: ObservableObject {
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(target.targetSequence, forType: .string)
-        AppState.shared.showToast("已复制 21bp 靶点序列: \(target.targetSequence)")
+        AppState.shared.showToast(L10n.tr("已复制 21bp 靶点序列: \(target.targetSequence)", "Copied 21-bp target: \(target.targetSequence)"))
     }
     
     public func copyOfficialBroadOligos(_ target: BroadGPPShRNATarget) {
@@ -359,7 +359,7 @@ public final class BroadGPPCompareViewModel: ObservableObject {
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(text, forType: .string)
-        AppState.shared.showToast("已复制 \(target.primaryCloneID) 正反向克隆 Oligo")
+        AppState.shared.showToast(L10n.tr("已复制 \(target.primaryCloneID) 正反向克隆 Oligo", "Copied cloning oligos for \(target.primaryCloneID)"))
     }
     
     public func addPairToCart(_ target: BroadGPPShRNATarget, loop: String = ShRNADesigner.defaultLoop, prefix: String = "") {
@@ -396,7 +396,7 @@ public final class BroadGPPCompareViewModel: ObservableObject {
             )
         )
         AppState.shared.addPrimersToCart([pair.fwdPrimer, pair.revPrimer])
-        AppState.shared.showToast("已将 \(target.primaryCloneID) 发夹引物加入订购单")
+        AppState.shared.showToast(L10n.tr("已将 \(target.primaryCloneID) 发夹引物加入订购单", "Added \(target.primaryCloneID) hairpin primers to order cart"))
     }
     
     public func addSelectedToCart(loop: String = ShRNADesigner.defaultLoop, prefix: String = "") {
@@ -439,7 +439,7 @@ public final class BroadGPPCompareViewModel: ObservableObject {
             ))
         }
         AppState.shared.addPrimersToCart(primers)
-        AppState.shared.showToast("已将 \(selected.count) 个 Broad TRC 克隆 (\(primers.count) 条引物) 加入订购单")
+        AppState.shared.showToast(L10n.tr("已将 \(selected.count) 个 Broad TRC 克隆 (\(primers.count) 条引物) 加入订购单", "Added \(selected.count) Broad TRC clone(s) (\(primers.count) primers) to order cart"))
     }
     
     public func openGeneInSafari() {

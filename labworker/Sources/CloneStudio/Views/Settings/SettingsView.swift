@@ -20,10 +20,10 @@ public struct SettingsView: View {
         public var id: String { rawValue }
         public var title: String {
             switch self {
-            case .preferences:          return "参数与外观"
-            case .sidebarCustomization: return "侧边栏定制"
-            case .mcpService:           return "MCP 服务"
-            case .featureManual:        return "全局说明书"
+            case .preferences:          return L10n.t("参数与外观")
+            case .sidebarCustomization: return L10n.t("侧边栏定制")
+            case .mcpService:           return L10n.t("MCP 服务")
+            case .featureManual:        return L10n.t("全局说明书")
             }
         }
     }
@@ -36,10 +36,10 @@ public struct SettingsView: View {
             toolbar: [
                 .picker(
                     id: "settings_tab",
-                    label: "设置分页",
+                    label: L10n.t("设置分页"),
                     options: SettingsSubTab.allCases.map { tab in
                         StudioToolbarPickerOption(
-                            id: tab.title,
+                            id: tab.rawValue,
                             title: tab.title,
                             tint: .blue,
                             isSelected: activeTab == tab
@@ -101,19 +101,19 @@ public struct SettingsView: View {
             StudioCard(title: "侧边栏模块可见性快捷方案") {
                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                     StudioMetricBadge(
-                        label: "侧边栏显示",
+                        label: L10n.t("侧边栏显示"),
                         value: "\(visibleCount) / \(NavItem.allCases.count)",
                         color: visibleCount == NavItem.allCases.count ? .green : .orange
                     )
                     StudioMetricBadge(
-                        label: "当前已隐藏",
-                        value: "\(hiddenCount) 项",
+                        label: L10n.t("当前已隐藏"),
+                        value: L10n.tr("\(hiddenCount) 项", "\(hiddenCount) hidden"),
                         color: hiddenCount == 0 ? .green : .orange
                     )
                 }
             } content: {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("勾选需要在左侧导航栏常驻显示的工具模块；取消勾选即可隐藏不常用的功能（注：即使隐藏，仍可通过侧边栏搜索框、Finder 文件快导或「全局功能说明书」随时直达）。")
+                    Text(L10n.t("勾选需要在左侧导航栏常驻显示的工具模块；取消勾选即可隐藏不常用的功能（注：即使隐藏，仍可通过侧边栏搜索框、Finder 文件快导或「全局功能说明书」随时直达）。"))
                         .font(.system(size: 11.5))
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -144,7 +144,7 @@ public struct SettingsView: View {
                     StudioCard(title: section.title) {
                         StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                             StudioMetricBadge(
-                                label: "可见",
+                                label: L10n.t("可见"),
                                 value: "\(visibleInSec)/\(sectionItems.count)",
                                 color: visibleInSec > 0 ? .blue : .secondary
                             )
@@ -194,7 +194,7 @@ public struct SettingsView: View {
                                     Spacer(minLength: 2)
 
                                     if !item.canBeHiddenInSidebar {
-                                        Text("常驻")
+                                        Text(L10n.t("常驻"))
                                             .font(.system(size: 9.5, weight: .semibold))
                                             .foregroundColor(.secondary)
                                             .padding(.horizontal, 5)
@@ -227,10 +227,10 @@ public struct SettingsView: View {
         return VStack(alignment: .leading, spacing: 12) {
             StudioResponsiveSplitLayout(breakpoint: 820, spacing: 12, leftRatio: 0.48) {
                 StudioCard(title: "Labworker MCP Server 20261120 控制中心") {
-                    StudioMetricBadge(label: "协议状态", value: "JSON-RPC 2.0 就绪", color: .green)
+                    StudioMetricBadge(label: L10n.t("协议状态"), value: "JSON-RPC 2.0 就绪", color: .green)
                 } content: {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("通过 Model Context Protocol (MCP) 标准协议，允许 Claude Desktop、Cursor、Windsurf、Cline 等外部 AI 客户端直接调用本机的全栈生物实验引擎，并将生成的引物、重组质粒、WB 定量或对接盒子实时回写至 Labworker 对应工作台画布。")
+                        Text(L10n.t("通过 Model Context Protocol (MCP) 标准协议，允许 Claude Desktop、Cursor、Windsurf、Cline 等外部 AI 客户端直接调用本机的全栈生物实验引擎，并将生成的引物、重组质粒、WB 定量或对接盒子实时回写至 Labworker 对应工作台画布。"))
                             .font(.system(size: 11.5))
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -259,13 +259,16 @@ public struct SettingsView: View {
 
                         if !pool.recentMCPSyncRecords.isEmpty {
                             VStack(alignment: .leading, spacing: 5) {
-                                Text("跨进程同步记录 (mcp_sync/done/ · 共 \(pool.recentMCPSyncRecords.count) 条)")
+                                Text(L10n.tr(
+                                    L10n.tr("跨进程同步记录 (mcp_sync/done/ · 共 \(pool.recentMCPSyncRecords.count) 条)", "Cross-Process Sync Log (mcp_sync/done/ · \(pool.recentMCPSyncRecords.count) entries)"),
+                                    "IPC Sync Log (mcp_sync/done/ · \(pool.recentMCPSyncRecords.count) entries)"
+                                ))
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.secondary)
                                 ForEach(pool.recentMCPSyncRecords.prefix(5)) { rec in
                                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 3) {
                                         StudioMetricBadge(label: "run_id", value: String(rec.runID.prefix(8)), color: .teal)
-                                        StudioMetricBadge(label: "工具", value: rec.toolName, color: .blue)
+                                        StudioMetricBadge(label: L10n.t("工具"), value: rec.toolName, color: .blue)
                                         Text(rec.actionSummary)
                                             .font(.system(size: 11))
                                             .foregroundColor(.primary)
@@ -284,7 +287,7 @@ public struct SettingsView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.green)
-                                Text("最近外部调用同步：\(lastSync)")
+                                Text(L10n.tr("最近外部调用同步：\(lastSync)", "Last External Sync: \(lastSync)"))
                                     .font(.system(size: 11.5, weight: .medium))
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -294,10 +297,10 @@ public struct SettingsView: View {
                 }
 
                 StudioCard(title: "标准客户端配置 JSON (mcpServers.labworker)") {
-                    StudioMetricBadge(label: "工具总数", value: "\(tools.count) 项", color: .blue)
+                    StudioMetricBadge(label: L10n.t("工具总数"), value: L10n.tr("\(tools.count) 项", "\(tools.count) tools"), color: .blue)
                 } content: {
                     Text(pool.mcpConfigJSONString)
-                        .font(.system(size: 11.5, design: .monospaced))
+                        .font(.system(size: 11.5))
                         .textSelection(.enabled)
                         .padding(10)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -312,8 +315,8 @@ public struct SettingsView: View {
                 }
             }
 
-            StudioCard(title: "已注册的 \(tools.count) 大全栈 MCP 实验工具清单") {
-                StudioMetricBadge(label: "版本", value: "labworker-mcp 20261120", color: .teal)
+            StudioCard(title: L10n.tr("已注册的 \(tools.count) 大全栈 MCP 实验工具清单", "Registered \(tools.count) Full-Stack MCP Tools")) {
+                StudioMetricBadge(label: L10n.t("版本"), value: "labworker-mcp 20261120", color: .teal)
             } content: {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 270, maximum: 460), spacing: 10)], spacing: 10) {
                     ForEach(tools) { t in
@@ -326,7 +329,7 @@ public struct SettingsView: View {
                                 Spacer()
                                 StudioMetricBadge(label: "", value: t.category, color: .secondary)
                             }
-                            Text(t.summary)
+                            Text(L10n.t(t.summary))
                                 .font(.system(size: 11.5))
                                 .foregroundColor(.primary.opacity(0.88))
                                 .fixedSize(horizontal: false, vertical: true)
@@ -355,7 +358,7 @@ public struct SettingsView: View {
         return VStack(alignment: .leading, spacing: 12) {
             StudioCard(title: "Labworker 全局功能说明书与文件格式速查") {
                 StudioMetricBadge(
-                    label: "匹配模块",
+                    label: L10n.t("匹配模块"),
                     value: "\(items.count) / \(NavItem.allCases.count)",
                     color: .teal
                 )
@@ -367,7 +370,7 @@ public struct SettingsView: View {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
-                            TextField("搜索功能名称、算法关键词或文件格式 (如 .tif / .pdb / .dna / LIGSITE / ΔΔCt)...", text: $manualSearchQuery)
+                            TextField(L10n.t("搜索功能名称、算法关键词或文件格式 (如 .tif / .pdb / .dna / LIGSITE / ΔΔCt)..."), text: $manualSearchQuery)
                                 .textFieldStyle(.plain)
                                 .font(.system(size: 12))
                             if !manualSearchQuery.isEmpty {
@@ -393,7 +396,7 @@ public struct SettingsView: View {
                                 )
                         )
 
-                        categoryFilterPill(title: "全部 (\(NavItem.allCases.count))", section: nil)
+                        categoryFilterPill(title: L10n.tr("全部 (\(NavItem.allCases.count))", "All (\(NavItem.allCases.count))"), section: nil)
                         ForEach(SidebarSectionKind.allCases) { sec in
                             categoryFilterPill(title: sec.title, section: sec)
                         }
@@ -432,7 +435,7 @@ public struct SettingsView: View {
                                     title: "直达",
                                     icon: "arrow.up.right",
                                     tint: appState.accentTheme.color,
-                                    help: "跳转到「\(item.title)」工作台"
+                                    help: L10n.tr("跳转到「\(item.title)」工作台", "Open \(item.title)")
                                 ) {
                                     appState.selectedNav = item
                                 }
@@ -454,7 +457,7 @@ public struct SettingsView: View {
                         // 3. 支持格式与实操提示
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(alignment: .top, spacing: 5) {
-                                Text("支持格式:")
+                                Text(L10n.t("支持格式:"))
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.secondary)
                                 Text(item.supportedFormats)
@@ -463,7 +466,7 @@ public struct SettingsView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             HStack(alignment: .top, spacing: 5) {
-                                Text("实操提示:")
+                                Text(L10n.t("实操提示:"))
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.secondary)
                                 Text(item.workflowTip)
@@ -504,7 +507,7 @@ public struct SettingsView: View {
     // MARK: - 原有 7 张默认参数配置卡片
 
     private var appearanceCard: some View {
-        StudioCard(title: "1. 外观与主题") {
+        StudioCard(title: "1. 语言、外观与主题") {
             StudioCompactPillButton(
                 title: appState.isFollowingAllSystemAppearance ? "已跟随系统" : "跟随系统设置",
                 icon: "desktopcomputer",
@@ -513,12 +516,39 @@ public struct SettingsView: View {
             ) {
                 appState.followAllSystemAppearanceSettings()
             }
-            .help("将应用外观、Liquid Glass 强度与主题颜色一键恢复为跟随 macOS 系统设置")
+            .help(L10n.t("将应用外观、Liquid Glass 强度与主题颜色一键恢复为跟随 macOS 系统设置"))
         } content: {
             VStack(alignment: .leading, spacing: 12) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        Text("应用外观:")
+                        Text(L10n.t("界面语言:"))
+                            .font(.system(size: 11.5, weight: .medium))
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer()
+                        StudioSegmentedPicker(
+                            selection: $appState.appLanguage,
+                            options: AppLanguage.allCases.map {
+                                StudioSegmentedOption(value: $0, title: $0.displayName)
+                            }
+                        )
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(L10n.t("界面语言:"))
+                            .font(.system(size: 11.5, weight: .medium))
+                        StudioSegmentedPicker(
+                            selection: $appState.appLanguage,
+                            options: AppLanguage.allCases.map {
+                                StudioSegmentedOption(value: $0, title: $0.displayName)
+                            }
+                        )
+                    }
+                }
+
+                Divider().opacity(0.45)
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        Text(L10n.t("应用外观:"))
                             .font(.system(size: 11.5, weight: .medium))
                             .fixedSize(horizontal: true, vertical: false)
                         Spacer()
@@ -530,7 +560,7 @@ public struct SettingsView: View {
                         )
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("应用外观:")
+                        Text(L10n.t("应用外观:"))
                             .font(.system(size: 11.5, weight: .medium))
                         StudioSegmentedPicker(
                             selection: $appState.appearanceMode,
@@ -543,7 +573,7 @@ public struct SettingsView: View {
 
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        Text("画布底色:")
+                        Text(L10n.t("画布底色:"))
                             .font(.system(size: 11.5, weight: .medium))
                             .fixedSize(horizontal: true, vertical: false)
                         Spacer()
@@ -555,7 +585,7 @@ public struct SettingsView: View {
                         )
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("画布底色:")
+                        Text(L10n.t("画布底色:"))
                             .font(.system(size: 11.5, weight: .medium))
                         StudioSegmentedPicker(
                             selection: $appState.canvasThemeOverride,
@@ -572,7 +602,7 @@ public struct SettingsView: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 16) {
                         liquidGlassControlSidebar
-                            .frame(width: 146, alignment: .leading)
+                            .frame(width: 164, alignment: .leading)
                         liquidGlassPreviewAndSlider
                             .frame(maxWidth: .infinity)
                     }
@@ -595,12 +625,12 @@ public struct SettingsView: View {
                 // macOS 27 系统设置风格：主题颜色圆形色卡阵列（多色/跟随系统 + 单色点选 + 跟随系统按钮）
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .center, spacing: 8) {
-                        Text("主题颜色:")
+                        Text(L10n.t("主题颜色:"))
                             .font(.system(size: 11.5, weight: .medium))
                         Text(
                             appState.accentTheme == .system
-                            ? "跟随系统（当前：\(appState.systemAccentTitle)）"
-                            : "手动：\(appState.accentTheme.title)"
+                            ? L10n.tr("跟随系统（当前：\(L10n.t(appState.systemAccentTitle))）", "Match System (\(L10n.t(appState.systemAccentTitle)))")
+                            : L10n.tr("手动：\(appState.accentTheme.title)", "Custom: \(appState.accentTheme.title)")
                         )
                         .font(.system(size: 10.5))
                         .foregroundColor(.secondary)
@@ -629,14 +659,14 @@ public struct SettingsView: View {
 
                 Divider().opacity(0.45)
 
-                Toggle("启用 HDR 液态玻璃动态高光 (macOS 27 XDR 广色域辉光)", isOn: $appState.enableAmbientGlassGlow)
+                Toggle(L10n.t("启用 HDR 液态玻璃动态高光 (macOS 27 XDR 广色域辉光)"), isOn: $appState.enableAmbientGlassGlow)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .font(.system(size: 11.5, weight: .medium))
 
                 Divider().opacity(0.45)
 
-                Toggle("在 macOS 顶部菜单栏显示 Labworker 快捷图标", isOn: $appState.showStatusBarIcon)
+                Toggle(L10n.t("在 macOS 顶部菜单栏显示 Labworker 快捷图标"), isOn: $appState.showStatusBarIcon)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .font(.system(size: 11.5, weight: .medium))
@@ -647,7 +677,7 @@ public struct SettingsView: View {
     private var liquidGlassStatusText: String {
         let pct = Int(round(appState.effectiveLiquidGlassStrength * 100))
         if appState.followSystemLiquidGlass {
-            return "跟随系统 · \(pct)%"
+            return L10n.tr("跟随系统 · \(pct)%", "System · \(pct)%")
         }
         return "\(appState.effectiveLiquidGlassStyle.shortTitle) · \(pct)%"
     }
@@ -735,7 +765,7 @@ public struct SettingsView: View {
                         HStack(spacing: 5) {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 11, weight: .medium))
-                            Text("搜索")
+                            Text(L10n.t("搜索"))
                                 .font(.system(size: 11.5, weight: .medium))
                             Spacer(minLength: 0)
                         }
@@ -780,7 +810,7 @@ public struct SettingsView: View {
                         .foregroundColor(strength < 0.25 ? appState.accentTheme.color : .secondary)
                 }
                 .buttonStyle(.plain)
-                .help("调至清透 (Clear · 0%)")
+                .help(L10n.t("调至清透 (Clear · 0%)"))
 
                 VStack(spacing: 2) {
                     Slider(value: strengthBinding, in: 0.0...1.0)
@@ -805,7 +835,7 @@ public struct SettingsView: View {
                         .foregroundColor(strength >= 0.62 ? appState.accentTheme.color : .secondary)
                 }
                 .buttonStyle(.plain)
-                .help("调至高雾度浸染 (Tinted · 88%)")
+                .help(L10n.t("调至高雾度浸染 (Tinted · 88%)"))
             }
         }
     }
@@ -890,7 +920,7 @@ public struct SettingsView: View {
 
             // 底部深色字幕条
             HStack {
-                Text("欢迎来到 Labworker")
+                Text(L10n.t("欢迎来到 Labworker"))
                     .font(.system(size: 11.5, weight: .semibold))
                     .foregroundColor(.white)
                 Spacer()
@@ -955,14 +985,14 @@ public struct SettingsView: View {
                 .frame(width: 29, height: 29)
 
                 if theme == .system {
-                    Text("多色")
+                    Text(L10n.t("多色"))
                         .font(.system(size: 9.5, weight: isSelected ? .semibold : .regular))
                         .foregroundColor(isSelected ? .primary : .secondary)
                 }
             }
         }
         .buttonStyle(.plain)
-        .help(theme == .system ? "多色（跟随 macOS 系统主题色）" : theme.title)
+        .help(theme == .system ? L10n.t("多色（跟随 macOS 系统主题色）") : theme.title)
     }
 
     private var cloningDefaultsCard: some View {
@@ -972,7 +1002,7 @@ public struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        Text("默认同源臂长度:")
+                        Text(L10n.t("默认同源臂长度:"))
                             .font(.system(size: 11.5, weight: .medium))
                         Spacer()
                         StudioSegmentedPicker(
@@ -983,7 +1013,7 @@ public struct SettingsView: View {
                         )
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("默认同源臂长度:")
+                        Text(L10n.t("默认同源臂长度:"))
                             .font(.system(size: 11.5, weight: .medium))
                         StudioSegmentedPicker(
                             selection: $appState.defaultHomologyLength,
@@ -995,7 +1025,7 @@ public struct SettingsView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("同源重组目标 Tm:")
+                    Text(L10n.t("同源重组目标 Tm:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.cloningTargetTm, in: 52.0...68.0, step: 0.5)
@@ -1007,7 +1037,7 @@ public struct SettingsView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("定点突变目标 Tm:")
+                    Text(L10n.t("定点突变目标 Tm:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.mutationTargetTm, in: 58.0...72.0, step: 0.5)
@@ -1019,7 +1049,7 @@ public struct SettingsView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("允许 Tm 浮动容差:")
+                    Text(L10n.t("允许 Tm 浮动容差:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.tmTolerance, in: 0.5...3.0, step: 0.5)
@@ -1030,7 +1060,7 @@ public struct SettingsView: View {
                         .frame(width: 48, alignment: .trailing)
                 }
 
-                Toggle("PCR 线性化载体时默认附带载体反向扩增引物", isOn: $appState.defaultIncludeVectorPCRPrimers)
+                Toggle(L10n.t("PCR 线性化载体时默认附带载体反向扩增引物"), isOn: $appState.defaultIncludeVectorPCRPrimers)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .font(.system(size: 11.5))
@@ -1038,20 +1068,20 @@ public struct SettingsView: View {
                 Divider().opacity(0.5)
 
                 HStack {
-                    Text("二级结构热力学质检 (primer3 二聚体/发夹)")
+                    Text(L10n.t("二级结构热力学质检 (primer3 二聚体/发夹)"))
                         .font(.system(size: 11.5, weight: .semibold))
                         .foregroundColor(.secondary)
                     Spacer()
                     let eqMm = appState.primerThermoConditions.equivalentMonovalentMolar * 1000.0
                     StudioMetricBadge(
-                        label: "等效 [Na+]",
+                        label: L10n.t("等效 [Na+]"),
                         value: String(format: "%.0f mM", eqMm),
                         color: .teal
                     )
                 }
 
                 HStack(spacing: 8) {
-                    Text("二价 Mg²⁺ 浓度:")
+                    Text(L10n.t("二价 Mg²⁺ 浓度:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.primerMgConc, in: 0.0...6.0, step: 0.1)
@@ -1063,7 +1093,7 @@ public struct SettingsView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("dNTP 总浓度:")
+                    Text(L10n.t("dNTP 总浓度:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.primerDntpConc, in: 0.0...4.0, step: 0.1)
@@ -1075,7 +1105,7 @@ public struct SettingsView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("发夹告警阈值 ΔG:")
+                    Text(L10n.t("发夹告警阈值 ΔG:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.primerHairpinAlertDg, in: -8.0...(-1.0), step: 0.5)
@@ -1087,7 +1117,7 @@ public struct SettingsView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("二聚体告警阈值 ΔG:")
+                    Text(L10n.t("二聚体告警阈值 ΔG:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.primerDimerAlertDg, in: -12.0...(-3.0), step: 0.5)
@@ -1107,7 +1137,7 @@ public struct SettingsView: View {
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    Text("WB 滚球背景扣除半径:")
+                    Text(L10n.t("WB 滚球背景扣除半径:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(
@@ -1125,7 +1155,7 @@ public struct SettingsView: View {
                         .frame(width: 46, alignment: .trailing)
                 }
 
-                Toggle("WB 条带默认白底黑带模式 (Inverted Polarity)", isOn: $appState.defaultWBWhiteBackground)
+                Toggle(L10n.t("WB 条带默认白底黑带模式 (Inverted Polarity)"), isOn: $appState.defaultWBWhiteBackground)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .font(.system(size: 11.5))
@@ -1134,7 +1164,7 @@ public struct SettingsView: View {
 
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        Text("微孔板默认孔数规格:")
+                        Text(L10n.t("微孔板默认孔数规格:"))
                             .font(.system(size: 11.5, weight: .medium))
                         Spacer()
                         StudioSegmentedPicker(
@@ -1146,7 +1176,7 @@ public struct SettingsView: View {
                         )
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("微孔板默认孔数规格:")
+                        Text(L10n.t("微孔板默认孔数规格:"))
                             .font(.system(size: 11.5, weight: .medium))
                         StudioSegmentedPicker(
                             selection: $appState.defaultPlateFormatRaw,
@@ -1158,7 +1188,7 @@ public struct SettingsView: View {
                     }
                 }
 
-                Toggle("微孔板自动排布默认避开最外圈孔 (防边缘蒸发效应)", isOn: $appState.defaultPlateAvoidOuterEdge)
+                Toggle(L10n.t("微孔板自动排布默认避开最外圈孔 (防边缘蒸发效应)"), isOn: $appState.defaultPlateAvoidOuterEdge)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .font(.system(size: 11.5))
@@ -1166,17 +1196,17 @@ public struct SettingsView: View {
                 Divider().opacity(0.5)
 
                 HStack(spacing: 8) {
-                    Text("qPCR 默认内参基因:")
+                    Text(L10n.t("qPCR 默认内参基因:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
-                    TextField("如 ACTB / GAPDH", text: $appState.defaultQPCRReferenceGene)
+                    TextField(L10n.t("如 ACTB / GAPDH"), text: $appState.defaultQPCRReferenceGene)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11.5))
                         .frame(width: 110)
                 }
 
                 HStack(spacing: 8) {
-                    Text("qPCR 复孔 SD 告警阈值:")
+                    Text(L10n.t("qPCR 复孔 SD 告警阈值:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.defaultQPCRSdThreshold, in: 0.10...1.00, step: 0.05)
@@ -1188,7 +1218,7 @@ public struct SettingsView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("qPCR NTC 污染阈值 (Ct):")
+                    Text(L10n.t("qPCR NTC 污染阈值 (Ct):"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.defaultQPCRNtcCtThreshold, in: 28.0...40.0, step: 0.5)
@@ -1200,7 +1230,7 @@ public struct SettingsView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("qPCR no-RT 最小 ΔCt 阈值:")
+                    Text(L10n.t("qPCR no-RT 最小 ΔCt 阈值:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.defaultQPCRNoRTDeltaCt, in: 2.0...10.0, step: 0.5)
@@ -1212,7 +1242,7 @@ public struct SettingsView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("qPCR 熔解曲线 Tm 容差:")
+                    Text(L10n.t("qPCR 熔解曲线 Tm 容差:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.defaultQPCRMeltTolerance, in: 0.3...3.0, step: 0.1)
@@ -1226,7 +1256,7 @@ public struct SettingsView: View {
                 Divider().opacity(0.5)
 
                 HStack(spacing: 8) {
-                    Text("Sanger 克隆分组后缀正则:")
+                    Text(L10n.t("Sanger 克隆分组后缀正则:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     TextField(SangerBatchEngine.defaultPrimerSuffixRegex, text: $appState.defaultSangerCloneGroupingPattern)
@@ -1245,7 +1275,7 @@ public struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        Text("引擎协同策略:")
+                        Text(L10n.t("引擎协同策略:"))
                             .font(.system(size: 11.5, weight: .medium))
                         Spacer()
                         StudioSegmentedPicker(
@@ -1256,7 +1286,7 @@ public struct SettingsView: View {
                         )
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("引擎协同策略:")
+                        Text(L10n.t("引擎协同策略:"))
                             .font(.system(size: 11.5, weight: .medium))
                         StudioSegmentedPicker(
                             selection: $appState.engineMode,
@@ -1269,7 +1299,7 @@ public struct SettingsView: View {
 
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        Text("构建产物默认保存位置:")
+                        Text(L10n.t("构建产物默认保存位置:"))
                             .font(.system(size: 11.5, weight: .medium))
                         Spacer()
                         StudioSegmentedPicker(
@@ -1280,7 +1310,7 @@ public struct SettingsView: View {
                         )
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("构建产物默认保存位置:")
+                        Text(L10n.t("构建产物默认保存位置:"))
                             .font(.system(size: 11.5, weight: .medium))
                         StudioSegmentedPicker(
                             selection: $appState.exportSaveLocation,
@@ -1291,12 +1321,12 @@ public struct SettingsView: View {
                     }
                 }
 
-                Toggle("写入引物或重组构建前自动备份原 .dna 文件", isOn: $appState.autoCreateSnapGeneBackup)
+                Toggle(L10n.t("写入引物或重组构建前自动备份原 .dna 文件"), isOn: $appState.autoCreateSnapGeneBackup)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .font(.system(size: 11.5))
 
-                Toggle("生成重组 .dna 后自动调用 SnapGene 打开验证", isOn: $appState.autoOpenInSnapGene)
+                Toggle(L10n.t("生成重组 .dna 后自动调用 SnapGene 打开验证"), isOn: $appState.autoOpenInSnapGene)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .font(.system(size: 11.5))
@@ -1310,7 +1340,7 @@ public struct SettingsView: View {
         } content: {
             VStack(alignment: .leading, spacing: 9) {
                 HStack(spacing: 8) {
-                    Text("微观序列字号:")
+                    Text(L10n.t("微观序列字号:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.sequenceFontSize, in: 9.0...13.0, step: 0.5)
@@ -1321,23 +1351,23 @@ public struct SettingsView: View {
                         .frame(width: 46, alignment: .trailing)
                 }
 
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 240), spacing: 8)], spacing: 6) {
-                    Toggle("默认开启密码子对齐", isOn: $appState.defaultSnapToCodonMode)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 280), spacing: 8)], spacing: 6) {
+                    Toggle(L10n.t("默认开启密码子对齐"), isOn: $appState.defaultSnapToCodonMode)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 11.5))
-                    Toggle("显示互补链 (3'→5')", isOn: $appState.defaultShowComplement)
+                    Toggle(L10n.t("显示互补链 (3'→5')"), isOn: $appState.defaultShowComplement)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 11.5))
-                    Toggle("显示氨基酸翻译条", isOn: $appState.defaultShowTranslation)
+                    Toggle(L10n.t("显示氨基酸翻译条"), isOn: $appState.defaultShowTranslation)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 11.5))
-                    Toggle("显示质粒图谱特征", isOn: $appState.defaultShowFeatures)
+                    Toggle(L10n.t("显示质粒图谱特征"), isOn: $appState.defaultShowFeatures)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 11.5))
-                    Toggle("显示已绑定引物轨迹", isOn: $appState.defaultShowPrimers)
+                    Toggle(L10n.t("显示已绑定引物轨迹"), isOn: $appState.defaultShowPrimers)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 11.5))
-                    Toggle("显示限制性内切酶切点", isOn: $appState.defaultShowEnzymes)
+                    Toggle(L10n.t("显示限制性内切酶切点"), isOn: $appState.defaultShowEnzymes)
                         .toggleStyle(.checkbox)
                         .font(.system(size: 11.5))
                 }
@@ -1351,7 +1381,7 @@ public struct SettingsView: View {
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    Text("默认生理溶液 pH:")
+                    Text(L10n.t("默认生理溶液 pH:"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.defaultProteinPH, in: 4.5...9.5, step: 0.1)
@@ -1363,7 +1393,7 @@ public struct SettingsView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("默认环境温度 (K):")
+                    Text(L10n.t("默认环境温度 (K):"))
                         .font(.system(size: 11.5, weight: .medium))
                     Spacer()
                     Slider(value: $appState.defaultProteinTempK, in: 275.0...350.0, step: 5.0)
@@ -1383,34 +1413,34 @@ public struct SettingsView: View {
         } content: {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 280), spacing: 8)], spacing: 8) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("订购人姓名")
+                    Text(L10n.t("订购人姓名"))
                         .font(.system(size: 10.5))
                         .foregroundColor(.secondary)
-                    TextField("姓名", text: $appState.profile.customerName)
+                    TextField(L10n.t("姓名"), text: $appState.profile.customerName)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11.5))
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("课题组 / 导师")
+                    Text(L10n.t("课题组 / 导师"))
                         .font(.system(size: 10.5))
                         .foregroundColor(.secondary)
-                    TextField("PI / 实验室", text: $appState.profile.piName)
+                    TextField(L10n.t("PI / 实验室"), text: $appState.profile.piName)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11.5))
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("联系电话")
+                    Text(L10n.t("联系电话"))
                         .font(.system(size: 10.5))
                         .foregroundColor(.secondary)
-                    TextField("手机号", text: $appState.profile.phone)
+                    TextField(L10n.t("手机号"), text: $appState.profile.phone)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11.5))
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("电子邮箱")
+                    Text(L10n.t("电子邮箱"))
                         .font(.system(size: 10.5))
                         .foregroundColor(.secondary)
-                    TextField("邮箱", text: $appState.profile.email)
+                    TextField(L10n.t("邮箱"), text: $appState.profile.email)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11.5))
                 }

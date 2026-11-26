@@ -113,9 +113,9 @@ public final class FragmentDeletionViewModel: ObservableObject {
             } else {
                 self.selectionMode = .byCoordinates
             }
-            AppState.shared.showToast("已解析质粒 \(url.lastPathComponent)：\(info.featuresCount) 个特征、\(bps.count) 条引物可供选择")
+            AppState.shared.showToast(L10n.tr("已解析质粒 \(url.lastPathComponent)：\(info.featuresCount) 个特征、\(bps.count) 条引物可供选择", "Parsed plasmid \(url.lastPathComponent): \(info.featuresCount) features, \(bps.count) primers available"))
         } catch {
-            self.alertMessage = "解析 .dna 文件失败: \(error.localizedDescription)"
+            self.alertMessage = L10n.tr("解析 .dna 文件失败: \(error.localizedDescription)", "Failed to parse .dna file: \(error.localizedDescription)")
             self.showAlert = true
         }
     }
@@ -145,7 +145,7 @@ public final class FragmentDeletionViewModel: ObservableObject {
     public func design() async {
         let cleanPlasmid = BioSequence.clean(plasmidSeq)
         guard cleanPlasmid.count >= 100 else {
-            alertMessage = "质粒序列过短，至少需要 100 bp（当前：\(cleanPlasmid.count) bp）"
+            alertMessage = L10n.tr("质粒序列过短，至少需要 100 bp（当前：\(cleanPlasmid.count) bp）", "Plasmid sequence too short; >= 100 bp required (current: \(cleanPlasmid.count) bp)")
             showAlert = true
             return
         }
@@ -156,7 +156,7 @@ public final class FragmentDeletionViewModel: ObservableObject {
         if selectionMode == .bySequence {
             let cleanDel = BioSequence.clean(targetDelSeq)
             guard cleanDel.count >= 1 else {
-                alertMessage = "请输入待删除片段序列"
+                alertMessage = L10n.t("请输入待删除片段序列")
                 showAlert = true
                 return
             }
@@ -173,7 +173,7 @@ public final class FragmentDeletionViewModel: ObservableObject {
                     calculatedStart = startPos
                     calculatedEnd = endPos
                 } else {
-                    alertMessage = "在质粒中未找到待删除序列片段，请核对输入或使用坐标/特征模式"
+                    alertMessage = L10n.t("在质粒中未找到待删除序列片段，请核对输入或使用坐标/特征模式")
                     showAlert = true
                     return
                 }
@@ -182,7 +182,7 @@ public final class FragmentDeletionViewModel: ObservableObject {
             guard let s = Int(delStartText.trimmingCharacters(in: .whitespacesAndNewlines)),
                   let e = Int(delEndText.trimmingCharacters(in: .whitespacesAndNewlines)),
                   s >= 1, e <= cleanPlasmid.count, s <= e else {
-                alertMessage = "删除起止坐标无效（有效范围: 1 ~ \(cleanPlasmid.count)）"
+                alertMessage = L10n.tr("删除起止坐标无效（有效范围: 1 ~ \(cleanPlasmid.count)）", "Invalid deletion range (valid: 1 ~ \(cleanPlasmid.count))")
                 showAlert = true
                 return
             }
@@ -214,9 +214,9 @@ public final class FragmentDeletionViewModel: ObservableObject {
         // 记录质粒大片段敲除节点到构建谱系树
         let pName = selectedDNAFileName.isEmpty ? "Target-Plasmid" : selectedDNAFileName.replacingOccurrences(of: ".dna", with: "")
         let baseFeats: [(String, Int, Int)] = [
-            ("保留骨架上游", 1, max(1, res.delStart - 1)),
-            ("待敲除片段 (Δ)", res.delStart, res.delEnd),
-            ("保留骨架下游", min(cleanPlasmid.count, res.delEnd + 1), cleanPlasmid.count)
+            (L10n.t("保留骨架上游"), 1, max(1, res.delStart - 1)),
+            (L10n.t("待敲除片段 (Δ)"), res.delStart, res.delEnd),
+            (L10n.t("保留骨架下游"), min(cleanPlasmid.count, res.delEnd + 1), cleanPlasmid.count)
         ]
         let shifts = ConstructHistoryManager.computeFeatureShifts(
             originalFeatures: baseFeats,
@@ -233,15 +233,15 @@ public final class FragmentDeletionViewModel: ObservableObject {
             operationType: .fragmentDeletion,
             parentVectorName: pName,
             parentLengthBp: cleanPlasmid.count,
-            insertOrActionSummary: "Δ 敲除 \(res.delStart)..\(res.delEnd) (-\(res.deletedLength) bp)",
+            insertOrActionSummary: L10n.tr("Δ 敲除 \(res.delStart)..\(res.delEnd) (-\(res.deletedLength) bp)", "Δ Delete \(res.delStart)..\(res.delEnd) (-\(res.deletedLength) bp)"),
             productLengthBp: res.newPlasmidSeq.count,
             homologyArmLength: homologyLength,
             junctionOverhangs: [
                 JunctionOverhangDetail(
-                    title: "跨切点反向 PCR 环化接缝",
+                    title: L10n.t("跨切点反向 PCR 环化接缝"),
                     topStrandSnippet: seamSnippet,
                     bottomStrandSnippet: BioSequence.complement(seamSnippet),
-                    enzymeOrArmName: "Δ切点接缝",
+                    enzymeOrArmName: L10n.t("Δ切点接缝"),
                     homologyLength: homologyLength
                 )
             ],
@@ -251,7 +251,7 @@ public final class FragmentDeletionViewModel: ObservableObject {
         )
         ConstructHistoryManager.shared.recordNode(delNode)
         
-        AppState.shared.showToast("已成功生成反向 PCR 缺失引物（删除 \(res.deletedLength) bp）")
+        AppState.shared.showToast(L10n.tr("已成功生成反向 PCR 缺失引物（删除 \(res.deletedLength) bp）", "Generated inverse PCR deletion primers (deleting \(res.deletedLength) bp)"))
     }
     
     public func addAllToCart() {
@@ -262,7 +262,7 @@ public final class FragmentDeletionViewModel: ObservableObject {
     public func exportToSnapGene(openAfterExport: Bool = true) async {
         guard let res = designResult else { return }
         guard let srcURL = selectedDNAFileURL else {
-            alertMessage = "当前为纯文本序列模式。如需直接导出 SnapGene .dna 文件，请先点击「载入质粒 .dna」导入原始质粒模板。"
+            alertMessage = L10n.t("当前为纯文本序列模式。如需直接导出 SnapGene .dna 文件，请先点击「载入质粒 .dna」导入原始质粒模板。")
             showAlert = true
             return
         }
@@ -283,13 +283,13 @@ public final class FragmentDeletionViewModel: ObservableObject {
             )
             
             self.lastExportedURL = outURL
-            AppState.shared.showToast("已生成删除后 SnapGene 质粒: \(outName)")
+            AppState.shared.showToast(L10n.tr("已生成删除后 SnapGene 质粒: \(outName)", "Generated deletion SnapGene plasmid: \(outName)"))
             
             if openAfterExport {
                 SnapGeneService.shared.openInSnapGene(url: outURL)
             }
         } catch {
-            alertMessage = "导出 SnapGene 文件失败: \(error.localizedDescription)"
+            alertMessage = L10n.tr("导出 SnapGene 文件失败: \(error.localizedDescription)", "Failed to export SnapGene file: \(error.localizedDescription)")
             showAlert = true
         }
     }
@@ -354,7 +354,7 @@ extension FragmentDeletionViewModel {
         }
         primers = updated
         WorkspaceSessionManager.shared.autoSaveInBackground()
-        AppState.shared.showToast("已成对重命名引物为 \(pfx)-F / \(pfx)-R")
+        AppState.shared.showToast(L10n.tr("已成对重命名引物为 \(pfx)-F / \(pfx)-R", "Renamed primer pair to \(pfx)-F / \(pfx)-R"))
     }
     
     public func renameSinglePrimer(at index: Int, newName: String) {

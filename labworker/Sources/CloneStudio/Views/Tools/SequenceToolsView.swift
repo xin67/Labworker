@@ -8,12 +8,14 @@ public struct SequenceToolsView: View {
         case codonOptimization = "密码子与合成优化"
     }
 
+    @Environment(\.appLanguage) private var appLanguage
     @ObservedObject private var vm = WorkspaceSessionManager.shared.sequenceToolVM
     @State private var toolMode: SequenceToolMode = .basicAndTm
 
     public init() {}
 
     public var body: some View {
+        let _ = appLanguage
         StudioPageLayout(
             title: "序列工具与 Tm 测算",
             toolbar: [
@@ -45,14 +47,14 @@ public struct SequenceToolsView: View {
                 } else {
                 StudioCard(title: "输入序列 (5' → 3')") {
                     HStack(spacing: 8) {
-                        StudioMetricBadge(label: "长度", value: "\(vm.cleanLength) bp", color: .blue)
+                        StudioMetricBadge(label: L10n.t("长度"), value: "\(vm.cleanLength) bp", color: .blue)
                         StudioMetricBadge(label: "GC", value: "\(String(format: "%.0f", vm.cleanGC))%", color: .purple)
                     }
                 } content: {
                     VStack(alignment: .leading, spacing: 12) {
                         SequenceEditorBox(
                             text: $vm.inputSeq,
-                            placeholder: "输入或粘贴 DNA 序列",
+                            placeholder: L10n.t("输入或粘贴 DNA 序列"),
                             minHeight: 100
                         )
                         
@@ -85,10 +87,10 @@ public struct SequenceToolsView: View {
                     } content: {
                         VStack(alignment: .leading, spacing: 10) {
                             StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
-                                StudioMetricBadge(label: "长度", value: "\(tm.length) bp", color: .blue)
-                                StudioMetricBadge(label: "GC 含量", value: "\(String(format: "%.1f", tm.gcPercent))%", color: .purple)
-                                StudioMetricBadge(label: "解链温度 Tm", value: "\(String(format: "%.1f", tm.tm)) ℃", color: .red)
-                                StudioMetricBadge(label: "推荐退火 Ta", value: "\(String(format: "%.1f", tm.recommendedTa)) ℃", color: .green)
+                                StudioMetricBadge(label: L10n.t("长度"), value: "\(tm.length) bp", color: .blue)
+                                StudioMetricBadge(label: L10n.t("GC 含量"), value: "\(String(format: "%.1f", tm.gcPercent))%", color: .purple)
+                                StudioMetricBadge(label: L10n.t("解链温度 Tm"), value: "\(String(format: "%.1f", tm.tm)) ℃", color: .red)
+                                StudioMetricBadge(label: L10n.t("推荐退火 Ta"), value: "\(String(format: "%.1f", tm.recommendedTa)) ℃", color: .green)
                             }
                             PrimerCardView(
                                 primer: PrimerItem(
@@ -109,7 +111,7 @@ public struct SequenceToolsView: View {
                         StudioActionPillButton(title: "复制结果", icon: "doc.on.doc", tint: .blue, action: vm.copyOutput)
                     } content: {
                         Text(vm.outputSeq)
-                            .font(.system(size: 13.5, weight: .medium, design: .monospaced))
+                            .font(.system(size: 13.5, weight: .medium))
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .studioInnerBox(paddingH: 10, paddingV: 10)

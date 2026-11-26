@@ -307,16 +307,16 @@ public struct WBSampleGroup: Codable, Identifiable, Equatable, Sendable {
     public var availableLayers: [(role: String, label: String, icon: String, path: String)] {
         var list: [(String, String, String, String)] = []
         if let p = rawChemi {
-            list.append(("raw_chemi", "16-bit 原图", "sparkles.rectangle.stack.fill", p))
+            list.append(("raw_chemi", L10n.t("16-bit 原图"), "sparkles.rectangle.stack.fill", p))
         }
         if let p = chemi {
-            list.append(("chemi", "发光图层", "rays", p))
+            list.append(("chemi", L10n.t("发光图层"), "rays", p))
         }
         if let p = brightfield {
-            list.append(("brightfield", "明场图层", "camera.aperture", p))
+            list.append(("brightfield", L10n.t("明场图层"), "camera.aperture", p))
         }
         if let p = overlay {
-            list.append(("overlay", "合成叠加", "square.3.layers.3d.down.right", p))
+            list.append(("overlay", L10n.t("合成叠加"), "square.3.layers.3d.down.right", p))
         }
         return list
     }
@@ -1639,11 +1639,11 @@ public enum WesternBlotEngine {
             let maxSatPct = max(b.saturatedRatio, loadingBand?.saturatedRatio ?? 0.0) * 100.0
             let satReason: String = {
                 if targetSat && loadingSat {
-                    return String(format: "目的条带与内参条带均过曝 (饱和像素占比 %.1f%%)", maxSatPct)
+                    return String(format: L10n.tr("目的条带与内参条带均过曝 (饱和像素占比 %.1f%%)", "Both target & loading-control bands saturated (%.1f%% core pixels)"), maxSatPct)
                 } else if targetSat {
-                    return String(format: "目的条带 (%@) 信号过曝 (饱和像素占比 %.1f%%)", b.id, b.saturatedRatio * 100.0)
+                    return String(format: L10n.tr("目的条带 (%@) 信号过曝 (饱和像素占比 %.1f%%)", "Target band (%@) saturated (%.1f%% core pixels)"), b.id, b.saturatedRatio * 100.0)
                 } else if loadingSat, let lb = loadingBand {
-                    return String(format: "内参条带 (%@) 信号过曝 (饱和像素占比 %.1f%%)", lb.id, lb.saturatedRatio * 100.0)
+                    return String(format: L10n.tr("内参条带 (%@) 信号过曝 (饱和像素占比 %.1f%%)", "Loading-control band (%@) saturated (%.1f%% core pixels)"), lb.id, lb.saturatedRatio * 100.0)
                 }
                 return ""
             }()
@@ -2417,10 +2417,10 @@ public enum WesternBlotEngine {
 
         if let bestSafe = nonSaturatedFrames.last {
             recommendedFrame = bestSafe
-            reason = "推荐 \(Int(bestSafe.exposureSeconds))s 曝光：所有条带处于线性动态响应区间且未过曝 (信噪比最高)"
+            reason = L10n.tr("推荐 \(Int(bestSafe.exposureSeconds))s 曝光：所有条带处于线性动态响应区间且未过曝 (信噪比最高)", "Recommended \(Int(bestSafe.exposureSeconds))s exposure: all bands within linear dynamic range (best SNR)")
         } else {
             recommendedFrame = frameSummaries.first!
-            reason = "全部曝光帧均存在过曝条带；自动回退最短曝光 (\(Int(recommendedFrame.exposureSeconds))s) 以减小失真"
+            reason = L10n.tr("全部曝光帧均存在过曝条带；自动回退最短曝光 (\(Int(recommendedFrame.exposureSeconds))s) 以减小失真", "All exposures saturated; falling back to shortest frame (\(Int(recommendedFrame.exposureSeconds))s)")
         }
 
         return WBExposureRecommendation(

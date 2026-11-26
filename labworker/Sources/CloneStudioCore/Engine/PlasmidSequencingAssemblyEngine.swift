@@ -457,7 +457,7 @@ public enum PlasmidSequencingAssemblyEngine {
                 smallIndelCount: 0,
                 svCount: 0,
                 verdict: .unmatched,
-                summaryText: "参考或待检序列过短，无法执行全质粒比对。"
+                summaryText: L10n.t("参考或待检序列过短，无法执行全质粒比对。")
             )
         }
 
@@ -492,7 +492,7 @@ public enum PlasmidSequencingAssemblyEngine {
                 smallIndelCount: 0,
                 svCount: 0,
                 verdict: .unmatched,
-                summaryText: "未能在正反双链找到足够的 \(k)-mer 同源锚点。"
+                summaryText: L10n.tr("未能在正反双链找到足够的 \(k)-mer 同源锚点。", "Insufficient \(k)-mer anchors found on either strand.")
             )
         }
 
@@ -530,8 +530,8 @@ public enum PlasmidSequencingAssemblyEngine {
                         queryStart1Based: rb.qStart0 + 1,
                         queryEnd1Based: rb.qEnd0,
                         sizeBp: rb.len,
-                        summary: "序列倒位 \(rb.len) bp @ Ref \(r1Start)..\(max(r1Start, r1End))",
-                        detail: "待检质粒 Q \(rb.qStart0 + 1)..\(rb.qEnd0) 反向互补匹配参考区间，提示载体或插入片段方向颠倒/倒位重排。"
+                        summary: L10n.tr("序列倒位 \(rb.len) bp @ Ref \(r1Start)..\(max(r1Start, r1End))", "Inversion \(rb.len) bp @ Ref \(r1Start)..\(max(r1Start, r1End))"),
+                        detail: L10n.tr("待检质粒 Q \(rb.qStart0 + 1)..\(rb.qEnd0) 反向互补匹配参考区间，提示载体或插入片段方向颠倒/倒位重排。", "Query \(rb.qStart0 + 1)..\(rb.qEnd0) aligns reverse-complementarily to reference, indicating inversion/flipped insert.")
                     )
                 )
             }
@@ -558,8 +558,8 @@ public enum PlasmidSequencingAssemblyEngine {
                         queryStart1Based: blk.qStart0 + 1,
                         queryEnd1Based: blk.qEnd0,
                         sizeBp: blk.len,
-                        summary: "串联重复 \(blk.len) bp (Ref \(blk.refStart0 + 1)..\(blk.refEnd0))",
-                        detail: "参考区间 \(blk.refStart0 + 1)..\(blk.refEnd0) 在全质粒测序结果中额外重复出现 (Query \(blk.qStart0 + 1)..\(blk.qEnd0))。"
+                        summary: L10n.tr("串联重复 \(blk.len) bp (Ref \(blk.refStart0 + 1)..\(blk.refEnd0))", "Tandem Duplication \(blk.len) bp (Ref \(blk.refStart0 + 1)..\(blk.refEnd0))"),
+                        detail: L10n.tr("参考区间 \(blk.refStart0 + 1)..\(blk.refEnd0) 在全质粒测序结果中额外重复出现 (Query \(blk.qStart0 + 1)..\(blk.qEnd0))。", "Reference \(blk.refStart0 + 1)..\(blk.refEnd0) appears duplicated in query \(blk.qStart0 + 1)..\(blk.qEnd0).")
                     )
                 )
                 continue
@@ -579,8 +579,8 @@ public enum PlasmidSequencingAssemblyEngine {
                             queryStart1Based: blk.qStart0 + 1,
                             queryEnd1Based: blk.qEnd0,
                             sizeBp: blk.len,
-                            summary: "骨架乱序重排 @ Q \(blk.qStart0 + 1)..\(blk.qEnd0)",
-                            detail: "区块顺序由 Ref \(last.refEnd0) 跳回 Ref \(blk.refStart0 + 1)，存在重排事件。"
+                            summary: L10n.tr("骨架乱序重排 @ Q \(blk.qStart0 + 1)..\(blk.qEnd0)", "Backbone Rearrangement @ Q \(blk.qStart0 + 1)..\(blk.qEnd0)"),
+                            detail: L10n.tr("区块顺序由 Ref \(last.refEnd0) 跳回 Ref \(blk.refStart0 + 1)，存在重排事件。", "Block order jumped from Ref \(last.refEnd0) back to Ref \(blk.refStart0 + 1).")
                         )
                     )
                     continue
@@ -656,8 +656,8 @@ public enum PlasmidSequencingAssemblyEngine {
                         queryStart1Based: gap.qS + 1,
                         queryEnd1Based: max(gap.qS + 1, gap.qE),
                         sizeBp: delta,
-                        summary: "大片段缺失 Δ\(delta) bp @ Ref \(gap.rS + 1)..\(gap.rE)",
-                        detail: "参考质粒 \(gap.rS + 1)..\(gap.rE) (\(rSpan) bp) 仅对应 Query \(qSpan) bp，疑似缺失重组失败区段。"
+                        summary: L10n.tr("大片段缺失 Δ\(delta) bp @ Ref \(gap.rS + 1)..\(gap.rE)", "Large Deletion Δ\(delta) bp @ Ref \(gap.rS + 1)..\(gap.rE)"),
+                        detail: L10n.tr("参考质粒 \(gap.rS + 1)..\(gap.rE) (\(rSpan) bp) 仅对应 Query \(qSpan) bp，疑似缺失重组失败区段。", "Ref \(gap.rS + 1)..\(gap.rE) (\(rSpan) bp) spans only \(qSpan) bp in query.")
                     )
                 )
             } else if qSpan >= 30 && delta <= -30 && rSpan <= 10 {
@@ -671,8 +671,8 @@ public enum PlasmidSequencingAssemblyEngine {
                         queryStart1Based: gap.qS + 1,
                         queryEnd1Based: gap.qE,
                         sizeBp: insLen,
-                        summary: "大片段插入 +\(insLen) bp @ Ref \(gap.rS + 1)",
-                        detail: "待检质粒多出 \(insLen) bp 非参考片段 (Query \(gap.qS + 1)..\(gap.qE))。"
+                        summary: L10n.tr("大片段插入 +\(insLen) bp @ Ref \(gap.rS + 1)", "Large Insertion +\(insLen) bp @ Ref \(gap.rS + 1)"),
+                        detail: L10n.tr("待检质粒多出 \(insLen) bp 非参考片段 (Query \(gap.qS + 1)..\(gap.qE))。", "Query has \(insLen) bp unmapped insertion (Q \(gap.qS + 1)..\(gap.qE)).")
                     )
                 )
             } else if rSpan <= 360 && qSpan <= 360 {
@@ -696,8 +696,8 @@ public enum PlasmidSequencingAssemblyEngine {
                             queryStart1Based: gap.qS + 1,
                             queryEnd1Based: max(gap.qS + 1, gap.qE),
                             sizeBp: delta,
-                            summary: "大区段差异/缺失 Δ\(delta) bp @ Ref \(gap.rS + 1)..\(gap.rE)",
-                            detail: "参考 \(rSpan) bp vs Query \(qSpan) bp。"
+                            summary: L10n.tr("大区段差异/缺失 Δ\(delta) bp @ Ref \(gap.rS + 1)..\(gap.rE)", "Large Segment Deletion Δ\(delta) bp @ Ref \(gap.rS + 1)..\(gap.rE)"),
+                            detail: L10n.tr("参考 \(rSpan) bp vs Query \(qSpan) bp。", "Ref \(rSpan) bp vs Query \(qSpan) bp.")
                         )
                     )
                 } else {
@@ -710,8 +710,8 @@ public enum PlasmidSequencingAssemblyEngine {
                             queryStart1Based: gap.qS + 1,
                             queryEnd1Based: gap.qE,
                             sizeBp: -delta,
-                            summary: "大区段插入 +\(-delta) bp @ Ref \(gap.rS + 1)",
-                            detail: "参考 \(rSpan) bp vs Query \(qSpan) bp。"
+                            summary: L10n.tr("大区段插入 +\(-delta) bp @ Ref \(gap.rS + 1)", "Large Segment Insertion +\(-delta) bp @ Ref \(gap.rS + 1)"),
+                            detail: L10n.tr("参考 \(rSpan) bp vs Query \(qSpan) bp。", "Ref \(rSpan) bp vs Query \(qSpan) bp.")
                         )
                     )
                 }
@@ -738,7 +738,7 @@ public enum PlasmidSequencingAssemblyEngine {
             verdict = .minorVariantsOnly
         }
 
-        let summary = "方向: \(useRev ? "反向互补 (-)" : "正链 (+)") · Origin 旋转: \(rotCut0) bp · 覆盖度 \(String(format: "%.1f%%", covPct)) · 一致率 \(String(format: "%.2f%%", idPct)) · SV \(svCnt) / SNP \(snpCnt) / Indel \(smallIndelCnt)"
+        let summary = L10n.tr("方向: \(useRev ? "反向互补 (-)" : "正链 (+)") · Origin 旋转: \(rotCut0) bp · 覆盖度 \(String(format: "%.1f%%", covPct)) · 一致率 \(String(format: "%.2f%%", idPct)) · SV \(svCnt) / SNP \(snpCnt) / Indel \(smallIndelCnt)", "Strand: \(L10n.t(useRev ? "反向互补 (-)" : "正链 (+)")) · Origin Rot: \(rotCut0) bp · Cov \(String(format: "%.1f%%", covPct)) · ID \(String(format: "%.2f%%", idPct)) · SV \(svCnt) / SNP \(snpCnt) / Indel \(smallIndelCnt)")
 
         return WholePlasmidVerificationReport(
             queryName: queryName,
@@ -890,8 +890,8 @@ public enum PlasmidSequencingAssemblyEngine {
                     queryStart1Based: qStart0 + 1,
                     queryEnd1Based: qStart0 + n,
                     sizeBp: n,
-                    summary: "小插入 +\(n) bp (\(insStr)) @ Ref \(refStart0 + 1)",
-                    detail: "参考位点 \(refStart0 + 1) 前插入 \(n) bp 序列 \(insStr)。"
+                    summary: L10n.tr("小插入 +\(n) bp (\(insStr)) @ Ref \(refStart0 + 1)", "Small Insertion +\(n) bp (\(insStr)) @ Ref \(refStart0 + 1)"),
+                    detail: L10n.tr("参考位点 \(refStart0 + 1) 前插入 \(n) bp 序列 \(insStr)。", "Inserted \(n) bp (\(insStr)) before Ref \(refStart0 + 1).")
                 )
             ])
         }
@@ -906,8 +906,8 @@ public enum PlasmidSequencingAssemblyEngine {
                     queryStart1Based: qStart0 + 1,
                     queryEnd1Based: qStart0 + 1,
                     sizeBp: m,
-                    summary: "小缺失 -\(m) bp (\(delStr)) @ Ref \(refStart0 + 1)..\(refStart0 + m)",
-                    detail: "参考区间 \(refStart0 + 1)..\(refStart0 + m) 缺失 \(m) bp。"
+                    summary: L10n.tr("小缺失 -\(m) bp (\(delStr)) @ Ref \(refStart0 + 1)..\(refStart0 + m)", "Small Deletion -\(m) bp (\(delStr)) @ Ref \(refStart0 + 1)..\(refStart0 + m)"),
+                    detail: L10n.tr("参考区间 \(refStart0 + 1)..\(refStart0 + m) 缺失 \(m) bp。", "Deleted \(m) bp across Ref \(refStart0 + 1)..\(refStart0 + m).")
                 )
             ])
         }
@@ -967,7 +967,7 @@ public enum PlasmidSequencingAssemblyEngine {
                         queryEnd1Based: p.qPos0 + 1,
                         sizeBp: 1,
                         summary: "SNP g.\(p.rPos0 + 1)\(p.r)>\(p.q)",
-                        detail: "参考第 \(p.rPos0 + 1) 位碱基由 \(p.r) 突变为 \(p.q)。"
+                        detail: L10n.tr("参考第 \(p.rPos0 + 1) 位碱基由 \(p.r) 突变为 \(p.q)。", "Ref pos \(p.rPos0 + 1) mutated \(p.r) → \(p.q).")
                     )
                 )
                 idx += 1
@@ -990,8 +990,8 @@ public enum PlasmidSequencingAssemblyEngine {
                         queryStart1Based: q1S,
                         queryEnd1Based: q1E,
                         sizeBp: insSeq.count,
-                        summary: "小插入 +\(insSeq.count) bp (\(insSeq)) @ Ref \(r1)",
-                        detail: "参考第 \(r1) 位处插入 \(insSeq.count) bp：\(insSeq)。"
+                        summary: L10n.tr("小插入 +\(insSeq.count) bp (\(insSeq)) @ Ref \(r1)", "Small Insertion +\(insSeq.count) bp (\(insSeq)) @ Ref \(r1)"),
+                        detail: L10n.tr("参考第 \(r1) 位处插入 \(insSeq.count) bp：\(insSeq)。", "Inserted \(insSeq.count) bp at Ref \(r1): \(insSeq).")
                     )
                 )
             } else {
@@ -1013,8 +1013,8 @@ public enum PlasmidSequencingAssemblyEngine {
                         queryStart1Based: q1,
                         queryEnd1Based: q1,
                         sizeBp: delSeq.count,
-                        summary: "小缺失 -\(delSeq.count) bp (\(delSeq)) @ Ref \(r1S)..\(r1E)",
-                        detail: "参考第 \(r1S)..\(r1E) 位缺失 \(delSeq.count) bp：\(delSeq)。"
+                        summary: L10n.tr("小缺失 -\(delSeq.count) bp (\(delSeq)) @ Ref \(r1S)..\(r1E)", "Small Deletion -\(delSeq.count) bp (\(delSeq)) @ Ref \(r1S)..\(r1E)"),
+                        detail: L10n.tr("参考第 \(r1S)..\(r1E) 位缺失 \(delSeq.count) bp：\(delSeq)。", "Deleted \(delSeq.count) bp at Ref \(r1S)..\(r1E): \(delSeq).")
                     )
                 )
             }

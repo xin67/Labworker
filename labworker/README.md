@@ -14,7 +14,7 @@
   - `export_order.py`：灌装导出擎科（Tsingke）、生工（Sangon）商业引物合成与测序 Excel 订单。
   - `clonestudio_mcp_server.py`：**Labworker MCP Server 20261120**（JSON-RPC 2.0 协议，暴露 23 个全栈实验工具，算法与 Swift 核心引擎 100% 统一并支持实时同步回写 GUI 画布）。
   - `python/wbquant/`：16-bit TIFF 化学发光与明场 Marker 科学图像处理包（支持 CLI 与 PySide6 高级查看器）。
-- **自动化回归测试 (`Tests/CloneStudioVerify/main.swift`)**：内置 **57 项端到端自动化验证测试**，覆盖全部核心算法、多宿主密码子优化、全质粒 Nanopore 环状 SV 与多 Sanger Contig 拼接、GenBank/OpenCloning/SBOL3/完整 `mmCIF` 解析、qPCR 四仪器嗅探与 RDML 往返、酶标仪 BCA/4PL-5PL/IC50/CCK-8 曲线拟合、离线 Mol* 3D 与本地 Vina/Smina/Gnina/Boltz 桥接、国际订购批量模板/自定义 JSON 映射、生物科研全能计算与换算引擎、引物二级结构热力学质检、Sanger `.ab1` 二进制峰图与质粒比对、Swift-Python 跨引擎共享测试向量（`Tests/vectors/*.json`）一致性、真实质粒与 16-bit WB 样本、UI 偏好状态机、多曝光线性检查及跨模块 `AnalysisRun` 质粒溯源；
+- **自动化回归测试 (`Tests/CloneStudioVerify/main.swift`)**：内置 **58 项端到端自动化验证测试**，覆盖全部核心算法、多宿主密码子优化、全质粒 Nanopore 环状 SV 与多 Sanger Contig 拼接、GenBank/OpenCloning/SBOL3/完整 `mmCIF` 解析、qPCR 四仪器嗅探与 RDML 往返、酶标仪 BCA/4PL-5PL/IC50/CCK-8 曲线拟合、离线 Mol* 3D 与本地 Vina/Smina/Gnina/Boltz 桥接、国际订购批量模板/自定义 JSON 映射、生物科研全能计算与换算引擎、引物二级结构热力学质检、Sanger `.ab1` 二进制峰图与质粒比对、Swift-Python 跨引擎共享测试向量（`Tests/vectors/*.json`）一致性、真实质粒与 16-bit WB 样本、UI 偏好状态机、双语本地化与学术英文词典校验、多曝光线性检查及跨模块 `AnalysisRun` 质粒溯源；
 
 ## 2. AI 协作与工程治理铁律（修改代码前必读）
 
@@ -28,6 +28,8 @@
    - **Liquid Glass 受限 HDR 与定量图像 SDR 隔离**：全应用玻璃控件通过 `StudioGlassSupport.dynamicRange(for:)` 统一采用 `.constrainedHigh` 并由 `StudioGlassSupport.hdrGain`（默认 `0.30`）集中控制曝光增益，静止非高亮按钮描边严禁叠加 HDR 曝光以避免默认态过亮；科学定量图像/电泳胶图画布须显式施加 `.allowedDynamicRange(.standard)` 锁定 SDR，保证亮度与色彩不受 HDR 动态高光开关影响。
    - **居左紧凑主操作栏与条件性图谱按钮**：工作台主操作行统一采用 `StudioActionBar` 居左排列，主按钮使用内容自适应宽度的 `StudioPrimaryActionButton`（默认 `fillWidth: false`、`minWidth: 148`），次级动作（「加入引物池」「导出重组 .dna」等）使用中性玻璃 `StudioActionPillButton` 并排相邻，严禁在卡片之间放置横跨全宽的长条主按钮横幅；顶栏 `.plasmidToggle`「图谱」按钮在尚未生成或载入有效图谱（`isAvailable == false`）时由 `StudioOverflowToolbar` 自动隐藏。
    - **无宽度锁死画布**：嵌入式 `Canvas`（如模拟电泳胶图）严禁根据 `@State containerWidth` 硬设固定 `.frame(width:)` 形成无法随窗口缩窄的宽度锁死，须通过零高度占位视图测量父容器宽度并在 `Canvas` 内按 `size.width` 动态排布（仅在确需横向滚动时放入 `ScrollView(.horizontal)`）。
+   - **全局强制 macOS 默认字体**：全应用所有界面文本、输入框、序列/比对画布、公式卡、JSON 预览、WebView 与离线 HTML 报告必须统一使用 macOS 默认系统字体（SwiftUI 仅允许 `.font(.system(size: ..., weight: ...))` 配合可选 `.monospacedDigit()`；AppKit 仅允许 `NSFont.systemFont`；HTML/CSS 仅允许 `-apple-system, BlinkMacSystemFont, system-ui, sans-serif`）；严禁使用 `design: .monospaced`/`.rounded`/`.serif`、`Font.custom`、`"PingFang SC"` 或任何第三方字体，需列对齐时使用 `StudioAlignedCharGridView` / `SequenceRowCanvasView` 固定步距 `Canvas` 网格；分栏容器 `StudioResponsiveSplitLayout` 的每个子槽位必须收口为单一容器视图。
+   - **简体中文 / 学术英文双语规范**：所有用户可见界面文案须支持在「系统设置 → 界面语言」中实时切换简体中文与标准生命科学/分子生物学学术英文（通过 `L10n.t(...)` / `L10n.tr(...)` 与 `Resources/en_translations.json`），严禁修改持久化枚举 `rawValue` 或商业订购表协议字段。
 3. **单一职责与文件准入清单 (`ARCHITECTURE.md`)**：
    - 跨视图复用的 UI 组件统一收口在 `Sources/CloneStudio/Views/Components/DesignSystem.swift`。
    - 任何新增或删除源码文件必须同步更新 `ARCHITECTURE.md`。
@@ -37,7 +39,7 @@
    # 0. 校验测试数、MCP 工具数与模块数单一真值来源，并运行 Python 共享测试向量
    bash Scripts/check_doc_counts.sh && /usr/bin/python3 Tests/vectors/run_python_vectors.py
 
-   # 1. 编译并运行全部 57 项自动化验证测试
+   # 1. 编译并运行全部 58 项自动化验证测试
    swift build --disable-sandbox && swift run --disable-sandbox CloneStudioVerify
 
    # 2. 更新构建并签名 labworker/Labworker.app（及打包 Labworker-20261120.dmg + Cask 同步）

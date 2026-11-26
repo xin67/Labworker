@@ -90,7 +90,7 @@ public enum PlateLayoutEngine {
         var unplaced: [PlateUnplacedSample] = []
         
         if samples.isEmpty {
-            issues.append(PlateLayoutIssue(severity: .info, message: "尚未添加实验样品，可在左侧添加样品或粘贴 CSV 表格"))
+            issues.append(PlateLayoutIssue(severity: .info, message: L10n.t("尚未添加实验样品，可在左侧添加样品或粘贴 CSV 表格")))
         }
         
         // 样品重名与空名检查
@@ -100,7 +100,7 @@ public enum PlateLayoutEngine {
             let trimmed = sample.name.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty {
                 if !blankNameReported {
-                    issues.append(PlateLayoutIssue(severity: .warning, message: "存在未填写名称的样品行"))
+                    issues.append(PlateLayoutIssue(severity: .warning, message: L10n.t("存在未填写名称的样品行")))
                     blankNameReported = true
                 }
                 continue
@@ -113,7 +113,7 @@ public enum PlateLayoutEngine {
             }
         }
         for entry in nameCounts.values where entry.count > 1 {
-            issues.append(PlateLayoutIssue(severity: .warning, message: "样品名称「\(entry.label)」重复出现 \(entry.count) 次"))
+            issues.append(PlateLayoutIssue(severity: .warning, message: L10n.tr("样品名称「\(entry.label)」重复出现 \(entry.count) 次", "Sample name \"\(entry.label)\" appears \(entry.count) times")))
         }
         
         // 容量核验
@@ -127,14 +127,14 @@ public enum PlateLayoutEngine {
             issues.append(
                 PlateLayoutIssue(
                     severity: .error,
-                    message: "内部可用孔位不足：启用边缘预留后仅剩 \(interiorCount) 个内部孔，但样品共需 \(sampleNeed) 个孔"
+                    message: L10n.tr("内部可用孔位不足：启用边缘预留后仅剩 \(interiorCount) 个内部孔，但样品共需 \(sampleNeed) 个孔", "Insufficient interior wells: \(interiorCount) available with edge avoidance, \(sampleNeed) needed")
                 )
             )
         } else if sampleNeed + auxNeed > format.totalWells {
             issues.append(
                 PlateLayoutIssue(
                     severity: .error,
-                    message: "总孔位超出 \(format.rawValue) 孔板上限：共需 \(sampleNeed + auxNeed) 孔，当前规格仅 \(format.totalWells) 孔"
+                    message: L10n.tr("总孔位超出 \(format.rawValue) 孔板上限：共需 \(sampleNeed + auxNeed) 孔，当前规格仅 \(format.totalWells) 孔", "Total wells needed (\(sampleNeed + auxNeed)) exceed \(format.rawValue)-well capacity (\(format.totalWells))")
                 )
             )
         }
@@ -153,7 +153,7 @@ public enum PlateLayoutEngine {
                 issues.append(
                     PlateLayoutIssue(
                         severity: .error,
-                        message: "样品「\(displayName)」复孔未完全排入：已排 \(placed)/\(requested) 孔（缺 \(missing) 孔）"
+                        message: L10n.tr("样品「\(displayName)」复孔未完全排入：已排 \(placed)/\(requested) 孔（缺 \(missing) 孔）", "Sample \"\(displayName)\" replicates incomplete: \(placed)/\(requested) assigned (missing \(missing))")
                     )
                 )
                 unplaced.append(
@@ -170,7 +170,7 @@ public enum PlateLayoutEngine {
                 issues.append(
                     PlateLayoutIssue(
                         severity: .warning,
-                        message: "样品「\(displayName)」的复孔被拆分到了不相邻的孔位"
+                        message: L10n.tr("样品「\(displayName)」的复孔被拆分到了不相邻的孔位", "Replicates for \"\(displayName)\" are split across non-adjacent wells")
                     )
                 )
             }
@@ -178,7 +178,7 @@ public enum PlateLayoutEngine {
                 issues.append(
                     PlateLayoutIssue(
                         severity: .warning,
-                        message: "样品「\(displayName)」使用了外圈边缘孔位"
+                        message: L10n.tr("样品「\(displayName)」使用了外圈边缘孔位", "Sample \"\(displayName)\" uses edge perimeter well(s)")
                     )
                 )
             }
@@ -190,7 +190,7 @@ public enum PlateLayoutEngine {
             issues.append(
                 PlateLayoutIssue(
                     severity: .warning,
-                    message: "对照孔数量不足：已分配 \(controlPlaced)/\(rules.controls) 孔"
+                    message: L10n.tr("对照孔数量不足：已分配 \(controlPlaced)/\(rules.controls) 孔", "Insufficient control wells: \(controlPlaced)/\(rules.controls) assigned")
                 )
             )
         }
@@ -198,7 +198,7 @@ public enum PlateLayoutEngine {
             issues.append(
                 PlateLayoutIssue(
                     severity: .warning,
-                    message: "空白孔数量不足：已分配 \(blankPlaced)/\(rules.blanks) 孔"
+                    message: L10n.tr("空白孔数量不足：已分配 \(blankPlaced)/\(rules.blanks) 孔", "Insufficient blank wells: \(blankPlaced)/\(rules.blanks) assigned")
                 )
             )
         }

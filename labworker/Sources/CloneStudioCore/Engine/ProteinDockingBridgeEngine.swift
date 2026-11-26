@@ -519,15 +519,15 @@ public enum ProteinDockingBridgeEngine {
         numModes: Int = 9
     ) async throws -> DockingExecutionResult {
         guard tool.isDockingEngine else {
-            throw BridgeError.invalidInput("工具 \(tool.displayName) 不是分子对接引擎。")
+            throw BridgeError.invalidInput(L10n.tr("工具 \(tool.displayName) 不是分子对接引擎。", "\(tool.displayName) is not a docking engine."))
         }
         let cleanReceptor = receptorText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanReceptor.isEmpty else {
-            throw BridgeError.invalidInput("当前蛋白三维坐标为空，请先加载受体 PDB / mmCIF 结构。")
+            throw BridgeError.invalidInput(L10n.t("当前蛋白三维坐标为空，请先加载受体 PDB / mmCIF 结构。"))
         }
         let cleanSMILES = (ligandSMILES ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if ligandFileURL == nil && cleanSMILES.isEmpty {
-            throw BridgeError.invalidInput("请先输入配体 SMILES 字符串，或选择一个局部配体文件 (.pdbqt / .sdf / .mol2 / .pdb)。")
+            throw BridgeError.invalidInput(L10n.t("请先输入配体 SMILES 字符串，或选择一个局部配体文件 (.pdbqt / .sdf / .mol2 / .pdb)。"))
         }
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -544,7 +544,7 @@ public enum ProteinDockingBridgeEngine {
                         try cleanReceptor.write(to: receptorPDBQT, atomically: true, encoding: .utf8)
                     } else {
                         guard let obabel = obabelExecutable, !obabel.isEmpty else {
-                            throw BridgeError.missingOpenBabel("将受体 (\(recExt)) 转换为 Vina/Smina 所需的 .pdbqt 格式需要 Open Babel（建议安装：`brew install open-babel`）。")
+                            throw BridgeError.missingOpenBabel(L10n.tr("将受体 (\(recExt)) 转换为 Vina/Smina 所需的 .pdbqt 格式需要 Open Babel（建议安装：`brew install open-babel`）。", "Open Babel is required to convert receptor (\(recExt)) to .pdbqt (`brew install open-babel`)."))
                         }
                         let rawRecURL = workDir.appendingPathComponent("receptor_raw.\(recExt.isEmpty ? "pdb" : recExt)")
                         try cleanReceptor.write(to: rawRecURL, atomically: true, encoding: .utf8)
@@ -554,7 +554,7 @@ public enum ProteinDockingBridgeEngine {
                             timeoutSeconds: 45
                         )
                         guard conv.exitCode == 0, fm.fileExists(atPath: receptorPDBQT.path) else {
-                            throw BridgeError.processFailed("Open Babel 转换受体失败：\(conv.stderr.isEmpty ? conv.stdout : conv.stderr)")
+                            throw BridgeError.processFailed(L10n.tr("Open Babel 转换受体失败：\(conv.stderr.isEmpty ? conv.stdout : conv.stderr)", "Open Babel receptor conversion failed: \(conv.stderr.isEmpty ? conv.stdout : conv.stderr)"))
                         }
                     }
 
@@ -566,7 +566,7 @@ public enum ProteinDockingBridgeEngine {
                             try fm.copyItem(at: ligURL, to: ligandPDBQT)
                         } else {
                             guard let obabel = obabelExecutable, !obabel.isEmpty else {
-                                throw BridgeError.missingOpenBabel("将配体 \(ligURL.lastPathComponent) 转换为 .pdbqt 需要 Open Babel（建议安装：`brew install open-babel`）。")
+                                throw BridgeError.missingOpenBabel(L10n.tr("将配体 \(ligURL.lastPathComponent) 转换为 .pdbqt 需要 Open Babel（建议安装：`brew install open-babel`）。", "Open Babel is required to convert ligand \(ligURL.lastPathComponent) to .pdbqt (`brew install open-babel`)."))
                             }
                             let conv = try runProcessSync(
                                 executablePath: obabel,
@@ -574,12 +574,12 @@ public enum ProteinDockingBridgeEngine {
                                 timeoutSeconds: 45
                             )
                             guard conv.exitCode == 0, fm.fileExists(atPath: ligandPDBQT.path) else {
-                                throw BridgeError.processFailed("Open Babel 转换配体失败：\(conv.stderr.isEmpty ? conv.stdout : conv.stderr)")
+                                throw BridgeError.processFailed(L10n.tr("Open Babel 转换配体失败：\(conv.stderr.isEmpty ? conv.stdout : conv.stderr)", "Open Babel ligand conversion failed: \(conv.stderr.isEmpty ? conv.stdout : conv.stderr)"))
                             }
                         }
                     } else {
                         guard let obabel = obabelExecutable, !obabel.isEmpty else {
-                            throw BridgeError.missingOpenBabel("从 SMILES 自动生成 3D 配体并加氢转换 .pdbqt 需要 Open Babel（建议安装：`brew install open-babel`）。")
+                            throw BridgeError.missingOpenBabel(L10n.t("从 SMILES 自动生成 3D 配体并加氢转换 .pdbqt 需要 Open Babel（建议安装：`brew install open-babel`）。"))
                         }
                         let conv = try runProcessSync(
                             executablePath: obabel,
@@ -587,7 +587,7 @@ public enum ProteinDockingBridgeEngine {
                             timeoutSeconds: 60
                         )
                         guard conv.exitCode == 0, fm.fileExists(atPath: ligandPDBQT.path) else {
-                            throw BridgeError.processFailed("Open Babel 从 SMILES 生成 3D 配体失败：\(conv.stderr.isEmpty ? conv.stdout : conv.stderr)")
+                            throw BridgeError.processFailed(L10n.tr("Open Babel 从 SMILES 生成 3D 配体失败：\(conv.stderr.isEmpty ? conv.stdout : conv.stderr)", "Open Babel SMILES->3D conversion failed: \(conv.stderr.isEmpty ? conv.stdout : conv.stderr)"))
                         }
                     }
 
@@ -611,7 +611,7 @@ public enum ProteinDockingBridgeEngine {
                     let runRes = try runProcessSync(executablePath: executablePath, arguments: args, timeoutSeconds: 600)
                     let elapsed = Date().timeIntervalSince(start)
                     guard runRes.exitCode == 0 else {
-                        throw BridgeError.processFailed("\(tool.displayName) 运行失败（exit \(runRes.exitCode)）：\n\(runRes.stderr.isEmpty ? runRes.stdout : runRes.stderr)")
+                        throw BridgeError.processFailed(L10n.tr("\(tool.displayName) 运行失败（exit \(runRes.exitCode)）：\n\(runRes.stderr.isEmpty ? runRes.stdout : runRes.stderr)", "\(tool.displayName) failed (exit \(runRes.exitCode)):\n\(runRes.stderr.isEmpty ? runRes.stdout : runRes.stderr)"))
                     }
 
                     let outText = (try? String(contentsOf: outPDBQT, encoding: .utf8)) ?? ""
@@ -698,7 +698,7 @@ public enum ProteinDockingBridgeEngine {
         workDir: URL? = nil
     ) async throws -> BoltzConfidenceSummary {
         guard !yamlContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw BridgeError.invalidInput("Boltz YAML 配置内容为空。")
+            throw BridgeError.invalidInput(L10n.t("Boltz YAML 配置内容为空。"))
         }
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -716,7 +716,7 @@ public enum ProteinDockingBridgeEngine {
                     }
                     let res = try runProcessSync(executablePath: boltzExecutable, arguments: args, timeoutSeconds: 1800)
                     guard res.exitCode == 0 else {
-                        throw BridgeError.processFailed("Boltz 共折叠运行失败（exit \(res.exitCode)）：\n\(res.stderr.isEmpty ? res.stdout : res.stderr)")
+                        throw BridgeError.processFailed(L10n.tr("Boltz 共折叠运行失败（exit \(res.exitCode)）：\n\(res.stderr.isEmpty ? res.stdout : res.stderr)", "Boltz co-folding failed (exit \(res.exitCode)):\n\(res.stderr.isEmpty ? res.stdout : res.stderr)"))
                     }
 
                     // 递归搜索 confidence_*.json 与预测的 .cif/.pdb 文件

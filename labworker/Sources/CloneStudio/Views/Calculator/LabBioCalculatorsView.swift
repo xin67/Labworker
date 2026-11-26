@@ -6,20 +6,22 @@ import SwiftUI
 
 /// 高清原生数学公式与常数对照卡片（替代静态图片，深浅色自适应）
 private struct BioFormulaReferenceCard: View {
+    @Environment(\.appLanguage) private var appLanguage
     let title: String
     let equationLines: [String]
     let notes: [String]
     let tint: Color
 
     var body: some View {
+        let _ = appLanguage
         StudioCard(title: title) {
             StudioMetricBadge(label: "公式原理", value: "实时计算", color: tint)
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(Array(equationLines.enumerated()), id: \.offset) { _, eq in
-                        Text(eq)
-                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        Text(L10n.t(eq))
+                            .font(.system(size: 13, weight: .semibold))
                             .monospacedDigit()
                             .foregroundColor(.primary)
                             .textSelection(.enabled)
@@ -36,7 +38,7 @@ private struct BioFormulaReferenceCard: View {
                                 Text("•")
                                     .foregroundColor(tint)
                                     .font(.system(size: 11.5, weight: .bold))
-                                Text(note)
+                                Text(L10n.t(note))
                                     .font(.system(size: 11.5))
                                     .monospacedDigit()
                                     .foregroundColor(.secondary)
@@ -52,17 +54,19 @@ private struct BioFormulaReferenceCard: View {
 
 /// 非阻塞行内警告 / 提示框
 private struct BioInlineNoticeBox: View {
+    @Environment(\.appLanguage) private var appLanguage
     let icon: String
     let message: String
     let tint: Color
 
     var body: some View {
+        let _ = appLanguage
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 12.5, weight: .semibold))
                 .foregroundColor(tint)
                 .padding(.top, 1)
-            Text(message)
+            Text(L10n.t(message))
                 .font(.system(size: 11.5))
                 .monospacedDigit()
                 .foregroundColor(.primary)
@@ -75,6 +79,7 @@ private struct BioInlineNoticeBox: View {
 
 /// 大号高对比结果展示卡（支持一键复制结果与记录历史）
 private struct BioResultDisplayBox: View {
+    @Environment(\.appLanguage) private var appLanguage
     let label: String
     let valueText: String
     let unitText: String
@@ -82,6 +87,7 @@ private struct BioResultDisplayBox: View {
     let onCopyAndLog: () -> Void
 
     var body: some View {
+        let _ = appLanguage
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 10) {
                 resultTextBlock
@@ -99,7 +105,7 @@ private struct BioResultDisplayBox: View {
 
     private var resultTextBlock: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label)
+            Text(L10n.t(label))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -109,7 +115,7 @@ private struct BioResultDisplayBox: View {
                     .foregroundColor(tint)
                     .textSelection(.enabled)
                 if !unitText.isEmpty {
-                    Text(unitText)
+                    Text(L10n.t(unitText))
                         .font(.system(size: 12.5, weight: .semibold))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -133,6 +139,7 @@ private struct BioResultDisplayBox: View {
 
 /// 标准化单行参数输入框（带标题、右侧单位标签与活跃高亮边框）
 private struct BioMetricTextField: View {
+    @Environment(\.appLanguage) private var appLanguage
     let label: String
     let placeholder: String
     @Binding var text: String
@@ -141,14 +148,15 @@ private struct BioMetricTextField: View {
     var onEdit: ((String) -> Void)? = nil
 
     var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
-                Text(label)
+                Text(L10n.t(label))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.primary)
                 Spacer()
                 if !unit.isEmpty {
-                    Text(unit)
+                    Text(L10n.t(unit))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -157,7 +165,7 @@ private struct BioMetricTextField: View {
             }
 
             TextField(
-                placeholder,
+                L10n.t(placeholder),
                 text: Binding(
                     get: { text },
                     set: { newVal in
@@ -179,9 +187,11 @@ private struct BioMetricTextField: View {
 
 /// 近期换算记录卡
 private struct BioCalculationHistoryCard: View {
+    @Environment(\.appLanguage) private var appLanguage
     @ObservedObject var bioVM: BioCalculatorSuiteViewModel
 
     var body: some View {
+        let _ = appLanguage
         StudioCard(title: "最近计算记录") {
             if !bioVM.history.isEmpty {
                 StudioCompactPillButton(title: "清空记录", icon: "trash", tint: .red) {
@@ -190,7 +200,7 @@ private struct BioCalculationHistoryCard: View {
             }
         } content: {
             if bioVM.history.isEmpty {
-                Text("点击任意计算结果的「复制并记录」即可沉淀当前参数与结论，便于对照配液记录。")
+                Text(L10n.t("点击任意计算结果的「复制并记录」即可沉淀当前参数与结论，便于对照配液记录。"))
                     .font(.system(size: 11.5))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -198,7 +208,7 @@ private struct BioCalculationHistoryCard: View {
                 VStack(spacing: 6) {
                     ForEach(bioVM.history) { entry in
                         HStack(alignment: .center, spacing: 8) {
-                            Text(entry.category)
+                            Text(L10n.t(entry.category))
                                 .font(.system(size: 10.5, weight: .semibold))
                                 .foregroundColor(.blue)
                                 .lineLimit(1)
@@ -223,14 +233,14 @@ private struct BioCalculationHistoryCard: View {
                             Button {
                                 NSPasteboard.general.clearContents()
                                 NSPasteboard.general.setString(entry.resultText, forType: .string)
-                                AppState.shared.showToast("已复制：\(entry.resultText)")
+                                AppState.shared.showToast(L10n.tr("已复制：\(entry.resultText)", "Copied: \(entry.resultText)"))
                             } label: {
                                 Image(systemName: "doc.on.doc")
                                     .font(.system(size: 11.5))
                                     .foregroundColor(.secondary)
                             }
                             .buttonStyle(.plain)
-                            .help("复制此条计算结果")
+                            .help(L10n.t("复制此条计算结果"))
                         }
                         .studioInnerBox(paddingH: 9, paddingV: 7)
                     }
@@ -243,6 +253,7 @@ private struct BioCalculationHistoryCard: View {
 // MARK: - 2. DNA 换算工作区 (dsDNA / ssDNA / Linear DNA / Nucleic Acid OD260)
 
 public struct DNAConversionsWorkspaceView: View {
+    @Environment(\.appLanguage) private var appLanguage
     @ObservedObject var bioVM: BioCalculatorSuiteViewModel
     @ObservedObject private var session = WorkspaceSessionManager.shared
 
@@ -251,6 +262,7 @@ public struct DNAConversionsWorkspaceView: View {
     }
 
     public var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 14) {
             StudioSegmentedPicker(
                 selection: $bioVM.dnaSubtool,
@@ -281,7 +293,7 @@ public struct DNAConversionsWorkspaceView: View {
             StudioCard(title: "dsDNA（双链 DNA）单位转换") {
                 let singleVecLen = session.singleFragmentVM.effectiveVectorBackboneLengthBp
                 if singleVecLen >= 200 {
-                    StudioCompactPillButton(title: "带入单片段载体 (\(singleVecLen) bp)", icon: "arrow.down.circle", tint: .teal) {
+                    StudioCompactPillButton(title: L10n.tr("带入单片段载体 (\(singleVecLen) bp)", "Import Vector (\(singleVecLen) bp)"), icon: "arrow.down.circle", tint: .teal) {
                         bioVM.dsdnaLengthBp = "\(singleVecLen)"
                     }
                 }
@@ -295,8 +307,8 @@ public struct DNAConversionsWorkspaceView: View {
                     )
 
                     BioMetricTextField(
-                        label: "DNA 长度 (N)",
-                        placeholder: "例如 5000",
+                        label: L10n.t("DNA 长度 (N)"),
+                        placeholder: L10n.t("例如 5000"),
                         text: $bioVM.dsdnaLengthBp,
                         unit: "bp",
                         highlightColor: .blue
@@ -311,7 +323,7 @@ public struct DNAConversionsWorkspaceView: View {
                     )
 
                     BioResultDisplayBox(
-                        label: "转换结果",
+                        label: L10n.t("转换结果"),
                         valueText: formatted,
                         unitText: outUnit,
                         tint: .blue
@@ -355,7 +367,7 @@ public struct DNAConversionsWorkspaceView: View {
             StudioCard(title: "ssDNA（单链 DNA / 引物）浓度转换") {
                 let seqLen = session.sequenceToolVM.cleanLength
                 if seqLen > 0 {
-                    StudioCompactPillButton(title: "带入序列工具 (\(seqLen) nt)", icon: "arrow.down.circle", tint: .mint) {
+                    StudioCompactPillButton(title: L10n.tr("带入序列工具 (\(seqLen) nt)", "Import Seq Tool (\(seqLen) nt)"), icon: "arrow.down.circle", tint: .mint) {
                         bioVM.ssdnaLengthNt = "\(seqLen)"
                     }
                 }
@@ -369,8 +381,8 @@ public struct DNAConversionsWorkspaceView: View {
                     )
 
                     BioMetricTextField(
-                        label: "寡核苷酸 / 单链长度 (N)",
-                        placeholder: "例如 20",
+                        label: L10n.t("寡核苷酸 / 单链长度 (N)"),
+                        placeholder: L10n.t("例如 20"),
                         text: $bioVM.ssdnaLengthNt,
                         unit: "nt (bp)",
                         highlightColor: .teal
@@ -385,7 +397,7 @@ public struct DNAConversionsWorkspaceView: View {
                     )
 
                     BioResultDisplayBox(
-                        label: "转换结果",
+                        label: L10n.t("转换结果"),
                         valueText: formatted,
                         unitText: outUnit,
                         tint: .teal
@@ -428,7 +440,7 @@ public struct DNAConversionsWorkspaceView: View {
                 let singleVecLen = session.singleFragmentVM.effectiveVectorBackboneLengthBp
                 if singleVecLen >= 200 {
                     StudioCompactPillButton(
-                        title: "带入载体 (\(String(format: "%.2f", Double(singleVecLen) / 1000.0)) kb)",
+                        title: L10n.tr("带入载体 (\(String(format: "%.2f", Double(singleVecLen) / 1000.0)) kb)", "Import Vector (\(String(format: "%.2f", Double(singleVecLen) / 1000.0)) kb)"),
                         icon: "arrow.down.circle",
                         tint: .indigo
                     ) {
@@ -438,23 +450,23 @@ public struct DNAConversionsWorkspaceView: View {
             } content: {
                 VStack(alignment: .leading, spacing: 12) {
                     BioMetricTextField(
-                        label: "线性双链 DNA 质量",
-                        placeholder: "例如 1",
+                        label: L10n.t("线性双链 DNA 质量"),
+                        placeholder: L10n.t("例如 1"),
                         text: $bioVM.linearMassUg,
                         unit: "µg",
                         highlightColor: .indigo
                     )
 
                     BioMetricTextField(
-                        label: "DNA 长度",
-                        placeholder: "例如 5.0",
+                        label: L10n.t("DNA 长度"),
+                        placeholder: L10n.t("例如 5.0"),
                         text: $bioVM.linearLengthKb,
                         unit: "kb",
                         highlightColor: .indigo
                     )
 
                     BioResultDisplayBox(
-                        label: "dsDNA 末端总量",
+                        label: L10n.t("dsDNA 末端总量"),
                         valueText: formatted,
                         unitText: "pmol Ends",
                         tint: .indigo
@@ -496,15 +508,15 @@ public struct DNAConversionsWorkspaceView: View {
             StudioCard(title: "Nucleic Acid（核酸）OD260 浓度换算") {
                 VStack(alignment: .leading, spacing: 12) {
                     BioMetricTextField(
-                        label: "分光光度计读数 (OD260)",
-                        placeholder: "推荐线性区 0.1 – 1.0",
+                        label: L10n.t("分光光度计读数 (OD260)"),
+                        placeholder: L10n.t("推荐线性区 0.1 – 1.0"),
                         text: $bioVM.od260Reading,
                         unit: "OD₂₆₀",
                         highlightColor: (res?.isOutOfLinearRange == true) ? .orange : .purple
                     )
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("样本类型与换算系数")
+                        Text(L10n.t("样本类型与换算系数"))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.primary)
                         StudioMenuPicker(
@@ -519,7 +531,7 @@ public struct DNAConversionsWorkspaceView: View {
                     }
 
                     BioMetricTextField(
-                        label: "稀释倍数（直测填 1）",
+                        label: L10n.t("稀释倍数（直测填 1）"),
                         placeholder: "1",
                         text: $bioVM.od260DilutionFactor,
                         unit: "× 稀释",
@@ -535,7 +547,7 @@ public struct DNAConversionsWorkspaceView: View {
                     }
 
                     BioResultDisplayBox(
-                        label: "核酸样本质量浓度",
+                        label: L10n.t("核酸样本质量浓度"),
                         valueText: formatted,
                         unitText: "µg/mL (= ng/µL)",
                         tint: .purple
@@ -575,6 +587,7 @@ public struct DNAConversionsWorkspaceView: View {
 // MARK: - 3. 蛋白质换算工作区 (摩尔互算 / DNA 编码容量)
 
 public struct ProteinConversionsWorkspaceView: View {
+    @Environment(\.appLanguage) private var appLanguage
     @ObservedObject var bioVM: BioCalculatorSuiteViewModel
 
     public init(bioVM: BioCalculatorSuiteViewModel) {
@@ -582,6 +595,7 @@ public struct ProteinConversionsWorkspaceView: View {
     }
 
     public var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 14) {
             StudioSegmentedPicker(
                 selection: $bioVM.proteinSubtool,
@@ -623,7 +637,7 @@ public struct ProteinConversionsWorkspaceView: View {
             StudioCard(title: "蛋白质摩尔转换器") {
                 VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("目标求解量（计算为）")
+                        Text(L10n.t("目标求解量（计算为）"))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.primary)
                         StudioSegmentedPicker(
@@ -636,7 +650,7 @@ public struct ProteinConversionsWorkspaceView: View {
 
                     BioMetricTextField(
                         label: inputALabel.0,
-                        placeholder: "输入正数",
+                        placeholder: L10n.t("输入正数"),
                         text: $bioVM.proteinInputA,
                         unit: inputALabel.1,
                         highlightColor: .orange
@@ -644,14 +658,14 @@ public struct ProteinConversionsWorkspaceView: View {
 
                     BioMetricTextField(
                         label: inputBLabel.0,
-                        placeholder: "输入正数",
+                        placeholder: L10n.t("输入正数"),
                         text: $bioVM.proteinInputB,
                         unit: inputBLabel.1,
                         highlightColor: .orange
                     )
 
                     BioResultDisplayBox(
-                        label: "计算结果 (\(bioVM.proteinTarget.title))",
+                        label: L10n.tr("计算结果 (\(bioVM.proteinTarget.title))", "Result (\(L10n.t(bioVM.proteinTarget.title)))"),
                         valueText: valueStr,
                         unitText: unitStr,
                         tint: .orange
@@ -659,7 +673,7 @@ public struct ProteinConversionsWorkspaceView: View {
                         let msg = "\(valueStr) \(unitStr)"
                         copyToClipboard(msg)
                         bioVM.appendHistory(
-                            category: "蛋白摩尔",
+                            category: L10n.t("蛋白摩尔"),
                             expression: "\(bioVM.proteinInputA) \(inputALabel.1), \(bioVM.proteinInputB) \(inputBLabel.1)",
                             resultText: msg
                         )
@@ -691,12 +705,12 @@ public struct ProteinConversionsWorkspaceView: View {
         let canCopy = !bioVM.codingBP.isEmpty && !bioVM.codingAA.isEmpty && !bioVM.codingKDa.isEmpty
         return AdaptiveTwoColumnWorkspace(breakpoint: 760) {
             StudioCard(title: "DNA 编码容量计算器（三向联动）") {
-                StudioMetricBadge(label: "规则", value: "任意输入一项", color: .pink)
+                StudioMetricBadge(label: L10n.t("规则"), value: "任意输入一项", color: .pink)
             } content: {
                 VStack(alignment: .leading, spacing: 12) {
                     BioMetricTextField(
-                        label: "DNA 编码区长度 (CDS /ORF)",
-                        placeholder: "输入碱基长度 bp",
+                        label: L10n.t("DNA 编码区长度 (CDS /ORF)"),
+                        placeholder: L10n.t("输入碱基长度 bp"),
                         text: $bioVM.codingBP,
                         unit: "bp",
                         highlightColor: bioVM.codingLastEdited == "bp" ? .pink : nil
@@ -705,8 +719,8 @@ public struct ProteinConversionsWorkspaceView: View {
                     }
 
                     BioMetricTextField(
-                        label: "蛋白质氨基酸长度",
-                        placeholder: "输入氨基酸残基数",
+                        label: L10n.t("蛋白质氨基酸长度"),
+                        placeholder: L10n.t("输入氨基酸残基数"),
                         text: $bioVM.codingAA,
                         unit: "氨基酸 (aa)",
                         highlightColor: bioVM.codingLastEdited == "aa" ? .pink : nil
@@ -715,8 +729,8 @@ public struct ProteinConversionsWorkspaceView: View {
                     }
 
                     BioMetricTextField(
-                        label: "蛋白质预计分子量",
-                        placeholder: "输入分子量 kDa",
+                        label: L10n.t("蛋白质预计分子量"),
+                        placeholder: L10n.t("输入分子量 kDa"),
                         text: $bioVM.codingKDa,
                         unit: "kDa",
                         highlightColor: bioVM.codingLastEdited == "kda" ? .pink : nil
@@ -725,14 +739,14 @@ public struct ProteinConversionsWorkspaceView: View {
                     }
 
                     BioResultDisplayBox(
-                        label: "编码对应汇总",
+                        label: L10n.t("编码对应汇总"),
                         valueText: canCopy ? "\(bioVM.codingAA) aa · \(bioVM.codingKDa) kDa" : "--",
                         unitText: canCopy ? "(\(bioVM.codingBP) bp)" : "",
                         tint: .pink
                     ) {
                         let summary = "\(bioVM.codingBP) bp ⇄ \(bioVM.codingAA) aa ⇄ \(bioVM.codingKDa) kDa"
                         copyToClipboard(summary)
-                        bioVM.appendHistory(category: "编码容量", expression: "三向联动推算", resultText: summary)
+                        bioVM.appendHistory(category: L10n.t("编码容量"), expression: L10n.t("三向联动推算"), resultText: summary)
                     }
                 }
             }
@@ -760,6 +774,7 @@ public struct ProteinConversionsWorkspaceView: View {
 // MARK: - 4. 生理生化公式换算工作区 (摩尔浓度配制 / 稀释度 C1V1=C2V2 / 温度转换)
 
 public struct BiochemFormulasWorkspaceView: View {
+    @Environment(\.appLanguage) private var appLanguage
     @ObservedObject var bioVM: BioCalculatorSuiteViewModel
 
     private static let commonReagentMWs: [(name: String, mw: String)] = [
@@ -789,6 +804,7 @@ public struct BiochemFormulasWorkspaceView: View {
     }
 
     public var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 14) {
             StudioSegmentedPicker(
                 selection: $bioVM.biochemSubtool,
@@ -820,15 +836,15 @@ public struct BiochemFormulasWorkspaceView: View {
             StudioCard(title: "摩尔浓度配制质量计算器") {
                 VStack(alignment: .leading, spacing: 12) {
                     BioMetricTextField(
-                        label: "化合物分子量 (MW)",
-                        placeholder: "例如 NaCl = 58.44",
+                        label: L10n.t("化合物分子量 (MW)"),
+                        placeholder: L10n.t("例如 NaCl = 58.44"),
                         text: $bioVM.molarityMW,
                         unit: "g/mol",
                         highlightColor: .green
                     )
 
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                        Text("常用试剂 MW:")
+                        Text(L10n.t("常用试剂 MW:"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
                             .padding(.vertical, 3)
@@ -846,7 +862,7 @@ public struct BiochemFormulasWorkspaceView: View {
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .bottom, spacing: 10) {
                             BioMetricTextField(
-                                label: "目标最终浓度",
+                                label: L10n.t("目标最终浓度"),
                                 placeholder: "100",
                                 text: $bioVM.molarityConc,
                                 unit: bioVM.molarityConcUnit.title,
@@ -863,7 +879,7 @@ public struct BiochemFormulasWorkspaceView: View {
                         }
                         VStack(alignment: .leading, spacing: 6) {
                             BioMetricTextField(
-                                label: "目标最终浓度",
+                                label: L10n.t("目标最终浓度"),
                                 placeholder: "100",
                                 text: $bioVM.molarityConc,
                                 unit: bioVM.molarityConcUnit.title,
@@ -883,7 +899,7 @@ public struct BiochemFormulasWorkspaceView: View {
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .bottom, spacing: 10) {
                             BioMetricTextField(
-                                label: "溶液最终体积",
+                                label: L10n.t("溶液最终体积"),
                                 placeholder: "500",
                                 text: $bioVM.molarityVol,
                                 unit: bioVM.molarityVolUnit.title,
@@ -900,7 +916,7 @@ public struct BiochemFormulasWorkspaceView: View {
                         }
                         VStack(alignment: .leading, spacing: 6) {
                             BioMetricTextField(
-                                label: "溶液最终体积",
+                                label: L10n.t("溶液最终体积"),
                                 placeholder: "500",
                                 text: $bioVM.molarityVol,
                                 unit: bioVM.molarityVolUnit.title,
@@ -926,7 +942,7 @@ public struct BiochemFormulasWorkspaceView: View {
                     }
 
                     BioResultDisplayBox(
-                        label: "所需称量溶质质量",
+                        label: L10n.t("所需称量溶质质量"),
                         valueText: valDisplay,
                         unitText: unitDisplay,
                         tint: .green
@@ -934,7 +950,7 @@ public struct BiochemFormulasWorkspaceView: View {
                         let msg = res?.formattedMass ?? "--"
                         copyToClipboard(msg)
                         bioVM.appendHistory(
-                            category: "摩尔配制",
+                            category: L10n.t("摩尔配制"),
                             expression: "MW \(bioVM.molarityMW), \(bioVM.molarityConc) \(bioVM.molarityConcUnit.title) × \(bioVM.molarityVol) \(bioVM.molarityVolUnit.title)",
                             resultText: msg
                         )
@@ -969,7 +985,7 @@ public struct BiochemFormulasWorkspaceView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     // C1 母液浓度
                     dilutionRow(
-                        label: "母液起始浓度 (C₁)",
+                        label: L10n.t("母液起始浓度 (C₁)"),
                         placeholder: "1",
                         text: $bioVM.dilutionStockConc,
                         unitBinding: $bioVM.dilutionStockUnit,
@@ -978,7 +994,7 @@ public struct BiochemFormulasWorkspaceView: View {
 
                     // C2 最终浓度
                     dilutionRow(
-                        label: "工作液最终浓度 (C₂)",
+                        label: L10n.t("工作液最终浓度 (C₂)"),
                         placeholder: "10",
                         text: $bioVM.dilutionFinalConc,
                         unitBinding: $bioVM.dilutionFinalUnit,
@@ -987,7 +1003,7 @@ public struct BiochemFormulasWorkspaceView: View {
 
                     // V2 最终体积
                     dilutionRow(
-                        label: "工作液最终体积 (V₂)",
+                        label: L10n.t("工作液最终体积 (V₂)"),
                         placeholder: "50",
                         text: $bioVM.dilutionFinalVol,
                         unitBinding: $bioVM.dilutionFinalVolUnit,
@@ -1001,28 +1017,28 @@ public struct BiochemFormulasWorkspaceView: View {
                     }
 
                     BioResultDisplayBox(
-                        label: "所需母液体积 (V₁)",
+                        label: L10n.t("所需母液体积 (V₁)"),
                         valueText: (res?.isValid == true) ? BioMathFormatter.format(res!.displayValue) : "--",
                         unitText: (res?.isValid == true) ? res!.displayUnit : "",
                         tint: .cyan
                     ) {
                         copyToClipboard(stockText)
                         bioVM.appendHistory(
-                            category: "溶液稀释",
+                            category: L10n.t("溶液稀释"),
                             expression: "\(bioVM.dilutionStockConc)\(bioVM.dilutionStockUnit.title) → \(bioVM.dilutionFinalConc)\(bioVM.dilutionFinalUnit.title) (\(bioVM.dilutionFinalVol)\(bioVM.dilutionFinalVolUnit.title))",
-                            resultText: "吸取母液 \(stockText)"
+                            resultText: L10n.tr("吸取母液 \(stockText)", "Pipette Stock \(stockText)")
                         )
                     }
 
                     if let validRes = res, validRes.isValid {
                         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                             StudioMetricBadge(
-                                label: "稀释倍数",
+                                label: L10n.t("稀释倍数"),
                                 value: "\(BioMathFormatter.format(validRes.dilutionFold))×",
                                 color: .blue
                             )
                             StudioMetricBadge(
-                                label: "补加稀释液",
+                                label: L10n.t("补加稀释液"),
                                 value: validRes.formattedDiluentVolume,
                                 color: .teal
                             )
@@ -1095,11 +1111,11 @@ public struct BiochemFormulasWorkspaceView: View {
         let validSummary = (!bioVM.tempF.isEmpty && !bioVM.tempC.isEmpty && !bioVM.tempK.isEmpty)
         return AdaptiveTwoColumnWorkspace(breakpoint: 760) {
             StudioCard(title: "温度单位转换计算器（三向联动）") {
-                StudioMetricBadge(label: "规则", value: "任意输入一项", color: .red)
+                StudioMetricBadge(label: L10n.t("规则"), value: "任意输入一项", color: .red)
             } content: {
                 VStack(alignment: .leading, spacing: 12) {
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                        Text("常用实验温区:")
+                        Text(L10n.t("常用实验温区:"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
                             .padding(.vertical, 3)
@@ -1115,8 +1131,8 @@ public struct BiochemFormulasWorkspaceView: View {
                     }
 
                     BioMetricTextField(
-                        label: "华氏度",
-                        placeholder: "例如 98.6",
+                        label: L10n.t("华氏度"),
+                        placeholder: L10n.t("例如 98.6"),
                         text: $bioVM.tempF,
                         unit: "°F",
                         highlightColor: bioVM.tempLastEdited == "f" ? .red : nil
@@ -1125,8 +1141,8 @@ public struct BiochemFormulasWorkspaceView: View {
                     }
 
                     BioMetricTextField(
-                        label: "摄氏度",
-                        placeholder: "例如 37",
+                        label: L10n.t("摄氏度"),
+                        placeholder: L10n.t("例如 37"),
                         text: $bioVM.tempC,
                         unit: "°C",
                         highlightColor: bioVM.tempLastEdited == "c" ? .red : nil
@@ -1135,8 +1151,8 @@ public struct BiochemFormulasWorkspaceView: View {
                     }
 
                     BioMetricTextField(
-                        label: "热力学温标（开尔文）",
-                        placeholder: "例如 310.16",
+                        label: L10n.t("热力学温标（开尔文）"),
+                        placeholder: L10n.t("例如 310.16"),
                         text: $bioVM.tempK,
                         unit: "°K",
                         highlightColor: bioVM.tempLastEdited == "k" ? .red : nil
@@ -1149,14 +1165,14 @@ public struct BiochemFormulasWorkspaceView: View {
                     }
 
                     BioResultDisplayBox(
-                        label: "温标对照汇总",
+                        label: L10n.t("温标对照汇总"),
                         valueText: validSummary ? "\(bioVM.tempC) °C · \(bioVM.tempF) °F" : "--",
                         unitText: validSummary ? "(\(bioVM.tempK) K)" : "",
                         tint: .red
                     ) {
                         let msg = "\(bioVM.tempC) °C = \(bioVM.tempF) °F = \(bioVM.tempK) K"
                         copyToClipboard(msg)
-                        bioVM.appendHistory(category: "温度转换", expression: "°F/°C/K", resultText: msg)
+                        bioVM.appendHistory(category: L10n.t("温度转换"), expression: "°F/°C/K", resultText: msg)
                     }
                 }
             }
@@ -1184,5 +1200,5 @@ public struct BiochemFormulasWorkspaceView: View {
 private func copyToClipboard(_ text: String) {
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(text, forType: .string)
-    AppState.shared.showToast("已复制到剪贴板：\(text)")
+    AppState.shared.showToast(L10n.tr("已复制到剪贴板：\(text)", "Copied to clipboard: \(text)"))
 }

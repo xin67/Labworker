@@ -164,7 +164,7 @@ public struct DiagnosticDigestEngine: Sendable {
                 isCircular: isCircular,
                 evaluatedCombinations: 0,
                 topRecommendations: [],
-                warnings: ["输入空载或重组载体序列为空"]
+                warnings: [L10n.t("输入空载或重组载体序列为空")]
             )
         }
 
@@ -337,7 +337,7 @@ public struct DiagnosticDigestEngine: Sendable {
                 }
             }
             if strictHits.isEmpty && !finalPool.isEmpty {
-                warnings.append("未能找到空载与重组载体均严格产生 \(minBands)–\(maxBands) 条带的组合，已补充单带对照候选方案。")
+                warnings.append(L10n.tr("未能找到空载与重组载体均严格产生 \(minBands)–\(maxBands) 条带的组合，已补充单带对照候选方案。", "No digest strictly yielded \(minBands)–\(maxBands) bands for both vectors; supplemented with single-band candidates."))
             }
         }
 
@@ -351,7 +351,7 @@ public struct DiagnosticDigestEngine: Sendable {
         let topItems = Array(finalPool.prefix(topN)).enumerated().map { idx, item in
             let negStr = item.emptyBands.map(String.init).joined(separator: " / ")
             let posStr = item.recombBands.map(String.init).joined(separator: " / ")
-            let rationale = "\(item.enzymeNames.joined(separator: " + ")) (\(item.bufferName) \(item.bufferPct)%): 空载 [\(negStr)] bp vs 重组 [\(posStr)] bp，\(item.gelConc) 胶最大迁移差 Δy=\(String(format: "%.3f", item.maxShiftY))"
+            let rationale = L10n.tr("\(item.enzymeNames.joined(separator: " + ")) (\(item.bufferName) \(item.bufferPct)%): 空载 [\(negStr)] bp vs 重组 [\(posStr)] bp，\(item.gelConc) 胶最大迁移差 Δy=\(String(format: "%.3f", item.maxShiftY))", "\(item.enzymeNames.joined(separator: " + ")) (\(item.bufferName) \(item.bufferPct)%): Empty [\(negStr)] bp vs Recomb [\(posStr)] bp, max shift on \(item.gelConc) gel Δy=\(String(format: "%.3f", item.maxShiftY))")
             return DiagnosticDigestRecommendation(
                 rank: idx + 1,
                 enzymeNames: item.enzymeNames,
@@ -370,7 +370,7 @@ public struct DiagnosticDigestEngine: Sendable {
         }
 
         if topItems.isEmpty {
-            warnings.append("在可用酶切面板中未找到可区分空载与重组载体的有效鉴定方案。")
+            warnings.append(L10n.t("在可用酶切面板中未找到可区分空载与重组载体的有效鉴定方案。"))
         }
 
         return DiagnosticDigestReport(

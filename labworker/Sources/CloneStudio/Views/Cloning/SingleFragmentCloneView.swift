@@ -107,7 +107,7 @@ public struct SingleFragmentCloneView: View {
                         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                             if vm.effectiveVectorBackboneLengthBp > 0 {
                                 StudioMetricBadge(
-                                    label: "载体长度",
+                                    label: L10n.t("载体长度"),
                                     value: "\(vm.effectiveVectorBackboneLengthBp) bp (\(String(format: "%.2f", Double(vm.effectiveVectorBackboneLengthBp) / 1000.0)) kb)",
                                     color: .blue
                                 )
@@ -120,7 +120,7 @@ public struct SingleFragmentCloneView: View {
                                     StudioSegmentedOption(value: .double, title: "双酶切", tint: .blue)
                                 ]
                             )
-                            StudioSectionClearButton(label: "一键清除载体", action: vm.clearVectorSection)
+                            StudioSectionClearButton(label: L10n.t("一键清除载体"), action: vm.clearVectorSection)
                         }
                     } content: {
                             switch vm.mode {
@@ -142,17 +142,17 @@ public struct SingleFragmentCloneView: View {
                                         StudioSegmentedOption(value: $0, title: "\($0) bp")
                                     }
                                 )
-                                StudioSectionClearButton(label: "一键重置") {
+                                StudioSectionClearButton(label: L10n.t("一键重置")) {
                                     vm.homologyLength = 20
                                 }
                             }
                         } content: {
                             HStack {
-                                Text("当前同源臂: \(vm.homologyLength) bp")
+                                Text(L10n.tr("当前同源臂: \(vm.homologyLength) bp", "Homology Arm: \(vm.homologyLength) bp"))
                                     .font(.system(size: 11.5, weight: .semibold))
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Text("目标 Tm: \(String(format: "%.1f", appState.cloningTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) ℃")
+                                Text(L10n.tr("目标 Tm: \(String(format: "%.1f", appState.cloningTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) ℃", "Target Tm: \(String(format: "%.1f", appState.cloningTargetTm)) ± \(String(format: "%.1f", appState.tmTolerance)) °C"))
                                     .font(.system(size: 11))
                                     .monospacedDigit()
                                     .foregroundColor(.secondary)
@@ -168,12 +168,12 @@ public struct SingleFragmentCloneView: View {
                         // 3. 插入片段序列
                         StudioCard(title: "插入片段序列 (5' → 3')") {
                             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
-                                TextField("片段名称", text: $vm.insertGeneName)
+                                TextField(L10n.t("片段名称"), text: $vm.insertGeneName)
                                     .textFieldStyle(.roundedBorder)
                                     .font(.system(size: 12))
                                     .frame(width: 120)
                                 StudioMetricBadge(
-                                    label: "插入基因长度",
+                                    label: L10n.t("插入基因长度"),
                                     value: "\(cleanInsertLen) bp (\(String(format: "%.2f", Double(cleanInsertLen) / 1000.0)) kb)",
                                     color: cleanInsertLen >= 50 ? .green : .orange
                                 )
@@ -184,13 +184,13 @@ public struct SingleFragmentCloneView: View {
                                         color: .purple
                                     )
                                 }
-                                StudioSectionClearButton(label: "一键清除片段", action: vm.clearInsertSection)
+                                StudioSectionClearButton(label: L10n.t("一键清除片段"), action: vm.clearInsertSection)
                             }
                         } content: {
                             VStack(alignment: .leading, spacing: 8) {
                                 SequenceEditorBox(
                                     text: $vm.insertSeq,
-                                    placeholder: "输入或拖入插入片段序列 (≥ 50 bp)",
+                                    placeholder: L10n.t("输入或拖入插入片段序列 (≥ 50 bp)"),
                                     minHeight: 95
                                 )
                                 extraBasesAndReadingFrameCard
@@ -200,7 +200,7 @@ public struct SingleFragmentCloneView: View {
                         // 4. 居左紧凑主操作栏（Plan A）
                         VStack(alignment: .leading, spacing: 8) {
                             if vm.mode == .pcr {
-                                Toggle("同时生成载体反向 PCR 扩增引物", isOn: $vm.includeVectorPCRPrimers)
+                                Toggle(L10n.t("同时生成载体反向 PCR 扩增引物"), isOn: $vm.includeVectorPCRPrimers)
                                     .toggleStyle(.checkbox)
                                     .font(.system(size: 13, weight: .medium))
                             }
@@ -231,9 +231,9 @@ public struct SingleFragmentCloneView: View {
                         if !vm.primers.isEmpty {
                             StudioCard(title: "生成的引物结果") {
                                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                                    StudioMetricBadge(label: "数量", value: "\(vm.primers.count) 条", color: .green)
+                                    StudioMetricBadge(label: L10n.t("数量"), value: L10n.tr("\(vm.primers.count) 条", "\(vm.primers.count)"), color: .green)
                                     snapGeneRecombinantButtons
-                                    StudioSectionClearButton(label: "一键清除引物", action: vm.clearPrimersSection)
+                                    StudioSectionClearButton(label: L10n.t("一键清除引物"), action: vm.clearPrimersSection)
                                 }
                             } content: {
                                 VStack(spacing: 10) {
@@ -298,8 +298,8 @@ public struct SingleFragmentCloneView: View {
                     }
                 }
         }
-        .alert("提示", isPresented: $vm.showAlert) {
-            Button("好的", role: .cancel) {}
+        .alert(L10n.t("提示"), isPresented: $vm.showAlert) {
+            Button(L10n.t("好的"), role: .cancel) {}
         } message: {
             Text(vm.alertMessage ?? "")
         }
@@ -333,13 +333,13 @@ public struct SingleFragmentCloneView: View {
                 Image(systemName: rem == 0 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                     .foregroundColor(rem == 0 ? .green : .orange)
                     .font(.system(size: 13))
-                Text("接头附加碱基 & 阅读框")
+                Text(L10n.t("接头附加碱基 & 阅读框"))
                     .font(.system(size: 13, weight: .bold))
                 
                 if effLen > 0 {
                     StudioMetricBadge(
                         label: "",
-                        value: rem == 0 ? "3n 对齐 (\(effLen / 3) aa)" : "余 \(rem) bp (差 \(needPad) bp)",
+                        value: rem == 0 ? L10n.tr("3n 对齐 (\(effLen / 3) aa)", "3n In-Frame (\(effLen / 3) aa)") : L10n.tr("余 \(rem) bp (差 \(needPad) bp)", "Rem \(rem) bp (Need +\(needPad) bp)"),
                         color: rem == 0 ? .green : .orange
                     )
                 }
@@ -347,7 +347,7 @@ public struct SingleFragmentCloneView: View {
                 Spacer()
                 
                 if ex5Len > 0 || ex3Len > 0 {
-                    StudioSectionClearButton(label: "清除", action: vm.clearExtraBasesSection)
+                    StudioSectionClearButton(label: L10n.t("清除"), action: vm.clearExtraBasesSection)
                 }
             }
             
@@ -355,10 +355,10 @@ public struct SingleFragmentCloneView: View {
             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                 if effLen > 0 && rem != 0 {
                     StudioSegmentedPillGroup(items: [
-                        StudioPillGroupItem(title: "5' 补 +\(padSeq)", tint: .orange) {
+                        StudioPillGroupItem(title: L10n.tr("5' 补 +\(padSeq)", "5' Pad +\(padSeq)"), tint: .orange) {
                             vm.extra5Bases = BioSequence.clean(vm.extra5Bases) + padSeq
                         },
-                        StudioPillGroupItem(title: "3' 补 +\(padSeq)", tint: .orange) {
+                        StudioPillGroupItem(title: L10n.tr("3' 补 +\(padSeq)", "3' Pad +\(padSeq)"), tint: .orange) {
                             vm.extra3Bases = BioSequence.clean(vm.extra3Bases) + padSeq
                         }
                     ])
@@ -381,11 +381,11 @@ public struct SingleFragmentCloneView: View {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 12) {
                     HStack(spacing: 6) {
-                        Text("5' 附加:")
+                        Text(L10n.t("5' 附加:"))
                             .font(.system(size: 12.5, weight: .medium))
                             .foregroundColor(.secondary)
                             .fixedSize()
-                        TextField("正向 5'→3'", text: $vm.extra5Bases)
+                        TextField(L10n.t("正向 5'→3'"), text: $vm.extra5Bases)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 13))
                             .frame(minWidth: 110)
@@ -398,11 +398,11 @@ public struct SingleFragmentCloneView: View {
                     }
                     
                     HStack(spacing: 6) {
-                        Text("3' 附加:")
+                        Text(L10n.t("3' 附加:"))
                             .font(.system(size: 12.5, weight: .medium))
                             .foregroundColor(.secondary)
                             .fixedSize()
-                        TextField("正向 5'→3' (R自动反补)", text: $vm.extra3Bases)
+                        TextField(L10n.t("正向 5'→3' (R自动反补)"), text: $vm.extra3Bases)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 13))
                             .frame(minWidth: 110)
@@ -417,11 +417,11 @@ public struct SingleFragmentCloneView: View {
                 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
-                        Text("5' 附加:")
+                        Text(L10n.t("5' 附加:"))
                             .font(.system(size: 12.5, weight: .medium))
                             .foregroundColor(.secondary)
                             .frame(width: 56, alignment: .leading)
-                        TextField("正向 5'→3'", text: $vm.extra5Bases)
+                        TextField(L10n.t("正向 5'→3'"), text: $vm.extra5Bases)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 13))
                         if ex5Len > 0 {
@@ -432,11 +432,11 @@ public struct SingleFragmentCloneView: View {
                         }
                     }
                     HStack(spacing: 6) {
-                        Text("3' 附加:")
+                        Text(L10n.t("3' 附加:"))
                             .font(.system(size: 12.5, weight: .medium))
                             .foregroundColor(.secondary)
                             .frame(width: 56, alignment: .leading)
-                        TextField("正向 5'→3' (R自动反补)", text: $vm.extra3Bases)
+                        TextField(L10n.t("正向 5'→3' (R自动反补)"), text: $vm.extra3Bases)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 13))
                         if ex3Len > 0 {
@@ -475,11 +475,11 @@ public struct SingleFragmentCloneView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "doc.text.magnifyingglass")
                         .foregroundColor(.blue)
-                    Text("已解析载体: \(vec.fileName)")
+                    Text(L10n.tr("已解析载体: \(vec.fileName)", "Parsed Vector: \(vec.fileName)"))
                         .font(.system(size: 12, weight: .bold))
                         .lineLimit(1)
                         .truncationMode(.middle)
-                    Text("(\(vec.length) bp · \(vec.featuresCount) 特征 · \(boundPrimerCount) 引物 · \(uniqueCutCount) 唯一切点)")
+                    Text(L10n.tr("(\(vec.length) bp · \(vec.featuresCount) 特征 · \(boundPrimerCount) 引物 · \(uniqueCutCount) 唯一切点)", "(\(vec.length) bp · \(vec.featuresCount) features · \(boundPrimerCount) primers · \(uniqueCutCount) unique cutters)"))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -494,12 +494,12 @@ public struct SingleFragmentCloneView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.text.magnifyingglass")
                             .foregroundColor(.blue)
-                        Text("已解析载体: \(vec.fileName)")
+                        Text(L10n.tr("已解析载体: \(vec.fileName)", "Parsed Vector: \(vec.fileName)"))
                             .font(.system(size: 12, weight: .bold))
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .frame(minWidth: 0, alignment: .leading)
-                        Text("(\(vec.length) bp · \(vec.featuresCount) 特征)")
+                        Text(L10n.tr("(\(vec.length) bp · \(vec.featuresCount) 特征)", "(\(vec.length) bp · \(vec.featuresCount) features)"))
                             .font(.system(size: 10.5))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -537,7 +537,7 @@ public struct SingleFragmentCloneView: View {
                     if !vecFeats.isEmpty {
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: 8) {
-                                Text("选择载体特征:")
+                                Text(L10n.t("选择载体特征:"))
                                     .font(.system(size: 11.5, weight: .medium))
                                     .fixedSize()
                                 vectorFeaturePicker(vecFeats: vecFeats)
@@ -549,14 +549,14 @@ public struct SingleFragmentCloneView: View {
                             
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 6) {
-                                    Text("选择载体特征:")
+                                    Text(L10n.t("选择载体特征:"))
                                         .font(.system(size: 11.5, weight: .medium))
                                         .fixedSize()
                                     vectorFeaturePicker(vecFeats: vecFeats)
                                         .frame(maxWidth: .infinity)
                                 }
                                 HStack(spacing: 6) {
-                                    Text("操作方式:")
+                                    Text(L10n.t("操作方式:"))
                                         .font(.system(size: 11.5, weight: .medium))
                                         .fixedSize()
                                     vectorActionPicker
@@ -582,14 +582,14 @@ public struct SingleFragmentCloneView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: 8) {
-                                Text("上游反向引物 (←):")
+                                Text(L10n.t("上游反向引物 (←):"))
                                     .font(.system(size: 11.5))
                                     .foregroundColor(.secondary)
                                     .fixedSize()
                                 vectorRevPrimerPicker(bps: bps)
                                     .frame(maxWidth: 240)
                                 
-                                Text("下游正向引物 (→):")
+                                Text(L10n.t("下游正向引物 (→):"))
                                     .font(.system(size: 11.5))
                                     .foregroundColor(.secondary)
                                     .fixedSize()
@@ -603,7 +603,7 @@ public struct SingleFragmentCloneView: View {
                             
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 6) {
-                                    Text("上游反向 (←):")
+                                    Text(L10n.t("上游反向 (←):"))
                                         .font(.system(size: 11.5))
                                         .foregroundColor(.secondary)
                                         .fixedSize()
@@ -611,7 +611,7 @@ public struct SingleFragmentCloneView: View {
                                         .frame(maxWidth: .infinity)
                                 }
                                 HStack(spacing: 6) {
-                                    Text("下游正向 (→):")
+                                    Text(L10n.t("下游正向 (→):"))
                                         .font(.system(size: 11.5))
                                         .foregroundColor(.secondary)
                                         .fixedSize()
@@ -639,7 +639,7 @@ public struct SingleFragmentCloneView: View {
                 let cuts = vm.displayedVectorCutSites
                 VStack(alignment: .leading, spacing: 6) {
                     StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
-                        Toggle("仅显示唯一内切酶 (1 切点)", isOn: $vm.onlyShowUniqueVectorCutters)
+                        Toggle(L10n.t("仅显示唯一内切酶 (1 切点)"), isOn: $vm.onlyShowUniqueVectorCutters)
                             .toggleStyle(.checkbox)
                             .font(.system(size: 11.5))
                         
@@ -655,14 +655,14 @@ public struct SingleFragmentCloneView: View {
                     if !cuts.isEmpty {
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: 8) {
-                                Text(vm.mode == .double ? "5' 酶切位点:" : "选择载体酶切位点:")
+                                Text(L10n.t(vm.mode == .double ? "5' 酶切位点:" : "选择载体酶切位点:"))
                                     .font(.system(size: 11.5, weight: .medium))
                                     .fixedSize()
                                 vectorCut5Picker(cuts: cuts)
                                     .frame(maxWidth: 280)
                                 
                                 if vm.mode == .double {
-                                    Text("3' 酶切位点:")
+                                    Text(L10n.t("3' 酶切位点:"))
                                         .font(.system(size: 11.5, weight: .medium))
                                         .fixedSize()
                                     vectorCut3Picker(cuts: cuts)
@@ -673,7 +673,7 @@ public struct SingleFragmentCloneView: View {
                             
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 6) {
-                                    Text(vm.mode == .double ? "5' 酶切位点:" : "选择位点:")
+                                    Text(L10n.t(vm.mode == .double ? "5' 酶切位点:" : "选择位点:"))
                                         .font(.system(size: 11.5, weight: .medium))
                                         .fixedSize()
                                     vectorCut5Picker(cuts: cuts)
@@ -681,7 +681,7 @@ public struct SingleFragmentCloneView: View {
                                 }
                                 if vm.mode == .double {
                                     HStack(spacing: 6) {
-                                        Text("3' 酶切位点:")
+                                        Text(L10n.t("3' 酶切位点:"))
                                             .font(.system(size: 11.5, weight: .medium))
                                             .fixedSize()
                                         vectorCut3Picker(cuts: cuts)
@@ -691,7 +691,7 @@ public struct SingleFragmentCloneView: View {
                             }
                         }
                     } else {
-                        Text("未在载体中扫描到符合条件的内切酶位点。")
+                        Text(L10n.t("未在载体中扫描到符合条件的内切酶位点。"))
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
@@ -700,16 +700,16 @@ public struct SingleFragmentCloneView: View {
             case .byCoordinates:
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        Text("载体目标起止坐标 (1-based):")
+                        Text(L10n.t("载体目标起止坐标 (1-based):"))
                             .font(.system(size: 11.5, weight: .medium))
                             .fixedSize()
-                        TextField("起点", text: $vm.cutStartText)
+                        TextField(L10n.t("起点"), text: $vm.cutStartText)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 11.5))
                             .monospacedDigit()
                             .frame(width: 78)
                         Text("~").foregroundColor(.secondary)
-                        TextField("终点", text: $vm.cutEndText)
+                        TextField(L10n.t("终点"), text: $vm.cutEndText)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 11.5))
                             .monospacedDigit()
@@ -719,7 +719,7 @@ public struct SingleFragmentCloneView: View {
                             let e = Int(vm.cutEndText.trimmingCharacters(in: .whitespaces)) ?? s
                             vm.applyVectorTargetRange(start: s, end: e)
                         }
-                        Text("(终点 = 起点 - 1 为纯插入)")
+                        Text(L10n.t("(终点 = 起点 - 1 为纯插入)"))
                             .font(.system(size: 10.5))
                             .foregroundColor(.secondary)
                         Spacer()
@@ -727,16 +727,16 @@ public struct SingleFragmentCloneView: View {
                     
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 6) {
-                            Text("目标坐标 (1-based):")
+                            Text(L10n.t("目标坐标 (1-based):"))
                                 .font(.system(size: 11.5, weight: .medium))
                                 .fixedSize()
-                            TextField("起点", text: $vm.cutStartText)
+                            TextField(L10n.t("起点"), text: $vm.cutStartText)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(size: 11.5))
                                 .monospacedDigit()
                                 .frame(width: 68)
                             Text("~").foregroundColor(.secondary)
-                            TextField("终点", text: $vm.cutEndText)
+                            TextField(L10n.t("终点"), text: $vm.cutEndText)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(size: 11.5))
                                 .monospacedDigit()
@@ -747,7 +747,7 @@ public struct SingleFragmentCloneView: View {
                                 vm.applyVectorTargetRange(start: s, end: e)
                             }
                         }
-                        Text("(提示：若终点 = 起点 - 1 则为纯插入不删碱基)")
+                        Text(L10n.t("(提示：若终点 = 起点 - 1 则为纯插入不删碱基)"))
                             .font(.system(size: 10.5))
                             .foregroundColor(.secondary)
                     }
@@ -767,11 +767,11 @@ public struct SingleFragmentCloneView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.triangle.pull")
                         .foregroundColor(.green)
-                    Text("已解析供体: \(ins.fileName)")
+                    Text(L10n.tr("已解析供体: \(ins.fileName)", "Parsed Donor: \(ins.fileName)"))
                         .font(.system(size: 12, weight: .bold))
                         .lineLimit(1)
                         .truncationMode(.middle)
-                    Text("(\(ins.length) bp · \(ins.featuresCount) 特征 · \(boundPrimerCount) 引物)")
+                    Text(L10n.tr("(\(ins.length) bp · \(ins.featuresCount) 特征 · \(boundPrimerCount) 引物)", "(\(ins.length) bp · \(ins.featuresCount) features · \(boundPrimerCount) primers)"))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -786,12 +786,12 @@ public struct SingleFragmentCloneView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.triangle.pull")
                             .foregroundColor(.green)
-                        Text("已解析供体: \(ins.fileName)")
+                        Text(L10n.tr("已解析供体: \(ins.fileName)", "Parsed Donor: \(ins.fileName)"))
                             .font(.system(size: 12, weight: .bold))
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .frame(minWidth: 0, alignment: .leading)
-                        Text("(\(ins.length) bp · \(ins.featuresCount) 特征)")
+                        Text(L10n.tr("(\(ins.length) bp · \(ins.featuresCount) 特征)", "(\(ins.length) bp · \(ins.featuresCount) features)"))
                             .font(.system(size: 10.5))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -828,13 +828,13 @@ public struct SingleFragmentCloneView: View {
                     if !insFeats.isEmpty {
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: 8) {
-                                Text("主特征 (起点):")
+                                Text(L10n.t("主特征 (起点):"))
                                     .font(.system(size: 11.5, weight: .medium))
                                     .fixedSize()
                                 donorMainFeaturePicker(insFeats: insFeats)
                                     .frame(maxWidth: 290)
                                 
-                                Text("合并至:")
+                                Text(L10n.t("合并至:"))
                                     .font(.system(size: 11.5))
                                     .foregroundColor(.secondary)
                                     .fixedSize()
@@ -845,14 +845,14 @@ public struct SingleFragmentCloneView: View {
                             
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 6) {
-                                    Text("主特征 (起点):")
+                                    Text(L10n.t("主特征 (起点):"))
                                         .font(.system(size: 11.5, weight: .medium))
                                         .fixedSize()
                                     donorMainFeaturePicker(insFeats: insFeats)
                                         .frame(maxWidth: .infinity)
                                 }
                                 HStack(spacing: 6) {
-                                    Text("合并相邻 (可选):")
+                                    Text(L10n.t("合并相邻 (可选):"))
                                         .font(.system(size: 11.5))
                                         .foregroundColor(.secondary)
                                         .fixedSize()
@@ -870,14 +870,14 @@ public struct SingleFragmentCloneView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: 8) {
-                                Text("正向引物 (5'):")
+                                Text(L10n.t("正向引物 (5'):"))
                                     .font(.system(size: 11.5))
                                     .foregroundColor(.secondary)
                                     .fixedSize()
                                 donorFwdPrimerPicker(bps: bps)
                                     .frame(maxWidth: 240)
                                 
-                                Text("反向引物 (3'):")
+                                Text(L10n.t("反向引物 (3'):"))
                                     .font(.system(size: 11.5))
                                     .foregroundColor(.secondary)
                                     .fixedSize()
@@ -891,7 +891,7 @@ public struct SingleFragmentCloneView: View {
                             
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 6) {
-                                    Text("正向引物 (5'):")
+                                    Text(L10n.t("正向引物 (5'):"))
                                         .font(.system(size: 11.5))
                                         .foregroundColor(.secondary)
                                         .fixedSize()
@@ -899,7 +899,7 @@ public struct SingleFragmentCloneView: View {
                                         .frame(maxWidth: .infinity)
                                 }
                                 HStack(spacing: 6) {
-                                    Text("反向引物 (3'):")
+                                    Text(L10n.t("反向引物 (3'):"))
                                         .font(.system(size: 11.5))
                                         .foregroundColor(.secondary)
                                         .fixedSize()
@@ -930,17 +930,17 @@ public struct SingleFragmentCloneView: View {
             // 底部常驻坐标微调与自动终止子解析栏（自动识别 3' 端是否含 TAA/TAG/TGA，支持一键去除与无损恢复，绝不重复误删序列）
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) {
-                    Text("提取坐标 (bp):")
+                    Text(L10n.t("提取坐标 (bp):"))
                         .font(.system(size: 11.5))
                         .foregroundColor(.secondary)
                         .fixedSize()
-                    TextField("起点", text: $vm.insertStartText)
+                    TextField(L10n.t("起点"), text: $vm.insertStartText)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11.5))
                         .monospacedDigit()
                         .frame(width: 68)
                     Text("~").foregroundColor(.secondary)
-                    TextField("终点", text: $vm.insertEndText)
+                    TextField(L10n.t("终点"), text: $vm.insertEndText)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11.5))
                         .monospacedDigit()
@@ -965,7 +965,7 @@ public struct SingleFragmentCloneView: View {
                             )
                     }
                     
-                    Toggle("反向互补 (负链)", isOn: Binding(
+                    Toggle(L10n.t("反向互补 (负链)"), isOn: Binding(
                         get: { vm.insertUseReverseComplement },
                         set: { val in
                             vm.insertUseReverseComplement = val
@@ -979,17 +979,17 @@ public struct SingleFragmentCloneView: View {
                 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
-                        Text("提取坐标 (bp):")
+                        Text(L10n.t("提取坐标 (bp):"))
                             .font(.system(size: 11.5))
                             .foregroundColor(.secondary)
                             .fixedSize()
-                        TextField("起点", text: $vm.insertStartText)
+                        TextField(L10n.t("起点"), text: $vm.insertStartText)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 11.5))
                             .monospacedDigit()
                             .frame(width: 65)
                         Text("~").foregroundColor(.secondary)
-                        TextField("终点", text: $vm.insertEndText)
+                        TextField(L10n.t("终点"), text: $vm.insertEndText)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 11.5))
                             .monospacedDigit()
@@ -1010,7 +1010,7 @@ public struct SingleFragmentCloneView: View {
                                 .foregroundColor(vm.detectedTerminalStopCodon != nil ? (vm.removeTerminalStopCodon ? .orange : .blue) : .secondary)
                         }
                         
-                        Toggle("反向互补 (负链)", isOn: Binding(
+                        Toggle(L10n.t("反向互补 (负链)"), isOn: Binding(
                             get: { vm.insertUseReverseComplement },
                             set: { val in
                                 vm.insertUseReverseComplement = val
@@ -1030,11 +1030,11 @@ public struct SingleFragmentCloneView: View {
     private var stopCodonSmartButton: some View {
         if let stop = vm.detectedTerminalStopCodon {
             StudioCompactPillButton(
-                title: vm.removeTerminalStopCodon ? "恢复终止子 (\(stop))" : "去除终止子 (\(stop))",
+                title: vm.removeTerminalStopCodon ? L10n.tr("恢复终止子 (\(stop))", "Restore Stop (\(stop))") : L10n.tr("去除终止子 (\(stop))", "Trim Stop (\(stop))"),
                 icon: vm.removeTerminalStopCodon ? "arrow.uturn.backward.circle.fill" : "scissors",
                 tint: vm.removeTerminalStopCodon ? .orange : .blue,
                 isProminent: true,
-                help: vm.removeTerminalStopCodon ? "点击恢复已去除的 3' 末端终止密码子 \(stop) (+3 bp)" : "检测到 3' 末端含终止密码子 \(stop)，点击一键去除 (-3 bp)"
+                help: vm.removeTerminalStopCodon ? L10n.tr("点击恢复已去除的 3' 末端终止密码子 \(stop) (+3 bp)", "Restore trimmed 3' stop codon \(stop) (+3 bp)") : L10n.tr("检测到 3' 末端含终止密码子 \(stop)，点击一键去除 (-3 bp)", "Detected 3' stop codon \(stop); click to trim (-3 bp)")
             ) {
                 vm.toggleTerminalStopCodon()
             }
@@ -1049,7 +1049,7 @@ public struct SingleFragmentCloneView: View {
     
     // MARK: - 载体与供体子控件抽取 (确保全场景响应式复用)
     private func targetRangeBadge(delLen: Int) -> some View {
-        Text(delLen > 0 ? "目标替换区间: \(vm.cutStart)..\(vm.cutEnd) (切除 \(delLen) bp)" : "目标插入位点: @\(vm.cutStart) bp (无缝纯插入)")
+        Text(delLen > 0 ? L10n.tr("目标替换区间: \(vm.cutStart)..\(vm.cutEnd) (切除 \(delLen) bp)", "Target Replace Range: \(vm.cutStart)..\(vm.cutEnd) (Δ\(delLen) bp)") : L10n.tr("目标插入位点: @\(vm.cutStart) bp (无缝纯插入)", "Target Insertion Site: @\(vm.cutStart) bp (Seamless Insert)"))
             .font(.system(size: 11, weight: .semibold))
             .monospacedDigit()
             .foregroundColor(.blue)
@@ -1077,14 +1077,14 @@ public struct SingleFragmentCloneView: View {
                 }
             }
             
-            StudioSectionClearButton(label: "一键清除载体", action: vm.clearVectorSection)
+            StudioSectionClearButton(label: L10n.t("一键清除载体"), action: vm.clearVectorSection)
         }
         .fixedSize(horizontal: true, vertical: false)
         .layoutPriority(2)
     }
     
     private func donorExtractionBadge(cleanInsertLen: Int) -> some View {
-        Text("\(vm.insertGeneName) [\(vm.insertStartText)..\(vm.insertEndText), \(cleanInsertLen)bp\(vm.insertUseReverseComplement ? " 反补" : "")]")
+        Text("\(vm.insertGeneName) [\(vm.insertStartText)..\(vm.insertEndText), \(cleanInsertLen)bp\(vm.insertUseReverseComplement ? L10n.t(" 反补") : "")]")
             .font(.system(size: 10.5, weight: .semibold))
             .monospacedDigit()
             .foregroundColor(.green)
@@ -1112,7 +1112,7 @@ public struct SingleFragmentCloneView: View {
                 }
             }
             
-            StudioSectionClearButton(label: "一键清除供体", action: vm.clearInsertSection)
+            StudioSectionClearButton(label: L10n.t("一键清除供体"), action: vm.clearInsertSection)
         }
         .fixedSize(horizontal: true, vertical: false)
         .layoutPriority(2)
@@ -1121,7 +1121,7 @@ public struct SingleFragmentCloneView: View {
     // MARK: - 特征分类选择器 (自适应排版，杜绝文字挤压与重叠)
     private func featureFilterBar(selection: Binding<PlasmidFeatureFilter>) -> some View {
         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-            Text("特征筛选:")
+            Text(L10n.t("特征筛选:"))
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
             ViewThatFits(in: .horizontal) {
@@ -1149,7 +1149,7 @@ public struct SingleFragmentCloneView: View {
             ForEach(vecFeats) { f in
                 let s = f.segments.first?.start ?? 1
                 let e = f.segments.last?.end ?? 1
-                let strandTag = f.directionality == "2" ? "← 反义" : "→ 正义"
+                let strandTag = L10n.t(f.directionality == "2" ? "← 反义" : "→ 正义")
                 Text("\(f.name) [\(s)..\(e), \(e - s + 1) bp \(strandTag)] (\(f.type))").tag(f.id)
             }
         }
@@ -1162,7 +1162,7 @@ public struct SingleFragmentCloneView: View {
             set: { act in vm.selectVectorFeature(id: vm.selectedVectorFeatureID, action: act) }
         )) {
             ForEach(SingleFragmentViewModel.VectorInsertAction.allCases) { act in
-                Text(act.rawValue).tag(act)
+                Text(L10n.t(act.rawValue)).tag(act)
             }
         }
         .labelsHidden()
@@ -1230,7 +1230,7 @@ public struct SingleFragmentCloneView: View {
             ForEach(insFeats) { f in
                 let s = f.segments.first?.start ?? 1
                 let e = f.segments.last?.end ?? 1
-                let strandTag = f.directionality == "2" ? "← 反义链" : "→ 正义链"
+                let strandTag = L10n.t(f.directionality == "2" ? "← 反义链" : "→ 正义链")
                 Text("\(f.name) [\(s)..\(e), \(e - s + 1) bp \(strandTag)] (\(f.type))").tag(f.id)
             }
         }
@@ -1242,11 +1242,11 @@ public struct SingleFragmentCloneView: View {
             get: { vm.selectedInsertMergeEndFeatureID },
             set: { endID in vm.selectInsertFeature(id: vm.selectedInsertFeatureID, mergeEndID: endID) }
         )) {
-            Text("不合并 (仅提取主特征)").tag("")
+            Text(L10n.t("不合并 (仅提取主特征)")).tag("")
             ForEach(insFeats) { f in
                 let s = f.segments.first?.start ?? 1
                 let e = f.segments.last?.end ?? 1
-                Text("合并至 \(f.name) [\(s)..\(e)]").tag(f.id)
+                Text(L10n.tr("合并至 \(f.name) [\(s)..\(e)]", "Merge into \(f.name) [\(s)..\(e)]")).tag(f.id)
             }
         }
         .labelsHidden()
@@ -1303,10 +1303,10 @@ public struct SingleFragmentCloneView: View {
                     tint: .purple,
                     help: "更多 SnapGene 操作"
                 ) {
-                    Button("仅向原载体写入引物 (自动留备份)") {
+                    Button(L10n.t("仅向原载体写入引物 (自动留备份)")) {
                         Task { await vm.injectPrimersToVectorDNA() }
                     }
-                    Button("在 Finder 中定位载体 .dna") {
+                    Button(L10n.t("在 Finder 中定位载体 .dna")) {
                         FinderFileDropHelper.revealInFinder(path: vec.filePath)
                     }
                 }
@@ -1333,7 +1333,7 @@ public struct SingleFragmentCloneView: View {
     private var singleEnzymeForm: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Text("酶切位点：").font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
+                Text(L10n.t("酶切位点：")).font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
                 if vm.vectorDNAInfo != nil && !vm.displayedVectorCutSites.isEmpty {
                     Picker("", selection: Binding(
                         get: { vm.selectedVectorCutSite5ID },
@@ -1355,7 +1355,7 @@ public struct SingleFragmentCloneView: View {
                     .frame(width: 190)
                 }
             }
-            SequenceEditorBox(text: $vm.vectorSeq, placeholder: "输入包含所选位点上下游至少各 20 bp 的载体序列...", minHeight: 65)
+            SequenceEditorBox(text: $vm.vectorSeq, placeholder: L10n.t("输入包含所选位点上下游至少各 20 bp 的载体序列..."), minHeight: 65)
         }
     }
     
@@ -1364,7 +1364,7 @@ public struct SingleFragmentCloneView: View {
             if vm.vectorDNAInfo != nil && !vm.displayedVectorCutSites.isEmpty {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 10) {
-                        Text("5'端位点：").font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
+                        Text(L10n.t("5'端位点：")).font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
                         Picker("", selection: Binding(
                             get: { vm.selectedVectorCutSite5ID },
                             set: { id in vm.selectVectorCutSite5(id: id) }
@@ -1376,7 +1376,7 @@ public struct SingleFragmentCloneView: View {
                         .labelsHidden()
                         .frame(maxWidth: 280)
                         
-                        Text("3'端位点：").font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
+                        Text(L10n.t("3'端位点：")).font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
                         Picker("", selection: Binding(
                             get: { vm.selectedVectorCutSite3ID },
                             set: { id in vm.selectVectorCutSite3(id: id) }
@@ -1391,7 +1391,7 @@ public struct SingleFragmentCloneView: View {
                     
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 6) {
-                            Text("5'端位点：").font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
+                            Text(L10n.t("5'端位点：")).font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
                             Picker("", selection: Binding(
                                 get: { vm.selectedVectorCutSite5ID },
                                 set: { id in vm.selectVectorCutSite5(id: id) }
@@ -1404,7 +1404,7 @@ public struct SingleFragmentCloneView: View {
                             .frame(maxWidth: .infinity)
                         }
                         HStack(spacing: 6) {
-                            Text("3'端位点：").font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
+                            Text(L10n.t("3'端位点：")).font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
                             Picker("", selection: Binding(
                                 get: { vm.selectedVectorCutSite3ID },
                                 set: { id in vm.selectVectorCutSite3(id: id) }
@@ -1422,7 +1422,7 @@ public struct SingleFragmentCloneView: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 12) {
                         HStack(spacing: 6) {
-                            Text("5'端位点：").font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
+                            Text(L10n.t("5'端位点：")).font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
                             Picker("", selection: $vm.enzyme5) {
                                 ForEach(RestrictionEnzymeDatabase.shared.enzymes) { enzyme in
                                     Text("\(enzyme.name) (\(enzyme.site))").tag(Optional(enzyme))
@@ -1431,7 +1431,7 @@ public struct SingleFragmentCloneView: View {
                             .labelsHidden()
                         }
                         HStack(spacing: 6) {
-                            Text("3'端位点：").font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
+                            Text(L10n.t("3'端位点：")).font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
                             Picker("", selection: $vm.enzyme3) {
                                 ForEach(RestrictionEnzymeDatabase.shared.enzymes) { enzyme in
                                     Text("\(enzyme.name) (\(enzyme.site))").tag(Optional(enzyme))
@@ -1443,7 +1443,7 @@ public struct SingleFragmentCloneView: View {
                     
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 6) {
-                            Text("5'端位点：").font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
+                            Text(L10n.t("5'端位点：")).font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
                             Picker("", selection: $vm.enzyme5) {
                                 ForEach(RestrictionEnzymeDatabase.shared.enzymes) { enzyme in
                                     Text("\(enzyme.name) (\(enzyme.site))").tag(Optional(enzyme))
@@ -1453,7 +1453,7 @@ public struct SingleFragmentCloneView: View {
                             .frame(maxWidth: .infinity)
                         }
                         HStack(spacing: 6) {
-                            Text("3'端位点：").font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
+                            Text(L10n.t("3'端位点：")).font(.system(size: 12)).foregroundColor(.secondary).fixedSize()
                             Picker("", selection: $vm.enzyme3) {
                                 ForEach(RestrictionEnzymeDatabase.shared.enzymes) { enzyme in
                                     Text("\(enzyme.name) (\(enzyme.site))").tag(Optional(enzyme))
@@ -1465,34 +1465,34 @@ public struct SingleFragmentCloneView: View {
                     }
                 }
             }
-            SequenceEditorBox(text: $vm.vectorSeq, placeholder: "输入包含双酶切位点上下游至少各 20 bp 的载体序列...", minHeight: 65)
+            SequenceEditorBox(text: $vm.vectorSeq, placeholder: L10n.t("输入包含双酶切位点上下游至少各 20 bp 的载体序列..."), minHeight: 65)
         }
     }
     
     private var pcrForm: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("上游保留载体序列 (紧邻 \(vm.cutStart) bp 左侧，≥20bp)：").font(.system(size: 11.5)).foregroundColor(.secondary)
+                Text(L10n.tr("上游保留载体序列 (紧邻 \(vm.cutStart) bp 左侧，≥20bp)：", "Upstream Vector Backbone (left of \(vm.cutStart) bp, ≥20 bp):")).font(.system(size: 11.5)).foregroundColor(.secondary)
                 Spacer()
                 if vm.vectorDNAInfo != nil {
-                    Text("已同步自载体 \(max(1, vm.cutStart - 60))..\(max(1, vm.cutStart - 1)) bp")
+                    Text(L10n.tr("已同步自载体 \(max(1, vm.cutStart - 60))..\(max(1, vm.cutStart - 1)) bp", "Synced from vector \(max(1, vm.cutStart - 60))..\(max(1, vm.cutStart - 1)) bp"))
                         .font(.system(size: 10.5))
                         .monospacedDigit()
                         .foregroundColor(.blue)
                 }
             }
-            SequenceEditorBox(text: $vm.vectorSeqU, placeholder: "输入克隆位点 5' 上游保留载体序列...", minHeight: 55)
+            SequenceEditorBox(text: $vm.vectorSeqU, placeholder: L10n.t("输入克隆位点 5' 上游保留载体序列..."), minHeight: 55)
             HStack {
-                Text("下游保留载体序列 (紧邻 \(vm.cutEnd) bp 右侧，≥20bp)：").font(.system(size: 11.5)).foregroundColor(.secondary)
+                Text(L10n.tr("下游保留载体序列 (紧邻 \(vm.cutEnd) bp 右侧，≥20bp)：", "Downstream Vector Backbone (right of \(vm.cutEnd) bp, ≥20 bp):")).font(.system(size: 11.5)).foregroundColor(.secondary)
                 Spacer()
                 if vm.vectorDNAInfo != nil {
-                    Text("已同步自载体 \(vm.cutEnd + 1)..\(min(vm.vectorDNAInfo?.length ?? 9999, vm.cutEnd + 60)) bp")
+                    Text(L10n.tr("已同步自载体 \(vm.cutEnd + 1)..\(min(vm.vectorDNAInfo?.length ?? 9999, vm.cutEnd + 60)) bp", "Synced from vector \(vm.cutEnd + 1)..\(min(vm.vectorDNAInfo?.length ?? 9999, vm.cutEnd + 60)) bp"))
                         .font(.system(size: 10.5))
                         .monospacedDigit()
                         .foregroundColor(.blue)
                 }
             }
-            SequenceEditorBox(text: $vm.vectorSeqD, placeholder: "输入克隆位点 3' 下游保留载体序列...", minHeight: 55)
+            SequenceEditorBox(text: $vm.vectorSeqD, placeholder: L10n.t("输入克隆位点 3' 下游保留载体序列..."), minHeight: 55)
         }
     }
     
@@ -1506,18 +1506,18 @@ public struct SingleFragmentCloneView: View {
         
         return StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
             StudioMetricBadge(
-                label: "载体长度",
+                label: L10n.t("载体长度"),
                 value: vecBp > 0
-                    ? "\(vecBp) bp (\(String(format: "%.2f", Double(vecBp) / 1000.0)) kb)" + (delBp > 0 && rawVecBp > vecBp ? " · 切除 \(delBp)bp" : "")
-                    : "未载入",
+                    ? "\(vecBp) bp (\(String(format: "%.2f", Double(vecBp) / 1000.0)) kb)" + (delBp > 0 && rawVecBp > vecBp ? L10n.tr(" · 切除 \(delBp)bp", " · Δ\(delBp) bp") : "")
+                    : L10n.t("未载入"),
                 color: .blue
             )
             
             StudioMetricBadge(
-                label: "插入基因 (\(vm.insertGeneName.isEmpty ? "Insert" : vm.insertGeneName))",
+                label: L10n.tr("插入基因 (\(vm.insertGeneName.isEmpty ? "Insert" : vm.insertGeneName))", "Insert (\(vm.insertGeneName.isEmpty ? "Insert" : vm.insertGeneName))"),
                 value: insBp > 0
-                    ? "\(insBp) bp (\(String(format: "%.2f", Double(insBp) / 1000.0)) kb)" + (pcrBp > insBp ? " · 扩增子 \(pcrBp)bp" : "")
-                    : "未输入",
+                    ? "\(insBp) bp (\(String(format: "%.2f", Double(insBp) / 1000.0)) kb)" + (pcrBp > insBp ? L10n.tr(" · 扩增子 \(pcrBp)bp", " · Amplicon \(pcrBp) bp") : "")
+                    : L10n.t("未输入"),
                 color: .green
             )
             

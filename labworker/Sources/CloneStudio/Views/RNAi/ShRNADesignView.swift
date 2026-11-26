@@ -72,7 +72,7 @@ public struct ShRNADesignView: View {
                 .plasmidToggle(isOn: $appState.showPlasmidPreview, isAvailable: previewData != nil),
                 .picker(
                     id: "shrna_species",
-                    label: "物种",
+                    label: L10n.t("物种"),
                     options: TargetSpecies.allCases.map { spec in
                         StudioToolbarPickerOption(
                             id: spec.rawValue,
@@ -102,7 +102,7 @@ public struct ShRNADesignView: View {
                     help: "在 Safari 中打开 Broad GPP Public Portal",
                     menuItems: [
                         StudioToolbarMenuItem(
-                            title: gppVM.resolvedGeneSymbol.map { "打开 \($0) 克隆详情页" } ?? "打开 Broad GPP 基因检索",
+                            title: gppVM.resolvedGeneSymbol.map { L10n.tr("打开 \($0) 克隆详情页", "Open \($0) Clone Page") } ?? L10n.t("打开 Broad GPP 基因检索"),
                             icon: "magnifyingglass"
                         ) {
                             gppVM.openGeneInSafari()
@@ -155,7 +155,7 @@ public struct ShRNADesignView: View {
                     
                     // 2. 发夹环 (Loop) 与命名前缀
                     StudioCard(title: "发夹参数与命名") {
-                        StudioMetricBadge(label: "载体", value: "pLKO.1 (AgeI/EcoRI)", color: .indigo)
+                        StudioMetricBadge(label: L10n.t("载体"), value: "pLKO.1 (AgeI/EcoRI)", color: .indigo)
                     } content: {
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: 10) {
@@ -164,7 +164,7 @@ public struct ShRNADesignView: View {
                                         .font(.system(size: 12, weight: .medium))
                                         .foregroundColor(.secondary)
                                     TextField("CTCGAG", text: $vm.loopSequence)
-                                        .font(.system(size: 12, design: .monospaced))
+                                        .font(.system(size: 12))
                                         .textFieldStyle(.roundedBorder)
                                         .controlSize(.large)
                                         .frame(width: 108)
@@ -173,7 +173,7 @@ public struct ShRNADesignView: View {
                                 loopPresetButton("CTCGAG", label: "CTCGAG")
                                 loopPresetButton("TTCAAGAGA", label: "TTCAAGAGA")
                                 
-                                TextField("引物前缀 (可选)", text: $vm.customPrefix)
+                                TextField(L10n.t("引物前缀 (可选)"), text: $vm.customPrefix)
                                     .textFieldStyle(.roundedBorder)
                                     .controlSize(.large)
                             }
@@ -185,7 +185,7 @@ public struct ShRNADesignView: View {
                                             .font(.system(size: 12, weight: .medium))
                                             .foregroundColor(.secondary)
                                         TextField("CTCGAG", text: $vm.loopSequence)
-                                            .font(.system(size: 12, design: .monospaced))
+                                            .font(.system(size: 12))
                                             .textFieldStyle(.roundedBorder)
                                             .controlSize(.large)
                                             .frame(width: 108)
@@ -194,7 +194,7 @@ public struct ShRNADesignView: View {
                                     loopPresetButton("TTCAAGAGA", label: "TTCAAGAGA")
                                 }
                                 
-                                TextField("引物前缀 (可选)", text: $vm.customPrefix)
+                                TextField(L10n.t("引物前缀 (可选)"), text: $vm.customPrefix)
                                     .textFieldStyle(.roundedBorder)
                                     .controlSize(.large)
                             }
@@ -204,7 +204,7 @@ public struct ShRNADesignView: View {
                     // 3. 居左紧凑主操作栏（设计发夹引物 + 次级入池）
                     StudioActionBar {
                         StudioPrimaryActionButton(
-                            title: activeSelectionCount > 0 ? "设计 shRNA 引物 (\(activeSelectionCount))" : "设计 shRNA 引物",
+                            title: activeSelectionCount > 0 ? L10n.tr("设计 shRNA 引物 (\(activeSelectionCount))", "Design shRNA Primers (\(activeSelectionCount))") : L10n.t("设计 shRNA 引物"),
                             icon: "sparkles",
                             tint: .indigo,
                             action: vm.generatePrimers
@@ -212,7 +212,7 @@ public struct ShRNADesignView: View {
                         
                         if !vm.generatedPrimers.isEmpty {
                             StudioActionPillButton(
-                                title: "加入引物池 (\(vm.generatedPrimers.count))",
+                                title: L10n.tr("加入引物池 (\(vm.generatedPrimers.count))", "Add to Primer Cart (\(vm.generatedPrimers.count))"),
                                 icon: "cart.badge.plus",
                                 tint: .green,
                                 action: vm.addAllToCart
@@ -223,7 +223,7 @@ public struct ShRNADesignView: View {
                     // 4. 生成的引物结果
                     if !vm.generatedPrimers.isEmpty {
                         StudioCard(title: "生成的引物结果") {
-                            StudioMetricBadge(label: "数量", value: "\(vm.generatedPrimers.count) 条", color: .green)
+                            StudioMetricBadge(label: L10n.t("数量"), value: L10n.tr("\(vm.generatedPrimers.count) 条", "\(vm.generatedPrimers.count)"), color: .green)
                         } content: {
                             VStack(spacing: 10) {
                                 ForEach(Array(vm.generatedPrimers.enumerated()), id: \.element.id) { idx, primer in
@@ -244,8 +244,8 @@ public struct ShRNADesignView: View {
                 }
             }
         }
-        .alert("提示", isPresented: $vm.showErrorAlert) {
-            Button("好的", role: .cancel) {}
+        .alert(L10n.t("提示"), isPresented: $vm.showErrorAlert) {
+            Button(L10n.t("好的"), role: .cancel) {}
         } message: {
             Text(vm.errorMessage ?? "")
         }
@@ -265,7 +265,7 @@ public struct ShRNADesignView: View {
             title: label,
             tint: isActive ? .indigo : nil,
             isSelected: isActive,
-            help: "切换经典 pLKO.1 发夹环序列 \(seq)"
+            help: L10n.tr("切换经典 pLKO.1 发夹环序列 \(seq)", "Switch canonical pLKO.1 loop sequence \(seq)")
         ) {
             vm.loopSequence = seq
         }
@@ -282,7 +282,7 @@ public struct ShRNADesignView: View {
     private var librarySearchSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                TextField("输入待检索基因 (如 TP53, CDH17, Trp53)", text: $vm.searchQuery)
+                TextField(L10n.t("输入待检索基因 (如 TP53, CDH17, Trp53)"), text: $vm.searchQuery)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.large)
                     .font(.system(size: 12.5))
@@ -302,7 +302,7 @@ public struct ShRNADesignView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                         StudioMetricBadge(
-                            label: "已选",
+                            label: L10n.t("已选"),
                             value: "\(vm.selectedTargetIDs.count)/\(vm.searchResults.count)",
                             color: .indigo
                         )

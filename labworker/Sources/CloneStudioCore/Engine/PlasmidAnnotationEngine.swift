@@ -261,7 +261,7 @@ public struct PlasmidAnnotationEngine: Sendable {
                 originSpanningCount: 0,
                 annotatedCoveragePercent: 0.0,
                 features: [],
-                warnings: ["输入质粒序列为空"]
+                warnings: [L10n.t("输入质粒序列为空")]
             )
         }
 
@@ -276,7 +276,7 @@ public struct PlasmidAnnotationEngine: Sendable {
                 originSpanningCount: 0,
                 annotatedCoveragePercent: 0.0,
                 features: [],
-                warnings: ["未能从 Libraries.sqlite 加载 plasmid_features 元件库"]
+                warnings: [L10n.t("未能从 Libraries.sqlite 加载 plasmid_features 元件库")]
             )
         }
 
@@ -425,7 +425,7 @@ public struct PlasmidAnnotationEngine: Sendable {
                     let isFrag = (coverage >= minFragmentCoverage) && (coverage < fullFeatureCoverageThreshold)
                     let covPctRounded = Int(floor(coverage * 100.0 + 0.5))
                     let dispName = isFrag ? "\(feat.name) (fragment)" : feat.name
-                    let fragWarn = isFrag ? "历史克隆残留片段 (Fragment，覆盖率 \(covPctRounded)%)" : nil
+                    let fragWarn = isFrag ? L10n.tr("历史克隆残留片段 (Fragment，覆盖率 \(covPctRounded)%)", "Remnant cloning fragment (\(covPctRounded)% coverage)") : nil
 
                     let ann = AnnotatedFeature(
                         featureID: feat.id,
@@ -514,10 +514,10 @@ public struct PlasmidAnnotationEngine: Sendable {
 
         var warnings: [String] = []
         if fragCount > 0 {
-            warnings.append("检出 \(fragCount) 个历史克隆残留片段 (Fragment，覆盖率 30%–90%)，请核查载体改造史。")
+            warnings.append(L10n.tr("检出 \(fragCount) 个历史克隆残留片段 (Fragment，覆盖率 30%–90%)，请核查载体改造史。", "Detected \(fragCount) remnant fragment(s) (30%–90% coverage); review construct history."))
         }
         if originCount > 0 {
-            warnings.append("检出 \(originCount) 个跨越环形质粒 1 bp 零点 (Origin) 的连续特征。")
+            warnings.append(L10n.tr("检出 \(originCount) 个跨越环形质粒 1 bp 零点 (Origin) 的连续特征。", "Detected \(originCount) Origin-spanning feature(s) across 1 bp."))
         }
 
         return PlasmidAnnotationReport(

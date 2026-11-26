@@ -61,6 +61,7 @@ public struct PlateReaderAssayView: View {
         .onChange(of: targetTotalVolText) { _, _ in recomputeActiveAssay() }
         .onChange(of: loadingBufferX) { _, _ in recomputeActiveAssay() }
         .onChange(of: ccK8ControlGroup) { _, _ in recomputeActiveAssay() }
+        .onChange(of: appState.appLanguage) { _, _ in recomputeActiveAssay() }
     }
 
     // MARK: - 顶部模式切换与快捷工具
@@ -73,7 +74,7 @@ public struct PlateReaderAssayView: View {
                     loadModeDemo(assayMode)
                 }
                 if !matrixImportPreview.isEmpty {
-                    StudioActionPillButton(title: "按微孔板分组配对 (\(matrixImportPreview.count) 孔)", icon: "square.grid.3x3.fill", tint: .teal, action: pairMatrixWithPlateStore)
+                    StudioActionPillButton(title: L10n.tr("按微孔板分组配对 (\(matrixImportPreview.count) 孔)", "Pair by Plate Map (\(matrixImportPreview.count) wells)"), icon: "square.grid.3x3.fill", tint: .teal, action: pairMatrixWithPlateStore)
                 }
             }
         } content: {
@@ -120,12 +121,12 @@ public struct PlateReaderAssayView: View {
                     )
                     StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 8) {
                         labeledNumberField("Blank OD", text: $blankODText, width: 64)
-                        labeledNumberField("稀释倍数", text: $dilutionText, width: 56)
-                        labeledNumberField("WB目标上样(µg)", text: $targetLoadUgText, width: 56)
-                        labeledNumberField("每管总体积(µL)", text: $targetTotalVolText, width: 56)
+                        labeledNumberField(L10n.t("稀释倍数"), text: $dilutionText, width: 56)
+                        labeledNumberField(L10n.t("WB目标上样(µg)"), text: $targetLoadUgText, width: 56)
+                        labeledNumberField(L10n.t("每管总体积(µL)"), text: $targetTotalVolText, width: 56)
                     }
                     HStack(spacing: 8) {
-                        Text("Loading Buffer 倍数:")
+                        Text(L10n.t("Loading Buffer 倍数:"))
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
                         Stepper("\(Int(loadingBufferX))× SDS", value: $loadingBufferX, in: 2...6, step: 1)
@@ -142,19 +143,19 @@ public struct PlateReaderAssayView: View {
                         compact: true
                     )
                     StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 8) {
-                        labeledNumberField("样本稀释倍数", text: $dilutionText, width: 64)
+                        labeledNumberField(L10n.t("样本稀释倍数"), text: $dilutionText, width: 64)
                     }
 
                 case .doseResponse:
-                    Text("自动在 log10(Conc) 空间执行 4 参数 Hill 非线性最小二乘 (Levenberg-Marquardt) 拟合，兼容抑制 IC50 与激活 EC50 曲线。")
+                    Text(L10n.t("自动在 log10(Conc) 空间执行 4 参数 Hill 非线性最小二乘 (Levenberg-Marquardt) 拟合，兼容抑制 IC50 与激活 EC50 曲线。"))
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
 
                 case .viability:
                     StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 8) {
-                        labeledNumberField("空白培养基 OD", text: $blankODText, width: 70)
+                        labeledNumberField(L10n.t("空白培养基 OD"), text: $blankODText, width: 70)
                         HStack(spacing: 6) {
-                            Text("基准对照组:")
+                            Text(L10n.t("基准对照组:"))
                                 .font(.system(size: 11.5))
                                 .foregroundStyle(.secondary)
                             TextField("Control", text: $ccK8ControlGroup)
@@ -180,17 +181,17 @@ public struct PlateReaderAssayView: View {
             if showRawEditor {
                 VStack(alignment: .leading, spacing: 10) {
                     if assayMode == .bca || assayMode == .elisa || assayMode == .doseResponse {
-                        Text(assayMode == .doseResponse ? "剂量-效应数据 (浓度, 读数):" : "标准品梯度 (浓度, 吸光度 OD):")
+                        Text(L10n.t(assayMode == .doseResponse ? "剂量-效应数据 (浓度, 读数):" : "标准品梯度 (浓度, 吸光度 OD):"))
                             .font(.system(size: 11.5, weight: .semibold))
                             .foregroundStyle(.secondary)
-                        SequenceEditorBox(text: $stdInputText, placeholder: "conc,od", minHeight: 96)
+                        SequenceEditorBox(text: $stdInputText, placeholder: "conc,od", minHeight: 96, cleanAsDNA: false)
                     }
 
                     if assayMode == .bca || assayMode == .elisa || assayMode == .viability {
-                        Text(assayMode == .viability ? "各处理组复孔 OD (Group, v1, v2, ...):" : "待测样本复孔 OD (SampleName, rep1, rep2...):")
+                        Text(L10n.t(assayMode == .viability ? "各处理组复孔 OD (Group, v1, v2, ...):" : "待测样本复孔 OD (SampleName, rep1, rep2...):"))
                             .font(.system(size: 11.5, weight: .semibold))
                             .foregroundStyle(.secondary)
-                        SequenceEditorBox(text: $sampleInputText, placeholder: "sample,od1,od2", minHeight: 96)
+                        SequenceEditorBox(text: $sampleInputText, placeholder: "sample,od1,od2", minHeight: 96, cleanAsDNA: false)
                     }
                 }
             }
@@ -199,17 +200,18 @@ public struct PlateReaderAssayView: View {
 
     // MARK: - 右栏：回归拟合图表与统计结果
 
-    @ViewBuilder
     private var rightAnalysisColumn: some View {
-        switch assayMode {
-        case .bca:
-            bcaRightColumn
-        case .elisa:
-            elisaRightColumn
-        case .doseResponse:
-            doseResponseRightColumn
-        case .viability:
-            viabilityRightColumn
+        VStack(alignment: .leading, spacing: 14) {
+            switch assayMode {
+            case .bca:
+                bcaRightColumn
+            case .elisa:
+                elisaRightColumn
+            case .doseResponse:
+                doseResponseRightColumn
+            case .viability:
+                viabilityRightColumn
+            }
         }
     }
 
@@ -224,28 +226,28 @@ public struct PlateReaderAssayView: View {
             } content: {
                 VStack(alignment: .leading, spacing: 10) {
                     StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                        StudioMetricBadge(label: "方程", value: rep.equationText, color: .blue)
+                        StudioMetricBadge(label: L10n.t("方程"), value: rep.equationText, color: .blue)
                         StudioMetricBadge(label: "R²", value: String(format: "%.5f", rep.r2), color: rep.r2 >= 0.99 ? .green : .orange)
                         StudioMetricBadge(label: "RMSE", value: String(format: "%.4f", rep.rmse), color: .secondary)
                     }
                     Chart {
                         ForEach(rep.curvePoints) { pt in
-                            LineMark(x: .value("浓度 (µg/mL)", pt.x), y: .value("校正 OD562", pt.y))
+                            LineMark(x: .value(L10n.t("浓度 (µg/mL)"), pt.x), y: .value(L10n.t("校正 OD562"), pt.y))
                                 .foregroundStyle(Color.blue)
                         }
                         ForEach(rep.standardPoints) { pt in
-                            PointMark(x: .value("浓度 (µg/mL)", pt.x), y: .value("校正 OD562", pt.y))
+                            PointMark(x: .value(L10n.t("浓度 (µg/mL)"), pt.x), y: .value(L10n.t("校正 OD562"), pt.y))
                                 .foregroundStyle(Color.indigo)
                                 .symbolSize(60)
                         }
                     }
-                    .chartXAxisLabel("BSA 标准浓度 (µg/mL)")
-                    .chartYAxisLabel("校正 OD")
+                    .chartXAxisLabel(L10n.t("BSA 标准浓度 (µg/mL)"))
+                    .chartYAxisLabel(L10n.t("校正 OD"))
                     .frame(height: 210)
                 }
             }
 
-            StudioCard(title: "样本蛋白浓度反算与 WB 上样配液方案 (每孔总体积 \(targetTotalVolText) µL)") {
+            StudioCard(title: L10n.tr("样本蛋白浓度反算与 WB 上样配液方案 (每孔总体积 \(targetTotalVolText) µL)", "Back-Calculated Concentration & WB Loading Plan (\(targetTotalVolText) µL/well)")) {
                 VStack(spacing: 6) {
                     ForEach(rep.samples) { s in
                         ViewThatFits(in: .horizontal) {
@@ -253,17 +255,17 @@ public struct PlateReaderAssayView: View {
                                 Text(s.sampleName)
                                     .font(.system(size: 12.5, weight: .semibold))
                                     .frame(minWidth: 90, maxWidth: .infinity, alignment: .leading)
-                                StudioMetricBadge(label: "原液浓度", value: String(format: "%.2f µg/µL", s.stockConcUgPerMl / 1000.0), color: .blue)
-                                StudioMetricBadge(label: "蛋白", value: String(format: "%.2f µL", s.proteinVolumeUl), color: s.isDiluteWarning ? .orange : .green)
-                                StudioMetricBadge(label: "裂解液", value: String(format: "%.2f µL", s.lysisBufferVolumeUl), color: .secondary)
+                                StudioMetricBadge(label: L10n.t("原液浓度"), value: String(format: "%.2f µg/µL", s.stockConcUgPerMl / 1000.0), color: .blue)
+                                StudioMetricBadge(label: L10n.t("蛋白"), value: String(format: "%.2f µL", s.proteinVolumeUl), color: s.isDiluteWarning ? .orange : .green)
+                                StudioMetricBadge(label: L10n.t("裂解液"), value: String(format: "%.2f µL", s.lysisBufferVolumeUl), color: .secondary)
                                 StudioMetricBadge(label: "\(Int(loadingBufferX))×Buf", value: String(format: "%.2f µL", s.loadingBufferVolumeUl), color: .purple)
                             }
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(s.sampleName).font(.system(size: 12.5, weight: .semibold))
                                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
-                                    StudioMetricBadge(label: "原液浓度", value: String(format: "%.2f µg/µL", s.stockConcUgPerMl / 1000.0), color: .blue)
-                                    StudioMetricBadge(label: "蛋白", value: String(format: "%.2f µL", s.proteinVolumeUl), color: s.isDiluteWarning ? .orange : .green)
-                                    StudioMetricBadge(label: "裂解液", value: String(format: "%.2f µL", s.lysisBufferVolumeUl), color: .secondary)
+                                    StudioMetricBadge(label: L10n.t("原液浓度"), value: String(format: "%.2f µg/µL", s.stockConcUgPerMl / 1000.0), color: .blue)
+                                    StudioMetricBadge(label: L10n.t("蛋白"), value: String(format: "%.2f µL", s.proteinVolumeUl), color: s.isDiluteWarning ? .orange : .green)
+                                    StudioMetricBadge(label: L10n.t("裂解液"), value: String(format: "%.2f µL", s.lysisBufferVolumeUl), color: .secondary)
                                     StudioMetricBadge(label: "\(Int(loadingBufferX))×Buf", value: String(format: "%.2f µL", s.loadingBufferVolumeUl), color: .purple)
                                 }
                             }
@@ -271,7 +273,7 @@ public struct PlateReaderAssayView: View {
                         .studioInnerBox(tint: s.isDiluteWarning ? .orange : nil, paddingH: 10, paddingV: 7)
 
                         if s.isDiluteWarning {
-                            Text("⚠️ 「\(s.sampleName)」浓度偏低，最大可上样量约为 \(String(format: "%.1f µg", s.maxLoadableUg))")
+                            Text(L10n.tr("⚠️ 「\(s.sampleName)」浓度偏低，最大可上样量约为 \(String(format: "%.1f µg", s.maxLoadableUg))", "⚠️ \"\(s.sampleName)\" concentration too low; max loadable mass ≈ \(String(format: "%.1f µg", s.maxLoadableUg))"))
                                 .font(.system(size: 11))
                                 .foregroundStyle(.orange)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -280,7 +282,7 @@ public struct PlateReaderAssayView: View {
                 }
             }
         } else {
-            emptyStateCard("请输入至少 2 个有效 BCA 标准点")
+            emptyStateCard(L10n.t("请输入至少 2 个有效 BCA 标准点"))
         }
     }
 
@@ -290,14 +292,14 @@ public struct PlateReaderAssayView: View {
         let isFive = (elisaModel == .fivePL)
         if let fit = cachedELISAFit {
             let quants = cachedELISAQuants
-            StudioCard(title: "ELISA \(isFive ? "5PL" : "4PL") 非线性标准曲线 (Levenberg-Marquardt)") {
+            StudioCard(title: L10n.tr("ELISA \(isFive ? "5PL" : "4PL") 非线性标准曲线 (Levenberg-Marquardt)", "ELISA \(isFive ? "5PL" : "4PL") Nonlinear Standard Curve (Levenberg–Marquardt)")) {
                 VStack(alignment: .leading, spacing: 10) {
                     StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                         StudioMetricBadge(label: "R²", value: String(format: "%.5f", fit.r2), color: fit.r2 >= 0.99 ? .green : .orange)
                         StudioMetricBadge(label: "EC50 (c)", value: String(format: "%.2f", fit.paramC), color: .teal)
-                        StudioMetricBadge(label: "斜率 (b)", value: String(format: "%.3f", fit.paramB), color: .blue)
+                        StudioMetricBadge(label: L10n.t("斜率 (b)"), value: String(format: "%.3f", fit.paramB), color: .blue)
                         if isFive {
-                            StudioMetricBadge(label: "非对称 g", value: String(format: "%.3f", fit.paramG), color: .purple)
+                            StudioMetricBadge(label: L10n.t("非对称 g"), value: String(format: "%.3f", fit.paramG), color: .purple)
                         }
                     }
                     Chart {
@@ -311,33 +313,48 @@ public struct PlateReaderAssayView: View {
                                 .symbolSize(60)
                         }
                     }
-                    .chartXAxisLabel("log10(标准品浓度)")
-                    .chartYAxisLabel("信号 / OD")
+                    .chartXAxisLabel(L10n.t("log10(标准品浓度)"))
+                    .chartYAxisLabel(L10n.t("信号 / OD"))
                     .frame(height: 210)
                 }
             }
 
-            StudioCard(title: "待测样本浓度反算结果 (\(quants.count))") {
+            StudioCard(title: L10n.tr("待测样本浓度反算结果 (\(quants.count))", "Back-Calculated Sample Concentrations (\(quants.count))")) {
                 VStack(spacing: 6) {
                     ForEach(quants) { q in
-                        HStack(spacing: 8) {
-                            Text(q.sampleName)
-                                .font(.system(size: 12.5, weight: .semibold))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            StudioMetricBadge(label: "均值 OD", value: String(format: "%.3f", q.meanOD), color: .secondary)
-                            if let fc = q.finalConc {
-                                StudioMetricBadge(label: "终浓度", value: String(format: "%.2f", fc), color: q.status == .inRange ? .green : .orange)
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 8) {
+                                Text(q.sampleName)
+                                    .font(.system(size: 12.5, weight: .semibold))
+                                    .frame(minWidth: 90, maxWidth: .infinity, alignment: .leading)
+                                StudioMetricBadge(label: L10n.t("均值 OD"), value: String(format: "%.3f", q.meanOD), color: .secondary)
+                                if let fc = q.finalConc {
+                                    StudioMetricBadge(label: L10n.t("终浓度"), value: String(format: "%.2f", fc), color: q.status == .inRange ? .green : .orange)
+                                }
+                                Text(L10n.t(q.status.rawValue))
+                                    .font(.system(size: 10.5, weight: .bold))
+                                    .foregroundStyle(q.status == .inRange ? .green : .orange)
                             }
-                            Text(q.status.rawValue)
-                                .font(.system(size: 10.5, weight: .bold))
-                                .foregroundStyle(q.status == .inRange ? .green : .orange)
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(q.sampleName)
+                                    .font(.system(size: 12.5, weight: .semibold))
+                                StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
+                                    StudioMetricBadge(label: L10n.t("均值 OD"), value: String(format: "%.3f", q.meanOD), color: .secondary)
+                                    if let fc = q.finalConc {
+                                        StudioMetricBadge(label: L10n.t("终浓度"), value: String(format: "%.2f", fc), color: q.status == .inRange ? .green : .orange)
+                                    }
+                                    Text(L10n.t(q.status.rawValue))
+                                        .font(.system(size: 10.5, weight: .bold))
+                                        .foregroundStyle(q.status == .inRange ? .green : .orange)
+                                }
+                            }
                         }
                         .studioInnerBox(paddingH: 10, paddingV: 7)
                     }
                 }
             }
         } else {
-            emptyStateCard("4PL 需要 ≥4 个标准品浓度点，5PL 需要 ≥5 个标准品浓度点")
+            emptyStateCard(L10n.t("4PL 需要 ≥4 个标准品浓度点，5PL 需要 ≥5 个标准品浓度点"))
         }
     }
 
@@ -359,22 +376,22 @@ public struct PlateReaderAssayView: View {
                             .foregroundStyle(.indigo.opacity(0.65))
                             .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                         ForEach(fit.curvePoints) { pt in
-                            LineMark(x: .value("log10(Dose)", log10(pt.x)), y: .value("响应 %", pt.y))
+                            LineMark(x: .value("log10(Dose)", log10(pt.x)), y: .value(L10n.t("响应 %"), pt.y))
                                 .foregroundStyle(Color.indigo)
                         }
                         ForEach(fit.standardPoints) { pt in
-                            PointMark(x: .value("log10(Dose)", log10(pt.x)), y: .value("响应 %", pt.y))
+                            PointMark(x: .value("log10(Dose)", log10(pt.x)), y: .value(L10n.t("响应 %"), pt.y))
                                 .foregroundStyle(Color.orange)
                                 .symbolSize(60)
                         }
                     }
-                    .chartXAxisLabel("log10(浓度)")
-                    .chartYAxisLabel("细胞活力 / 抑制响应 (%)")
+                    .chartXAxisLabel(L10n.t("log10(浓度)"))
+                    .chartYAxisLabel(L10n.t("细胞活力 / 抑制响应 (%)"))
                     .frame(height: 240)
                 }
             }
         } else {
-            emptyStateCard("请输入至少 4 个正浓度剂量响应数据点")
+            emptyStateCard(L10n.t("请输入至少 4 个正浓度剂量响应数据点"))
         }
     }
 
@@ -395,34 +412,49 @@ public struct PlateReaderAssayView: View {
                     Chart {
                         ForEach(rep.groups) { g in
                             BarMark(
-                                x: .value("组别", g.groupName),
-                                y: .value("细胞活力 (%)", g.meanViabilityPercent)
+                                x: .value(L10n.t("组别"), g.groupName),
+                                y: .value(L10n.t("细胞活力 (%)"), g.meanViabilityPercent)
                             )
                             .foregroundStyle(g.isControl ? Color.blue : Color.green)
 
                             RuleMark(
-                                x: .value("组别", g.groupName),
+                                x: .value(L10n.t("组别"), g.groupName),
                                 yStart: .value("Low", max(0, g.meanViabilityPercent - g.sdViabilityPercent)),
                                 yEnd: .value("High", g.meanViabilityPercent + g.sdViabilityPercent)
                             )
                             .foregroundStyle(Color.primary.opacity(0.75))
                         }
                     }
-                    .chartYAxisLabel("相对活力 (% Control)")
+                    .chartYAxisLabel(L10n.t("相对活力 (% Control)"))
                     .frame(height: 210)
 
                     VStack(spacing: 6) {
                         ForEach(rep.groups) { g in
-                            HStack(spacing: 8) {
-                                Text(g.groupName)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                StudioMetricBadge(label: "n", value: "\(g.n)", color: .secondary)
-                                StudioMetricBadge(label: "活力", value: String(format: "%.1f±%.1f%%", g.meanViabilityPercent, g.sdViabilityPercent), color: .green)
-                                if let pa = g.pAdjusted {
-                                    StudioMetricBadge(label: "p (Holm)", value: String(format: "%.4f (%@)", pa, g.significanceStars), color: pa < 0.05 ? .pink : .secondary)
-                                } else {
-                                    StudioMetricBadge(label: "基准", value: "100% Ref", color: .blue)
+                            ViewThatFits(in: .horizontal) {
+                                HStack(spacing: 8) {
+                                    Text(g.groupName)
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .frame(minWidth: 80, maxWidth: .infinity, alignment: .leading)
+                                    StudioMetricBadge(label: "n", value: "\(g.n)", color: .secondary)
+                                    StudioMetricBadge(label: L10n.t("活力"), value: String(format: "%.1f±%.1f%%", g.meanViabilityPercent, g.sdViabilityPercent), color: .green)
+                                    if let pa = g.pAdjusted {
+                                        StudioMetricBadge(label: "p (Holm)", value: String(format: "%.4f (%@)", pa, g.significanceStars), color: pa < 0.05 ? .pink : .secondary)
+                                    } else {
+                                        StudioMetricBadge(label: L10n.t("基准"), value: "100% Ref", color: .blue)
+                                    }
+                                }
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(g.groupName)
+                                        .font(.system(size: 12, weight: .semibold))
+                                    StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
+                                        StudioMetricBadge(label: "n", value: "\(g.n)", color: .secondary)
+                                        StudioMetricBadge(label: L10n.t("活力"), value: String(format: "%.1f±%.1f%%", g.meanViabilityPercent, g.sdViabilityPercent), color: .green)
+                                        if let pa = g.pAdjusted {
+                                            StudioMetricBadge(label: "p (Holm)", value: String(format: "%.4f (%@)", pa, g.significanceStars), color: pa < 0.05 ? .pink : .secondary)
+                                        } else {
+                                            StudioMetricBadge(label: L10n.t("基准"), value: "100% Ref", color: .blue)
+                                        }
+                                    }
                                 }
                             }
                             .studioInnerBox(paddingH: 10, paddingV: 6)
@@ -431,7 +463,7 @@ public struct PlateReaderAssayView: View {
                 }
             }
         } else {
-            emptyStateCard("请输入分组复孔 OD 数据")
+            emptyStateCard(L10n.t("请输入分组复孔 OD 数据"))
         }
     }
 
@@ -558,7 +590,7 @@ public struct PlateReaderAssayView: View {
                     matrixImportPreview = parsed
                     pairMatrixWithPlateStore()
                 } else {
-                    appState.showToast("未能从 \(url.lastPathComponent) 识别 8×12 酶标仪矩阵或孔位读数表")
+                    appState.showToast(L10n.tr("未能从 \(url.lastPathComponent) 识别 8×12 酶标仪矩阵或孔位读数表", "Could not detect an 8×12 plate matrix or well-reading table in \(url.lastPathComponent)"))
                 }
             }
         }
@@ -587,7 +619,7 @@ public struct PlateReaderAssayView: View {
             sampleInputText = grouped.sorted { $0.key < $1.key }
                 .map { "\($0.key)," + $0.value.map { String($0) }.joined(separator: ",") }
                 .joined(separator: "\n")
-            appState.showToast("已按微孔板分配映射 \(matrixImportPreview.count) 个酶标孔读数")
+            appState.showToast(L10n.tr("已按微孔板分配映射 \(matrixImportPreview.count) 个酶标孔读数", "Mapped \(matrixImportPreview.count) plate reader wells from layout"))
         }
     }
 

@@ -67,7 +67,7 @@ public final class DualEngineCoordinator {
     ) async throws -> HomologyArmDesigner.DesignResult {
         let cleanSeq = BioSequence.clean(sequence)
         guard cleanSeq.count >= 50 else {
-            throw NSError(domain: "Coord", code: -1, userInfo: [NSLocalizedDescriptionKey: "插入片段长度必须大于等于 50 bp"])
+            throw NSError(domain: "Coord", code: -1, userInfo: [NSLocalizedDescriptionKey: L10n.t("插入片段长度必须大于等于 50 bp")])
         }
         
         // 1. 离线模式或用户自定义了非 60℃ 的目标退火温度时，优先使用本地算法以精确匹配自定义 Tm 与浮动区间
@@ -117,9 +117,9 @@ public final class DualEngineCoordinator {
                 enzymeSite: hasEnzymes ? e5Site : nil,
                 specificSequence: fSpec,
                 tm: fTm,
-                targetPurpose: "ClonExpress 入门克隆正向引物",
-                notes: "5' URS (15bp)" + (hasEnzymes ? " + \(enzyme5?.name ?? "")" : "") + " + 特异序列 (Tm: \(fTm)℃)",
-                sourceTool: "入门克隆"
+                targetPurpose: L10n.t("ClonExpress 入门克隆正向引物"),
+                notes: "5' URS (15bp)" + (hasEnzymes ? " + \(enzyme5?.name ?? "")" : "") + L10n.tr(" + 特异序列 (Tm: \(fTm)℃)", " + Specific (Tm: \(fTm) °C)"),
+                sourceTool: L10n.t("入门克隆")
             )
             
             let primerR = PrimerItem(
@@ -130,9 +130,9 @@ public final class DualEngineCoordinator {
                 enzymeSite: hasEnzymes ? e3Site : nil,
                 specificSequence: rSpec,
                 tm: rTm,
-                targetPurpose: "ClonExpress 入门克隆反向引物",
-                notes: "5' DRS (15bp)" + (hasEnzymes ? " + \(enzyme3?.name ?? "")" : "") + " + 特异序列 (Tm: \(rTm)℃)",
-                sourceTool: "入门克隆"
+                targetPurpose: L10n.t("ClonExpress 入门克隆反向引物"),
+                notes: "5' DRS (15bp)" + (hasEnzymes ? " + \(enzyme3?.name ?? "")" : "") + L10n.tr(" + 特异序列 (Tm: \(rTm)℃)", " + Specific (Tm: \(rTm) °C)"),
+                sourceTool: L10n.t("入门克隆")
             )
             
             return HomologyArmDesigner.DesignResult(
@@ -154,7 +154,7 @@ public final class DualEngineCoordinator {
                 return HomologyArmDesigner.DesignResult(
                     primerF: localResult.primerF,
                     primerR: localResult.primerR,
-                    promptMessage: "在线接口未响应，已切换为本地算法生成。"
+                    promptMessage: L10n.t("在线接口未响应，已切换为本地算法生成。")
                 )
             } else {
                 throw error

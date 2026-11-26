@@ -52,6 +52,9 @@ package_app_bundle() {
     if [ -f "$DIR/Sources/CloneStudioCore/Resources/select.json" ]; then
         cp -f "$DIR/Sources/CloneStudioCore/Resources/select.json" "$RESOURCES_DIR/"
     fi
+    if [ -f "$DIR/Sources/CloneStudioCore/Resources/en_translations.json" ]; then
+        cp -f "$DIR/Sources/CloneStudioCore/Resources/en_translations.json" "$RESOURCES_DIR/"
+    fi
     if [ -f "$DIR/Sources/CloneStudioCore/Resources/Libraries.sqlite" ]; then
         cp -f "$DIR/Sources/CloneStudioCore/Resources/Libraries.sqlite" "$RESOURCES_DIR/"
     fi
@@ -108,6 +111,11 @@ package_app_bundle() {
     <string>$GIT_COMMIT</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>zh-Hans</string>
+        <string>en</string>
+    </array>
     <key>DTSDKName</key>
     <string>macosx${SDK_VER:-27.2}</string>
     <key>NSHighResolutionCapable</key>

@@ -3,6 +3,7 @@ import CloneStudioCore
 
 // MARK: - 质粒构建谱系树与多步连续改造对比视图 (借鉴 CloneCanvas HistoryTree.svelte)
 public struct HistoryTreeView: View {
+    @Environment(\.appLanguage) private var appLanguage
     @ObservedObject private var historyManager = ConstructHistoryManager.shared
     @State private var expandedShiftNodeIDs: Set<UUID> = []
     @State private var expandedOverhangNodeIDs: Set<UUID> = []
@@ -13,6 +14,7 @@ public struct HistoryTreeView: View {
     }
 
     public var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 10) {
             topToolbar
 
@@ -68,7 +70,7 @@ public struct HistoryTreeView: View {
                                     Image(systemName: "arrow.down")
                                         .font(.system(size: 11, weight: .bold))
                                         .foregroundStyle(.teal)
-                                    Text("连续改造链路 (Step \(idx + 1) → Step \(idx + 2))")
+                                    Text(L10n.tr("连续改造链路 (Step \(idx + 1) → Step \(idx + 2))", "Lineage Chain (Step \(idx + 1) → Step \(idx + 2))"))
                                         .font(.system(size: 9, weight: .medium))
                                         .monospacedDigit()
                                         .foregroundStyle(.secondary)
@@ -86,13 +88,13 @@ public struct HistoryTreeView: View {
     private var topToolbar: some View {
         ViewThatFits(in: .horizontal) {
             HStack {
-                Label("质粒构建谱系树 (Construct Lineage)", systemImage: "point.3.connected.trianglepath.dotted")
-                    .font(.caption.bold())
+                Label(L10n.t("质粒构建谱系树 (Construct Lineage)"), systemImage: "point.3.connected.trianglepath.dotted")
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.primary)
 
                 Spacer()
 
-                Text("共 \(historyManager.nodes.count) 步改造记录")
+                Text(L10n.t("共 \(historyManager.nodes.count) 步改造记录"))
                     .font(.system(size: 10, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
@@ -104,15 +106,15 @@ public struct HistoryTreeView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Label("质粒构建谱系树", systemImage: "point.3.connected.trianglepath.dotted")
-                        .font(.caption.bold())
+                    Label(L10n.t("质粒构建谱系树"), systemImage: "point.3.connected.trianglepath.dotted")
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.primary)
                     Spacer()
                     if !historyManager.nodes.isEmpty {
                         clearHistoryButton
                     }
                 }
-                Text("共 \(historyManager.nodes.count) 步改造记录")
+                Text(L10n.t("共 \(historyManager.nodes.count) 步改造记录"))
                     .font(.system(size: 10, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
@@ -135,10 +137,10 @@ public struct HistoryTreeView: View {
             Image(systemName: "point.3.connected.trianglepath.dotted")
                 .font(.system(size: 26))
                 .foregroundStyle(.tertiary)
-            Text("当前尚无质粒改造谱系记录")
-                .font(.caption.bold())
+            Text(L10n.t("当前尚无质粒改造谱系记录"))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(.secondary)
-            Text("当您在克隆、定点突变或片段删除模块点击「生成方案」后，系统将自动在此记录多步改造链路与特征元件坐标位移对比。")
+            Text(L10n.t("当您在克隆、定点突变或片段删除模块点击「生成方案」后，系统将自动在此记录多步改造链路与特征元件坐标位移对比。"))
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
@@ -161,8 +163,10 @@ private struct HistoryNodeCard: View {
     let onToggleShifts: () -> Void
     let onToggleOverhangs: () -> Void
     let onChainToItem: (NavItem) -> Void
+    @Environment(\.appLanguage) private var appLanguage
 
     var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 8) {
             headerBar
             genealogyFlowRow
@@ -213,12 +217,12 @@ private struct HistoryNodeCard: View {
                     .background(Color.teal.opacity(0.18), in: Capsule())
                     .foregroundStyle(.teal)
 
-                Label(node.operationType.rawValue, systemImage: operationIcon(node.operationType))
+                Label(L10n.t(node.operationType.rawValue), systemImage: operationIcon(node.operationType))
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.primary)
 
                 if let parent = parentNode {
-                    Text("继承自: \(parent.constructName)")
+                    Text(L10n.tr("继承自: \(parent.constructName)", "Derived from: \(parent.constructName)"))
                         .font(.system(size: 9, weight: .medium))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1.5)
@@ -241,7 +245,7 @@ private struct HistoryNodeCard: View {
                         .background(Color.teal.opacity(0.18), in: Capsule())
                         .foregroundStyle(.teal)
 
-                    Label(node.operationType.rawValue, systemImage: operationIcon(node.operationType))
+                    Label(L10n.t(node.operationType.rawValue), systemImage: operationIcon(node.operationType))
                         .font(.system(size: 10.5, weight: .bold))
 
                     Spacer()
@@ -249,7 +253,7 @@ private struct HistoryNodeCard: View {
                     chainMenu
                 }
                 if let parent = parentNode {
-                    Text("继承自: \(parent.constructName)")
+                    Text(L10n.tr("继承自: \(parent.constructName)", "Derived from: \(parent.constructName)"))
                         .font(.system(size: 9, weight: .medium))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1.5)
@@ -271,17 +275,17 @@ private struct HistoryNodeCard: View {
             Button {
                 onChainToItem(.mutagenesis)
             } label: {
-                Label("送入「定点突变设计」继续改造", systemImage: "wand.and.stars")
+                Label(L10n.t("送入「定点突变设计」继续改造"), systemImage: "wand.and.stars")
             }
             Button {
                 onChainToItem(.fragmentDeletion)
             } label: {
-                Label("送入「质粒片段删除」继续敲除", systemImage: "scissors.badge.ellipsis")
+                Label(L10n.t("送入「质粒片段删除」继续敲除"), systemImage: "scissors.badge.ellipsis")
             }
             Button {
                 onChainToItem(.singleFragment)
             } label: {
-                Label("作为载体送入「单片段克隆」", systemImage: "scissors")
+                Label(L10n.t("作为载体送入「单片段克隆」"), systemImage: "scissors")
             }
         }
     }
@@ -294,7 +298,7 @@ private struct HistoryNodeCard: View {
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("父本载体")
+                    Text(L10n.t("父本载体"))
                         .font(.system(size: 8))
                         .foregroundStyle(.secondary)
                     Text("\(node.parentVectorName) (\(node.parentLengthBp) bp)")
@@ -308,7 +312,7 @@ private struct HistoryNodeCard: View {
                     .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("改造输入/靶点")
+                    Text(L10n.t("改造输入/靶点"))
                         .font(.system(size: 8))
                         .foregroundStyle(.secondary)
                     Text(node.insertOrActionSummary)
@@ -323,7 +327,7 @@ private struct HistoryNodeCard: View {
                     .foregroundStyle(.teal)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("重组产物")
+                    Text(L10n.t("重组产物"))
                         .font(.system(size: 8))
                         .foregroundStyle(.secondary)
                     HStack(spacing: 4) {
@@ -349,7 +353,7 @@ private struct HistoryNodeCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: isOverhangExpanded ? "chevron.down" : "chevron.right")
                             .font(.system(size: 8, weight: .bold))
-                        Text("粘性末端 / 同源臂配对 (\(node.junctionOverhangs.count))")
+                        Text(L10n.tr("粘性末端 / 同源臂配对 (\(node.junctionOverhangs.count))", "Cohesive Ends & Homology Junctions (\(node.junctionOverhangs.count))"))
                             .font(.system(size: 9.5, weight: .medium))
                     }
                 }
@@ -362,7 +366,7 @@ private struct HistoryNodeCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: isShiftExpanded ? "chevron.down" : "chevron.right")
                             .font(.system(size: 8, weight: .bold))
-                        Text("改造前后 Feature 坐标位移对比 (\(node.featureShifts.count))")
+                        Text(L10n.tr("改造前后 Feature 坐标位移对比 (\(node.featureShifts.count))", "Feature Coordinate Shifts (\(node.featureShifts.count))"))
                             .font(.system(size: 9.5, weight: .medium))
                     }
                 }
@@ -411,16 +415,16 @@ private struct HistoryNodeCard: View {
         ScrollView(.horizontal, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text("元件名称")
+                    Text(L10n.t("元件名称"))
                         .frame(width: 110, alignment: .leading)
-                    Text("改造前区间 (Parent)")
+                    Text(L10n.t("改造前区间 (Parent)"))
                         .frame(width: 115, alignment: .leading)
-                    Text("改造后区间 (Product)")
+                    Text(L10n.t("改造后区间 (Product)"))
                         .frame(width: 115, alignment: .leading)
-                    Text("位移量 (Δbp)")
+                    Text(L10n.t("位移量 (Δbp)"))
                         .frame(width: 80, alignment: .trailing)
                     Spacer()
-                    Text("状态")
+                    Text(L10n.t("状态"))
                         .frame(width: 72, alignment: .trailing)
                 }
                 .font(.system(size: 9, weight: .bold))
@@ -440,9 +444,11 @@ private struct HistoryNodeCard: View {
 }
 
 private struct FeatureShiftRowView: View {
+    @Environment(\.appLanguage) private var appLanguage
     let shift: FeatureShiftItem
 
     var body: some View {
+        let _ = appLanguage
         let deltaStr: String = {
             if shift.status == .deleted { return "DEL" }
             if shift.status == .inserted { return "NEW" }
@@ -477,7 +483,7 @@ private struct FeatureShiftRowView: View {
 
             Spacer()
 
-            Text(shift.status.rawValue)
+            Text(L10n.t(shift.status.rawValue))
                 .font(.system(size: 8.5, weight: .bold))
                 .padding(.horizontal, 5)
                 .padding(.vertical, 1.5)

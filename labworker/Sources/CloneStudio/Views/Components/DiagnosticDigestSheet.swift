@@ -58,9 +58,9 @@ public struct DiagnosticDigestSheet: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.teal)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("克隆鉴定最佳单/双内切酶推荐")
+                    Text(L10n.t("克隆鉴定最佳单/双内切酶推荐"))
                         .font(.system(size: 15, weight: .bold))
-                    Text("枚举 24 种常用克隆内切酶与 NEB CutSmart/r2.1/r3.1/r1.1 Buffer 兼容矩阵，筛选电泳分辨率差异最大的 Top 3 方案")
+                    Text(L10n.t("枚举 24 种常用克隆内切酶与 NEB CutSmart/r2.1/r3.1/r1.1 Buffer 兼容矩阵，筛选电泳分辨率差异最大的 Top 3 方案"))
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
@@ -126,7 +126,7 @@ public struct DiagnosticDigestSheet: View {
                         syncSequencesFromSelection()
                     }
 
-                    Toggle("环状质粒", isOn: $isCircular)
+                    Toggle(L10n.t("环状质粒"), isOn: $isCircular)
                         .toggleStyle(.switch)
                         .controlSize(.small)
 
@@ -154,17 +154,17 @@ public struct DiagnosticDigestSheet: View {
                 if isManualDrawerExpanded || selectedEmptyID == "__manual__" || selectedRecombID == "__manual__" {
                     AdaptiveTwoColumnWorkspace(breakpoint: 680, hasRight: true) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("空载对照序列 (\(BioSequence.clean(emptySeqText).count) bp)")
+                            Text(L10n.tr("空载对照序列 (\(BioSequence.clean(emptySeqText).count) bp)", "Empty Vector Control (\(BioSequence.clean(emptySeqText).count) bp)"))
                                 .font(.system(size: 11.5, weight: .semibold))
                                 .foregroundStyle(.secondary)
-                            SequenceEditorBox(text: $emptySeqText, placeholder: "输入空载 DNA 序列...", minHeight: 75)
+                            SequenceEditorBox(text: $emptySeqText, placeholder: L10n.t("输入空载 DNA 序列..."), minHeight: 75)
                         }
                     } right: {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("重组阳性序列 (\(BioSequence.clean(recombSeqText).count) bp)")
+                            Text(L10n.tr("重组阳性序列 (\(BioSequence.clean(recombSeqText).count) bp)", "Recombinant Positive (\(BioSequence.clean(recombSeqText).count) bp)"))
                                 .font(.system(size: 11.5, weight: .semibold))
                                 .foregroundStyle(.secondary)
-                            SequenceEditorBox(text: $recombSeqText, placeholder: "输入重组质粒 DNA 序列...", minHeight: 75)
+                            SequenceEditorBox(text: $recombSeqText, placeholder: L10n.t("输入重组质粒 DNA 序列..."), minHeight: 75)
                         }
                     }
                 }
@@ -183,7 +183,7 @@ public struct DiagnosticDigestSheet: View {
 
             if let onApply = onApplyToGel, let rec = activeRecommendation {
                 StudioActionPillButton(
-                    title: "应用 #\(rec.rank) (\(rec.enzymeNames.joined(separator: "+"))) 到凝胶对照",
+                    title: L10n.tr("应用 #\(rec.rank) (\(rec.enzymeNames.joined(separator: "+"))) 到凝胶对照", "Apply #\(rec.rank) (\(rec.enzymeNames.joined(separator: "+"))) to Gel Lane"),
                     icon: "arrow.down.doc.fill",
                     tint: .blue,
                     isProminent: true
@@ -197,10 +197,10 @@ public struct DiagnosticDigestSheet: View {
 
     @ViewBuilder
     private func resultSection(_ rep: DiagnosticDigestEngine.DiagnosticDigestReport) -> some View {
-        StudioCard(title: "推荐方案 (\(rep.evaluatedCombinations) 种单/双酶切组合)") {
+        StudioCard(title: L10n.tr("推荐方案 (\(rep.evaluatedCombinations) 种单/双酶切组合)", "Recommended Digests (\(rep.evaluatedCombinations) combinations)")) {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
-                StudioMetricBadge(label: "空载", value: "\(rep.emptyVectorLengthBp) bp", color: .blue)
-                StudioMetricBadge(label: "重组", value: "\(rep.recombinantLengthBp) bp", color: .teal)
+                StudioMetricBadge(label: L10n.t("空载"), value: "\(rep.emptyVectorLengthBp) bp", color: .blue)
+                StudioMetricBadge(label: L10n.t("重组"), value: "\(rep.recombinantLengthBp) bp", color: .teal)
             }
         } content: {
             VStack(alignment: .leading, spacing: 10) {
@@ -228,7 +228,7 @@ public struct DiagnosticDigestSheet: View {
                                         color: isSel ? .teal : .blue
                                     )
                                     StudioMetricBadge(
-                                        label: "得分",
+                                        label: L10n.t("得分"),
                                         value: String(format: "%.1f", rec.score),
                                         color: .green
                                     )
@@ -238,7 +238,7 @@ public struct DiagnosticDigestSheet: View {
                                         color: rec.bufferCompatibilityPercent >= 100 ? .green : .orange
                                     )
                                     StudioMetricBadge(
-                                        label: "推荐胶",
+                                        label: L10n.t("推荐胶"),
                                         value: rec.recommendedGelConcentration,
                                         color: .purple
                                     )
@@ -285,15 +285,15 @@ public struct DiagnosticDigestSheet: View {
         let conc = AgaroseGelConcentration(rawValue: rec.recommendedGelConcentration) ?? .c1_0
         let ladderSizes = [5000, 3000, 2000, 1500, 1000, 750, 500, 250, 100]
 
-        return StudioCard(title: "虚拟电泳对照 (#\(rec.rank) · \(rec.recommendedGelConcentration))") {
+        return StudioCard(title: L10n.tr("虚拟电泳对照 (#\(rec.rank) · \(rec.recommendedGelConcentration))", "Virtual Gel Overlay (#\(rec.rank) · \(rec.recommendedGelConcentration))")) {
             Canvas { ctx, size in
                 let bg = Path(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: StudioRadius.inner)
                 ctx.fill(bg, with: .color(Color(red: 0.06, green: 0.08, blue: 0.12)))
 
                 let lanesData: [(title: String, bands: [Int], color: Color)] = [
                     ("DL5000", ladderSizes, .orange),
-                    ("空载", rec.emptyVectorBandsBp, .cyan),
-                    ("重组", rec.recombinantBandsBp, .green)
+                    (L10n.t("空载"), rec.emptyVectorBandsBp, .cyan),
+                    (L10n.t("重组"), rec.recombinantBandsBp, .green)
                 ]
                 let topMargin: CGFloat = 28
                 let bottomMargin: CGFloat = 14

@@ -108,8 +108,8 @@ public struct WholePlasmidVerifyPanelView: View {
                         }
                     }
 
-                    StudioMetricBadge(label: "参考名称", value: referenceName, color: .blue)
-                    StudioMetricBadge(label: "参考长度", value: "\(BioSequence.clean(referenceSequence).count) bp", color: .secondary)
+                    StudioMetricBadge(label: L10n.t("参考名称"), value: referenceName, color: .blue)
+                    StudioMetricBadge(label: L10n.t("参考长度"), value: "\(BioSequence.clean(referenceSequence).count) bp", color: .secondary)
 
                     StudioCompactPillButton(
                         title: isEditingTexts ? "收起参考文本" : "手动编辑参考/序列",
@@ -123,7 +123,7 @@ public struct WholePlasmidVerifyPanelView: View {
                 if isEditingTexts {
                     SequenceEditorBox(
                         text: $referenceSequence,
-                        placeholder: "粘贴完整参考质粒序列 (5' → 3')",
+                        placeholder: L10n.t("粘贴完整参考质粒序列 (5' → 3')"),
                         minHeight: 72
                     )
                 }
@@ -147,7 +147,7 @@ public struct WholePlasmidVerifyPanelView: View {
             }
 
             if isEditingTexts || !nanoporeRawText.isEmpty && parsedReads.count > 1 {
-                StudioCard(title: "待测全质粒 Reads / Consensus (\(parsedReads.count) 条)") {
+                StudioCard(title: L10n.tr("待测全质粒 Reads / Consensus (\(parsedReads.count) 条)", "Query Reads / Consensus (\(parsedReads.count))")) {
                     VStack(alignment: .leading, spacing: 8) {
                         if parsedReads.count > 1 {
                             StudioMenuPicker(
@@ -164,7 +164,7 @@ public struct WholePlasmidVerifyPanelView: View {
                         if isEditingTexts {
                             SequenceEditorBox(
                                 text: $nanoporeRawText,
-                                placeholder: "粘贴全质粒 Nanopore Consensus FASTA 或 .fastq 内容",
+                                placeholder: L10n.t("粘贴全质粒 Nanopore Consensus FASTA 或 .fastq 内容"),
                                 minHeight: 72
                             )
                         }
@@ -175,42 +175,42 @@ public struct WholePlasmidVerifyPanelView: View {
             if let rep = wholeReport {
                 StudioCard(title: "全质粒比对与结构变异判定结论") {
                     StudioMetricBadge(
-                        label: "结论",
+                        label: L10n.t("结论"),
                         value: rep.verdict.rawValue,
                         color: colorForWholeVerdict(rep.verdict)
                     )
                 } content: {
                     VStack(alignment: .leading, spacing: 10) {
                         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
-                            StudioMetricBadge(label: "长度差异", value: "\(rep.lengthDeltaBp >= 0 ? "+" : "")\(rep.lengthDeltaBp) bp", color: rep.lengthDeltaBp == 0 ? .green : .orange)
-                            StudioMetricBadge(label: "Origin 旋转", value: "\(rep.rotatedOriginOffset0Based) bp", color: .indigo)
-                            StudioMetricBadge(label: "链方向", value: rep.isReverseComplement ? "反向互补 (-)" : "正链 (+)", color: .blue)
-                            StudioMetricBadge(label: "覆盖度", value: String(format: "%.1f%%", rep.coveragePercent), color: rep.coveragePercent >= 99 ? .green : .orange)
-                            StudioMetricBadge(label: "一致率", value: String(format: "%.2f%%", rep.identityPercent), color: rep.identityPercent >= 99.5 ? .green : .orange)
+                            StudioMetricBadge(label: L10n.t("长度差异"), value: "\(rep.lengthDeltaBp >= 0 ? "+" : "")\(rep.lengthDeltaBp) bp", color: rep.lengthDeltaBp == 0 ? .green : .orange)
+                            StudioMetricBadge(label: L10n.t("Origin 旋转"), value: "\(rep.rotatedOriginOffset0Based) bp", color: .indigo)
+                            StudioMetricBadge(label: L10n.t("链方向"), value: L10n.t(rep.isReverseComplement ? "反向互补 (-)" : "正链 (+)"), color: .blue)
+                            StudioMetricBadge(label: L10n.t("覆盖度"), value: String(format: "%.1f%%", rep.coveragePercent), color: rep.coveragePercent >= 99 ? .green : .orange)
+                            StudioMetricBadge(label: L10n.t("一致率"), value: String(format: "%.2f%%", rep.identityPercent), color: rep.identityPercent >= 99.5 ? .green : .orange)
                             if let mq = rep.queryMeanPhred {
-                                StudioMetricBadge(label: "平均 Phred", value: String(format: "Q%.1f", mq), color: mq >= 20 ? .green : .orange)
+                                StudioMetricBadge(label: L10n.t("平均 Phred"), value: String(format: "Q%.1f", mq), color: mq >= 20 ? .green : .orange)
                             }
                         }
 
                         // 覆盖区块分布图
                         if !rep.blocks.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("参考质粒锚点覆盖轨迹 (1..\(rep.referenceLength) bp):")
+                                Text(L10n.tr("参考质粒锚点覆盖轨迹 (1..\(rep.referenceLength) bp):", "Reference Coverage Track (1..\(rep.referenceLength) bp):"))
                                     .font(.system(size: 11.5, weight: .semibold))
                                     .foregroundStyle(.secondary)
                                 Chart {
                                     ForEach(rep.blocks) { blk in
                                         BarMark(
-                                            xStart: .value("起点", blk.refStart1Based),
-                                            xEnd: .value("终点", blk.refEnd1Based),
-                                            y: .value("轨道", "匹配区块")
+                                            xStart: .value(L10n.t("起点"), blk.refStart1Based),
+                                            xEnd: .value(L10n.t("终点"), blk.refEnd1Based),
+                                            y: .value(L10n.t("轨道"), L10n.t("匹配区块"))
                                         )
                                         .foregroundStyle(Color.teal.opacity(0.85))
                                     }
                                     ForEach(rep.variants) { v in
                                         PointMark(
-                                            x: .value("起点", v.refStart1Based),
-                                            y: .value("轨道", "变异事件")
+                                            x: .value(L10n.t("起点"), v.refStart1Based),
+                                            y: .value(L10n.t("轨道"), L10n.t("变异事件"))
                                         )
                                         .foregroundStyle(v.isStructuralVariant ? Color.red : Color.orange)
                                         .symbolSize(70)
@@ -223,18 +223,18 @@ public struct WholePlasmidVerifyPanelView: View {
                     }
                 }
 
-                StudioCard(title: "检出变异与结构异常清单 (\(rep.variants.count))") {
+                StudioCard(title: L10n.tr("检出变异与结构异常清单 (\(rep.variants.count))", "Detected Variants & Structural Events (\(rep.variants.count))")) {
                     if rep.variants.isEmpty {
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
-                            Text("全长参考质粒零 SNP / 零 Indel / 零结构重排，100% 验证通过！")
+                            Text(L10n.t("全长参考质粒零 SNP / 零 Indel / 零结构重排，100% 验证通过！"))
                                 .font(.system(size: 12.5, weight: .medium))
                         }
                     } else {
                         VStack(spacing: 6) {
                             ForEach(rep.variants) { v in
                                 HStack(alignment: .top, spacing: 8) {
-                                    Text(v.kind.rawValue)
+                                    Text(L10n.t(v.kind.rawValue))
                                         .font(.system(size: 10.5, weight: .bold))
                                         .foregroundStyle(.white)
                                         .padding(.horizontal, 6)
@@ -296,28 +296,28 @@ public struct WholePlasmidVerifyPanelView: View {
             if let res = contigResult {
                 StudioCard(title: "Sanger Contig 覆盖与质量统计") {
                     StudioMetricBadge(
-                        label: "总覆盖率",
+                        label: L10n.t("总覆盖率"),
                         value: String(format: "%.1f%%", res.coveragePercent),
                         color: res.coveragePercent >= 95 ? .green : .orange
                     )
                 } content: {
                     VStack(alignment: .leading, spacing: 10) {
                         StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
-                            StudioMetricBadge(label: "输入读段", value: "\(res.readBriefs.count) 条", color: .blue)
-                            StudioMetricBadge(label: "覆盖长度", value: "\(res.coveredBasesCount)/\(res.referenceLength) bp", color: .teal)
-                            StudioMetricBadge(label: "双链共同覆盖", value: "\(res.doubleStrandCoveredCount) bp", color: .purple)
-                            StudioMetricBadge(label: "平均共识 Q", value: String(format: "Q%.1f", res.meanConsensusPhred), color: res.meanConsensusPhred >= 30 ? .green : .orange)
-                            StudioMetricBadge(label: "参考不一致位点", value: "\(res.mismatchCount)", color: res.mismatchCount == 0 ? .green : .orange)
-                            StudioMetricBadge(label: "读段冲突位点", value: "\(res.conflictCount)", color: res.conflictCount == 0 ? .green : .red)
+                            StudioMetricBadge(label: L10n.t("输入读段"), value: L10n.tr("\(res.readBriefs.count) 条", "\(res.readBriefs.count)"), color: .blue)
+                            StudioMetricBadge(label: L10n.t("覆盖长度"), value: "\(res.coveredBasesCount)/\(res.referenceLength) bp", color: .teal)
+                            StudioMetricBadge(label: L10n.t("双链共同覆盖"), value: "\(res.doubleStrandCoveredCount) bp", color: .purple)
+                            StudioMetricBadge(label: L10n.t("平均共识 Q"), value: String(format: "Q%.1f", res.meanConsensusPhred), color: res.meanConsensusPhred >= 30 ? .green : .orange)
+                            StudioMetricBadge(label: L10n.t("参考不一致位点"), value: "\(res.mismatchCount)", color: res.mismatchCount == 0 ? .green : .orange)
+                            StudioMetricBadge(label: L10n.t("读段冲突位点"), value: "\(res.conflictCount)", color: res.conflictCount == 0 ? .green : .red)
                         }
 
                         // 读段重叠铺排图
                         Chart {
                             ForEach(res.readBriefs.filter { $0.matchedRefStart1Based > 0 }) { brief in
                                 BarMark(
-                                    xStart: .value("起点", brief.matchedRefStart1Based),
-                                    xEnd: .value("终点", max(brief.matchedRefStart1Based + 1, brief.matchedRefEnd1Based)),
-                                    y: .value("读段", brief.sampleName)
+                                    xStart: .value(L10n.t("起点"), brief.matchedRefStart1Based),
+                                    xEnd: .value(L10n.t("终点"), max(brief.matchedRefStart1Based + 1, brief.matchedRefEnd1Based)),
+                                    y: .value(L10n.t("读段"), brief.sampleName)
                                 )
                                 .foregroundStyle(brief.isReverseComplement ? Color.indigo : Color.teal)
                             }
@@ -327,7 +327,7 @@ public struct WholePlasmidVerifyPanelView: View {
 
                         if !res.uncoveredRanges.isEmpty {
                             let gapText = res.uncoveredRanges.map { "\($0.lowerBound)..\($0.upperBound)" }.joined(separator: ", ")
-                            Text("未覆盖空洞 (需要补测引物区间): \(gapText) bp")
+                            Text(L10n.tr("未覆盖空洞 (需要补测引物区间): \(gapText) bp", "Uncovered Gaps (need primer walking): \(gapText) bp"))
                                 .font(.system(size: 11.5, weight: .medium))
                                 .foregroundStyle(.orange)
                         }
@@ -398,7 +398,7 @@ public struct WholePlasmidVerifyPanelView: View {
 
     private func selectNanoporeFile() {
         let panel = NSOpenPanel()
-        panel.title = "选择全质粒测序文件 (.fastq / .fq / .fasta / .fa)"
+        panel.title = L10n.t("选择全质粒测序文件 (.fastq / .fq / .fasta / .fa)")
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url {
@@ -420,13 +420,13 @@ public struct WholePlasmidVerifyPanelView: View {
                 selectedReadID = recs.first?.id ?? ""
             }
             recomputeWholePlasmid()
-            appState.showToast("已载入全质粒测序文件 \(url.lastPathComponent) (\(recs.count) 条读段)")
+            appState.showToast(L10n.tr("已载入全质粒测序文件 \(url.lastPathComponent) (\(recs.count) 条读段)", "Loaded whole-plasmid reads from \(url.lastPathComponent) (\(recs.count) reads)"))
         }
     }
 
     private func selectMultipleSangerFiles() {
         let panel = NSOpenPanel()
-        panel.title = "批量选择待拼接的 Sanger .ab1 / .seq 文件"
+        panel.title = L10n.t("批量选择待拼接的 Sanger .ab1 / .seq 文件")
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = true
         if panel.runModal() == .OK, !panel.urls.isEmpty {
@@ -436,7 +436,7 @@ public struct WholePlasmidVerifyPanelView: View {
             if !loaded.isEmpty {
                 sangerReads = loaded
                 recomputeContig()
-                appState.showToast("已载入 \(loaded.count) 条 Sanger 读段并完成双向拼接")
+                appState.showToast(L10n.tr("已载入 \(loaded.count) 条 Sanger 读段并完成双向拼接", "Loaded \(loaded.count) Sanger reads and assembled contig"))
             }
         }
     }

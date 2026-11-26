@@ -29,11 +29,11 @@ public struct OrderExportView: View {
             toolbar: [
                 .picker(
                     id: "order_category",
-                    label: "订购类别",
+                    label: L10n.t("订购类别"),
                     options: [
                         StudioToolbarPickerOption(
                             id: "primerSynthesis",
-                            title: "引物合成 (\(appState.primersCart.count))",
+                            title: L10n.tr("引物合成 (\(appState.primersCart.count))", "Oligo Synthesis (\(appState.primersCart.count))"),
                             tint: .blue,
                             isSelected: vm.selectedCategory == .primerSynthesis
                         ) {
@@ -41,7 +41,7 @@ public struct OrderExportView: View {
                         },
                         StudioToolbarPickerOption(
                             id: "dnaSequencing",
-                            title: "DNA 测序 (\(appState.sangonSamples.count))",
+                            title: L10n.tr("DNA 测序 (\(appState.sangonSamples.count))", "DNA Sequencing (\(appState.sangonSamples.count))"),
                             tint: .purple,
                             isSelected: vm.selectedCategory == .dnaSequencing
                         ) {
@@ -73,14 +73,14 @@ public struct OrderExportView: View {
                     sequencingOrderSection
                 }
         }
-        .alert("导出成功", isPresented: $vm.showSuccessAlert) {
-            Button("在 Finder 中打开") { vm.revealLastExported() }
-            Button("好的", role: .cancel) {}
+        .alert(L10n.t("导出成功"), isPresented: $vm.showSuccessAlert) {
+            Button(L10n.t("在 Finder 中打开")) { vm.revealLastExported() }
+            Button(L10n.t("好的"), role: .cancel) {}
         } message: {
             Text(vm.exportedFilePath ?? "")
         }
-        .alert("导出失败", isPresented: $vm.showErrorAlert) {
-            Button("好的", role: .cancel) {}
+        .alert(L10n.t("导出失败"), isPresented: $vm.showErrorAlert) {
+            Button(L10n.t("好的"), role: .cancel) {}
         } message: {
             Text(vm.errorMessage ?? "")
         }
@@ -94,7 +94,7 @@ public struct OrderExportView: View {
         let p = appState.profile
         return VStack(alignment: .leading, spacing: 6) {
             StudioFlowLayout(horizontalSpacing: 12, verticalSpacing: 6) {
-                Text("\(p.customerName) · \(p.piName) 课题组")
+                Text(L10n.tr("\(p.customerName) · \(p.piName) 课题组", "\(p.customerName) · \(p.piName) Lab"))
                     .font(.system(size: 12, weight: .semibold))
                 Text(p.organization)
                     .font(.system(size: 12))
@@ -123,16 +123,16 @@ public struct OrderExportView: View {
     private var profileEditView: some View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
-                TextField("客户姓名", text: $appState.profile.customerName)
-                TextField("课题组PI", text: $appState.profile.piName)
-                TextField("客户单位", text: $appState.profile.organization)
+                TextField(L10n.t("客户姓名"), text: $appState.profile.customerName)
+                TextField(L10n.t("课题组PI"), text: $appState.profile.piName)
+                TextField(L10n.t("客户单位"), text: $appState.profile.organization)
             }
             HStack(spacing: 10) {
-                TextField("联系电话", text: $appState.profile.phone)
-                TextField("电子邮箱", text: $appState.profile.email)
-                TextField("发票抬头", text: $appState.profile.invoiceTitle)
+                TextField(L10n.t("联系电话"), text: $appState.profile.phone)
+                TextField(L10n.t("电子邮箱"), text: $appState.profile.email)
+                TextField(L10n.t("发票抬头"), text: $appState.profile.invoiceTitle)
             }
-            TextField("收样地址", text: $appState.profile.address)
+            TextField(L10n.t("收样地址"), text: $appState.profile.address)
         }
         .textFieldStyle(.roundedBorder)
     }
@@ -140,22 +140,22 @@ public struct OrderExportView: View {
     // MARK: - 1. 引物与基因合成订购区
     private var activePrimerTemplateLabel: String {
         if vm.selectedPrimerTemplate == .customJSON {
-            return "自定义: \(vm.activeCustomTemplate?.name ?? "JSON")"
+            return L10n.tr("自定义: \(vm.activeCustomTemplate?.name ?? "JSON")", "Custom: \(vm.activeCustomTemplate?.name ?? "JSON")")
         }
         switch vm.selectedPrimerTemplate {
-        case .tsingkePrimer: return "擎科引物 (.xlsx)"
+        case .tsingkePrimer: return L10n.t("擎科引物 (.xlsx)")
         case .idtBulk:       return "IDT Bulk Input"
         case .twistBulk:     return "Twist Bioscience"
-        case .genscriptBulk: return "GenScript 金斯瑞"
+        case .genscriptBulk: return L10n.t("GenScript 金斯瑞")
         case .eurofinsBulk:  return "Eurofins Genomics"
-        case .bgiBulk:       return "华大基因 BGI"
+        case .bgiBulk:       return L10n.t("华大基因 BGI")
         default:             return vm.selectedPrimerTemplate.displayName
         }
     }
 
     private var primerOrderSection: some View {
         let fmtExt = vm.selectedPrimerTemplate.requiresBundledXLSXTemplate ? "xlsx" : vm.selectedOutputFormat.rawValue
-        return StudioCard(title: "引物与基因合成池 (\(appState.primersCart.count))") {
+        return StudioCard(title: L10n.tr("引物与基因合成池 (\(appState.primersCart.count))", "Primer & Gene Synthesis Cart (\(appState.primersCart.count))")) {
             StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                 StudioMenuPillButton(
                     title: activePrimerTemplateLabel,
@@ -164,7 +164,7 @@ public struct OrderExportView: View {
                     compact: true,
                     help: "选择国内/国际合成商批量模板或自定义 JSON 映射"
                 ) {
-                    Section("常用合成商模板") {
+                    Section(L10n.t("常用合成商模板")) {
                         ForEach([OrderFormTemplate.tsingkePrimer, .idtBulk, .twistBulk, .genscriptBulk, .eurofinsBulk, .bgiBulk]) { tpl in
                             Button {
                                 vm.selectPrimerTemplate(tpl)
@@ -179,13 +179,13 @@ public struct OrderExportView: View {
                         }
                     }
                     if !vm.customTemplates.isEmpty {
-                        Section("自定义列映射模板 (.json)") {
+                        Section(L10n.t("自定义列映射模板 (.json)")) {
                             ForEach(vm.customTemplates) { ct in
                                 Button {
                                     vm.selectPrimerTemplate(.customJSON, customTemplateID: ct.id)
                                 } label: {
                                     HStack {
-                                        Text("\(ct.name) (\(ct.columns.count) 列)")
+                                        Text(L10n.tr("\(ct.name) (\(ct.columns.count) 列)", "\(ct.name) (\(ct.columns.count) cols)"))
                                         if vm.selectedPrimerTemplate == .customJSON && vm.selectedCustomTemplateID == ct.id {
                                             Image(systemName: "checkmark")
                                         }
@@ -249,22 +249,22 @@ public struct OrderExportView: View {
                         Task {
                             do {
                                 let res = try await SnapGeneService.shared.injectPrimers(appState.primersCart, into: url, createBackup: true)
-                                appState.showToast("已将 \(res.primersAdded) 条引物写入质粒")
+                                appState.showToast(L10n.tr("已将 \(res.primersAdded) 条引物写入质粒", "Injected \(res.primersAdded) primers into plasmid"))
                                 SnapGeneService.shared.openInSnapGene(url: url)
                             } catch {
-                                appState.showToast("写入失败: \(error.localizedDescription)")
+                                appState.showToast(L10n.tr("写入失败: \(error.localizedDescription)", "Write failed: \(error.localizedDescription)"))
                             }
                         }
                     }
                 }
 
                 StudioActionPillButton(
-                    title: "导出 .\(fmtExt)",
+                    title: L10n.tr("导出 .\(fmtExt)", "Export .\(fmtExt)"),
                     icon: "arrow.down.doc.fill",
                     tint: .blue,
                     isProminent: true,
                     isDisabled: appState.primersCart.isEmpty || vm.isExporting,
-                    help: "按所选供应商模板导出 .\(fmtExt) 批量订购文件",
+                    help: L10n.tr("按所选供应商模板导出 .\(fmtExt) 批量订购文件", "Export bulk order file (.\(fmtExt)) using selected vendor template"),
                     action: vm.exportPrimersOrder
                 )
 
@@ -278,15 +278,15 @@ public struct OrderExportView: View {
             VStack(alignment: .leading, spacing: 10) {
                 if showManualOligoInput {
                     StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                        TextField("名称 (如 EGF_opt)", text: $manualOligoName)
+                        TextField(L10n.t("名称 (如 EGF_opt)"), text: $manualOligoName)
                             .frame(width: 130)
-                        TextField("5'->3' DNA 序列 (引物或基因片段)", text: $manualOligoSeq)
+                        TextField(L10n.t("5'->3' DNA 序列 (引物或基因片段)"), text: $manualOligoSeq)
                             .frame(minWidth: 220, maxWidth: 340)
-                        TextField("纯化 (PAGE/HPLC)", text: $manualOligoPurity)
+                        TextField(L10n.t("纯化 (PAGE/HPLC)"), text: $manualOligoPurity)
                             .frame(width: 95)
                         TextField("OD", text: $manualOligoOD)
                             .frame(width: 55)
-                        TextField("用途备注", text: $manualOligoPurpose)
+                        TextField(L10n.t("用途备注"), text: $manualOligoPurpose)
                             .frame(width: 110)
 
                         StudioCompactPillButton(title: "加入订购池", icon: "plus.circle.fill", tint: .teal) {
@@ -311,7 +311,7 @@ public struct OrderExportView: View {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.orange)
                                 .font(.system(size: 11.5))
-                            Text("供应商格式清洗提示（导出时自动处理）：")
+                            Text(L10n.t("供应商格式清洗提示（导出时自动处理）："))
                                 .font(.system(size: 11.5, weight: .semibold))
                         }
                         ForEach(vm.sanitizationWarnings, id: \.self) { warn in
@@ -327,7 +327,7 @@ public struct OrderExportView: View {
                 if appState.primersCart.isEmpty {
                     HStack {
                         Spacer()
-                        Text("暂无待订引物或基因片段（可通过左侧克隆/密码子优化加入，或点击「手动添加」）")
+                        Text(L10n.t("暂无待订引物或基因片段（可通过左侧克隆/密码子优化加入，或点击「手动添加」）"))
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                         Spacer()
@@ -348,7 +348,7 @@ public struct OrderExportView: View {
                                     .frame(width: 140, alignment: .leading)
                                 
                                 Text(primer.fullSequence)
-                                    .font(.system(size: 11, design: .monospaced))
+                                    .font(.system(size: 11))
                                     .lineLimit(1)
                                     .textSelection(.enabled)
                                 
@@ -387,7 +387,7 @@ public struct OrderExportView: View {
     
     // MARK: - 2. DNA 测序订购区
     private var sequencingOrderSection: some View {
-        StudioCard(title: "测序样品 (\(appState.sangonSamples.count))") {
+        StudioCard(title: L10n.tr("测序样品 (\(appState.sangonSamples.count))", "Sequencing Samples (\(appState.sangonSamples.count))")) {
             StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                 StudioMenuPicker(
                     selection: $vm.selectedSeqTemplate,
@@ -419,13 +419,13 @@ public struct OrderExportView: View {
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                    TextField("样品名", text: $newSampleName)
+                    TextField(L10n.t("样品名"), text: $newSampleName)
                         .frame(width: 130)
-                    TextField("载体", text: $newVectorName)
+                    TextField(L10n.t("载体"), text: $newVectorName)
                         .frame(width: 105)
-                    TextField("引物", text: $newPrimerName)
+                    TextField(L10n.t("引物"), text: $newPrimerName)
                         .frame(width: 75)
-                    TextField("长度bp", text: $newFragLen)
+                    TextField(L10n.t("长度bp"), text: $newFragLen)
                         .frame(width: 70)
 
                     StudioCompactPillButton(title: "添加样品", icon: "plus") {
@@ -444,7 +444,7 @@ public struct OrderExportView: View {
                 if appState.sangonSamples.isEmpty {
                     HStack {
                         Spacer()
-                        Text("暂无测序样品")
+                        Text(L10n.t("暂无测序样品"))
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                         Spacer()
@@ -479,7 +479,7 @@ public struct OrderExportView: View {
                                     .monospacedDigit()
                                     .foregroundColor(.secondary)
                                 
-                                StudioMetricBadge(label: "引物", value: sample.primerName, color: .blue)
+                                StudioMetricBadge(label: L10n.t("引物"), value: sample.primerName, color: .blue)
                                 
                                 Text(sample.requirement)
                                     .font(.system(size: 10.5))
@@ -532,14 +532,14 @@ private struct CustomOrderTemplateEditorSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("自定义订购表列映射模板 (.json)")
+                    Text(L10n.t("自定义订购表列映射模板 (.json)"))
                         .font(.system(size: 15, weight: .bold))
-                    Text("按需映射列标题与 Labworker 序列/孔板/规格字段，支持导出/导入团队共享 JSON 模板")
+                    Text(L10n.t("按需映射列标题与 Labworker 序列/孔板/规格字段，支持导出/导入团队共享 JSON 模板"))
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("关闭") { dismiss() }
+                Button(L10n.t("关闭")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
 
@@ -566,7 +566,7 @@ private struct CustomOrderTemplateEditorSheet: View {
                 StudioCompactPillButton(title: "新建空白模板", icon: "plus", tint: .blue) {
                     draft = OrderTemplateEngine.defaultCustomTemplate()
                     draft.id = UUID().uuidString
-                    draft.name = "新模板 \(vm.customTemplates.count + 1)"
+                    draft.name = L10n.tr("新模板 \(vm.customTemplates.count + 1)", "New Template \(vm.customTemplates.count + 1)")
                 }
 
                 StudioCompactPillButton(title: "导入 .json", icon: "square.and.arrow.down", tint: .teal) {
@@ -580,7 +580,7 @@ private struct CustomOrderTemplateEditorSheet: View {
                             draft = decoded
                             importExportError = nil
                         } catch {
-                            importExportError = "导入 JSON 失败：\(error.localizedDescription)"
+                            importExportError = L10n.tr("导入 JSON 失败：\(error.localizedDescription)", "Failed to import JSON: \(error.localizedDescription)")
                         }
                     }
                 }
@@ -597,17 +597,17 @@ private struct CustomOrderTemplateEditorSheet: View {
 
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("模板名称").font(.system(size: 11)).foregroundStyle(.secondary)
-                    TextField("模板名称", text: $draft.name)
+                    Text(L10n.t("模板名称")).font(.system(size: 11)).foregroundStyle(.secondary)
+                    TextField(L10n.t("模板名称"), text: $draft.name)
                         .textFieldStyle(.roundedBorder)
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("工作表名 / 供应商").font(.system(size: 11)).foregroundStyle(.secondary)
-                    TextField("Sheet 名称", text: $draft.sheetName)
+                    Text(L10n.t("工作表名 / 供应商")).font(.system(size: 11)).foregroundStyle(.secondary)
+                    TextField(L10n.t("Sheet 名称"), text: $draft.sheetName)
                         .textFieldStyle(.roundedBorder)
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("默认格式").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(L10n.t("默认格式")).font(.system(size: 11)).foregroundStyle(.secondary)
                     StudioSegmentedPicker(
                         selection: $draft.preferredFormat,
                         options: OrderOutputFileFormat.allCases.map {
@@ -633,7 +633,7 @@ private struct CustomOrderTemplateEditorSheet: View {
                                 .foregroundStyle(.secondary)
                                 .frame(width: 24)
 
-                            TextField("导出列标题", text: $draft.columns[idx].header)
+                            TextField(L10n.t("导出列标题"), text: $draft.columns[idx].header)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 150)
 
@@ -646,7 +646,7 @@ private struct CustomOrderTemplateEditorSheet: View {
                                 compact: true
                             )
 
-                            TextField("默认值", text: $draft.columns[idx].defaultValue)
+                            TextField(L10n.t("默认值"), text: $draft.columns[idx].defaultValue)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 90)
 
@@ -670,11 +670,11 @@ private struct CustomOrderTemplateEditorSheet: View {
                 ? [PrimerItem(name: "Demo_EGFP_F", fullSequence: "ggatccATGGTGAGCAAGGGCGAG", homologyArm: "ggatcc", specificSequence: "ATGGTGAGCAAGGGCGAG", tm: 60.2, purity: "PAGE", od: 2.0, targetPurpose: "克隆扩增")]
                 : Array(AppState.shared.primersCart.prefix(3))
             VStack(alignment: .leading, spacing: 4) {
-                Text("实时预览 (前 \(samplePrimers.count) 条)：")
+                Text(L10n.tr("实时预览 (前 \(samplePrimers.count) 条)：", "Live Preview (First \(samplePrimers.count) rows):"))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Text(OrderTemplateEngine.renderCSVPreview(spec: draft, primers: samplePrimers, profile: AppState.shared.profile))
-                    .font(.system(size: 10.5, design: .monospaced))
+                    .font(.system(size: 10.5))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(8)
                     .background(Color(NSColor.textBackgroundColor).opacity(0.8))
