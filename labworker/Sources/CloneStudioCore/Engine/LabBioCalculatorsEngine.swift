@@ -541,7 +541,7 @@ public enum LabBiochemCalculator {
         return "\(BioMathFormatter.format(scaled, fixedDecimals: 2)) \(preferredUnit.title)"
     }
 
-    /// 温度转换计算: °F ↔ °C ↔ K (遵循 °K = °C + 273.16，并拦截 < 0 K 非法输入)
+    /// 温度转换计算: °F ↔ °C ↔ K (遵循 BIPM SI 2019 精确定义 T(K) = t(°C) + 273.15，并拦截 < 0 K 非法输入)
     public static func convertTemperature(from source: TemperatureSource) -> TemperatureResult {
         let f: Double
         let c: Double
@@ -550,14 +550,14 @@ public enum LabBiochemCalculator {
         case .fahrenheit(let valF):
             f = valF
             c = (5.0 / 9.0) * (valF - 32.0)
-            k = c + 273.16
+            k = c + 273.15
         case .celsius(let valC):
             c = valC
             f = (9.0 / 5.0) * valC + 32.0
-            k = valC + 273.16
+            k = valC + 273.15
         case .kelvin(let valK):
             k = valK
-            c = valK - 273.16
+            c = valK - 273.15
             f = (9.0 / 5.0) * c + 32.0
         }
         let round2: (Double) -> Double = { ($0 * 100.0).rounded() / 100.0 }
@@ -567,7 +567,7 @@ public enum LabBiochemCalculator {
                 celsius: round2(c),
                 kelvin: round2(k),
                 isBelowAbsoluteZero: true,
-                errorMessage: L10n.t("温度低于绝对零度（0 K / -273.16 °C），请检查输入值。")
+                errorMessage: L10n.t("温度低于绝对零度（0 K / -273.15 °C），请检查输入值。")
             )
         }
         return TemperatureResult(

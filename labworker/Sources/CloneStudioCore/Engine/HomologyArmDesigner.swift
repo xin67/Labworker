@@ -47,8 +47,9 @@ public struct HomologyArmDesigner {
         let minLen = 18
         let maxLen = min(38, cleanSeq.count)
         guard cleanSeq.count >= minLen else {
-            let res = TmCalculator.calculate(sequence: cleanSeq, fivePrimeOverhang: fivePrimeOverhang)
-            return (cleanSeq, res.tm)
+            let oriented = isForward ? cleanSeq : BioSequence.reverseComplement(cleanSeq)
+            let res = TmCalculator.calculate(sequence: oriented, fivePrimeOverhang: fivePrimeOverhang)
+            return (oriented, res.tm)
         }
         
         let clampedTol = max(0.0, min(3.0, tolerance))
@@ -89,9 +90,9 @@ public struct HomologyArmDesigner {
                 }
             } else if tm >= lowerBound && tm <= upperBound {
                 let endsWithGC = sub.last.map { $0 == "G" || $0 == "C" || $0 == "g" || $0 == "c" } ?? false
-                let gcBonus = endsWithGC ? 0.6 : 0.0
+                let gcBonus = endsWithGC ? 0.35 : 0.0
                 let qc = PrimerQualityEngine.evaluatePrimer(fivePrimeOverhang + sub)
-                let riskPenalty: Double = (qc.overallRisk == .high) ? 0.45 : (qc.overallRisk == .moderate ? 0.15 : 0.0)
+                let riskPenalty: Double = (qc.overallRisk == .high) ? 1.50 : (qc.overallRisk == .moderate ? 0.50 : 0.0)
                 let score = gcBonus - diff - riskPenalty
                 if score > bestWindowScore {
                     bestWindowScore = score
@@ -662,13 +663,13 @@ public struct HomologyArmDesigner {
         let upPool = downRetained + upRetained
         let downPool = downRetained + upRetained
         
-        let armLen = min(homologyLength, max(15, upRetained.count))
+        let armLen = min(homologyLength, newLength)
         let upArm = upRetained.count >= armLen
             ? String(upRetained.suffix(armLen)).lowercased()
             : String(upPool.suffix(armLen)).lowercased()
             
         let (fSpec, fTm) = pickSpecificAnnealingSeq(
-            from: downRetained.isEmpty ? downPool : downRetained,
+            from: downRetained.count >= 38 ? downRetained : downPool,
             fivePrimeOverhang: upArm,
             targetTm: targetTm,
             tolerance: tolerance,
@@ -677,7 +678,7 @@ public struct HomologyArmDesigner {
         let fullF = upArm + fSpec
         
         let (rSpec, rTm) = pickSpecificAnnealingSeq(
-            from: upRetained.isEmpty ? upPool : upRetained,
+            from: upRetained.count >= 38 ? upRetained : upPool,
             fivePrimeOverhang: "",
             targetTm: targetTm,
             tolerance: tolerance,

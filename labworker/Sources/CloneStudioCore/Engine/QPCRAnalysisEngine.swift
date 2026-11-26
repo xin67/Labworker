@@ -349,6 +349,56 @@ public enum QPCRStatistics {
         return values.reduce(0, +) / Double(values.count)
     }
     
+    public static func median(_ values: [Double]) -> Double? {
+        let valid = values.filter(\.isFinite).sorted()
+        guard !valid.isEmpty else { return nil }
+        let mid = valid.count / 2
+        return (valid.count % 2 == 0) ? 0.5 * (valid[mid - 1] + valid[mid]) : valid[mid]
+    }
+    
+    /// Grubbs (1969, Technometrics 11:1–21) 双侧单离群值检验，返回最偏离均值的离群索引（若超过显著性水平 alpha 临界值）
+    public static func grubbsTestOutlierIndex(_ values: [Double], alpha: Double = 0.05) -> Int? {
+        let n = values.count
+        guard n >= 3, alpha > 0, alpha < 1,
+              values.allSatisfy(\.isFinite),
+              let sd = sampleSd(values), sd > 0 else {
+            return nil
+        }
+        let m = mean(values)
+        var maxIdx = 0
+        var maxDev = -1.0
+        for (idx, v) in values.enumerated() {
+            let dev = abs(v - m)
+            if dev > maxDev {
+                maxDev = dev
+                maxIdx = idx
+            }
+        }
+        let gStat = maxDev / sd
+        // studentTQuantileTwoSided(alpha: p, df: df) 返回 P(|T| >= t) = p，取 p = alpha / n 即对应 t_{alpha/(2n), n-2}
+        guard let tCrit = studentTQuantileTwoSided(alpha: alpha / Double(n), df: Double(n - 2)) else {
+            return nil
+        }
+        let tSq = tCrit * tCrit
+        let nD = Double(n)
+        let gCrit = ((nD - 1.0) / sqrt(nD)) * sqrt(tSq / ((nD - 2.0) + tSq))
+        return gStat > gCrit ? maxIdx : nil
+    }
+    
+    /// 统一归一化扩增效率写法为小数分数 (如 95.0% -> 0.95, 1.95倍增因子 -> 0.95, 0.95 -> 0.95)
+    public static func normalizeEfficiencyFraction(_ raw: Double) -> Double? {
+        guard raw.isFinite && raw > 0 else { return nil }
+        let eff: Double
+        if raw > 2.5 {
+            eff = raw / 100.0
+        } else if raw > 1.5 {
+            eff = raw - 1.0
+        } else {
+            eff = raw
+        }
+        return max(0.10, min(1.50, eff))
+    }
+    
     public static func sampleSd(_ values: [Double]) -> Double? {
         guard values.count >= 2 else { return nil }
         let m = mean(values)
@@ -637,7 +687,7 @@ public enum QPCRAnalysisEngine {
             if !wKey.isEmpty {
                 wellCounts[wKey, default: 0] += 1
             }
-            if w.wellType == .sample && !tKey.isEmpty {
+            if w.include && w.wellType == .sample && !tKey.isEmpty {
                 if let ct = w.ct {
                     targetSampleCts[tKey, default: []].append(ct)
                 }
@@ -661,23 +711,23 @@ public enum QPCRAnalysisEngine {
         
         for (gKey, list) in repGroups {
             let measured = list.compactMap { w -> (id: String, ct: Double)? in
-                guard let ct = w.ct else { return nil }
+                guard w.include, let ct = w.ct else { return nil }
+                if let tm = w.tm, let med = targetMedianTm[normKey(w.target)], abs(tm - med) > settings.meltTolerance {
+                    return nil
+                }
                 return (w.id, ct)
             }
             let cts = measured.map(\.ct)
             repStats[gKey] = (cts.count, cts.isEmpty ? nil : QPCRStatistics.mean(cts), QPCRStatistics.sampleSd(cts))
             
-            if measured.count >= 3 {
-                let center = QPCRStatistics.mean(cts)
-                let candidates = measured.filter { abs($0.ct - center) > settings.outlierLimit }
-                if !candidates.isEmpty {
-                    if candidates.count == measured.count {
-                        if let farthest = candidates.max(by: { abs($0.ct - center) < abs($1.ct - center) }) {
-                            outlierWellIDs.insert(farthest.id)
-                        }
-                    } else {
-                        for c in candidates { outlierWellIDs.insert(c.id) }
-                    }
+            // 基于中位数的稳健离群检测：避免均值掩蔽或 n=3 时将正常孔连同离群孔一并误删
+            if measured.count >= 3, let center = QPCRStatistics.median(cts) {
+                let candidates = measured
+                    .filter { abs($0.ct - center) > settings.outlierLimit }
+                    .sorted { abs($0.ct - center) > abs($1.ct - center) }
+                let maxRemovable = max(1, (measured.count - 1) / 2)
+                for c in candidates.prefix(maxRemovable) {
+                    outlierWellIDs.insert(c.id)
                 }
             }
         }
@@ -893,36 +943,106 @@ public enum QPCRAnalysisEngine {
             buckets[ck]?.isControl = true
         }
         
-        // 计算每个样品的内参几何平均 Ct
-        var refCtBySample: [String: Double] = [:]
-        for sk in orderedSampleKeys {
-            let bucket = buckets[sk]!
-            var refMeans: [Double] = []
-            for rk in activeRefKeys {
-                let cts = (bucket.refWells[rk] ?? []).compactMap(\.ct)
-                if !cts.isEmpty {
-                    refMeans.append(QPCRStatistics.mean(cts))
+        // 若数据集含标准曲线孔且开启效率校正，自动提取有效标曲扩增效率 (Pfaffl 2001 / qBase 2007)
+        // 注意：fit.efficiencyPct 为已知百分比制 (%)，不可再走单位猜测分支
+        var stdCurveEffByTarget: [String: Double] = [:]
+        if settings.efficiencyCorrection && wells.contains(where: { $0.wellType == .standard || $0.quantity != nil }) {
+            let stdOut = computeStandardCurve(wells: wells, settings: settings, qc: qc)
+            for fit in stdOut.fits where fit.valid {
+                if let effPct = fit.efficiencyPct, effPct.isFinite, effPct > 0 {
+                    stdCurveEffByTarget[fit.targetKey] = max(0.10, min(1.50, effPct / 100.0))
                 }
             }
-            if let gm = QPCRStatistics.geometricMean(refMeans) {
-                refCtBySample[sk] = gm
+        }
+        let usableSampleWells = nonStandardWells.filter { isUsableWell($0, qc: qc[$0.id], settings: settings) }
+        func resolveTargetEfficiency(forKey tk: String) -> Double {
+            guard settings.efficiencyCorrection else { return 1.0 }
+            if let stdEff = stdCurveEffByTarget[tk] {
+                return stdEff
+            }
+            let wellEffs = usableSampleWells
+                .filter { normKey($0.target) == tk }
+                .compactMap { $0.efficiency.flatMap(QPCRStatistics.normalizeEfficiencyFraction) }
+            if !wellEffs.isEmpty {
+                return QPCRStatistics.mean(wellEffs)
+            }
+            let fallbackPct = settings.defaultEfficiencyPct
+            return (fallbackPct.isFinite && fallbackPct > 0) ? max(0.10, min(1.50, fallbackPct / 100.0)) : 1.0
+        }
+        
+        // 计算每个样品的内参归一化 Ct (Vandesompele et al., Genome Biol. 2002 / Hellemans et al., Genome Biol. 2007 Eq. 5–8):
+        // 先按各个内参分别在对照组（若无对照组则全部样本）建立基线均值 mu_r，再对样品实测内参子集做基线中心化平均，
+        // 避免当某样品缺失其中一个内参时因各内参本底丰度截距不同产生严重虚假倍数偏移（完整内参时严格退化为算术/加权均值）
+        var refCtBySample: [String: Double] = [:]
+        var refEffCtBySample: [String: Double] = [:]
+        var refEffCache: [String: Double] = [:]
+        for rk in activeRefKeys {
+            refEffCache[rk] = resolveTargetEfficiency(forKey: rk)
+        }
+        var refRawBaseline: [String: Double] = [:]
+        var refEffBaseline: [String: Double] = [:]
+        for rk in activeRefKeys {
+            let effR = refEffCache[rk] ?? 1.0
+            let scaleR = log2(1.0 + effR)
+            let ctrlMeans = orderedSampleKeys.compactMap { sk -> Double? in
+                guard controlSampleKeys.contains(sk), let b = buckets[sk] else { return nil }
+                let cts = (b.refWells[rk] ?? []).compactMap(\.ct)
+                return cts.isEmpty ? nil : QPCRStatistics.mean(cts)
+            }
+            let basePool = !ctrlMeans.isEmpty ? ctrlMeans : orderedSampleKeys.compactMap { sk -> Double? in
+                guard let b = buckets[sk] else { return nil }
+                let cts = (b.refWells[rk] ?? []).compactMap(\.ct)
+                return cts.isEmpty ? nil : QPCRStatistics.mean(cts)
+            }
+            if !basePool.isEmpty {
+                let rawMu = QPCRStatistics.mean(basePool)
+                refRawBaseline[rk] = rawMu
+                refEffBaseline[rk] = rawMu * scaleR
+            }
+        }
+        let validBaselineRefs = activeRefKeys.filter { refRawBaseline[$0] != nil }
+        let globalRawAnchor = validBaselineRefs.isEmpty ? 0.0 : QPCRStatistics.mean(validBaselineRefs.map { refRawBaseline[$0]! })
+        let globalEffAnchor = validBaselineRefs.isEmpty ? 0.0 : QPCRStatistics.mean(validBaselineRefs.map { refEffBaseline[$0]! })
+        
+        for sk in orderedSampleKeys {
+            let bucket = buckets[sk]!
+            var rawDeltas: [Double] = []
+            var effDeltas: [Double] = []
+            for rk in validBaselineRefs {
+                let cts = (bucket.refWells[rk] ?? []).compactMap(\.ct)
+                if !cts.isEmpty, let rawMu = refRawBaseline[rk], let effMu = refEffBaseline[rk] {
+                    let meanRefCt = QPCRStatistics.mean(cts)
+                    let effR = refEffCache[rk] ?? 1.0
+                    rawDeltas.append(meanRefCt - rawMu)
+                    effDeltas.append(meanRefCt * log2(1.0 + effR) - effMu)
+                }
+            }
+            if !rawDeltas.isEmpty {
+                refCtBySample[sk] = globalRawAnchor + QPCRStatistics.mean(rawDeltas)
+                refEffCtBySample[sk] = globalEffAnchor + QPCRStatistics.mean(effDeltas)
             }
         }
         
         let nonRefTargetKeys = sortedTargets.map(normKey).filter { !activeRefKeySet.contains($0) }
+        var targetEffCache: [String: Double] = [:]
+        for tk in nonRefTargetKeys {
+            targetEffCache[tk] = resolveTargetEfficiency(forKey: tk)
+        }
         
-        // 计算对照组在各目的基因上的平均 ΔCt
+        // 计算对照组在各目的基因上的平均 ΔCt_eff（以 log2 归一化周期为单位）
         var controlMeanDCt: [String: Double] = [:]
         for tk in nonRefTargetKeys {
+            let effT = targetEffCache[tk] ?? 1.0
+            let scaleT = log2(1.0 + effT)
             var vals: [Double] = []
             for ck in controlSampleKeys {
                 guard let bucket = buckets[ck],
-                      let refCt = refCtBySample[ck],
+                      let refEffCt = refEffCtBySample[ck],
                       let tws = bucket.targetWells[tk],
                       !tws.isEmpty else { continue }
                 let cts = tws.compactMap(\.ct)
                 if !cts.isEmpty {
-                    vals.append(QPCRStatistics.mean(cts) - refCt)
+                    vals.append(QPCRStatistics.mean(cts) * scaleT - refEffCt)
                 }
             }
             if !vals.isEmpty {
@@ -935,7 +1055,8 @@ public enum QPCRAnalysisEngine {
         
         for sk in orderedSampleKeys {
             let bucket = buckets[sk]!
-            guard let refCt = refCtBySample[sk] else { continue }
+            guard let refCt = refCtBySample[sk],
+                  let refEffCt = refEffCtBySample[sk] else { continue }
             
             for tk in nonRefTargetKeys {
                 let tLabel = targetMap[tk] ?? tk
@@ -944,17 +1065,16 @@ public enum QPCRAnalysisEngine {
                 let cts = tws.compactMap(\.ct)
                 guard !cts.isEmpty else { continue }
                 
+                let eff = targetEffCache[tk] ?? 1.0
+                let scaleT = log2(1.0 + eff)
                 let meanCt = QPCRStatistics.mean(cts)
                 let sdCt = QPCRStatistics.sampleSd(cts)
-                let dCt = meanCt - refCt
+                let dCt = meanCt * scaleT - refEffCt
                 let ddCt = dCt - ctrlDCt
                 
-                let targetEffs = nonStandardWells.filter { normKey($0.target) == tk }.compactMap(\.efficiency)
-                let eff = targetEffs.isEmpty ? max(0.01, settings.defaultEfficiencyPct / 100.0) : QPCRStatistics.mean(targetEffs)
-                let base = settings.efficiencyCorrection ? (1.0 + eff) : 2.0
-                
-                let foldValues = cts.map { pow(base, -(($0 - refCt) - ctrlDCt)) }
-                let fold = QPCRStatistics.mean(foldValues)
+                // 各技术复孔与样本主值均在 log2(NRQ) 空间严格满足 Pfaffl (2001) / qBase (2007) 且无 Jensen 偏倚
+                let foldValues = cts.map { pow(2.0, -(($0 * scaleT - refEffCt) - ctrlDCt)) }
+                let fold = pow(2.0, -ddCt)
                 
                 sampleResults.append(
                     QPCRSampleResult(
@@ -992,7 +1112,7 @@ public enum QPCRAnalysisEngine {
             }
         }
         
-        // 按组汇总并计算相对对照组的 Welch's t-test p 值
+        // 按组汇总并计算相对对照组的 Welch's t-test p 值（在 log2 NRQ / dCt_eff 空间检验，并以几何均值确保与 95% CI 自洽）
         var categoryOrder: [String] = []
         for s in sampleResults where !categoryOrder.contains(s.category) {
             categoryOrder.append(s.category)
@@ -1004,9 +1124,6 @@ public enum QPCRAnalysisEngine {
             let ctrlRows = sampleResults.filter { $0.isControl && $0.targetKey == tk }
             // 严格仅使用生物学样品级 dCt 进行 Welch's t-test，禁止把技术复孔当作独立生物学样本 (P02)
             let ctrlSampleDCts = ctrlRows.map(\.dCt)
-            let targetEffs = nonStandardWells.filter { normKey($0.target) == tk }.compactMap(\.efficiency)
-            let eff = targetEffs.isEmpty ? max(0.01, settings.defaultEfficiencyPct / 100.0) : QPCRStatistics.mean(targetEffs)
-            let base = settings.efficiencyCorrection ? (1.0 + eff) : 2.0
             
             struct PendingTargetGroup {
                 let cat: String
@@ -1036,7 +1153,7 @@ public enum QPCRAnalysisEngine {
                 if !isCtrl {
                     if nBio >= 2 && ctrlSampleDCts.count >= 2 {
                         pVal = QPCRStatistics.welchTTest(allDCts, ctrlSampleDCts)?.p
-                        ciRes = QPCRStatistics.welchCI95(allDCts, ctrlSampleDCts, base: base)
+                        ciRes = QPCRStatistics.welchCI95(allDCts, ctrlSampleDCts, base: 2.0)
                         note = (pVal != nil) ? .ok : .insufficientBiologicalReplicates
                     } else {
                         pVal = nil
@@ -1061,9 +1178,12 @@ public enum QPCRAnalysisEngine {
             // 每个 target 内部对所有“处理组 vs 对照组”的 p 值执行 Holm–Bonferroni 多重比较校正 (P07)
             let rawPsForTarget: [Double?] = pending.map { $0.isCtrl ? nil : $0.pVal }
             let holmPsForTarget = QPCRStatistics.holmAdjustOptional(rawPsForTarget)
+            let ctrlMeanDCt = ctrlSampleDCts.isEmpty ? (controlMeanDCt[tk] ?? 0.0) : QPCRStatistics.mean(ctrlSampleDCts)
             
             for (idx, item) in pending.enumerated() {
                 let pAdj: Double? = item.isCtrl ? nil : (settings.multipleComparison == .holm ? holmPsForTarget[idx] : item.pVal)
+                let grpMeanDCt = QPCRStatistics.mean(item.allDCts)
+                let geomFold = pow(2.0, -(grpMeanDCt - ctrlMeanDCt))
                 groupResults.append(
                     QPCRGroupSummary(
                         category: item.cat,
@@ -1072,10 +1192,10 @@ public enum QPCRAnalysisEngine {
                         targetKey: tk,
                         nBiological: item.nBio,
                         nTechnicalWells: item.nTech,
-                        meanFold: QPCRStatistics.mean(item.sampleFolds),
+                        meanFold: geomFold,
                         sdFold: QPCRStatistics.sampleSd(item.sampleFolds),
                         semFold: QPCRStatistics.sem(item.sampleFolds),
-                        meanDCt: QPCRStatistics.mean(item.allDCts),
+                        meanDCt: grpMeanDCt,
                         sdDCt: QPCRStatistics.sampleSd(item.allDCts),
                         pValue: item.pVal,
                         pAdjusted: pAdj,

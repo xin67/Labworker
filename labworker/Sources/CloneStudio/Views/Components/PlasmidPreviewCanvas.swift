@@ -825,8 +825,10 @@ public enum PlasmidMapBuilder {
             PlasmidFeatureItem(name: "PuroR", lengthBp: 1400, startRatio: 0.61, endRatio: 0.82, color: Color(red: 0.96, green: 0.62, blue: 0.05))
         ]
         
+        let fwdPre = pair.fwdPrimer.homologyArm.uppercased()
+        let revSuf = fwdPre == "CACCG" ? "c" : ""
         let enzymes: [PlasmidEnzymeMarker] = [
-            PlasmidEnzymeMarker(name: enzName, recognitionSite: "CACCG", ratioPosition: 0.985, positionBp: 249, color: .red)
+            PlasmidEnzymeMarker(name: enzName, recognitionSite: fwdPre, ratioPosition: 0.985, positionBp: 249, color: .red)
         ]
         
         let primers: [PlasmidPrimerMarker] = [
@@ -835,26 +837,27 @@ public enum PlasmidMapBuilder {
         ]
         
         let junctions: [PlasmidJunctionBlock] = [
-            PlasmidJunctionBlock(title: "Top Oligo (5'→3')", leftLabel: L10n.t("悬垂"), leftSeq: "caccg", midLabel: "Spacer", midSeq: clean, rightLabel: "", rightSeq: ""),
-            PlasmidJunctionBlock(title: "Bottom Oligo (5'→3')", leftLabel: L10n.t("悬垂"), leftSeq: "aaac", midLabel: L10n.t("互补"), midSeq: BioSequence.reverseComplement(clean), rightLabel: "", rightSeq: "c")
+            PlasmidJunctionBlock(title: "Top Oligo (5'→3')", leftLabel: L10n.t("悬垂"), leftSeq: fwdPre.lowercased(), midLabel: "Spacer", midSeq: clean, rightLabel: "", rightSeq: ""),
+            PlasmidJunctionBlock(title: "Bottom Oligo (5'→3')", leftLabel: L10n.t("悬垂"), leftSeq: "aaac", midLabel: L10n.t("互补"), midSeq: BioSequence.reverseComplement(clean), rightLabel: "", rightSeq: revSuf)
         ]
         
-        let sgWinSeq = "CACCG" + clean + "GTTTTAGAGCTAGAAATAGCAAGTTAAAATAAGGCT"
+        let sgWinSeq = fwdPre + clean + "GTTTTAGAGCTAGAAATAGCAAGTTAAAATAAGGCT"
+        let preLen = fwdPre.count
         let microWindows: [MicroscopicSequenceWindow] = [
             MicroscopicSequenceWindow(
                 title: L10n.t("sgRNA 退火双链与黏性末端"),
-                subtitle: L10n.tr("\(enzName) 4nt 悬垂端 + 20nt Spacer + gRNA Scaffold", "\(enzName) 4nt overhang + 20nt Spacer + gRNA Scaffold"),
+                subtitle: L10n.tr("\(enzName) \(preLen)nt 悬垂端 + 20nt Spacer + gRNA Scaffold", "\(enzName) \(preLen)nt overhang + 20nt Spacer + gRNA Scaffold"),
                 startBp: 245,
                 sequence: sgWinSeq,
-                homologyHighlightRange: 0..<5,
-                homologyLabel: L10n.tr("\(enzName) 5' 黏性悬垂端 (CACCG)", "\(enzName) 5' overhang (CACCG)"),
-                focalHighlightRange: 5..<25,
+                homologyHighlightRange: 0..<preLen,
+                homologyLabel: L10n.tr("\(enzName) 5' 黏性悬垂端 (\(fwdPre))", "\(enzName) 5' overhang (\(fwdPre))"),
+                focalHighlightRange: preLen..<(preLen + clean.count),
                 focalLabel: L10n.t("20 nt CRISPR 靶向 Spacer"),
                 enzymeCuts: [
-                    MicroscopicEnzymeCut(name: enzName, topSnipOffset: 1, bottomSnipOffset: 5)
+                    MicroscopicEnzymeCut(name: enzName, topSnipOffset: 0, bottomSnipOffset: 4)
                 ],
                 primers: [
-                    MicroscopicPrimerOverlay(name: pair.fwdPrimer.name, isForward: true, startOffset: 0, endOffset: 25, homologyArmLength: 5, tmText: "Top Oligo", sequence: pair.fwdPrimer.fullSequence)
+                    MicroscopicPrimerOverlay(name: pair.fwdPrimer.name, isForward: true, startOffset: 0, endOffset: preLen + clean.count, homologyArmLength: preLen, tmText: "Top Oligo", sequence: pair.fwdPrimer.fullSequence)
                 ]
             )
         ]
@@ -904,8 +907,9 @@ public enum PlasmidMapBuilder {
             PlasmidEnzymeMarker(name: "EcoRI", recognitionSite: "GAATTC", ratioPosition: 0.19, positionBp: 58, color: .blue)
         ]
         
+        let revLoop = BioSequence.reverseComplement(loop)
         let topSeq = "CCGG\(clean)\(loop)\(antisense)TTTTTTG"
-        let botSeq = "AATTCAAAAAAA\(clean)\(loop)\(antisense)"
+        let botSeq = "AATTCAAAAAA\(clean)\(revLoop)\(antisense)"
         let primers: [PlasmidPrimerMarker] = [
             PlasmidPrimerMarker(name: "\(activeGene)-sh-F", isForward: true, startRatio: 0.978, endRatio: 0.19, tmText: "\(topSeq.count)nt", sequence: topSeq, color: .blue),
             PlasmidPrimerMarker(name: "\(activeGene)-sh-R", isForward: false, startRatio: 0.978, endRatio: 0.19, tmText: "\(botSeq.count)nt", sequence: botSeq, color: .orange)
@@ -913,7 +917,7 @@ public enum PlasmidMapBuilder {
         
         let junctions: [PlasmidJunctionBlock] = [
             PlasmidJunctionBlock(title: "Top (5'→3')", leftLabel: "AgeI+Sense", leftSeq: "ccgg" + clean, midLabel: "Loop", midSeq: loop.lowercased(), rightLabel: "Antisense+T6", rightSeq: antisense + "ttttttg"),
-            PlasmidJunctionBlock(title: "Bottom (5'→3')", leftLabel: "EcoRI+A7", leftSeq: "aattcaaaaaaa", midLabel: "Sense+Loop", midSeq: clean + loop.lowercased(), rightLabel: "Antisense", rightSeq: antisense)
+            PlasmidJunctionBlock(title: "Bottom (5'→3')", leftLabel: "EcoRI+A6", leftSeq: "aattcaaaaaa", midLabel: "Sense+RC(Loop)", midSeq: clean + revLoop.lowercased(), rightLabel: "Antisense", rightSeq: antisense)
         ]
         
         let microWindows: [MicroscopicSequenceWindow] = [

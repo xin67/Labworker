@@ -159,25 +159,31 @@ assert(humanSh.first?.species == .human)
 pass("Human shRNA search CDH17 found: \(humanSh.count) targets")
 
 // 8. 验证 CRISPRDesigner
-print("🧪 [8/59] Testing CRISPRDesigner (lentiCRISPR v2 overhangs)...")
-let sgTarget = "GTCGCTGAGCTCCGATTCGA"
-let sgPair = CRISPRDesigner.designPair(
-    target: sgTarget,
+print("🧪 [8/61] Testing CRISPRDesigner (Ran 2013 & Sanjana 2014 conditional U6 +1G overhangs)...")
+let sgTargetG = "GTCGCTGAGCTCCGATTCGA" // 首位已含 G
+let sgPairG = CRISPRDesigner.designPair(
+    target: sgTargetG,
     geneName: "A1BG",
     index: 1,
     prefix: "P1",
     species: .human,
     vector: .lentiCRISPRv2
 )
-assert(sgPair.fwdPrimer.fullSequence == "CACCG" + sgTarget)
-assert(sgPair.revPrimer.fullSequence.hasPrefix("AAAC"))
-assert(sgPair.revPrimer.fullSequence.hasSuffix("C"))
-assert(sgPair.fwdPrimer.name == "P1_sg1-FWD")
-assert(sgPair.revPrimer.name == "P1_sg1-REV")
-pass("CRISPRDesigner passed.")
+assert(sgPairG.fwdPrimer.fullSequence == "CACC" + sgTargetG, "5'-G spacer must NOT receive duplicate extra G")
+assert(sgPairG.revPrimer.fullSequence == "AAAC" + BioSequence.reverseComplement(sgTargetG), "5'-G spacer bottom oligo must NOT receive extra 3' C")
+assert(sgPairG.fwdPrimer.name == "P1_sg1-FWD")
+assert(sgPairG.revPrimer.name == "P1_sg1-REV")
+
+let sgTargetNonG = "ATCGCTGAGCTCCGATTCGA" // 首位非 G，必须补 U6 +1G / 3'C
+for vec in [CRISPRDesigner.VectorOverhang.lentiCRISPRv2, .px459_px458] {
+    let sgPairNonG = CRISPRDesigner.designPair(target: sgTargetNonG, geneName: "A1BG", index: 2, vector: vec)
+    assert(sgPairNonG.fwdPrimer.fullSequence == "CACCG" + sgTargetNonG, "\(vec.rawValue) non-G spacer must add 5' G")
+    assert(sgPairNonG.revPrimer.fullSequence == "AAAC" + BioSequence.reverseComplement(sgTargetNonG) + "C", "\(vec.rawValue) non-G spacer must add 3' C")
+}
+pass("CRISPRDesigner passed (Ran 2013 & Sanjana 2014 conditional U6 +1G/3'C verified).")
 
 // 9. 验证 ShRNADesigner
-print("🧪 [9/59] Testing ShRNADesigner (pLKO.1 hairpin assembly)...")
+print("🧪 [9/61] Testing ShRNADesigner (Moffat 2006 pLKO.1 6T/6A & non-palindromic loop RC)...")
 let shTarget = "CCAGTCCCTATCACCATAGAA"
 let shPair = ShRNADesigner.designPair(
     target: shTarget,
@@ -190,11 +196,17 @@ let shPair = ShRNADesigner.designPair(
 assert(shPair.fwdPrimer.fullSequence.hasPrefix("CCGG"))
 assert(shPair.fwdPrimer.fullSequence.contains("CTCGAG"))
 assert(shPair.fwdPrimer.fullSequence.hasSuffix("TTTTTTG"))
-// R: AATTCAAAAAAA + Sense + CTCGAG + Antisense
-assert(shPair.revPrimer.fullSequence.hasPrefix("AATTCAAAAAAA"))
+// R: AATTCAAAAAA (6A) + Sense + RC(Loop) + Antisense
+assert(shPair.revPrimer.fullSequence.hasPrefix("AATTCAAAAAA") && !shPair.revPrimer.fullSequence.hasPrefix("AATTCAAAAAAA"))
+assert(shPair.fwdPrimer.fullSequence.count == shPair.revPrimer.fullSequence.count, "Top and bottom pLKO.1 oligos must match length (6T/6A parity)")
+let shPairNonPal = ShRNADesigner.designPair(target: shTarget, geneName: "CDH17", index: 2, loop: "TTCAAGAGA")
+assert(shPairNonPal.fwdPrimer.fullSequence.count == shPairNonPal.revPrimer.fullSequence.count)
+let shTopInner = String(shPairNonPal.fwdPrimer.fullSequence.dropFirst(4))
+let shBotInner = String(shPairNonPal.revPrimer.fullSequence.dropFirst(4))
+assert(BioSequence.reverseComplement(shTopInner) == shBotInner, "Non-palindromic loop bottom oligo must exactly reverse-complement top inner duplex")
 assert(shPair.fwdPrimer.name == "P1_sh1-F")
 assert(shPair.revPrimer.name == "P1_sh1-R")
-pass("ShRNADesigner passed.")
+pass("ShRNADesigner passed (6T/6A parity & non-palindromic loop RC verified).")
 
 // 10. 验证 CHOPCHOPService URL 构建与 Python 异步直连
 print("🧪 [10/59] Testing CHOPCHOPService (URL & Python Pipeline)...")
@@ -302,11 +314,18 @@ let idealShScore = ShRNAScoringEngine.evaluate(sequence: idealSh)
 assert(idealShScore.score >= 80.0, "Ideal shRNA score should be >= 80, got \(idealShScore.score)")
 assert(idealShScore.tier == .excellent, "Ideal shRNA tier should be excellent")
 
-// 致命缺陷：Sense 含有 TTTT
+// 致命缺陷：Sense 含有 TTTT，或 Sense 含有 AAAA (反义链产生 TTTT)，或拼接边界形成 TTTT
 let fatalSh = "CCAGTTTTATCACCATAGAA"
 let fatalShScore = ShRNAScoringEngine.evaluate(sequence: fatalSh)
 assert(fatalShScore.hasFatalIssue, "Must flag fatal issue for shRNA TTTT")
 assert(fatalShScore.score <= 35.0, "Score must be capped at 35, got \(fatalShScore.score)")
+
+let fatalShAAAA = "CCAGAAAAATCACCATAGAA"
+let fatalShAAAAScore = ShRNAScoringEngine.evaluate(sequence: fatalShAAAA)
+assert(fatalShAAAAScore.hasFatalIssue && fatalShAAAAScore.score <= 35.0, "Sense AAAA must be flagged fatal because antisense arm contains TTTT")
+
+let juncScore = ShRNAScoringEngine.evaluate(sequence: "CCAGTCCCTATCACCATAGTT", loop: "TTCAAGAGA")
+assert(juncScore.hasFatalIssue && juncScore.score <= 35.0, "Sense-Loop junction TTTT must be flagged fatal")
 
 // 靶点动态评分与排序验证
 let dummyTargetHigh = GenomicTarget(id: 1, gene: "TEST", sequence: idealSg, species: .human, type: .sgRNA)
@@ -3241,9 +3260,12 @@ do {
     assert(dilBad?.isValid == false && dilBad?.errorMessage != nil, "Final > Stock must be flagged invalid")
 
     let t37 = LabBiochemCalculator.convertTemperature(from: .celsius(37))
+    let t0 = LabBiochemCalculator.convertTemperature(from: .celsius(0))
+    let tAbsZero = LabBiochemCalculator.convertTemperature(from: .kelvin(0))
     let tMinus40 = LabBiochemCalculator.convertTemperature(from: .fahrenheit(-40))
     let tAbsInvalid = LabBiochemCalculator.convertTemperature(from: .kelvin(-5))
-    assert(abs(t37.fahrenheit - 98.6) < 1e-6 && abs(t37.kelvin - 310.16) < 1e-6 && !t37.isBelowAbsoluteZero)
+    assert(abs(t37.fahrenheit - 98.6) < 1e-6 && abs(t37.kelvin - 310.15) < 1e-6 && !t37.isBelowAbsoluteZero)
+    assert(abs(t0.kelvin - 273.15) < 1e-6 && abs(tAbsZero.celsius - (-273.15)) < 1e-6 && !tAbsZero.isBelowAbsoluteZero)
     assert(abs(tMinus40.celsius - (-40.0)) < 1e-6 && tAbsInvalid.isBelowAbsoluteZero)
 
     assert(BioMathFormatter.format(1234.567) == "1,234.57" && BioMathFormatter.format(0.01234) == "0.012")
@@ -3799,6 +3821,276 @@ do {
     }
 
     pass("Bilingual localization verified (\(dictCount) translations, 0 CJK leaks, live switching & bilingual search).")
+}
+
+// 61. 验证第一批科研严谨度核心修复 (qPCR Vandesompele/Pfaffl/qBase/Jensen/Median+Grubbs + Homology + Plate + Sanger 覆盖度)
+print("🧪 [61/61] Testing Batch 1 Scientific Rigor Fixes (qPCR/Homology/Plate/Sanger Coverage)...")
+do {
+    // 61.1 qPCR Vandesompele 多内参算术 Ct 均值 vs 误用几何均值
+    let multiRefCSV = """
+    well,sample,group,target,ct
+    A1,C1,Ctrl,GAPDH,18.00
+    A2,C1,Ctrl,TBP,28.00
+    A3,C1,Ctrl,TP53,25.00
+    A4,C2,Ctrl,GAPDH,18.00
+    A5,C2,Ctrl,TBP,28.00
+    A6,C2,Ctrl,TP53,25.00
+    B1,T1,Trt,GAPDH,18.00
+    B2,T1,Trt,TBP,28.00
+    B3,T1,Trt,TP53,23.00
+    B4,T2,Trt,GAPDH,18.00
+    B5,T2,Trt,TBP,28.00
+    B6,T2,Trt,TP53,23.00
+    """
+    let mrWells = QPCRAnalysisEngine.parseQPCRTable(multiRefCSV)
+    let mrSettings = QPCRSettings(referenceTargets: ["GAPDH", "TBP"], controlGroup: "Ctrl", controlSample: "C1")
+    let mrQC = QPCRAnalysisEngine.computeQC(wells: mrWells, settings: mrSettings)
+    let mrOut = QPCRAnalysisEngine.computeDdct(wells: mrWells, settings: mrSettings, qc: mrQC)
+    let mrC1 = mrOut.sampleResults.first { $0.sample == "C1" && $0.target == "TP53" }!
+    let mrT1 = mrOut.sampleResults.first { $0.sample == "T1" && $0.target == "TP53" }!
+    assert(abs(mrC1.refCt - 23.0) < 1e-9, "Vandesompele multi-ref Ct must be arithmetic mean 23.0 (not GM 22.45), got \(mrC1.refCt)")
+    assert(abs(mrC1.dCt - 2.0) < 1e-9 && abs(mrT1.dCt - 0.0) < 1e-9 && abs(mrT1.fold - 4.0) < 1e-9)
+
+    // 61.2 qPCR Pfaffl (2001) + Hellemans qBase (2007) 双效率/多内参异效率 & 标曲自动接线 (Swift == Python)
+    let pfafflWells: [QPCRWellRecord] = [
+        QPCRWellRecord(well: "A1", sample: "C1", target: "GAPDH", group: "Ctrl", ct: 18.0, efficiency: 1.00),
+        QPCRWellRecord(well: "A2", sample: "C1", target: "TP53", group: "Ctrl", ct: 22.0, efficiency: 0.90),
+        QPCRWellRecord(well: "A3", sample: "C2", target: "GAPDH", group: "Ctrl", ct: 18.0, efficiency: 100.0), // 测试 % 单位归一化
+        QPCRWellRecord(well: "A4", sample: "C2", target: "TP53", group: "Ctrl", ct: 22.0, efficiency: 1.90),  // 测试 (1+E) 因子归一化
+        QPCRWellRecord(well: "B1", sample: "T1", target: "GAPDH", group: "Trt", ct: 17.0, efficiency: 1.00),
+        QPCRWellRecord(well: "B2", sample: "T1", target: "TP53", group: "Trt", ct: 20.0, efficiency: 0.90),
+        QPCRWellRecord(well: "B3", sample: "T2", target: "GAPDH", group: "Trt", ct: 17.0, efficiency: 1.00),
+        QPCRWellRecord(well: "B4", sample: "T2", target: "TP53", group: "Trt", ct: 20.0, efficiency: 0.90)
+    ]
+    let pfSettings = QPCRSettings(efficiencyCorrection: true, referenceTargets: ["GAPDH"], controlGroup: "Ctrl", controlSample: "C1")
+    let pfOut = QPCRAnalysisEngine.computeDdct(wells: pfafflWells, settings: pfSettings, qc: QPCRAnalysisEngine.computeQC(wells: pfafflWells, settings: pfSettings))
+    let pfT1 = pfOut.sampleResults.first { $0.sample == "T1" && $0.target == "TP53" }!
+    let expectedPfaffl = pow(1.90, 2.0) / pow(2.00, 1.0) // 3.61 / 2.0 = 1.805
+    assert(abs(pfT1.fold - expectedPfaffl) < 1e-6, "True Pfaffl ratio must equal 1.805000, got \(pfT1.fold)")
+
+    // 标准曲线自动接入 computeDdct（不写 sample efficiency，完全由标曲回归 E=90% 自动传递）
+    let slope90 = -1.0 / log10(1.90)
+    let intercept90 = 30.0
+    var stdWiredWells = pfafflWells.map { w -> QPCRWellRecord in
+        var c = w
+        c.efficiency = (w.target == "GAPDH") ? 1.00 : nil
+        return c
+    }
+    for (idx, q) in [1e5, 1e4, 1e3, 1e2, 1e1].enumerated() {
+        stdWiredWells.append(QPCRWellRecord(well: "H\(idx + 1)", sample: "STD\(idx + 1)", target: "TP53", group: "Standard", wellType: .standard, ct: slope90 * log10(q) + intercept90, quantity: q))
+    }
+    let stdWiredOut = QPCRAnalysisEngine.computeDdct(wells: stdWiredWells, settings: pfSettings, qc: QPCRAnalysisEngine.computeQC(wells: stdWiredWells, settings: pfSettings))
+    let stdWiredT1 = stdWiredOut.sampleResults.first { $0.sample == "T1" && $0.target == "TP53" }!
+    assert(abs(stdWiredT1.fold - expectedPfaffl) < 1e-6, "Standard-curve efficiency must wire into Pfaffl ddCt (expected 1.805, got \(stdWiredT1.fold))")
+
+    // 不等效率双内参 qBase 2007 精确检验 + Python MCP 数值一致
+    let qbaseWells: [QPCRWellRecord] = [
+        QPCRWellRecord(well: "A1", sample: "C1", target: "GAPDH", group: "Ctrl", ct: 18.0, efficiency: 0.90),
+        QPCRWellRecord(well: "A2", sample: "C1", target: "ACTB", group: "Ctrl", ct: 20.0, efficiency: 1.00),
+        QPCRWellRecord(well: "A3", sample: "C1", target: "TP53", group: "Ctrl", ct: 22.0, efficiency: 0.80),
+        QPCRWellRecord(well: "B1", sample: "T1", target: "GAPDH", group: "Trt", ct: 19.0, efficiency: 0.90),
+        QPCRWellRecord(well: "B2", sample: "T1", target: "ACTB", group: "Trt", ct: 21.0, efficiency: 1.00),
+        QPCRWellRecord(well: "B3", sample: "T1", target: "TP53", group: "Trt", ct: 20.0, efficiency: 0.80)
+    ]
+    let qbSettings = QPCRSettings(efficiencyCorrection: true, referenceTargets: ["GAPDH", "ACTB"], controlGroup: "Ctrl", controlSample: "C1")
+    let qbOut = QPCRAnalysisEngine.computeDdct(wells: qbaseWells, settings: qbSettings, qc: QPCRAnalysisEngine.computeQC(wells: qbaseWells, settings: qbSettings))
+    let qbT1 = qbOut.sampleResults.first { $0.sample == "T1" && $0.target == "TP53" }!
+    let expectedQBase = pow(1.80, 2.0) * sqrt(1.90 * 2.00) // 3.24 * sqrt(3.8) = 6.3159094357
+    assert(abs(qbT1.fold - expectedQBase) < 1e-6, "Multi-ref qBase ratio mismatch: expected \(expectedQBase), got \(qbT1.fold)")
+
+    let pyQBaseRecs: [[String: Any]] = qbaseWells.map {
+        ["sample": $0.sample, "group": $0.group, "gene": $0.target, "ct": $0.ct!, "efficiency": $0.efficiency!]
+    }
+    let pyQBasePayload = try JSONSerialization.data(withJSONObject: [
+        "reference_genes": ["GAPDH", "ACTB"],
+        "efficiency_correction": true,
+        "control_group": "Ctrl",
+        "control_sample": "C1",
+        "records": pyQBaseRecs
+    ])
+    let pyQBaseProc = Process()
+    pyQBaseProc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    pyQBaseProc.arguments = [mcpScript, "--cli-call", "analyze_qpcr_ddct", "--args", String(data: pyQBasePayload, encoding: .utf8)!]
+    let pyQBasePipe = Pipe()
+    pyQBaseProc.standardOutput = pyQBasePipe
+    try pyQBaseProc.run()
+    let pyQBaseJSON = try JSONSerialization.jsonObject(with: pyQBasePipe.fileHandleForReading.readDataToEndOfFile()) as! [String: Any]
+    pyQBaseProc.waitUntilExit()
+    let pyQBaseGroups = pyQBaseJSON["group_summaries"] as! [[String: Any]]
+    let pyTrtFold = (pyQBaseGroups.first { ($0["group"] as? String) == "Trt" }?["mean_fold"] as? Double) ?? 0.0
+    assert(abs(pyTrtFold - expectedQBase) < 1e-4, "Python MCP qBase dual-eff mismatch: expected \(expectedQBase), got \(pyTrtFold)")
+
+    // 61.2b 缺失部分内参时的 qBase (2007) 基线中心化 + 已知单位标曲截断（Swift == Python）
+    let missRefWells: [QPCRWellRecord] = [
+        QPCRWellRecord(well: "A1", sample: "C1", target: "GAPDH", group: "Ctrl", ct: 18.0),
+        QPCRWellRecord(well: "A2", sample: "C1", target: "ACTB", group: "Ctrl", ct: 28.0),
+        QPCRWellRecord(well: "A3", sample: "C1", target: "TP53", group: "Ctrl", ct: 25.0),
+        QPCRWellRecord(well: "B1", sample: "T1", target: "GAPDH", group: "Trt", ct: 18.0), // T1 缺失 ACTB，但 TP53 仍应为 1.0
+        QPCRWellRecord(well: "B3", sample: "T1", target: "TP53", group: "Trt", ct: 25.0)
+    ]
+    let missRefSettings = QPCRSettings(referenceTargets: ["GAPDH", "ACTB"], controlGroup: "Ctrl", controlSample: "C1")
+    let missRefOut = QPCRAnalysisEngine.computeDdct(wells: missRefWells, settings: missRefSettings, qc: QPCRAnalysisEngine.computeQC(wells: missRefWells, settings: missRefSettings))
+    let missRefT1 = missRefOut.sampleResults.first { $0.sample == "T1" && $0.target == "TP53" }!
+    assert(abs(missRefT1.fold - 1.0) < 1e-6, "Missing one reference gene must NOT create spurious bias (expected 1.0, got \(missRefT1.fold))")
+    let pyMissRefRecs: [[String: Any]] = missRefWells.map { ["sample": $0.sample, "group": $0.group, "gene": $0.target, "ct": $0.ct!] }
+    let pyMissRefPayload = try JSONSerialization.data(withJSONObject: [
+        "reference_genes": ["GAPDH", "ACTB"],
+        "control_group": "Ctrl",
+        "control_sample": "C1",
+        "records": pyMissRefRecs
+    ])
+    let pyMissProc = Process()
+    pyMissProc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    pyMissProc.arguments = [mcpScript, "--cli-call", "analyze_qpcr_ddct", "--args", String(data: pyMissRefPayload, encoding: .utf8)!]
+    let pyMissPipe = Pipe()
+    pyMissProc.standardOutput = pyMissPipe
+    try pyMissProc.run()
+    let pyMissJSON = try JSONSerialization.jsonObject(with: pyMissPipe.fileHandleForReading.readDataToEndOfFile()) as! [String: Any]
+    pyMissProc.waitUntilExit()
+    let pyMissRes = (pyMissJSON["results"] as! [[String: Any]]).first { ($0["sample"] as? String) == "T1" }!
+    let pyMissFold = (pyMissRes["relative_expression_2_neg_ddct"] as? Double) ?? -1.0
+    assert(abs(pyMissFold - 1.0) < 1e-4, "Python MCP missing-ref fold must equal 1.0, got \(pyMissFold)")
+
+    // 标曲已知单位极值截断测试：E=180% 必须钳制至 1.50 (base=2.50)；E=2.0% 必须钳制至 0.10 (base=1.10)
+    let slope180 = -1.0 / log10(2.80)
+    var clamp180Wells: [QPCRWellRecord] = [
+        QPCRWellRecord(well: "A1", sample: "C1", target: "GAPDH", group: "Ctrl", ct: 18.0, efficiency: 1.00),
+        QPCRWellRecord(well: "A2", sample: "C1", target: "TP53", group: "Ctrl", ct: 22.0),
+        QPCRWellRecord(well: "B1", sample: "T1", target: "GAPDH", group: "Trt", ct: 18.0, efficiency: 1.00),
+        QPCRWellRecord(well: "B2", sample: "T1", target: "TP53", group: "Trt", ct: 20.0)
+    ]
+    for (idx, q) in [1e5, 1e4, 1e3, 1e2, 1e1].enumerated() {
+        clamp180Wells.append(QPCRWellRecord(well: "H\(idx + 1)", sample: "STD\(idx + 1)", target: "TP53", group: "Standard", wellType: .standard, ct: slope180 * log10(q) + 30.0, quantity: q))
+    }
+    let clamp180Out = QPCRAnalysisEngine.computeDdct(wells: clamp180Wells, settings: pfSettings, qc: QPCRAnalysisEngine.computeQC(wells: clamp180Wells, settings: pfSettings))
+    let clamp180T1 = clamp180Out.sampleResults.first { $0.sample == "T1" && $0.target == "TP53" }!
+    assert(abs(clamp180T1.efficiency - 1.50) < 1e-6 && abs(clamp180T1.fold - 6.25) < 1e-5, "180% std-curve must clamp directly to 1.50 -> fold 6.25, got eff=\(clamp180T1.efficiency) fold=\(clamp180T1.fold)")
+
+    let slope2pct = -1.0 / log10(1.02)
+    let clamp2Wells = clamp180Wells.map { w -> QPCRWellRecord in
+        guard w.wellType == .standard, let q = w.quantity else { return w }
+        var c = w
+        c.ct = slope2pct * log10(q) + 30.0
+        return c
+    }
+    let clamp2Out = QPCRAnalysisEngine.computeDdct(wells: clamp2Wells, settings: pfSettings, qc: QPCRAnalysisEngine.computeQC(wells: clamp2Wells, settings: pfSettings))
+    let clamp2T1 = clamp2Out.sampleResults.first { $0.sample == "T1" && $0.target == "TP53" }!
+    assert(abs(clamp2T1.efficiency - 0.10) < 1e-6 && abs(clamp2T1.fold - 1.21) < 1e-5, "2.0% std-curve must clamp directly to 0.10 -> fold 1.21 (NOT misparsed as factor), got eff=\(clamp2T1.efficiency) fold=\(clamp2T1.fold)")
+
+    // 61.3 qPCR Jensen 不等式修复：对照组均值恒为 1.0 且处理组几何均值等于 CI95 几何中心
+    let jensenWells: [QPCRWellRecord] = [
+        QPCRWellRecord(well: "A1", sample: "C1", target: "GAPDH", group: "Ctrl", ct: 18.0),
+        QPCRWellRecord(well: "A2", sample: "C1", target: "TP53", group: "Ctrl", ct: 23.0), // dCt = 5.0
+        QPCRWellRecord(well: "A3", sample: "C2", target: "GAPDH", group: "Ctrl", ct: 18.0),
+        QPCRWellRecord(well: "A4", sample: "C2", target: "TP53", group: "Ctrl", ct: 25.0), // dCt = 7.0 -> ctrlMean=6.0
+        QPCRWellRecord(well: "B1", sample: "T1", target: "GAPDH", group: "Trt", ct: 18.0),
+        QPCRWellRecord(well: "B2", sample: "T1", target: "TP53", group: "Trt", ct: 21.0), // dCt = 3.0
+        QPCRWellRecord(well: "B3", sample: "T2", target: "GAPDH", group: "Trt", ct: 18.0),
+        QPCRWellRecord(well: "B4", sample: "T2", target: "TP53", group: "Trt", ct: 23.0)  // dCt = 5.0 -> trtMean=4.0 -> ddCt=-2 -> geomFold=4.0
+    ]
+    let jenSettings = QPCRSettings(referenceTargets: ["GAPDH"], controlGroup: "Ctrl", controlSample: "C1")
+    let jenOut = QPCRAnalysisEngine.computeDdct(wells: jensenWells, settings: jenSettings, qc: QPCRAnalysisEngine.computeQC(wells: jensenWells, settings: jenSettings))
+    let jenCtrl = jenOut.groupResults.first { $0.category == "Ctrl" }!
+    let jenTrt = jenOut.groupResults.first { $0.category == "Trt" }!
+    assert(abs(jenCtrl.meanFold - 1.0) < 1e-9, "Control group geometric meanFold must be exactly 1.0 (not 1.25 from Jensen bias), got \(jenCtrl.meanFold)")
+    let ciCenter = sqrt((jenTrt.foldCI95Low ?? 0.0) * (jenTrt.foldCI95High ?? 0.0))
+    assert(abs(jenTrt.meanFold - 4.0) < 1e-9 && abs(jenTrt.meanFold - ciCenter) < 1e-6, "Treated group meanFold (\(jenTrt.meanFold)) must equal geometric CI center (\(ciCenter))")
+
+    // 61.4 qPCR 中位数稳健离群检验 + Grubbs (1969) 检验
+    let outWells: [QPCRWellRecord] = [
+        QPCRWellRecord(well: "A1", sample: "M1", target: "GAPDH", group: "G", ct: 20.0),
+        QPCRWellRecord(well: "A2", sample: "M1", target: "GAPDH", group: "G", ct: 20.1),
+        QPCRWellRecord(well: "A3", sample: "M1", target: "GAPDH", group: "G", ct: 21.6),
+        QPCRWellRecord(well: "B1", sample: "M2", target: "GAPDH", group: "G", ct: 20.0),
+        QPCRWellRecord(well: "B2", sample: "M2", target: "GAPDH", group: "G", ct: 20.1),
+        QPCRWellRecord(well: "B3", sample: "M2", target: "GAPDH", group: "G", ct: 20.8)
+    ]
+    let outQC = QPCRAnalysisEngine.computeQC(wells: outWells, settings: QPCRSettings(outlierLimit: 0.5))
+    assert(!(outQC[outWells[0].id]?.flags.contains(.outlier) ?? false), "Valid M1 well 20.0 must NOT be double-flagged with 21.6 outlier")
+    assert(outQC[outWells[2].id]?.flags.contains(.outlier) == true, "True M1 outlier 21.6 must be flagged")
+    assert(outQC[outWells[5].id]?.flags.contains(.outlier) == true, "M2 outlier 20.8 must be flagged without mean masking")
+    assert(QPCRStatistics.grubbsTestOutlierIndex([20.0, 20.1, 20.05, 19.95, 22.5], alpha: 0.05) == 4)
+    assert(QPCRStatistics.grubbsTestOutlierIndex([20.0, 20.1, 20.05, 19.95, 20.08], alpha: 0.05) == nil)
+
+    // 61.5 HomologyArmDesigner 短反向序列反转互补 + 环形缺失回绕
+    let shortRev = HomologyArmDesigner.pickSpecificAnnealingSeq(from: "ATGCAATTGGCCAA", targetTm: 50.0, isForward: false)
+    assert(shortRev.seq == BioSequence.reverseComplement("ATGCAATTGGCCAA"), "Short reverse template must return reverseComplement")
+    let mutShort = HomologyArmDesigner.designMutagenesis(
+        mutUp: "ATCGATCGATCGATCGATCGAT", // 22 bp -> dropLast(7) = 15 bp (<18 bp)
+        mutDown: "GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA",
+        mutSite: "GAG",
+        homologyLength: 18
+    )
+    assert(mutShort.primerR.specificSequence == BioSequence.reverseComplement("ATCGATCGATCGATC"), "Short mutUp Mutation-R must be reverse-complemented")
+    let smallPlasmid = "ATGCTAGCTAGC" + String(repeating: "GCTAGCATCGAT", count: 10)
+    let edgeDel = HomologyArmDesigner.designFragmentDeletion(plasmidSeq: smallPlasmid, delStart: 8, delEnd: 57, homologyLength: 18)
+    assert(edgeDel.primerR.specificSequence.count >= 18, "Deletion near start must wrap circularly to design valid >=18bp Deletion-R")
+
+    // 验证 HomologyArmDesigner.pickSpecificAnnealingSeq 与 Python pick_specific_annealing_seq 严格一致（含二级结构风险权重 > GC 奖励）
+    let paritySeq = "TAAATGACCCTCTCGTCATAAAACCTTTCTACTATGTGTTCCGCA"
+    let swPicked = HomologyArmDesigner.pickSpecificAnnealingSeq(from: paritySeq, fivePrimeOverhang: "", targetTm: 60.0, tolerance: 1.0, isForward: true).seq
+    let pyPickProc = Process()
+    pyPickProc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    let mcpDir = URL(fileURLWithPath: mcpScript).deletingLastPathComponent().path
+    pyPickProc.arguments = ["-c", "import sys; sys.path.insert(0, '\(mcpDir)'); import clonestudio_mcp_server as m; print(m.pick_specific_annealing_seq('\(paritySeq)', '', 60.0, 1.0))"]
+    let pyPickPipe = Pipe()
+    pyPickProc.standardOutput = pyPickPipe
+    try pyPickProc.run()
+    let pyPicked = (String(data: pyPickPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    pyPickProc.waitUntilExit()
+    assert(swPicked == pyPicked, "Swift pickSpecificAnnealingSeq (\(swPicked)) must match Python (\(pyPicked))")
+
+    // 61.6 PlateLayoutEngine Control/Blank 不进边缘孔 + 分组随机分布
+    let pSamples = PlateLayoutEngine.parseSampleTable("Sample\tGroup\tReplicates\nS1\tG1\t3\nS2\tG1\t3\nS3\tG2\t3\nS4\tG2\t3")
+    let plateResv = PlateLayoutEngine.assignPlate(format: .well96, samples: pSamples, rules: PlateLayoutRules(replicates: 3, controls: 4, blanks: 4, reserveEdge: true, avoidEdge: true, keepTogether: true, randomize: true, seed: 42))
+    let plateResv2 = PlateLayoutEngine.assignPlate(format: .well96, samples: pSamples, rules: PlateLayoutRules(replicates: 3, controls: 4, blanks: 4, reserveEdge: true, avoidEdge: true, keepTogether: true, randomize: true, seed: 99))
+    let edgeCtrlOrBlank = plateResv.assignments.values.filter { ($0.type == .control || $0.type == .blank) && PlateFormat.well96.isEdgeWell(row: $0.row, col: $0.col) }
+    assert(edgeCtrlOrBlank.isEmpty, "reserveEdge=true must NEVER put control/blank wells on edge perimeter")
+    let plateAvoid = PlateLayoutEngine.assignPlate(format: .well96, samples: pSamples, rules: PlateLayoutRules(replicates: 3, controls: 4, blanks: 4, reserveEdge: false, avoidEdge: true, keepTogether: true, randomize: true, seed: 42))
+    let avoidEdgeAux = plateAvoid.assignments.values.filter { ($0.type == .control || $0.type == .blank) && PlateFormat.well96.isEdgeWell(row: $0.row, col: $0.col) }
+    assert(avoidEdgeAux.isEmpty, "avoidEdge=true must keep control/blank wells out of perimeter edges")
+    let sWells1 = Set(plateResv.assignments.values.filter { $0.type == .sample }.map(\.well))
+    let sWells2 = Set(plateResv2.assignments.values.filter { $0.type == .sample }.map(\.well))
+    assert(sWells1 != sWells2, "keepTogether + randomize must randomize block spatial coordinates across seeds")
+    let bulkSamples = (1...5).map { PlateSampleItem(name: "Bulk\($0)", group: "G", customReplicates: 12) } // 5 * 12 = 60 == interiorCount(60); + 3 controls + 3 blanks = 66 > 60
+    let overCapIssues = PlateLayoutEngine.validateLayout(format: .well96, samples: bulkSamples, rules: PlateLayoutRules(replicates: 12, controls: 3, blanks: 3, reserveEdge: true), assignments: [:]).issues
+    assert(overCapIssues.contains { $0.severity == .error }, "validateLayout must include auxNeed when checking reserveEdge interior capacity")
+
+    // 61.7 SangerBatchEngine 覆盖度门禁 (低覆盖 WT 禁止判 pass；显式目标区间需 >=95% Q20)
+    let covRef =
+        "GCTAGCGCTACCGGTCGCCACCATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTG" +
+        "CCCATCCTGGTCGAGCTGGACGGCGACGTAAACGGCCACAAGTTCAGCGTGTCCGGCGAG" +
+        "GGCGAGGGCGATGCCACCTACGGCAAGCTGACCCTGAAGTTCATCTGCACCACCGGCAAG" +
+        "CTGCCCGTGCCCTGGCCCACCCTCGTGACCACCCTGACCTACGGCGTGCAGTGCTTCAGC" +
+        "CGCTACCCCGACCACATGAAGCAGCACGACTTCTTCAAGTCCGCCATGCCCGAAGGCTAC" +
+        "GTCCAGGAGCGCACCATCTTCTTCAAGGACGACGGCAACTACAAGACCCGCGCCGAGGTG" +
+        "AAGTTCGAGGGCGACACCCTGGTGAACCGCATCGAGCTGAAGGGCATCGACTTCAAGGAG" // 420 bp 非重复 EGFP 序列
+    let shortSlice = String(Array(covRef)[0..<60]) // 60/420 = 14.3%
+    let shortAB1 = SangerAlignmentEngine.generateSyntheticAB1Data(sequence: shortSlice, sampleName: "LowCov-Clone1-F.ab1", simulateNoisyEnds: false)
+    let shortRead = SangerBatchEngine.verifyInMemoryRead(
+        data: shortAB1,
+        fileName: "LowCov-Clone1-F.ab1",
+        index: 0,
+        candidates: [SangerBatchEngine.SangerReferenceCandidate(name: "CovRef", sequence: covRef)]
+    )
+    let lowCovSummary = SangerBatchEngine.summarizeByClone(reads: [shortRead], candidates: [SangerBatchEngine.SangerReferenceCandidate(name: "CovRef", sequence: covRef)])
+    assert(lowCovSummary.first?.verdict == .needsReview, "14% coverage WT clone must NOT pass (expected .needsReview, got \(String(describing: lowCovSummary.first?.verdict)))")
+
+    let targetCand = SangerBatchEngine.SangerReferenceCandidate(name: "TargetCovRef", sequence: covRef, targetStart1Based: 50, targetEnd1Based: 250)
+    let partialTargetSlice = String(Array(covRef)[40..<170]) // ~60% of 50..250
+    let partialAB1 = SangerAlignmentEngine.generateSyntheticAB1Data(sequence: partialTargetSlice, sampleName: "TargetClone-F.ab1", simulateNoisyEnds: false)
+    let partialRead = SangerBatchEngine.verifyInMemoryRead(data: partialAB1, fileName: "TargetClone-F.ab1", index: 0, candidates: [targetCand])
+    let partialTargetSummary = SangerBatchEngine.summarizeByClone(reads: [partialRead], candidates: [targetCand])
+    assert(partialTargetSummary.first?.verdict == .needsReview, "Explicit target region with <95% Q20 coverage must return .needsReview")
+    let revTargetSlice = BioSequence.reverseComplement(String(Array(covRef)[150..<265]))
+    let revAB1 = SangerAlignmentEngine.generateSyntheticAB1Data(sequence: revTargetSlice, sampleName: "TargetClone-R.ab1", simulateNoisyEnds: false)
+    let revRead = SangerBatchEngine.verifyInMemoryRead(data: revAB1, fileName: "TargetClone-R.ab1", index: 1, candidates: [targetCand])
+    let fullTargetSummary = SangerBatchEngine.summarizeByClone(reads: [partialRead, revRead], candidates: [targetCand])
+    assert(fullTargetSummary.first?.verdict == .pass && (fullTargetSummary.first?.coveragePercent ?? 0) >= 99.0, "Explicit target region with full F+R Q20 coverage must pass (got verdict=\(String(describing: fullTargetSummary.first?.verdict)), cov=\(fullTargetSummary.first?.coveragePercent ?? -1))")
+
+    pass("Batch 1 scientific rigor suite passed (Vandesompele/Pfaffl/qBase/Jensen/Median+Grubbs/Homology/Plate/SangerCov).")
+} catch {
+    fatalError("Batch 1 scientific rigor test failed: \(error)")
 }
 
 let finalPyToolCount = await MainActor.run { PlasmidPoolManager.mcpToolsCatalog.count }

@@ -123,11 +123,11 @@ public enum PlateLayoutEngine {
         let edgeCount = allCells.filter(\.isEdge).count
         let interiorCount = format.totalWells - edgeCount
         
-        if rules.reserveEdge && sampleNeed > interiorCount {
+        if rules.reserveEdge && (sampleNeed + auxNeed) > interiorCount {
             issues.append(
                 PlateLayoutIssue(
                     severity: .error,
-                    message: L10n.tr("内部可用孔位不足：启用边缘预留后仅剩 \(interiorCount) 个内部孔，但样品共需 \(sampleNeed) 个孔", "Insufficient interior wells: \(interiorCount) available with edge avoidance, \(sampleNeed) needed")
+                    message: L10n.tr("内部可用孔位不足：启用边缘预留后仅剩 \(interiorCount) 个内部孔，但样品与对照/空白共需 \(sampleNeed + auxNeed) 个孔", "Insufficient interior wells: \(interiorCount) available with edge reservation, \(sampleNeed + auxNeed) needed for samples and controls/blanks")
                 )
             )
         } else if sampleNeed + auxNeed > format.totalWells {
@@ -199,6 +199,14 @@ public enum PlateLayoutEngine {
                 PlateLayoutIssue(
                     severity: .warning,
                     message: L10n.tr("空白孔数量不足：已分配 \(blankPlaced)/\(rules.blanks) 孔", "Insufficient blank wells: \(blankPlaced)/\(rules.blanks) assigned")
+                )
+            )
+        }
+        if (rules.avoidEdge || rules.reserveEdge) && allAssigned.contains(where: { ($0.type == .control || $0.type == .blank) && format.isEdgeWell(row: $0.row, col: $0.col) }) {
+            issues.append(
+                PlateLayoutIssue(
+                    severity: .warning,
+                    message: L10n.t("对照孔或空白孔使用了外圈边缘孔位，可能引入边缘蒸发偏差")
                 )
             )
         }
@@ -371,6 +379,8 @@ public enum PlateLayoutEngine {
             let strategies: [PlateGroupLayoutStrategy] = (rules.groupLayout == .auto)
                 ? [.row, .column, .block]
                 : [rules.groupLayout]
+            let minRow = (rules.reserveEdge || rules.avoidEdge) && format.rows > 2 ? 1 : 0
+            let minCol = (rules.reserveEdge || rules.avoidEdge) && format.cols > 2 ? 1 : 0
             for st in strategies {
                 let candidates: [[PlateWellCell]]
                 switch st {
@@ -378,7 +388,25 @@ public enum PlateLayoutEngine {
                 case .column:     candidates = columnCandidates(count: count)
                 case .block:      candidates = blockCandidates(count: count)
                 }
-                if let choice = candidates.first, choice.count == count {
+                guard !candidates.isEmpty else { continue }
+                let choice: [PlateWellCell]?
+                if rules.randomize {
+                    let aligned: [[PlateWellCell]]
+                    switch st {
+                    case .row, .auto:
+                        aligned = candidates.filter { ($0[0].col - minCol) % max(1, count) == 0 }
+                    case .column:
+                        aligned = candidates.filter { ($0[0].row - minRow) % max(1, count) == 0 }
+                    case .block:
+                        aligned = candidates
+                    }
+                    var pool = aligned.isEmpty ? candidates : aligned
+                    rng.shuffle(&pool)
+                    choice = pool.first
+                } else {
+                    choice = candidates.first
+                }
+                if let choice, choice.count == count {
                     for cell in choice { used.insert(cell.id) }
                     return choice
                 }
@@ -412,7 +440,16 @@ public enum PlateLayoutEngine {
         func takeAuxCells(count: Int) -> [PlateWellCell] {
             let wanted = max(0, min(format.totalWells, count))
             guard wanted > 0 else { return [] }
-            let pools = [allCells.filter(\.isEdge), allCells.filter { !$0.isEdge }]
+            // 遵循 Festing & Altman (2002) 与 NIH Assay Guidance Manual：
+            // 严禁把 Control / Blank 优先放进高蒸发边缘孔制造空间混杂
+            let pools: [[PlateWellCell]]
+            if rules.reserveEdge {
+                pools = [allCells.filter { !$0.isEdge }]
+            } else if rules.avoidEdge {
+                pools = [allCells.filter { !$0.isEdge }, allCells.filter(\.isEdge)]
+            } else {
+                pools = [allCells]
+            }
             var picked: [PlateWellCell] = []
             for pool in pools {
                 if picked.count >= wanted { break }

@@ -3,10 +3,12 @@ import Foundation
 /// 慢病毒 shRNA / siRNA 靶点有效性与可靠性评分引擎 (参考 Reynolds 8规则, Ui-Tei 规则, Amarzguioui 规则)
 public struct ShRNAScoringEngine {
     
-    /// 对 19~21 bp shRNA Sense 链序列进行多维打分
-    /// - Parameter sequence: 靶向 Sense 序列 (通常 19~21nt)
+    /// 对 19~21 bp shRNA Sense 链序列进行多维打分 (Bogenhagen & Brown 1981 Pol III 终止规则 + Reynolds / Ui-Tei)
+    /// - Parameters:
+    ///   - sequence: 靶向 Sense 序列 (通常 19~21nt)
+    ///   - loop: 发夹环序列 (默认 CTCGAG，用于联检 Antisense 链及拼接边界 TTTT)
     /// - Returns: TargetScore 综合评分与诊断标签
-    public static func evaluate(sequence: String) -> TargetScore {
+    public static func evaluate(sequence: String, loop: String = ShRNADesigner.defaultLoop) -> TargetScore {
         let cleanSeq = BioSequence.clean(sequence)
         guard cleanSeq.count >= 15 else {
             return TargetScore(
@@ -23,10 +25,21 @@ public struct ShRNAScoringEngine {
         var tags: [ScoreTag] = []
         var fatalWarning: String? = nil
         
-        // 1. Pol III 转录终止信号检查 (慢病毒载体 pLKO.1 / U6 启动子致命缺陷)
+        // 1. Pol III 转录终止信号检查 (含 Sense TTTT、Sense AAAA->Antisense TTTT 以及 Sense-Loop-Antisense 边界 TTTT)
+        let cleanLoop = BioSequence.clean(loop)
+        let antisense = BioSequence.reverseComplement(cleanSeq)
+        let hairpinTranscript = cleanSeq + cleanLoop + antisense
         if cleanSeq.contains("TTTT") {
             tags.append(ScoreTag(name: L10n.t("⚠️ 含Pol III终止信号TTTT"), points: -40, type: .fatal))
             fatalWarning = L10n.t("Sense链含 4 个及以上连续 T，在 pLKO.1 载体中会导致转录提前终止无法形成发夹")
+            rawScore -= 40.0
+        } else if cleanSeq.contains("AAAA") {
+            tags.append(ScoreTag(name: L10n.t("⚠️ Sense含AAAA (反义链产生Pol III终止信号TTTT)"), points: -40, type: .fatal))
+            fatalWarning = L10n.t("Sense链含 4 个及以上连续 A，其互补反义链将形成 TTTT，导致 pLKO.1/U6 Pol III 转录提前终止")
+            rawScore -= 40.0
+        } else if hairpinTranscript.contains("TTTT") {
+            tags.append(ScoreTag(name: L10n.t("⚠️ 发夹连接处产生Pol III终止信号TTTT"), points: -40, type: .fatal))
+            fatalWarning = L10n.t("Sense–Loop–Antisense 拼接处形成连续 4 个 T，会导致 Pol III 转录提前终止")
             rawScore -= 40.0
         }
         
@@ -92,8 +105,8 @@ public struct ShRNAScoringEngine {
             rawScore -= 25.0
         }
         
-        // 6. 同聚物游程检查 (Poly-N >= 4)
-        if cleanSeq.contains("AAAA") || cleanSeq.contains("CCCC") || cleanSeq.contains("GGGG") {
+        // 6. C/G 同聚物游程检查 (Poly-C / Poly-G >= 4；Poly-A 已按反义链 Pol III TTTT 致命缺陷处理)
+        if cleanSeq.contains("CCCC") || cleanSeq.contains("GGGG") {
             tags.append(ScoreTag(name: L10n.t("存在同聚物游程 (≥4nt)"), points: -15, type: .penalty))
             rawScore -= 15.0
         }

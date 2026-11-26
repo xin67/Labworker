@@ -192,7 +192,7 @@ public struct SgRNADesignView: View {
                     StudioCard(title: "载体骨架与命名") {
                         StudioMetricBadge(
                             label: L10n.t("接头"),
-                            value: vm.vectorOverhang == .px459_px458 ? "BbsI (CACC)" : "BsmBI (CACCG)",
+                            value: vm.vectorOverhang == .px459_px458 ? "BbsI (CACC[G])" : "BsmBI (CACC[G])",
                             color: .cyan
                         )
                     } content: {

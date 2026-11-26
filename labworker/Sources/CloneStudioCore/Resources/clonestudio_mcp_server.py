@@ -313,7 +313,7 @@ def calc_hairpin(raw_seq: str, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp
     seq = clean[-60:] if len(clean) > 60 else clean
     n = len(seq)
     if n < 7:
-        return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0}
+        return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0, "three_prime_anchored": False, "risk_level": "safe"}
     temp_k = temp_c + 273.15
     na_eq = equivalent_monovalent_molar(mv_conc, dv_conc, dntp_conc)
     salt_per_step = 0.368 * math.log(na_eq)
@@ -380,14 +380,23 @@ def calc_hairpin(raw_seq: str, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp
                     best_dg, best_dh, best_ds = cand_dg, cand_dh, cand_ds
                     best_pairs = list(pairs)
     if not best_pairs or best_dg >= -0.2 or best_ds >= 0:
-        return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0}
+        return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0, "three_prime_anchored": False, "risk_level": "safe"}
     tm = max(0.0, (best_dh * 1000.0) / best_ds - 273.15)
+    anchored3 = any(p[0] >= n - 3 or p[1] >= n - 3 for p in best_pairs)
+    if (anchored3 and best_dg <= -3.0) or best_dg <= -6.0:
+        risk_level = "high"
+    elif best_dg <= -3.0:
+        risk_level = "moderate"
+    else:
+        risk_level = "safe"
     return {
         "structure_found": True,
         "dg": round(best_dg, 2),
         "dh": round(best_dh, 2),
         "ds": round(best_ds, 2),
-        "tm": round(tm, 1)
+        "tm": round(tm, 1),
+        "three_prime_anchored": anchored3,
+        "risk_level": risk_level
     }
 
 def calc_dimer(raw_seq1: str, raw_seq2: str, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp_conc: float = 0.6, dna_conc: float = 50.0, temp_c: float = 37.0) -> dict:
@@ -397,7 +406,7 @@ def calc_dimer(raw_seq1: str, raw_seq2: str, mv_conc: float = 50.0, dv_conc: flo
     s2_rev = s2_orig[::-1]
     n1, n2 = len(s1), len(s2_rev)
     if n1 < 4 or n2 < 4:
-        return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0}
+        return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0, "three_prime_anchored": False, "risk_level": "safe"}
     temp_k = temp_c + 273.15
     na_eq = equivalent_monovalent_molar(mv_conc, dv_conc, dntp_conc)
     salt_per_step = 0.368 * math.log(na_eq)
@@ -479,19 +488,34 @@ def calc_dimer(raw_seq1: str, raw_seq2: str, mv_conc: float = 50.0, dv_conc: flo
                     best_dg, best_dh, best_ds = cand_dg, cand_dh, cand_ds
                     best_pairs = list(pairs)
     if not best_pairs or best_dg >= -0.5 or best_ds >= 0:
-        return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0}
+        return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0, "three_prime_anchored": False, "risk_level": "safe"}
     c_molar = max(1e-9, float(dna_conc) * 1e-9)
     tm = (best_dh * 1000.0) / (best_ds + 1.9872 * math.log(c_molar)) - 273.15
+    anchored3 = any(p[0] >= n1 - 3 or p[1] <= 2 for p in best_pairs)
+    if (anchored3 and best_dg <= -6.0) or best_dg <= -10.5:
+        risk_level = "high"
+    elif best_dg <= -6.0:
+        risk_level = "moderate"
+    else:
+        risk_level = "safe"
     return {
         "structure_found": True,
         "dg": round(best_dg, 2),
         "dh": round(best_dh, 2),
         "ds": round(best_ds, 2),
-        "tm": round(tm, 1)
+        "tm": round(tm, 1),
+        "three_prime_anchored": anchored3,
+        "risk_level": risk_level
     }
 
 def calc_homodimer(raw_seq: str, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp_conc: float = 0.6, dna_conc: float = 50.0, temp_c: float = 37.0) -> dict:
     return calc_dimer(raw_seq, raw_seq, mv_conc=mv_conc, dv_conc=dv_conc, dntp_conc=dntp_conc, dna_conc=dna_conc, temp_c=temp_c)
+
+def _evaluate_primer_overall_risk(raw_seq: str) -> str:
+    rank = {"safe": 0, "moderate": 1, "high": 2}
+    hp_risk = calc_hairpin(raw_seq).get("risk_level", "safe")
+    hd_risk = calc_homodimer(raw_seq).get("risk_level", "safe")
+    return hp_risk if rank.get(hp_risk, 0) >= rank.get(hd_risk, 0) else hd_risk
 
 def pick_specific_annealing_seq(template_5to3: str, five_prime_overhang: str = "", target_tm: float = 60.0, tolerance: float = 1.0, min_len: int = 18, max_len: int = 38) -> str:
     """100% aligned with HomologyArmDesigner.pickSpecificAnnealingSeq"""
@@ -516,8 +540,10 @@ def pick_specific_annealing_seq(template_5to3: str, five_prime_overhang: str = "
             if tm >= target_tm:
                 return sub
         elif lower_bound <= tm <= upper_bound:
-            gc_bonus = 0.6 if sub[-1] in "GC" else 0.0
-            score = gc_bonus - diff
+            gc_bonus = 0.35 if sub[-1] in "GC" else 0.0
+            risk = _evaluate_primer_overall_risk(five_prime_overhang + sub)
+            risk_penalty = 1.50 if risk == "high" else (0.50 if risk == "moderate" else 0.0)
+            score = gc_bonus - diff - risk_penalty
             if score > best_win_score:
                 best_win_score = score
                 best_win_seq = sub
@@ -1472,11 +1498,17 @@ def tool_design_fragment_deletion_primers(args: dict) -> dict:
     hom_len = int(args.get("homology_length", 18))
     target_tm = float(args.get("target_tm", 65.0))
 
-    doubled = full_seq + full_seq
     n = len(full_seq)
-    u_end = del_start - 1 if del_start > 1 else n
-    up_flank = doubled[u_end + n - 80:u_end + n]
-    down_flank = doubled[del_end:del_end + 80]
+    up_retained = full_seq[:max(0, del_start - 1)]
+    down_retained = full_seq[del_end:]
+    retained_ring = down_retained + up_retained
+    if not retained_ring:
+        raise ValueError("删除区间覆盖整条质粒，无剩余骨架序列可用于设计反向 PCR 引物")
+    ring_pool = retained_ring
+    while len(ring_pool) < max(80, hom_len):
+        ring_pool += retained_ring
+    up_flank = up_retained[-80:] if len(up_retained) >= 80 else ring_pool[-80:]
+    down_flank = down_retained[:80] if len(down_retained) >= 80 else ring_pool[:80]
 
     hom_f = up_flank[-hom_len:]
     hom_r = rev_comp(down_flank[:hom_len])
@@ -1998,25 +2030,25 @@ def tool_calculate_solution_and_temperature(args: dict) -> dict:
         if fu == "F":
             c = (5.0 / 9.0) * (v - 32.0)
             f = v
-            k = c + 273.16
+            k = c + 273.15
         elif fu == "C":
             c = v
             f = (9.0 / 5.0) * c + 32.0
-            k = c + 273.16
+            k = c + 273.15
         elif fu == "K":
             k = v
-            c = k - 273.16
+            c = k - 273.15
             f = (9.0 / 5.0) * c + 32.0
         else:
             return {"status": "error", "error": f"不支持的 from_unit: {fu}，请传 F / C / K"}
         if k < 0:
-            return {"status": "error", "error": "温度低于绝对零度（0 K / -273.16 °C）。", "kelvin": round(k, 2)}
+            return {"status": "error", "error": "温度低于绝对零度（0 K / -273.15 °C）。", "kelvin": round(k, 2)}
         return {
             "status": "success", "mode": mode,
             "fahrenheit": round(f, 2),
             "celsius": round(c, 2),
             "kelvin": round(k, 2),
-            "formula": "°C=5/9(°F-32); °F=9/5°C+32; °K=°C+273.16"
+            "formula": "°C=5/9(°F-32); °F=9/5°C+32; K=°C+273.15"
         }
 
     return {"status": "error", "error": f"未知 mode: {mode}"}
@@ -2054,9 +2086,6 @@ def tool_design_sgrna_primers(args: dict) -> dict:
     top_n = max(1, min(10, int(args.get("top_n", 3))))
     vec_type = (args.get("vector_type") or "lentiCRISPRv2").strip()
     is_px459 = ("459" in vec_type.lower() or "458" in vec_type.lower() or "bbsi" in vec_type.lower())
-    fwd_prefix = "CACC" if is_px459 else "CACCG"
-    rev_prefix = "AAAC"
-    rev_suffix = "" if is_px459 else "C"
     vec_label = "pSpCas9 / pX459 (BbsI)" if is_px459 else "lentiCRISPR v2 (BsmBI)"
 
     candidates = []
@@ -2103,6 +2132,12 @@ def tool_design_sgrna_primers(args: dict) -> dict:
     for idx, cand in enumerate(selected, start=1):
         sp = cand["spacer"]
         rc = rev_comp(sp)
+        # 遵循 Ran et al. (Nat. Protoc. 2013) & Sanjana et al. (Nat. Methods 2014): 仅当 spacer 首位不是 G 时追加 U6 +1G / 3' C
+        starts_with_g = sp.startswith("G")
+        fwd_prefix = "CACC" if starts_with_g else "CACCG"
+        rev_prefix = "AAAC"
+        rev_suffix = "" if starts_with_g else "C"
+        cand["added_u6_g"] = (not starts_with_g)
         fwd_full = fwd_prefix + sp
         rev_full = rev_prefix + rc + rev_suffix
         pf = make_primer_dict(
@@ -2111,7 +2146,7 @@ def tool_design_sgrna_primers(args: dict) -> dict:
             specific_seq=sp,
             purpose=f"sgRNA#{idx} 正向退火引物 ({vec_label})",
             source_tool="MCP sgRNA设计",
-            custom_notes=f"靶基因:{gene_name} | 位点:{cand['position']}({cand['strand']}) | PAM:{cand['pam']} | 评分:{cand['score']}"
+            custom_notes=f"靶基因:{gene_name} | 位点:{cand['position']}({cand['strand']}) | PAM:{cand['pam']} | 评分:{cand['score']} | 5'+{fwd_prefix}"
         )
         pr = make_primer_dict(
             name=f"{gene_name}_sg{idx}-REV",
@@ -2119,7 +2154,7 @@ def tool_design_sgrna_primers(args: dict) -> dict:
             specific_seq=rc + rev_suffix,
             purpose=f"sgRNA#{idx} 反向退火引物 ({vec_label})",
             source_tool="MCP sgRNA设计",
-            custom_notes=f"靶基因:{gene_name} | 载体:{vec_label} | 5'加{rev_prefix} 3'加{rev_suffix}"
+            custom_notes=f"靶基因:{gene_name} | 载体:{vec_label} | 5'加{rev_prefix} 3'加{rev_suffix or '无'}"
         )
         primers.extend([pf, pr])
 
@@ -2157,7 +2192,8 @@ def tool_design_shrna_primers(args: dict) -> dict:
     else:
         for i in range(0, len(seq) - 21, 3):
             sense = seq[i:i + 21]
-            if "TTTT" in sense or "AAAA" in sense or "GGGG" in sense or "CCCC" in sense:
+            hairpin_transcript = sense + loop + rev_comp(sense)
+            if "TTTT" in hairpin_transcript or "AAAA" in sense or "GGGG" in sense or "CCCC" in sense:
                 continue
             gc = gc_percent(sense)
             if not (35.0 <= gc <= 60.0):
@@ -2181,11 +2217,13 @@ def tool_design_shrna_primers(args: dict) -> dict:
     if not selected:
         raise ValueError(f"在序列 ({len(seq)} bp) 中未找到符合 pLKO.1 标准的 21nt shRNA 靶点")
 
+    rev_loop = rev_comp(loop)
     primers = []
     for idx, cand in enumerate(selected, start=1):
         sense = cand["sense"]
         antisense = rev_comp(sense)
         hairpin_core = sense + loop + antisense
+        rev_hairpin_core = sense + rev_loop + antisense
         pf = make_primer_dict(
             name=f"{gene_name}_sh{idx}-F",
             homology_arm="CCGG",
@@ -2196,11 +2234,11 @@ def tool_design_shrna_primers(args: dict) -> dict:
         )
         pr = make_primer_dict(
             name=f"{gene_name}_sh{idx}-R",
-            homology_arm="AATTCAAAAAAA",
-            specific_seq=hairpin_core,
+            homology_arm="AATTCAAAAAA",
+            specific_seq=rev_hairpin_core,
             purpose=f"shRNA#{idx} 反向发夹链 (pLKO.1 EcoRI)",
             source_tool="MCP shRNA设计",
-            custom_notes=f"靶基因:{gene_name} | 载体:pLKO.1 (AgeI/EcoRI) | Loop:{loop}"
+            custom_notes=f"靶基因:{gene_name} | 载体:pLKO.1 (AgeI/EcoRI) | Loop:{loop} (Bottom RC: {rev_loop})"
         )
         primers.extend([pf, pr])
 
@@ -2729,9 +2767,38 @@ def _infer_qpcr_well_type(sample: str, group: str = "", task_raw: str = "", quan
 
 
 def tool_analyze_qpcr_ddct(args: dict) -> dict:
-    """计算 qPCR 2^(-ΔΔCt) 相对表达量、严格按生物学样品级 ΔCt 执行 Welch t 检验、Holm 校正、95% CI 与 NTC/no-RT/熔解质控 (P02, P07 & P08)"""
+    """计算 qPCR 相对表达量（Vandesompele 多内参 + Pfaffl/qBase 双效率 + log2 空间 Welch t/95% CI + 几何均值点估计 + Holm 校正 + QC）"""
     records = args.get("records") or []
-    ref_gene = (args.get("reference_gene") or "ACTB").strip()
+    raw_refs = args.get("reference_genes")
+    if isinstance(raw_refs, list) and raw_refs:
+        req_ref_genes = [str(r).strip() for r in raw_refs if str(r).strip()]
+    else:
+        ref_raw_str = str(args.get("reference_gene") or "ACTB").strip()
+        req_ref_genes = [r.strip() for r in re.split(r"[,;]+", ref_raw_str) if r.strip()] or ["ACTB"]
+    ref_gene = ", ".join(req_ref_genes)
+    ref_keys_lower_list = [r.lower() for r in req_ref_genes]
+    ref_keys_lower_set = set(ref_keys_lower_list)
+
+    eff_correction = bool(args.get("efficiency_correction", False))
+    default_eff_pct = float(args.get("default_efficiency_pct", 100.0))
+
+    def _norm_eff(raw_v):
+        if raw_v is None:
+            return None
+        try:
+            v = float(raw_v)
+        except Exception:
+            return None
+        if not math.isfinite(v) or v <= 0.0:
+            return None
+        if v > 2.5:
+            eff = v / 100.0
+        elif v > 1.5:
+            eff = v - 1.0
+        else:
+            eff = v
+        return max(0.10, min(1.50, eff))
+
     ctrl_sample = (args.get("control_sample") or "Control").strip()
     ctrl_group = (args.get("control_group") or "").strip()
     sd_threshold = float(args.get("sd_threshold", 0.30))
@@ -2749,6 +2816,12 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
         grp = str(rec.get("group") or "").strip()
         task_raw = str(rec.get("task") or rec.get("well_type") or rec.get("type") or "").strip()
         qty = rec.get("quantity")
+        qty_val = None
+        if qty is not None and str(qty).strip() != "":
+            try:
+                qty_val = float(qty)
+            except Exception:
+                qty_val = None
         raw_ct = rec.get("ct")
         ct_val = None
         if raw_ct is not None:
@@ -2765,7 +2838,8 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
                 tm_val = float(raw_tm)
             except Exception:
                 tm_val = None
-        w_type = _infer_qpcr_well_type(s, grp, task_raw, qty)
+        eff_val = _norm_eff(rec.get("efficiency"))
+        w_type = _infer_qpcr_well_type(s, grp, task_raw, qty_val)
         if w_type == "sample":
             if ct_val is not None:
                 target_sample_cts.setdefault(g.lower(), []).append(ct_val)
@@ -2778,7 +2852,9 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
             "group": grp,
             "well_type": w_type,
             "ct": ct_val,
-            "tm": tm_val
+            "tm": tm_val,
+            "efficiency": eff_val,
+            "quantity": qty_val
         })
 
     target_median_tm = {}
@@ -2794,6 +2870,9 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
     grouped = {}
     sample_group_map = {}
     sample_order = []
+    target_case_map = {}
+    well_effs_by_target = {}
+    std_pts_by_target = {}
 
     for w in parsed_wells:
         s = w["sample"]
@@ -2826,28 +2905,67 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
                 if abs(tm_val - target_median_tm[gk]) > melt_tolerance:
                     w_flags.append("meltOutlier")
                     warnings.append(f"样品孔 ({s} / {g}) 熔解 Tm={tm_val:.2f}℃ 偏离靶标中位数 {target_median_tm[gk]:.2f}℃ 超过 {melt_tolerance:.1f}℃")
+        elif w_type == "standard":
+            if ct_val is not None and w["quantity"] is not None and w["quantity"] > 0:
+                if tm_val is not None and gk in target_median_tm and abs(tm_val - target_median_tm[gk]) > melt_tolerance:
+                    w_flags.append("meltOutlier")
+                else:
+                    std_pts_by_target.setdefault(gk, []).append((math.log10(w["quantity"]), ct_val))
 
         if w_flags:
             qc_flags.append({"sample": s, "gene": g, "well_type": w_type, "flags": w_flags})
 
         # 仅无 meltOutlier 且非空的 sample 孔进入 ΔΔCt 统计
         if w_type == "sample" and ct_val is not None and "meltOutlier" not in w_flags:
+            target_case_map.setdefault(gk, g)
+            if w["efficiency"] is not None:
+                well_effs_by_target.setdefault(gk, []).append(w["efficiency"])
             if s not in sample_group_map:
                 sample_group_map[s] = grp if grp else s
                 sample_order.append(s)
-            grouped.setdefault((s, g), []).append(ct_val)
+            grouped.setdefault((s, gk), []).append(ct_val)
+
+    std_eff_by_target = {}
+    if eff_correction and std_pts_by_target:
+        for gk, pts in std_pts_by_target.items():
+            if len(pts) >= 2:
+                n_pts = float(len(pts))
+                sx = sum(p[0] for p in pts)
+                sy = sum(p[1] for p in pts)
+                sxx = sum(p[0] * p[0] for p in pts)
+                sxy = sum(p[0] * p[1] for p in pts)
+                denom = n_pts * sxx - sx * sx
+                if abs(denom) > 1e-14:
+                    slope = (n_pts * sxy - sx * sy) / denom
+                    if slope < 0:
+                        eff_s = (10.0 ** (-1.0 / slope)) - 1.0
+                        if math.isfinite(eff_s) and eff_s > 0.0:
+                            std_eff_by_target[gk] = max(0.10, min(1.50, eff_s))
+
+    def _resolve_eff(gk: str) -> float:
+        if not eff_correction:
+            return 1.0
+        if gk in std_eff_by_target:
+            return std_eff_by_target[gk]
+        we = well_effs_by_target.get(gk, [])
+        if we:
+            return sum(we) / len(we)
+        return max(0.10, min(1.50, default_eff_pct / 100.0)) if (math.isfinite(default_eff_pct) and default_eff_pct > 0.0) else 1.0
 
     means = {}
-    for (s, g), cts in grouped.items():
+    for (s, gk), cts in grouped.items():
         m = sum(cts) / len(cts)
         sd = math.sqrt(sum((v - m) ** 2 for v in cts) / max(1, len(cts) - 1)) if len(cts) > 1 else 0.0
-        means[(s, g)] = (m, sd, len(cts))
+        means[(s, gk)] = (m, sd, len(cts))
         if sd > sd_threshold:
-            warnings.append(f"{s} / {g} 复孔 Ct SD={sd:.2f} 超过阈值 {sd_threshold:.2f}")
+            warnings.append(f"{s} / {target_case_map.get(gk, gk)} 复孔 Ct SD={sd:.2f} 超过阈值 {sd_threshold:.2f}")
 
     samples = sample_order if sample_order else sorted({k[0] for k in means.keys()})
-    genes = sorted({k[1] for k in means.keys() if k[1].lower() != ref_gene.lower()})
-    ref_key = next((k[1] for k in means.keys() if k[1].lower() == ref_gene.lower()), ref_gene)
+    active_ref_keys = [rk for rk in ref_keys_lower_list if rk in target_case_map]
+    if not active_ref_keys and target_case_map:
+        active_ref_keys = [sorted(target_case_map.keys())[0]]
+    active_ref_set = set(active_ref_keys)
+    genes_lower = sorted({k[1] for k in means.keys() if k[1] not in active_ref_set})
 
     def is_ctrl_sample(s_name: str) -> bool:
         grp_val = sample_group_map.get(s_name, s_name)
@@ -2857,21 +2975,60 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
             return True
         return False
 
+    ref_eff_cache = {rk: _resolve_eff(rk) for rk in active_ref_keys}
+    ref_raw_baseline = {}
+    ref_eff_baseline = {}
+    for rk in active_ref_keys:
+        scale_r = math.log2(1.0 + ref_eff_cache[rk])
+        ctrl_vals = [means[(s, rk)][0] for s in samples if is_ctrl_sample(s) and (s, rk) in means]
+        pool = ctrl_vals if ctrl_vals else [means[(s, rk)][0] for s in samples if (s, rk) in means]
+        if pool:
+            mu_raw = sum(pool) / len(pool)
+            ref_raw_baseline[rk] = mu_raw
+            ref_eff_baseline[rk] = mu_raw * scale_r
+
+    valid_base_refs = [rk for rk in active_ref_keys if rk in ref_raw_baseline]
+    global_raw_anchor = (sum(ref_raw_baseline[rk] for rk in valid_base_refs) / len(valid_base_refs)) if valid_base_refs else 0.0
+    global_eff_anchor = (sum(ref_eff_baseline[rk] for rk in valid_base_refs) / len(valid_base_refs)) if valid_base_refs else 0.0
+
+    ref_ct_by_sample = {}
+    ref_eff_ct_by_sample = {}
+    for s in samples:
+        raw_deltas = []
+        eff_deltas = []
+        missing_refs = []
+        for rk in valid_base_refs:
+            if (s, rk) in means:
+                m_ct = means[(s, rk)][0]
+                raw_deltas.append(m_ct - ref_raw_baseline[rk])
+                eff_deltas.append(m_ct * math.log2(1.0 + ref_eff_cache[rk]) - ref_eff_baseline[rk])
+            else:
+                missing_refs.append(target_case_map.get(rk, rk))
+        if raw_deltas:
+            if len(valid_base_refs) >= 2 and missing_refs:
+                warnings.append(f"样品 {s} 缺失部分内参 ({', '.join(missing_refs)})，已按 qBase 逐内参基线中心化对齐")
+            ref_ct_by_sample[s] = global_raw_anchor + (sum(raw_deltas) / len(raw_deltas))
+            ref_eff_ct_by_sample[s] = global_eff_anchor + (sum(eff_deltas) / len(eff_deltas))
+
     results = []
     group_summaries = []
-    for g in genes:
+    for gk in genes_lower:
+        g_label = target_case_map.get(gk, gk)
+        eff_t = _resolve_eff(gk)
+        scale_t = math.log2(1.0 + eff_t)
+
         ctrl_dcts_for_cal = [
-            means[(s, g)][0] - means[(s, ref_key)][0]
+            means[(s, gk)][0] * scale_t - ref_eff_ct_by_sample[s]
             for s in samples
-            if is_ctrl_sample(s) and (s, g) in means and (s, ref_key) in means
+            if is_ctrl_sample(s) and (s, gk) in means and s in ref_eff_ct_by_sample
         ]
         if ctrl_dcts_for_cal:
             cal_dct = sum(ctrl_dcts_for_cal) / len(ctrl_dcts_for_cal)
-        elif (ctrl_sample, g) in means and (ctrl_sample, ref_key) in means:
-            cal_dct = means[(ctrl_sample, g)][0] - means[(ctrl_sample, ref_key)][0]
+        elif (ctrl_sample, gk) in means and ctrl_sample in ref_eff_ct_by_sample:
+            cal_dct = means[(ctrl_sample, gk)][0] * scale_t - ref_eff_ct_by_sample[ctrl_sample]
         else:
             first_valid = next(
-                (means[(s, g)][0] - means[(s, ref_key)][0] for s in samples if (s, g) in means and (s, ref_key) in means),
+                (means[(s, gk)][0] * scale_t - ref_eff_ct_by_sample[s] for s in samples if (s, gk) in means and s in ref_eff_ct_by_sample),
                 0.0
             )
             cal_dct = first_valid
@@ -2879,22 +3036,20 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
         sample_rows_for_gene = []
         cat_order = []
         for s in samples:
-            if (s, g) not in means or (s, ref_key) not in means:
+            if (s, gk) not in means or s not in ref_eff_ct_by_sample:
                 continue
-            ref_ct = means[(s, ref_key)][0]
-            dct = means[(s, g)][0] - ref_ct
+            ref_eff_ct = ref_eff_ct_by_sample[s]
+            dct = means[(s, gk)][0] * scale_t - ref_eff_ct
             ddct = dct - cal_dct
-            cts_list = grouped.get((s, g), [means[(s, g)][0]])
-            fold_vals = [2.0 ** -((c - ref_ct) - cal_dct) for c in cts_list]
-            fold = sum(fold_vals) / len(fold_vals)
-            n_tech = means[(s, g)][2]
+            fold = 2.0 ** (-ddct)
+            n_tech = means[(s, gk)][2]
             cat = sample_group_map.get(s, s)
             if cat not in cat_order:
                 cat_order.append(cat)
             row_obj = {
                 "sample": s,
                 "group": cat,
-                "gene": g,
+                "gene": g_label,
                 "n_technical_wells": n_tech,
                 "delta_ct": round(dct, 6),
                 "delta_delta_ct": round(ddct, 6),
@@ -2907,7 +3062,7 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
             results.append({
                 "sample": s,
                 "group": cat,
-                "gene": g,
+                "gene": g_label,
                 "n_technical_wells": n_tech,
                 "delta_ct": round(dct, 3),
                 "delta_delta_ct": round(ddct, 3),
@@ -2915,6 +3070,7 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
             })
 
         ctrl_sample_dcts = [r["_raw_dct"] for r in sample_rows_for_gene if r["_is_control"]]
+        ctrl_mean_dct = (sum(ctrl_sample_dcts) / len(ctrl_sample_dcts)) if ctrl_sample_dcts else cal_dct
         gene_group_rows = []
         for cat in cat_order:
             cat_rows = [r for r in sample_rows_for_gene if r["group"] == cat]
@@ -2925,10 +3081,11 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
             n_tech_total = sum(r["n_technical_wells"] for r in cat_rows)
             cat_dcts = [r["_raw_dct"] for r in cat_rows]
             cat_folds = [r["_raw_fold"] for r in cat_rows]
-            mean_fold = sum(cat_folds) / n_bio
-            sd_fold = math.sqrt(sum((v - mean_fold) ** 2 for v in cat_folds) / (n_bio - 1)) if n_bio >= 2 else None
+            arith_fold = sum(cat_folds) / n_bio
+            sd_fold = math.sqrt(sum((v - arith_fold) ** 2 for v in cat_folds) / (n_bio - 1)) if n_bio >= 2 else None
             sem_fold = (sd_fold / math.sqrt(n_bio)) if sd_fold is not None else None
             mean_dct = sum(cat_dcts) / n_bio
+            mean_fold = 2.0 ** -(mean_dct - ctrl_mean_dct)
             sd_dct = math.sqrt(sum((v - mean_dct) ** 2 for v in cat_dcts) / (n_bio - 1)) if n_bio >= 2 else None
 
             p_val = None
@@ -2945,7 +3102,7 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
 
             gene_group_rows.append({
                 "group": cat,
-                "gene": g,
+                "gene": g_label,
                 "n_biological": n_bio,
                 "n_technical_wells": n_tech_total,
                 "mean_fold": round(mean_fold, 6),
@@ -3217,14 +3374,19 @@ def _align_single_sanger_read(parsed: dict, sample_name: str, ref_seq: str, ref_
     ref_window = doubled_ref[est_start:est_start + len(chosen_q)]
     matches = 0
     mismatches = []
+    hq_covered_ref_positions = set()
     for i in range(min(len(ref_window), len(chosen_q))):
         rb = ref_window[i]
         qb = chosen_q[i]
+        ref_pos1 = ((est_start + i) % ref_len) + 1
+        read_pos1 = (trim_e - i) if is_rev else (trim_s + i + 1)
+        q_idx = read_pos1 - 1
+        q_val = quals[q_idx] if (0 <= q_idx < len(quals)) else 40
+        if q_val >= trim_q:
+            hq_covered_ref_positions.add(ref_pos1)
         if rb == qb:
             matches += 1
         else:
-            ref_pos1 = ((est_start + i) % ref_len) + 1
-            read_pos1 = (trim_e - i) if is_rev else (trim_s + i + 1)
             mismatches.append({
                 "ref_pos_1based": ref_pos1,
                 "read_pos_1based": read_pos1,
@@ -3239,6 +3401,7 @@ def _align_single_sanger_read(parsed: dict, sample_name: str, ref_seq: str, ref_
     if is_unaligned:
         verdict = "未匹配到同源区"
         batch_verdict = "unmatched"
+        hq_covered_ref_positions.clear()
     elif len(mismatches) == 0 and len(parsed["double_peaks"]) == 0:
         verdict = "测序完全匹配 (100% 零突变通过)"
         batch_verdict = "pass"
@@ -3255,6 +3418,8 @@ def _align_single_sanger_read(parsed: dict, sample_name: str, ref_seq: str, ref_
         "is_binary_ab1": parsed["is_ab1"],
         "raw_length_bp": n,
         "trimmed_length_bp": len(trimmed_seq),
+        "hq_covered_bp": len(hq_covered_ref_positions),
+        "_hq_covered_ref_positions": sorted(hq_covered_ref_positions),
         "reference_plasmid": ref_title,
         "reference_length_bp": ref_len,
         "strand": "-" if is_rev else "+",
@@ -3301,13 +3466,29 @@ def tool_verify_sanger_sequencing(args: dict) -> dict:
 
     if isinstance(batch_files, list) and len(batch_files) > 0:
         cand_refs = []
+        ref_meta_map = {}
         for r in references_in:
             r_name = (r.get("name") or "").strip()
             r_seq = clean_seq(r.get("sequence") or "")
             if r_name and len(r_seq) >= 16:
+                t_start = r.get("target_start_1based")
+                t_end = r.get("target_end_1based")
+                has_explicit = (t_start is not None or t_end is not None)
+                s1 = max(1, min(len(r_seq), int(t_start))) if t_start is not None else 1
+                e1 = max(s1, min(len(r_seq), int(t_end))) if t_end is not None else len(r_seq)
                 cand_refs.append((r_name, r_seq))
+                ref_meta_map[r_name] = {
+                    "target_start_1based": s1,
+                    "target_end_1based": e1,
+                    "has_explicit_target": has_explicit,
+                }
         if not cand_refs:
             cand_refs.append((primary_ref_title, primary_ref_seq))
+            ref_meta_map[primary_ref_title] = {
+                "target_start_1based": 1,
+                "target_end_1based": len(primary_ref_seq),
+                "has_explicit_target": False,
+            }
 
         read_reports = []
         clone_groups = {}
@@ -3332,48 +3513,60 @@ def tool_verify_sanger_sequencing(args: dict) -> dict:
                 continue
             best_rep["clone_name"] = c_name
             best_rep["primer_suffix"] = primer_suf
+            hq_positions = best_rep.pop("_hq_covered_ref_positions", [])
             read_reports.append(best_rep)
             if c_name not in clone_groups:
                 clone_groups[c_name] = []
                 clone_order.append(c_name)
-            clone_groups[c_name].append(best_rep)
+            clone_groups[c_name].append((best_rep, hq_positions))
 
         clone_summaries = []
+        explicit_min_cov = args.get("min_pass_coverage_percent")
         for c_name in clone_order:
-            items = clone_groups[c_name]
+            pair_items = clone_groups[c_name]
+            items = [p[0] for p in pair_items]
+            ref_name = items[0]["reference_plasmid"]
             ref_len = max(1, items[0]["reference_length_bp"])
-            covered = [False] * ref_len
+            ref_meta = ref_meta_map.get(ref_name, {"target_start_1based": 1, "target_end_1based": ref_len, "has_explicit_target": False})
+            t_s1 = max(1, min(ref_len, int(ref_meta["target_start_1based"])))
+            t_e1 = max(t_s1, min(ref_len, int(ref_meta["target_end_1based"])))
+            t_len = max(1, t_e1 - t_s1 + 1)
+
+            hq_union = set()
             ident_sum = 0.0
             snp_cnt = 0
             dp_cnt = 0
             has_unmatched = False
-            for it in items:
+            for it, hq_pos in pair_items:
                 ident_sum += it["identity_percent"]
                 snp_cnt += len(it["mismatches"])
                 dp_cnt += len(it["double_peaks"])
                 if it["batch_verdict"] == "unmatched":
                     has_unmatched = True
                 else:
-                    s0 = max(0, it["matched_ref_start_1based"] - 1)
-                    ln = min(ref_len, max(1, it["trimmed_length_bp"]))
-                    for step in range(ln):
-                        covered[(s0 + step) % ref_len] = True
-            cov_bp = sum(1 for x in covered if x)
-            cov_pct = round(cov_bp * 100.0 / ref_len, 1)
+                    hq_union.update(hq_pos)
+            cov_bp = sum(1 for pos in hq_union if t_s1 <= pos <= t_e1)
+            cov_pct = min(100.0, round(cov_bp * 100.0 / t_len, 1))
+            default_cov = 95.0 if ref_meta.get("has_explicit_target") else 70.0
+            min_pass_cov = max(0.0, min(100.0, float(explicit_min_cov if explicit_min_cov is not None else default_cov)))
             if all(it["batch_verdict"] == "unmatched" for it in items):
                 c_verdict = "unmatched"
             elif snp_cnt > 0:
                 c_verdict = "failed"
-            elif dp_cnt > 0 or has_unmatched:
+            elif dp_cnt > 0 or has_unmatched or cov_pct < min_pass_cov:
                 c_verdict = "needsReview"
             else:
                 c_verdict = "pass"
             clone_summaries.append({
                 "clone_name": c_name,
-                "reference_plasmid": items[0]["reference_plasmid"],
+                "reference_plasmid": ref_name,
                 "read_count": len(items),
+                "target_region_start_1based": t_s1,
+                "target_region_end_1based": t_e1,
+                "target_region_length_bp": t_len,
                 "coverage_bp": cov_bp,
                 "coverage_percent": cov_pct,
+                "min_required_coverage_percent": min_pass_cov,
                 "mean_identity_percent": round(ident_sum / len(items), 1),
                 "snp_count": snp_cnt,
                 "double_peak_count": dp_cnt,
@@ -3405,6 +3598,7 @@ def tool_verify_sanger_sequencing(args: dict) -> dict:
         sample_name = args.get("sample_name") or "Sanger_Read"
 
     res = _align_single_sanger_read(parsed, sample_name, primary_ref_seq, primary_ref_title, trim_q=trim_q)
+    res.pop("_hq_covered_ref_positions", None)
     notify_gui_and_sync_primers(
         action_summary=f"MCP Sanger 测序比对验证：{sample_name} vs {primary_ref_title} ({res['identity_percent']}%)",
         primers=[],
@@ -6759,16 +6953,19 @@ MCP_TOOLS = [
                 "files": {"type": "array", "items": {"type": "string"}, "description": "可选：批量验证模式下的本地 .ab1 / .abi / .seq 文件路径列表"},
                 "references": {
                     "type": "array",
-                    "description": "可选：批量验证模式下的候选参考质粒数组 [{name, sequence}]",
+                    "description": "可选：批量验证模式下的候选参考质粒数组 [{name, sequence, target_start_1based?, target_end_1based?}]",
                     "items": {
                         "type": "object",
                         "properties": {
                             "name": {"type": "string"},
-                            "sequence": {"type": "string"}
+                            "sequence": {"type": "string"},
+                            "target_start_1based": {"type": "integer", "description": "可选：目标验证区间起点 (1-based)"},
+                            "target_end_1based": {"type": "integer", "description": "可选：目标验证区间终点 (1-based)"}
                         }
                     }
                 },
-                "trim_quality_threshold": {"type": "integer", "description": "5'/3' 低质量修剪 Phred Q 阈值，默认 20", "default": 20}
+                "trim_quality_threshold": {"type": "integer", "description": "5'/3' 低质量修剪 Phred Q 阈值，默认 20", "default": 20},
+                "min_pass_coverage_percent": {"type": "number", "description": "可选：克隆判定 pass 所需的最小 Q20 目标区间覆盖度百分比（默认全参考 70%、显式目标区间 95%）"}
             }
         }
     },

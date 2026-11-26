@@ -49,7 +49,7 @@ public final class ShRNADesignViewModel: ObservableObject {
     public var customTargetScore: TargetScore? {
         let clean = BioSequence.clean(customSequence)
         guard clean.count >= 10 else { return nil }
-        return ShRNAScoringEngine.evaluate(sequence: clean)
+        return ShRNAScoringEngine.evaluate(sequence: clean, loop: loopSequence)
     }
     
     public func search() {

@@ -43,7 +43,7 @@
 - **🧬 五大高阶引擎全量直连桌面 GUI & MCP 23 工具**：在 `CloneStudioCore`、`CloneStudio` 桌面工作台与 `labworker-mcp` 服务端全线打通 **Golden Gate 组装**（`多片段克隆` 双模式切换；基于 NEB T4 4-bp 连接保真度矩阵，支持 `BsaI / BsmBI / BbsI / SapI` 2–6 片段零错配接头分配与同义 Domestication）、**诊断性限制酶切推荐**（`质粒池` + `凝胶分子量` 虚拟预测道直连）、**离线质粒自动注释**（`质粒池` 内置 FASTA 自动注释，基于 `Libraries.sqlite` **1,415** 条 NCBI GenBank + FPbase 真实公共元件词典与 k-mer 索引）、**HDR 同源修复供体设计**（`sgRNA 设计` 切换页签：ssODN/dsDNA、PAM/Seed 同义阻断突变、可选 RFLP 与 Out-Out PCR 引物）及 **CRISPR 编辑池 Sanger NNLS 峰图反卷积**（`测序验证` 切换页签：基于 `Accelerate vDSP` 求解 `Indel%`、`KO Score`、`HDR%` 与拟合优度 $R^2$）。
 - **🖥️ macOS 14.0+ 全系覆盖与免付费公证零门槛分发**：全面下调部署门槛至 `macOS 14.0 (Sonoma)` 并升级 CI 至 `macos-15`；内置自托管 Homebrew Cask（`Casks/labworker.rb`）、`install.sh` 一键免隔离安装脚本及 DMG 内附 `一键修复首次无法打开.command`，彻底消除无付费 Apple 开发者账号情况下的 Gatekeeper 首次打开阻碍。
 - **🧪 同源重组 PCR 虚拟电泳与凝胶定量升级**：全部克隆/突变/删除工作台内置实时**同源重组 PCR 凝胶电泳模拟**；`凝胶分子量` 升级支持质粒酶切、诊断性酶切推荐直连、单/多片段克隆、入门克隆、片段删除、定点突变与自定义条带多模式虚拟预测道叠加，并优化多泳道标题防重叠排布。
-- **🌐 靶点设计内嵌多源在线共识 & 全能生物计算器**：`sgRNA 设计`（**VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源并发共识）与 `shRNA 设计`（**Broad GPP Public Portal**）内嵌在线核验；**生物计算器**整合摩尔比配液、核酸/蛋白定量与溶液换算；全套工作台收口为 **5 大分类 · 18 个全栈模块**，全部核心算法经 **58 项自动化测试**与 10 组跨语言黄金测试向量验证。
+- **🌐 靶点设计内嵌多源在线共识 & 全能生物计算器**：`sgRNA 设计`（**VBC-Score + UCSC CRISPOR + CHOPCHOP** 三源并发共识）与 `shRNA 设计`（**Broad GPP Public Portal**）内嵌在线核验；**生物计算器**整合摩尔比配液、核酸/蛋白定量与溶液换算；全套工作台收口为 **5 大分类 · 18 个全栈模块**，全部核心算法经 **59 项自动化测试**与 10 组跨语言黄金测试向量验证。
 - **🔬 全栈实验定量、全质粒验证、离线 Mol* 3D 与国际订购升级**：`序列工具` 新增五宿主（Human / Mouse / E. coli / Yeast / Insect）**多约束密码子优化与 5' 发夹避让器**；`测序验证` 集成 **全质粒 Nanopore 环状 SV 验证与多 Sanger 双向拼接 Contig**（`.fasta`/`.fastq`）；`质粒池` / `蛋白工作台` 打通 **GenBank / OpenCloning JSON / SBOL3 / 完整 `mmCIF` 解析**及 **NCBI / Addgene / RCSB / AlphaFold 在线拉取**；`蛋白工作台` 新增随包离线 **`Mol*` 全原子 3D 视窗**及本地 **`vina`/`smina`/`gnina`/`boltz` 对接共折叠桥接与 Pose 回放**；`qPCR 定量` 支持四仪器自动解析、**`.rdml` 双向读写**与 **8 项 MIQE 清单**；`微孔板设计` 内置 **酶标仪曲线拟合工作台**（BCA / 4PL-5PL / IC50 / CCK-8 ANOVA）；`订购中心` 扩展支持 **IDT / Twist / GenScript / Eurofins / BGI** 批量 `.xlsx`/`.csv` 与 **自定义 JSON 列映射模板**。
 
 ---
@@ -291,7 +291,7 @@ curl -fsSL https://raw.githubusercontent.com/xin67/Labworker/main/labworker/Scri
 git clone https://github.com/xin67/Labworker.git
 cd Labworker/labworker
 
-# 1. 运行全部 58 项底层算法与跨语言测试向量（含文档单一真值门禁）
+# 1. 运行全部 59 项底层算法与跨语言测试向量（含文档单一真值门禁）
 bash Scripts/check_doc_counts.sh
 
 # 2. Release 编译并打包 Labworker.app（自动完成 Ad-hoc 签名校验）

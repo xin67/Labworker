@@ -12,6 +12,7 @@ public enum SangerBatchEngine {
         public let cdsStart1Based: Int?
         public let targetStart1Based: Int
         public let targetEnd1Based: Int
+        public let hasExplicitTargetRegion: Bool
         public let plasmidID: String?
 
         public init(
@@ -28,6 +29,7 @@ public enum SangerBatchEngine {
             self.name = name
             self.sequence = clean
             self.cdsStart1Based = cdsStart1Based
+            self.hasExplicitTargetRegion = (targetStart1Based != nil || targetEnd1Based != nil)
             let s1 = max(1, min(max(1, clean.count), targetStart1Based ?? 1))
             let e1 = max(s1, min(max(1, clean.count), targetEnd1Based ?? clean.count))
             self.targetStart1Based = s1
@@ -75,6 +77,7 @@ public enum SangerBatchEngine {
         public let coveredBasesCount: Int
         public let targetRegionLength: Int
         public let coveragePercent: Double
+        public let minRequiredCoveragePercent: Double
         public let minIdentityPercent: Double
         public let meanIdentityPercent: Double
         public let mergedVariants: [SangerAlignmentEngine.VariantCall]
@@ -90,7 +93,15 @@ public enum SangerBatchEngine {
 
         public var variantsSummaryText: String {
             if verdict == .unmatched { return L10n.t("未匹配参考质粒") }
-            if mergedVariants.isEmpty { return L10n.t("无变异 (WT)") }
+            if mergedVariants.isEmpty {
+                if verdict == .needsReview && coveragePercent < minRequiredCoveragePercent {
+                    return L10n.tr(
+                        "Q20 覆盖度不足 (\(String(format: "%.1f%%", coveragePercent)) < \(String(format: "%.0f%%", minRequiredCoveragePercent)))，需补测",
+                        "Insufficient Q20 coverage (\(String(format: "%.1f%%", coveragePercent)) < \(String(format: "%.0f%%", minRequiredCoveragePercent))); re-sequence"
+                    )
+                }
+                return L10n.t("无变异 (WT)")
+            }
             return mergedVariants.map { "\($0.hgvsNotation)(\($0.kind.rawValue))" }.joined(separator: "; ")
         }
     }
@@ -276,6 +287,7 @@ public enum SangerBatchEngine {
         primerSuffixRegex: String = defaultPrimerSuffixRegex,
         trimQualityThreshold: Int = 20,
         maxConcurrency: Int = 4,
+        minPassCoveragePercent: Double? = nil,
         onProgress: (@Sendable (Int, Int) -> Void)? = nil
     ) async -> BatchVerificationResult {
         await verifyBatch(
@@ -284,6 +296,7 @@ public enum SangerBatchEngine {
             suffixRegexPattern: primerSuffixRegex,
             trimQualityThreshold: trimQualityThreshold,
             maxConcurrency: maxConcurrency,
+            minPassCoveragePercent: minPassCoveragePercent,
             onProgress: onProgress
         )
     }
@@ -294,6 +307,7 @@ public enum SangerBatchEngine {
         suffixRegexPattern: String = defaultPrimerSuffixRegex,
         trimQualityThreshold: Int = 20,
         maxConcurrency: Int = 4,
+        minPassCoveragePercent: Double? = nil,
         onProgress: (@Sendable (Int, Int) -> Void)? = nil
     ) async -> BatchVerificationResult {
         let structCandidates = references.map {
@@ -305,6 +319,7 @@ public enum SangerBatchEngine {
             suffixRegexPattern: suffixRegexPattern,
             trimQualityThreshold: trimQualityThreshold,
             maxConcurrency: maxConcurrency,
+            minPassCoveragePercent: minPassCoveragePercent,
             onProgress: onProgress
         )
     }
@@ -315,6 +330,7 @@ public enum SangerBatchEngine {
         suffixRegexPattern: String = defaultPrimerSuffixRegex,
         trimQualityThreshold: Int = 20,
         maxConcurrency: Int = 4,
+        minPassCoveragePercent: Double? = nil,
         onProgress: (@Sendable (Int, Int) -> Void)? = nil
     ) async -> BatchVerificationResult {
         let total = files.count
@@ -373,7 +389,7 @@ public enum SangerBatchEngine {
         }
 
         let readItems = orderedResults.keys.sorted().compactMap { orderedResults[$0] }
-        let cloneSummaries = summarizeByClone(readItems: readItems, candidates: candidates)
+        let cloneSummaries = summarizeByClone(readItems: readItems, candidates: candidates, minPassCoveragePercent: minPassCoveragePercent)
         return BatchVerificationResult(
             readItems: readItems,
             cloneSummaries: cloneSummaries,
@@ -502,15 +518,17 @@ public enum SangerBatchEngine {
 
     public static func summarizeByClone(
         reads: [BatchReadItem],
-        candidates: [SangerReferenceCandidate]
+        candidates: [SangerReferenceCandidate],
+        minPassCoveragePercent: Double? = nil
     ) -> [CloneBatchSummary] {
-        summarizeByClone(readItems: reads, candidates: candidates)
+        summarizeByClone(readItems: reads, candidates: candidates, minPassCoveragePercent: minPassCoveragePercent)
     }
 
     /// 将单条测序结果按 cloneName 归并为克隆级汇总
     public static func summarizeByClone(
         readItems: [BatchReadItem],
-        candidates: [SangerReferenceCandidate]
+        candidates: [SangerReferenceCandidate],
+        minPassCoveragePercent: Double? = nil
     ) -> [CloneBatchSummary] {
         var cloneOrder: [String] = []
         var grouped: [String: [BatchReadItem]] = [:]
@@ -545,6 +563,7 @@ public enum SangerBatchEngine {
                         coveredBasesCount: 0,
                         targetRegionLength: 1,
                         coveragePercent: 0.0,
+                        minRequiredCoveragePercent: minPassCoveragePercent ?? 70.0,
                         minIdentityPercent: 0.0,
                         meanIdentityPercent: 0.0,
                         mergedVariants: [],
@@ -590,11 +609,14 @@ public enum SangerBatchEngine {
             let hasFrameshiftOrIndel = mergedVars.contains { $0.kind == .insertion || $0.kind == .deletion }
             let hasSNP = mergedVars.contains { $0.kind == .mismatchSNP }
             let hasDoublePeak = mergedVars.contains { $0.kind == .doublePeak }
+            // Ewing & Green (1998) Phred Q20: 未覆盖目标区域禁止直接放行通过
+            let requiredCov = minPassCoveragePercent.map { max(0.0, min(100.0, $0)) } ?? (refCand.hasExplicitTargetRegion ? 95.0 : 70.0)
+            let hasSufficientCoverage = coveragePct >= requiredCov
 
             let verdict: CloneBatchVerdict
             if !hasAllReadsMatched || hasFrameshiftOrIndel || hasSNP {
                 verdict = .failed
-            } else if hasDoublePeak {
+            } else if hasDoublePeak || !hasSufficientCoverage {
                 verdict = .needsReview
             } else {
                 verdict = .pass
@@ -611,6 +633,7 @@ public enum SangerBatchEngine {
                     coveredBasesCount: coveredInTarget,
                     targetRegionLength: targetLen,
                     coveragePercent: coveragePct,
+                    minRequiredCoveragePercent: requiredCov,
                     minIdentityPercent: minIdentity,
                     meanIdentityPercent: meanIdentity,
                     mergedVariants: mergedVars,

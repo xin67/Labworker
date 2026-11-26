@@ -494,8 +494,8 @@ public enum QPCRInstrumentAndRDMLEngine {
             title: L10n.t("内参基因归一化 (Vandesompele 策略)"),
             status: refStatus,
             evidence: refCount >= 2
-                ? L10n.tr("已选用 \(refCount) 个内参 (\(ddctOut.references.joined(separator: ", "))) 执行几何平均归一化。", "Geometric-mean normalization with \(refCount) reference gene(s) (\(ddctOut.references.joined(separator: ", "))).")
-                : (refCount == 1 ? L10n.tr("当前仅使用单个内参 (\(ddctOut.references.first ?? ""))；MIQE 建议条件允许时使用 ≥2 个稳定内参几何平均。", "Single reference gene (\(ddctOut.references.first ?? "")) used; MIQE recommends >= 2 stable reference genes.") : L10n.t("未配置有效内参基因。"))
+                ? L10n.tr("已选用 \(refCount) 个内参 (\(ddctOut.references.joined(separator: ", "))) 执行 Vandesompele 线性相对量几何平均（Ct 等效均值）归一化。", "Vandesompele geometric-mean normalization of linear reference quantities (equivalent Ct-space mean) across \(refCount) reference gene(s) (\(ddctOut.references.joined(separator: ", "))).")
+                : (refCount == 1 ? L10n.tr("当前仅使用单个内参 (\(ddctOut.references.first ?? ""))；MIQE 2.0 建议条件允许时使用 ≥2 个经稳定度验证的内参归一化。", "Single reference gene (\(ddctOut.references.first ?? "")) used; MIQE 2.0 recommends >= 2 stability-validated reference genes.") : L10n.t("未配置有效内参基因。"))
         ))
 
         // 4. 扩增效率与标准曲线 R²
