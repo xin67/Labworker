@@ -119,13 +119,15 @@ public struct QPCRWellRecord: Identifiable, Hashable, Codable, Sendable {
 public enum QPCRMultipleComparisonMethod: String, CaseIterable, Identifiable, Codable, Sendable {
     case none = "none"
     case holm = "holm"
+    case bhFDR = "bh_fdr"
     
     public var id: String { rawValue }
     
     public var title: String {
         switch self {
-        case .none: return "不校正 (Raw p)"
-        case .holm: return "Holm–Bonferroni"
+        case .none:  return "不校正 (Raw p)"
+        case .holm:  return "Holm–Bonferroni"
+        case .bhFDR: return "Benjamini–Hochberg FDR"
         }
     }
 }
@@ -222,6 +224,50 @@ public struct QPCRSampleResult: Identifiable, Sendable {
     public let foldSem: Double?
     public let foldValues: [Double]
     public let isControl: Bool
+    /// 由标准曲线斜率标准误一阶泰勒传播至扩增效率后的 Fold 相对定量标准误
+    public let efficiencyPropagatedFoldSE: Double?
+
+    public init(
+        sample: String,
+        sampleKey: String,
+        target: String,
+        targetKey: String,
+        group: String,
+        category: String,
+        n: Int,
+        meanCt: Double,
+        sdCt: Double?,
+        refCt: Double,
+        dCt: Double,
+        ddCt: Double,
+        efficiency: Double,
+        fold: Double,
+        foldSd: Double?,
+        foldSem: Double?,
+        foldValues: [Double],
+        isControl: Bool,
+        efficiencyPropagatedFoldSE: Double? = nil
+    ) {
+        self.sample = sample
+        self.sampleKey = sampleKey
+        self.target = target
+        self.targetKey = targetKey
+        self.group = group
+        self.category = category
+        self.n = n
+        self.meanCt = meanCt
+        self.sdCt = sdCt
+        self.refCt = refCt
+        self.dCt = dCt
+        self.ddCt = ddCt
+        self.efficiency = efficiency
+        self.fold = fold
+        self.foldSd = foldSd
+        self.foldSem = foldSem
+        self.foldValues = foldValues
+        self.isControl = isControl
+        self.efficiencyPropagatedFoldSE = efficiencyPropagatedFoldSE
+    }
 }
 
 public enum QPCRStatNote: String, Codable, Sendable {
@@ -256,8 +302,8 @@ public struct QPCRGroupSummary: Identifiable, Sendable {
     
     public var effectivePValueForSignificance: Double? {
         switch multipleComparison {
-        case .holm: return pAdjusted ?? pValue
-        case .none: return pValue
+        case .holm, .bhFDR: return pAdjusted ?? pValue
+        case .none:         return pValue
         }
     }
     
@@ -298,14 +344,53 @@ public struct QPCRStandardCurveFit: Identifiable, Sendable {
     public let targetKey: String
     public let target: String
     public let slope: Double?
+    public let slopeSE: Double?
     public let intercept: Double?
     public let r2: Double?
     public let efficiencyPct: Double?
+    /// 扩增效率 E = 10^(-1/slope) 的一阶泰勒传播标准误（绝对效率单位，如 0.03 表示 ±3%）
+    public let efficiencySE: Double?
     public let n: Int
     public let xMin: Double?
     public let xMax: Double?
+    public let ctMin: Double?
+    public let ctMax: Double?
     public let valid: Bool
     public let points: [(x: Double, y: Double)]
+
+    public init(
+        targetKey: String,
+        target: String,
+        slope: Double?,
+        intercept: Double?,
+        r2: Double?,
+        efficiencyPct: Double?,
+        n: Int,
+        xMin: Double?,
+        xMax: Double?,
+        valid: Bool,
+        points: [(x: Double, y: Double)],
+        slopeSE: Double? = nil,
+        efficiencySE: Double? = nil,
+        ctMin: Double? = nil,
+        ctMax: Double? = nil
+    ) {
+        self.targetKey = targetKey
+        self.target = target
+        self.slope = slope
+        self.slopeSE = slopeSE
+        self.intercept = intercept
+        self.r2 = r2
+        self.efficiencyPct = efficiencyPct
+        self.efficiencySE = efficiencySE
+        self.n = n
+        self.xMin = xMin
+        self.xMax = xMax
+        self.ctMin = ctMin
+        self.ctMax = ctMax
+        self.valid = valid
+        self.points = points
+    }
 }
 
 public struct QPCRStandardSampleResult: Identifiable, Sendable {
@@ -322,11 +407,75 @@ public struct QPCRStandardSampleResult: Identifiable, Sendable {
     public let quantity: Double
     public let sdLog: Double?
     public let semLog: Double?
+    public let isExtrapolated: Bool
+    public let extrapolationWarning: String?
+
+    public init(
+        sample: String,
+        sampleKey: String,
+        target: String,
+        targetKey: String,
+        group: String,
+        category: String,
+        n: Int,
+        meanCt: Double,
+        log10Quantity: Double,
+        quantity: Double,
+        sdLog: Double?,
+        semLog: Double?,
+        isExtrapolated: Bool = false,
+        extrapolationWarning: String? = nil
+    ) {
+        self.sample = sample
+        self.sampleKey = sampleKey
+        self.target = target
+        self.targetKey = targetKey
+        self.group = group
+        self.category = category
+        self.n = n
+        self.meanCt = meanCt
+        self.log10Quantity = log10Quantity
+        self.quantity = quantity
+        self.sdLog = sdLog
+        self.semLog = semLog
+        self.isExtrapolated = isExtrapolated
+        self.extrapolationWarning = extrapolationWarning
+    }
 }
 
 public struct QPCRStandardAnalysisOut: Sendable {
     public let fits: [QPCRStandardCurveFit]
     public let samples: [QPCRStandardSampleResult]
+}
+
+/// geNorm (Vandesompele 2002) & NormFinder (Andersen 2004) 内参基因稳定性评估条目
+public struct QPCRReferenceGeneMetric: Identifiable, Sendable, Equatable {
+    public var id: String { targetKey }
+    public let targetKey: String
+    public let target: String
+    /// geNorm 平均成对变异度 M 值（越小越稳定；常规阈值 M <= 1.0，同质组织推荐 <= 0.5）
+    public let geNormM: Double
+    /// NormFinder 综合稳定性值 rho = mean_g(|d_gj| + sqrt(v_gj))（越小越稳定）
+    public let normFinderRho: Double?
+    /// 各生物学分组间均值 Ct 最大极差（用于识别处理诱导变化的不稳定内参）
+    public let maxInterGroupCtShift: Double
+}
+
+public struct QPCRPairwiseVariation: Identifiable, Sendable, Equatable {
+    public var id: String { label }
+    public let label: String          // 如 "V2/3"
+    public let nGenes: Int
+    public let value: Double          // V_{n/n+1}，Vandesompele 推荐阈值 < 0.15
+}
+
+public struct QPCRReferenceStabilityReport: Sendable, Equatable {
+    public let genes: [QPCRReferenceGeneMetric]
+    /// geNorm 逐步剔除顺序（从最不稳定到最稳定）
+    public let stepwiseExclusionOrder: [String]
+    public let pairwiseVariations: [QPCRPairwiseVariation]
+    public let bestReferencePair: [String]
+    public let isStable: Bool
+    public let warnings: [String]
 }
 
 // MARK: - 2. 生物统计与回归数学工具箱 (Lanczos LogGamma + 不完全 Beta 函数 + Welch's t-test + OLS 线性回归)
@@ -559,6 +708,48 @@ public enum QPCRStatistics {
         }
         return out
     }
+
+    /// Benjamini–Hochberg 逐步上升 FDR 多重比较校正（与 R p.adjust(method="BH") 完全一致，用于多基因筛查）
+    public static func bhAdjust(_ pValues: [Double]) -> [Double] {
+        let m = pValues.count
+        guard m > 0 else { return [] }
+        let indexed = pValues.enumerated().sorted { a, b in
+            if a.element != b.element { return a.element < b.element }
+            return a.offset < b.offset
+        }
+        var adjustedSorted = Array(repeating: 1.0, count: m)
+        var runningMin = 1.0
+        for rank in stride(from: m - 1, through: 0, by: -1) {
+            let p = indexed[rank].element
+            let rawQ = min(1.0, max(0.0, p * Double(m) / Double(rank + 1)))
+            runningMin = min(runningMin, rawQ)
+            adjustedSorted[rank] = runningMin
+        }
+        var result = Array(repeating: 1.0, count: m)
+        for (rank, item) in indexed.enumerated() {
+            result[item.offset] = adjustedSorted[rank]
+        }
+        return result
+    }
+
+    /// 支持可选值的 Benjamini–Hochberg FDR 校正
+    public static func bhAdjustOptional(_ pValues: [Double?]) -> [Double?] {
+        var validIndices: [Int] = []
+        var validPs: [Double] = []
+        for (i, p) in pValues.enumerated() {
+            if let p = p, p.isFinite {
+                validIndices.append(i)
+                validPs.append(p)
+            }
+        }
+        guard !validPs.isEmpty else { return Array(repeating: nil, count: pValues.count) }
+        let adj = bhAdjust(validPs)
+        var out: [Double?] = Array(repeating: nil, count: pValues.count)
+        for (k, origIdx) in validIndices.enumerated() {
+            out[origIdx] = adj[k]
+        }
+        return out
+    }
     
     /// 利用 incompleteBeta 二分求逆计算双侧 Student's t 临界分位数 t_{alpha/2, df}
     public static func studentTQuantileTwoSided(alpha: Double = 0.05, df: Double) -> Double? {
@@ -648,11 +839,37 @@ public enum QPCRStatistics {
         let xs = points.map(\.x)
         return (slope, intercept, r2, xs.min() ?? 0.0, xs.max() ?? 0.0)
     }
+
+    /// 普通最小二乘线性回归并输出斜率标准误 SE(slope)（用于标准曲线效率误差传播）
+    public static func linearRegressionWithSE(_ points: [(x: Double, y: Double)]) -> (slope: Double, intercept: Double, r2: Double, xMin: Double, xMax: Double, slopeSE: Double?)? {
+        guard let base = linearRegression(points) else { return nil }
+        let n = points.count
+        guard n > 2 else {
+            return (base.slope, base.intercept, base.r2, base.xMin, base.xMax, nil)
+        }
+        let meanX = points.reduce(0.0) { $0 + $1.x } / Double(n)
+        var sxx = 0.0
+        var ssRes = 0.0
+        for p in points {
+            sxx += (p.x - meanX) * (p.x - meanX)
+            let resid = p.y - (base.slope * p.x + base.intercept)
+            ssRes += resid * resid
+        }
+        let se: Double? = sxx > 1e-14 ? sqrt((ssRes / Double(n - 2)) / sxx) : nil
+        return (base.slope, base.intercept, base.r2, base.xMin, base.xMax, se)
+    }
     
     /// 由标准曲线斜率计算扩增效率 E = 10^(-1/slope) - 1
     public static func efficiencyFromSlope(_ slope: Double) -> Double {
         guard slope.isFinite && slope != 0.0 else { return .nan }
         return pow(10.0, -1.0 / slope) - 1.0
+    }
+
+    /// 一阶泰勒误差传播计算扩增因子 E_factor = 10^(-1/slope) 的标准误：SE(E) = E_factor * (ln(10) / slope^2) * SE(slope)
+    public static func efficiencySEFromSlope(slope: Double, slopeSE: Double) -> Double? {
+        guard slope.isFinite, slope < 0, slopeSE.isFinite, slopeSE >= 0 else { return nil }
+        let eFactor = pow(10.0, -1.0 / slope)
+        return eFactor * (log(10.0) / (slope * slope)) * slopeSE
     }
 }
 
@@ -943,14 +1160,18 @@ public enum QPCRAnalysisEngine {
             buckets[ck]?.isControl = true
         }
         
-        // 若数据集含标准曲线孔且开启效率校正，自动提取有效标曲扩增效率 (Pfaffl 2001 / qBase 2007)
+        // 若数据集含标准曲线孔且开启效率校正，自动提取有效标曲扩增效率及标准误差 SE(E) (Pfaffl 2001 / qBase 2007)
         // 注意：fit.efficiencyPct 为已知百分比制 (%)，不可再走单位猜测分支
         var stdCurveEffByTarget: [String: Double] = [:]
+        var stdCurveEffSEByTarget: [String: Double] = [:]
         if settings.efficiencyCorrection && wells.contains(where: { $0.wellType == .standard || $0.quantity != nil }) {
             let stdOut = computeStandardCurve(wells: wells, settings: settings, qc: qc)
             for fit in stdOut.fits where fit.valid {
                 if let effPct = fit.efficiencyPct, effPct.isFinite, effPct > 0 {
                     stdCurveEffByTarget[fit.targetKey] = max(0.10, min(1.50, effPct / 100.0))
+                }
+                if let effSE = fit.efficiencySE, effSE.isFinite, effSE >= 0 {
+                    stdCurveEffSEByTarget[fit.targetKey] = effSE
                 }
             }
         }
@@ -1029,12 +1250,14 @@ public enum QPCRAnalysisEngine {
             targetEffCache[tk] = resolveTargetEfficiency(forKey: tk)
         }
         
-        // 计算对照组在各目的基因上的平均 ΔCt_eff（以 log2 归一化周期为单位）
+        // 计算对照组在各目的基因上的平均 ΔCt_eff（以 log2 归一化周期为单位）与原始平均 Cq（用于效率误差传播）
         var controlMeanDCt: [String: Double] = [:]
+        var controlMeanRawCt: [String: Double] = [:]
         for tk in nonRefTargetKeys {
             let effT = targetEffCache[tk] ?? 1.0
             let scaleT = log2(1.0 + effT)
             var vals: [Double] = []
+            var rawVals: [Double] = []
             for ck in controlSampleKeys {
                 guard let bucket = buckets[ck],
                       let refEffCt = refEffCtBySample[ck],
@@ -1042,11 +1265,14 @@ public enum QPCRAnalysisEngine {
                       !tws.isEmpty else { continue }
                 let cts = tws.compactMap(\.ct)
                 if !cts.isEmpty {
-                    vals.append(QPCRStatistics.mean(cts) * scaleT - refEffCt)
+                    let mCt = QPCRStatistics.mean(cts)
+                    vals.append(mCt * scaleT - refEffCt)
+                    rawVals.append(mCt)
                 }
             }
             if !vals.isEmpty {
                 controlMeanDCt[tk] = QPCRStatistics.mean(vals)
+                controlMeanRawCt[tk] = QPCRStatistics.mean(rawVals)
             }
         }
         
@@ -1075,6 +1301,38 @@ public enum QPCRAnalysisEngine {
                 // 各技术复孔与样本主值均在 log2(NRQ) 空间严格满足 Pfaffl (2001) / qBase (2007) 且无 Jensen 偏倚
                 let foldValues = cts.map { pow(2.0, -(($0 * scaleT - refEffCt) - ctrlDCt)) }
                 let fold = pow(2.0, -ddCt)
+
+                // Pfaffl/qBase 一阶泰勒误差传播：同时纳入靶基因 ΔCq_t/E_t·SE(E_t) 与各内参基因 ΔCq_r/(R·E_r)·SE(E_r)
+                let effPropSE: Double? = {
+                    guard settings.efficiencyCorrection else { return nil }
+                    var relVarSum = 0.0
+                    var hasAnySE = false
+                    let eFactorT = 1.0 + eff
+                    if let eSEt = stdCurveEffSEByTarget[tk], eFactorT > 0.1,
+                       let ctrlRawT = controlMeanRawCt[tk] {
+                        let dCqT = meanCt - ctrlRawT
+                        let termT = (dCqT / eFactorT) * eSEt
+                        relVarSum += termT * termT
+                        hasAnySE = true
+                    }
+                    let presentRefs = validBaselineRefs.filter { rk in
+                        !(bucket.refWells[rk]?.compactMap(\.ct).isEmpty ?? true)
+                    }
+                    let rCount = Double(max(1, presentRefs.count))
+                    for rk in presentRefs {
+                        let effR = refEffCache[rk] ?? 1.0
+                        let eFactorR = 1.0 + effR
+                        guard let eSEr = stdCurveEffSEByTarget[rk], eFactorR > 0.1,
+                              let rawMuR = refRawBaseline[rk] else { continue }
+                        let rCts = (bucket.refWells[rk] ?? []).compactMap(\.ct)
+                        guard !rCts.isEmpty else { continue }
+                        let dCqR = QPCRStatistics.mean(rCts) - rawMuR
+                        let termR = (dCqR / (rCount * eFactorR)) * eSEr
+                        relVarSum += termR * termR
+                        hasAnySE = true
+                    }
+                    return hasAnySE ? (fold * sqrt(max(0.0, relVarSum))) : nil
+                }()
                 
                 sampleResults.append(
                     QPCRSampleResult(
@@ -1095,7 +1353,8 @@ public enum QPCRAnalysisEngine {
                         foldSd: QPCRStatistics.sampleSd(foldValues),
                         foldSem: QPCRStatistics.sem(foldValues),
                         foldValues: foldValues,
-                        isControl: bucket.isControl
+                        isControl: bucket.isControl,
+                        efficiencyPropagatedFoldSE: effPropSE
                     )
                 )
                 
@@ -1212,6 +1471,40 @@ public enum QPCRAnalysisEngine {
             }
         }
         
+        // 多基因批量筛查 Benjamini–Hochberg FDR 跨基因多重检验校正
+        let finalGroupResults: [QPCRGroupSummary]
+        if settings.multipleComparison == .bhFDR {
+            let allRawPs: [Double?] = groupResults.map { $0.isControl ? nil : $0.pValue }
+            let bhAdjPs = QPCRStatistics.bhAdjustOptional(allRawPs)
+            finalGroupResults = groupResults.enumerated().map { idx, g in
+                QPCRGroupSummary(
+                    category: g.category,
+                    categoryKey: g.categoryKey,
+                    target: g.target,
+                    targetKey: g.targetKey,
+                    nBiological: g.nBiological,
+                    nTechnicalWells: g.nTechnicalWells,
+                    meanFold: g.meanFold,
+                    sdFold: g.sdFold,
+                    semFold: g.semFold,
+                    meanDCt: g.meanDCt,
+                    sdDCt: g.sdDCt,
+                    pValue: g.pValue,
+                    pAdjusted: g.isControl ? nil : bhAdjPs[idx],
+                    multipleComparison: .bhFDR,
+                    ddCtCI95Low: g.ddCtCI95Low,
+                    ddCtCI95High: g.ddCtCI95High,
+                    foldCI95Low: g.foldCI95Low,
+                    foldCI95High: g.foldCI95High,
+                    statNote: g.statNote,
+                    foldValues: g.foldValues,
+                    isControl: g.isControl
+                )
+            }
+        } else {
+            finalGroupResults = groupResults
+        }
+        
         return QPCRDdctAnalysisOut(
             references: activeRefLabels,
             targets: sortedTargets,
@@ -1220,7 +1513,7 @@ public enum QPCRAnalysisEngine {
             controlLabel: controlLabel,
             contaminatedTargets: contaminatedTargets,
             sampleResults: sampleResults,
-            groupResults: groupResults,
+            groupResults: finalGroupResults,
             heatmapCells: heatmapCells
         )
     }
@@ -1249,8 +1542,10 @@ public enum QPCRAnalysisEngine {
         var fitMap: [String: QPCRStandardCurveFit] = [:]
         for (tk, pts) in ptsByTarget.sorted(by: { $0.key < $1.key }) {
             let label = targetMap[tk] ?? tk
-            if let reg = QPCRStatistics.linearRegression(pts) {
+            let ys = pts.map(\.y)
+            if let reg = QPCRStatistics.linearRegressionWithSE(pts) {
                 let eff = QPCRStatistics.efficiencyFromSlope(reg.slope) * 100.0
+                let effSE = reg.slopeSE.flatMap { QPCRStatistics.efficiencySEFromSlope(slope: reg.slope, slopeSE: $0) }
                 let valid = reg.slope < 0 && eff.isFinite
                 let fit = QPCRStandardCurveFit(
                     targetKey: tk,
@@ -1263,7 +1558,11 @@ public enum QPCRAnalysisEngine {
                     xMin: reg.xMin,
                     xMax: reg.xMax,
                     valid: valid,
-                    points: pts
+                    points: pts,
+                    slopeSE: reg.slopeSE,
+                    efficiencySE: effSE,
+                    ctMin: ys.min(),
+                    ctMax: ys.max()
                 )
                 fits.append(fit)
                 fitMap[tk] = fit
@@ -1327,6 +1626,25 @@ public enum QPCRAnalysisEngine {
         
         let outSamples = buckets.values.map { b -> QPCRStandardSampleResult in
             let meanLog = QPCRStatistics.mean(b.logQtys)
+            let meanCt = QPCRStatistics.mean(b.cts)
+            let fit = fitMap[b.targetKey]
+            var isExtrap = false
+            var extrapWarn: String? = nil
+            if let xMin = fit?.xMin, let xMax = fit?.xMax {
+                if meanLog < xMin - 1e-9 {
+                    isExtrap = true
+                    extrapWarn = L10n.tr(
+                        "低于标准曲线最低定量浓度（Ct=\(String(format: "%.2f", meanCt)) 超出标准品上限），存在外推不确定性",
+                        "Below standard curve lowest concentration (Ct=\(String(format: "%.2f", meanCt))); extrapolated estimate"
+                    )
+                } else if meanLog > xMax + 1e-9 {
+                    isExtrap = true
+                    extrapWarn = L10n.tr(
+                        "高于标准曲线最高定量浓度（Ct=\(String(format: "%.2f", meanCt)) 低于标准品下限），存在外推不确定性",
+                        "Above standard curve highest concentration (Ct=\(String(format: "%.2f", meanCt))); extrapolated estimate"
+                    )
+                }
+            }
             return QPCRStandardSampleResult(
                 sample: b.sample,
                 sampleKey: b.sampleKey,
@@ -1335,15 +1653,325 @@ public enum QPCRAnalysisEngine {
                 group: b.group,
                 category: b.category,
                 n: b.cts.count,
-                meanCt: QPCRStatistics.mean(b.cts),
+                meanCt: meanCt,
                 log10Quantity: meanLog,
                 quantity: pow(10.0, meanLog),
                 sdLog: QPCRStatistics.sampleSd(b.logQtys),
-                semLog: QPCRStatistics.sem(b.logQtys)
+                semLog: QPCRStatistics.sem(b.logQtys),
+                isExtrapolated: isExtrap,
+                extrapolationWarning: extrapWarn
             )
         }.sorted { ($0.category, $0.sample, $0.target) < ($1.category, $1.sample, $1.target) }
         
         return QPCRStandardAnalysisOut(fits: fits, samples: outSamples)
+    }
+
+    /// geNorm (Vandesompele et al. 2002) 与 NormFinder (Andersen et al. 2004, Cancer Res. 64:5245-5250) 内参基因稳定性真实评估
+    public static func evaluateReferenceStability(
+        wells: [QPCRWellRecord],
+        settings: QPCRSettings,
+        qc: [String: QPCRWellQCResult]
+    ) -> QPCRReferenceStabilityReport {
+        // 先过滤出在板上真实存在的候选内参基因，避免配置中残留未上板基因导致可用样本归零
+        var presentSampleTargets = Set<String>()
+        for w in wells {
+            guard isUsableWell(w, qc: qc[w.id], settings: settings),
+                  w.wellType == .sample, w.ct != nil else { continue }
+            let tk = normKey(w.target)
+            if !tk.isEmpty { presentSampleTargets.insert(tk) }
+        }
+        let refKeysOrdered: [String] = settings.referenceTargets.map { normKey($0) }.filter { !$0.isEmpty && presentSampleTargets.contains($0) }
+        var uniqueRefKeys: [String] = []
+        for k in refKeysOrdered where !uniqueRefKeys.contains(k) { uniqueRefKeys.append(k) }
+        guard uniqueRefKeys.count >= 2 else {
+            return QPCRReferenceStabilityReport(
+                genes: [],
+                stepwiseExclusionOrder: [],
+                pairwiseVariations: [],
+                bestReferencePair: uniqueRefKeys,
+                isStable: false,
+                warnings: [L10n.t("至少需要 2 个候选内参基因才能执行 geNorm / NormFinder 稳定性评估。")]
+            )
+        }
+
+        // 若开启扩增效率校正，按标准曲线 / 孔级效率 / 默认效率解析各内参的 log2(1 + E_j) 缩放因子
+        var stdCurveEffByTarget: [String: Double] = [:]
+        if settings.efficiencyCorrection && wells.contains(where: { $0.wellType == .standard || $0.quantity != nil }) {
+            let stdOut = computeStandardCurve(wells: wells, settings: settings, qc: qc)
+            for fit in stdOut.fits where fit.valid {
+                if let effPct = fit.efficiencyPct, effPct.isFinite, effPct > 0 {
+                    stdCurveEffByTarget[fit.targetKey] = max(0.10, min(1.50, effPct / 100.0))
+                }
+            }
+        }
+        let usableSampleWells = wells.filter { $0.wellType == .sample && $0.quantity == nil && isUsableWell($0, qc: qc[$0.id], settings: settings) }
+        func resolveRefScale(forKey tk: String) -> Double {
+            guard settings.efficiencyCorrection else { return 1.0 }
+            let eff: Double
+            if let stdEff = stdCurveEffByTarget[tk] {
+                eff = stdEff
+            } else {
+                let wellEffs = usableSampleWells
+                    .filter { normKey($0.target) == tk }
+                    .compactMap { $0.efficiency.flatMap(QPCRStatistics.normalizeEfficiencyFraction) }
+                if !wellEffs.isEmpty {
+                    eff = QPCRStatistics.mean(wellEffs)
+                } else {
+                    let fallbackPct = settings.defaultEfficiencyPct
+                    eff = (fallbackPct.isFinite && fallbackPct > 0) ? max(0.10, min(1.50, fallbackPct / 100.0)) : 1.0
+                }
+            }
+            return log2(1.0 + eff)
+        }
+        let refScales: [Double] = uniqueRefKeys.map { resolveRefScale(forKey: $0) }
+
+        var targetLabel: [String: String] = [:]
+        var sampleGroup: [String: String] = [:]
+        var sampleRefCts: [String: [String: [Double]]] = [:]
+        for w in wells {
+            guard isUsableWell(w, qc: qc[w.id], settings: settings),
+                  w.wellType == .sample, let ct = w.ct else { continue }
+            let tk = normKey(w.target)
+            guard uniqueRefKeys.contains(tk) else { continue }
+            let sk = normKey(w.sample)
+            guard !sk.isEmpty else { continue }
+            if targetLabel[tk] == nil { targetLabel[tk] = w.target.trimmingCharacters(in: .whitespaces) }
+            let grp = w.group.trimmingCharacters(in: .whitespaces)
+            // 严禁将空 group 回退为 sample 名制造伪单样本分组
+            if sampleGroup[sk] == nil || (sampleGroup[sk]?.isEmpty == true && !grp.isEmpty) {
+                sampleGroup[sk] = grp
+            }
+            sampleRefCts[sk, default: [:]][tk, default: []].append(ct)
+        }
+
+        let completeSamples = sampleRefCts.keys.sorted().filter { sk in
+            uniqueRefKeys.allSatisfy { !(sampleRefCts[sk]?[$0]?.isEmpty ?? true) }
+        }
+        guard completeSamples.count >= 2 else {
+            return QPCRReferenceStabilityReport(
+                genes: [],
+                stepwiseExclusionOrder: [],
+                pairwiseVariations: [],
+                bestReferencePair: uniqueRefKeys.map { targetLabel[$0] ?? $0 },
+                isStable: false,
+                warnings: [L10n.t("同时包含全部候选内参的有效样本不足 2 个，无法计算 geNorm M 值。")]
+            )
+        }
+
+        let mSamples = completeSamples.count
+        let nGenes = uniqueRefKeys.count
+        var rawCtMat = Array(repeating: Array(repeating: 0.0, count: nGenes), count: mSamples)
+        var ctMat = Array(repeating: Array(repeating: 0.0, count: nGenes), count: mSamples)
+        for (i, sk) in completeSamples.enumerated() {
+            for (j, rk) in uniqueRefKeys.enumerated() {
+                let rawMean = QPCRStatistics.mean(sampleRefCts[sk]?[rk] ?? [0.0])
+                rawCtMat[i][j] = rawMean
+                ctMat[i][j] = rawMean * refScales[j]
+            }
+        }
+
+        func computeGeNormM(indices: [Int]) -> [Int: Double] {
+            let k = indices.count
+            guard k >= 2 else { return [:] }
+            var mMap: [Int: Double] = [:]
+            for j in indices {
+                var sumV = 0.0
+                for l in indices where l != j {
+                    let logRatios = (0..<mSamples).map { ctMat[$0][l] - ctMat[$0][j] }
+                    let sd = QPCRStatistics.sampleSd(logRatios) ?? 0.0
+                    sumV += sd
+                }
+                mMap[j] = sumV / Double(k - 1)
+            }
+            return mMap
+        }
+
+        // 逐步排除并记录每个基因在被剔除步骤的最终 geNorm M（最佳双基因对记录最终成对 M）
+        var active = Array(0..<nGenes)
+        var exclusionOrder: [String] = []
+        var pairwiseVars: [QPCRPairwiseVariation] = []
+        var stepwiseM: [Int: Double] = [:]
+        while active.count > 2 {
+            let mNow = computeGeNormM(indices: active)
+            let worst = active.max { (mNow[$0] ?? 0.0) < (mNow[$1] ?? 0.0) } ?? active[0]
+            stepwiseM[worst] = mNow[worst] ?? 0.0
+            let nextActive = active.filter { $0 != worst }
+            let nfDiffs = (0..<mSamples).map { i -> Double in
+                let nfNext = nextActive.reduce(0.0) { $0 - ctMat[i][$1] } / Double(nextActive.count)
+                let nfCurr = active.reduce(0.0) { $0 - ctMat[i][$1] } / Double(active.count)
+                return nfNext - nfCurr
+            }
+            let vVal = QPCRStatistics.sampleSd(nfDiffs) ?? 0.0
+            pairwiseVars.append(QPCRPairwiseVariation(label: "V\(nextActive.count)/\(active.count)", nGenes: nextActive.count, value: vVal))
+            exclusionOrder.append(targetLabel[uniqueRefKeys[worst]] ?? uniqueRefKeys[worst])
+            active = nextActive
+        }
+        let finalPairM = computeGeNormM(indices: active)
+        for idx in active {
+            stepwiseM[idx] = finalPairM[idx] ?? 0.0
+        }
+        let bestPairLabels = active.map { targetLabel[uniqueRefKeys[$0]] ?? uniqueRefKeys[$0] }
+
+        // 仅对显式赋予非空 group 的样本进行组间分析与 NormFinder (Andersen et al. 2004, Cancer Res. 64:5245-5250)
+        let labeledIndices = (0..<mSamples).filter { !(sampleGroup[completeSamples[$0]] ?? "").isEmpty }
+        let groupedSampleIndices = Dictionary(grouping: labeledIndices) { sampleGroup[completeSamples[$0]]! }
+        let validGroupKeys = groupedSampleIndices.keys.sorted().filter { (groupedSampleIndices[$0]?.count ?? 0) >= 2 }
+        var normFinderMap: [Int: Double] = [:]
+        if nGenes >= 3 && validGroupKeys.count >= 2 {
+            let k = nGenes
+            let gCount = validGroupKeys.count
+            let yMat = ctMat.map { row in row.map { -$0 } }
+
+            // 1. 计算 k × G 组均值矩阵并做双中心化（支持非平衡分组 n_g）
+            var groupMeanMat = Array(repeating: Array(repeating: 0.0, count: gCount), count: k)
+            var nByG = Array(repeating: 0, count: gCount)
+            for (gIdx, gk) in validGroupKeys.enumerated() {
+                let idxs = groupedSampleIndices[gk] ?? []
+                nByG[gIdx] = idxs.count
+                for i in 0..<k {
+                    groupMeanMat[i][gIdx] = QPCRStatistics.mean(idxs.map { yMat[$0][i] })
+                }
+            }
+            let geneMeanOfGroups = (0..<k).map { i in
+                groupMeanMat[i].reduce(0.0, +) / Double(gCount)
+            }
+            let groupMeanOfGenes = (0..<gCount).map { g in
+                (0..<k).reduce(0.0) { $0 + groupMeanMat[$1][g] } / Double(k)
+            }
+            let grandMeanOfGroups = geneMeanOfGroups.reduce(0.0, +) / Double(k)
+            var dMat = Array(repeating: Array(repeating: 0.0, count: gCount), count: k)
+            var sumDSq = 0.0
+            for i in 0..<k {
+                for g in 0..<gCount {
+                    let d = groupMeanMat[i][g] - geneMeanOfGroups[i] - groupMeanOfGenes[g] + grandMeanOfGroups
+                    dMat[i][g] = d
+                    sumDSq += d * d
+                }
+            }
+
+            // 2. 组内无偏方差估计 σ²_{ig}（修正 (1 - 2/k) 与跨基因泄露项）
+            var sigma2Mat = Array(repeating: Array(repeating: 0.0, count: gCount), count: k)
+            let denomFactor = 1.0 - 2.0 / Double(k)
+            var sumSigma2OverN = 0.0
+            for (gIdx, gk) in validGroupKeys.enumerated() {
+                let idxs = groupedSampleIndices[gk] ?? []
+                let ng = idxs.count
+                guard ng >= 2 else { continue }
+                var vVec = Array(repeating: 0.0, count: k)
+                for sIdx in idxs {
+                    let sampleMeanAcrossGenes = (0..<k).reduce(0.0) { $0 + yMat[sIdx][$1] } / Double(k)
+                    for i in 0..<k {
+                        let r = yMat[sIdx][i] - groupMeanMat[i][gIdx] - sampleMeanAcrossGenes + groupMeanOfGenes[gIdx]
+                        vVec[i] += r * r
+                    }
+                }
+                for i in 0..<k { vVec[i] /= Double(ng - 1) }
+                let vSum = vVec.reduce(0.0, +)
+                let leakTerm = vSum / Double(k * (k - 1))
+                for i in 0..<k {
+                    let unbiased = max(0.0, (vVec[i] - leakTerm) / denomFactor)
+                    sigma2Mat[i][gIdx] = unbiased
+                    sumSigma2OverN += unbiased / Double(ng)
+                }
+            }
+
+            // 3. 经验贝叶斯先验方差 τ²、后验收缩均值 γ̂_{ig} 与后验方差 ω̂²_{ig}
+            let tau2 = max(0.0, sumDSq / Double((k - 1) * (gCount - 1)) - sumSigma2OverN / Double(k * gCount))
+            for i in 0..<k {
+                var rhoSum = 0.0
+                for g in 0..<gCount {
+                    let ng = Double(max(1, nByG[g]))
+                    let s2OverN = sigma2Mat[i][g] / ng
+                    let denom = tau2 + s2OverN
+                    let gammaHat = denom > 1e-18 ? (tau2 / denom) * dMat[i][g] : 0.0
+                    let omega2 = s2OverN + (denom > 1e-18 ? (tau2 * s2OverN / denom) : 0.0)
+                    rhoSum += abs(gammaHat) + sqrt(max(0.0, omega2))
+                }
+                normFinderMap[i] = rhoSum / Double(gCount)
+            }
+        }
+
+        var metrics: [QPCRReferenceGeneMetric] = []
+        var warnings: [String] = []
+        var anyUnstable = false
+
+        for j in 0..<nGenes {
+            let rk = uniqueRefKeys[j]
+            let label = targetLabel[rk] ?? rk
+            let mVal = stepwiseM[j] ?? 0.0
+            let maxShift: Double
+            if groupedSampleIndices.count >= 2 {
+                let groupMeans = groupedSampleIndices.values.map { idxs in
+                    QPCRStatistics.mean(idxs.map { rawCtMat[$0][j] })
+                }
+                maxShift = (groupMeans.max() ?? 0.0) - (groupMeans.min() ?? 0.0)
+            } else {
+                maxShift = 0.0
+            }
+            let nfRho = normFinderMap[j]
+            metrics.append(QPCRReferenceGeneMetric(
+                targetKey: rk,
+                target: label,
+                geNormM: mVal,
+                normFinderRho: nfRho,
+                maxInterGroupCtShift: maxShift
+            ))
+            if mVal > 1.0 {
+                anyUnstable = true
+                warnings.append(L10n.tr(
+                    "内参 \(label) 的逐步排除 geNorm M=\(String(format: "%.3f", mVal)) > 1.0，稳定性不达标。",
+                    "Reference \(label) has stepwise geNorm M=\(String(format: "%.3f", mVal)) > 1.0 (unstable)."
+                ))
+            }
+            if let rho = nfRho, rho > 0.50 {
+                anyUnstable = true
+                warnings.append(L10n.tr(
+                    "内参 \(label) 的 NormFinder 稳定度 ρ=\(String(format: "%.3f", rho)) > 0.50，组间/组内变异过高。",
+                    "Reference \(label) has NormFinder stability ρ=\(String(format: "%.3f", rho)) > 0.50 (excessive inter/intra-group variation)."
+                ))
+            }
+        }
+
+        // 双内参 (k == 2) 额外检验组间成对 ΔCt 漂移（排除均一 cDNA 上样量漂移误报）
+        if nGenes == 2 && groupedSampleIndices.count >= 2 {
+            let pairGroupMeans = groupedSampleIndices.values.map { idxs in
+                QPCRStatistics.mean(idxs.map { ctMat[$0][0] - ctMat[$0][1] })
+            }
+            let pairDeltaShift = (pairGroupMeans.max() ?? 0.0) - (pairGroupMeans.min() ?? 0.0)
+            if pairDeltaShift > 1.0 {
+                anyUnstable = true
+                warnings.append(L10n.tr(
+                    "双内参组间成对 ΔCt 漂移达 \(String(format: "%.2f", pairDeltaShift)) (>1.0)，至少一个内参受实验处理调控。",
+                    "Pairwise reference ΔCt shifts by \(String(format: "%.2f", pairDeltaShift)) (>1.0) across groups; at least one reference is regulated."
+                ))
+            }
+        }
+
+        // 若所有内参均通过相对稳定性检验但存在 >1.0 Ct 的同步组间漂移，仅给出上样量提示，不判为不合规
+        let maxObservedShift = metrics.map(\.maxInterGroupCtShift).max() ?? 0.0
+        if !anyUnstable && maxObservedShift > 1.0 {
+            warnings.append(L10n.tr(
+                "提示：各稳定内参在组间存在约 \(String(format: "%.2f", maxObservedShift)) Ct 同步漂移（可能为 cDNA 上样量差异），归一化已自动校正。",
+                "Advisory: Stable reference genes shifted uniformly by ~\(String(format: "%.2f", maxObservedShift)) Ct across groups (likely cDNA loading difference), which normalization corrects."
+            ))
+        }
+
+        if let bestV = pairwiseVars.map(\.value).min(), bestV > 0.15 {
+            warnings.append(L10n.tr(
+                "最小成对变异度 V=\(String(format: "%.3f", bestV)) > 0.15，建议增加更多稳定内参。",
+                "Minimum pairwise variation V=\(String(format: "%.3f", bestV)) > 0.15; consider adding more stable reference genes."
+            ))
+        }
+
+        metrics.sort { $0.geNormM < $1.geNormM }
+        return QPCRReferenceStabilityReport(
+            genes: metrics,
+            stepwiseExclusionOrder: exclusionOrder,
+            pairwiseVariations: pairwiseVars,
+            bestReferencePair: bestPairLabels,
+            isStable: !anyUnstable,
+            warnings: warnings
+        )
     }
     
     // MARK: - 4. CSV / TSV / 原厂导出表 / RDML 解析、微孔板联动与结果导出
@@ -1352,41 +1980,70 @@ public enum QPCRAnalysisEngine {
         return QPCRInstrumentAndRDMLEngine.parseRawExport(rawText).wells
     }
     
-    /// 将微孔板设计器的孔位分配一键合并或生成 qPCR 数据表
+    /// 将微孔板设计器的孔位分配一键合并或生成 qPCR 数据表（保留既有靶基因关联并同步样品/对照/空白类型）
     public static func mergeWithPlateAssignments(
         existingWells: [QPCRWellRecord],
         assignments: [String: PlateWellAssignment],
         defaultTargets: [String] = ["GAPDH", "TP53"]
     ) -> [QPCRWellRecord] {
+        func mappedWellType(_ pType: StoredWellType, fallback: QPCRWellType) -> QPCRWellType {
+            switch pType {
+            case .blank:    return .ntc
+            case .control:  return .sample
+            case .sample:   return .sample
+            case .reserved: return fallback
+            }
+        }
         if !existingWells.isEmpty {
+            let upperMap = Dictionary(assignments.map { ($0.key.uppercased(), $0.value) }, uniquingKeysWith: { first, _ in first })
             return existingWells.map { w in
                 var copy = w
-                if let assigned = assignments[w.well.uppercased()], assigned.type == .sample {
-                    if !assigned.sampleName.isEmpty { copy.sample = assigned.sampleName }
-                    if !assigned.group.isEmpty { copy.group = assigned.group }
+                if let assigned = upperMap[w.well.uppercased()], assigned.type != .reserved {
+                    if w.wellType == .noRT || w.wellType == .standard {
+                        if assigned.type == .blank {
+                            copy.wellType = .ntc
+                        }
+                    } else {
+                        copy.wellType = mappedWellType(assigned.type, fallback: w.wellType)
+                    }
+                    if !assigned.sampleName.isEmpty {
+                        copy.sample = assigned.sampleName
+                    } else if assigned.type == .blank && copy.sample.isEmpty {
+                        copy.sample = "NTC"
+                    }
+                    if !assigned.group.isEmpty {
+                        copy.group = assigned.group
+                    } else if assigned.type == .control && copy.group.isEmpty {
+                        copy.group = "Control"
+                    }
                     if assigned.replicate > 0 { copy.replicate = assigned.replicate }
+                    // 严格保留既有 target，避免覆盖已导入的靶基因关联
                 }
                 return copy
             }
         }
-        // 若当前无孔位数据，则根据微孔板样品孔自动创建包含内参与目的基因的模拟示范模板
-        let sampleAssignments = assignments.values
-            .filter { $0.type == .sample && !$0.sampleName.isEmpty }
+        let safeTargets = defaultTargets.isEmpty ? ["GAPDH", "TP53"] : defaultTargets
+        let activeAssignments = assignments.values
+            .filter { $0.type != .reserved }
             .sorted { ($0.row, $0.col) < ($1.row, $1.col) }
         var generated: [QPCRWellRecord] = []
-        for (idx, a) in sampleAssignments.enumerated() {
-            let target = defaultTargets[idx % max(1, defaultTargets.count)]
-            let baseCt: Double = (target == defaultTargets.first) ? 18.5 : 22.0
+        for (idx, a) in activeAssignments.enumerated() {
+            let target = safeTargets[idx % safeTargets.count]
+            let wType = mappedWellType(a.type, fallback: .sample)
+            let sampleLabel = !a.sampleName.isEmpty ? a.sampleName : (a.type == .blank ? "NTC" : "Control_\(a.well)")
+            let groupLabel = !a.group.isEmpty ? a.group : (a.type == .control ? "Control" : (a.type == .blank ? "NTC" : ""))
+            let baseCt: Double? = (wType == .ntc) ? nil : ((target == safeTargets.first) ? 18.5 : 22.0)
             generated.append(
                 QPCRWellRecord(
                     id: "plate_\(a.well)",
                     row: idx,
                     well: a.well,
-                    sample: a.sampleName,
+                    sample: sampleLabel,
                     target: target,
-                    group: a.group,
-                    replicate: a.replicate,
-                    ct: baseCt + Double(a.replicate) * 0.08
+                    group: groupLabel,
+                    wellType: wType,
+                    replicate: a.replicate > 0 ? a.replicate : nil,
+                    ct: baseCt.map { $0 + Double(max(0, a.replicate)) * 0.08 }
                 )
             )
         }

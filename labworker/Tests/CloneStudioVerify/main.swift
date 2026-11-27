@@ -3042,10 +3042,13 @@ do {
     assert(metaFromData.channelNames == ["DAPI", "EGFP"], "Channel names mismatch: got \(String(describing: metaFromData.channelNames))")
     assert(metaFromData.sizeC == 2, "SizeC must be 2")
 
-    // 3. 测试 ImageJ 格式与标准 TIFF 分辨率回退解析
+    // 3. 测试 ImageJ 格式与标准 TIFF 分辨率回退解析 (2B: spacing= 为 3D Z 轴步距，严禁冒充 XY 像素尺寸)
     let imageJHeader = "ImageJ=1.53c\nimages=1\nunit=micron\nspacing=0.50\n"
-    let ijMeta = BioImageProcessor.parseImageJDescription(imageJHeader, xResolution: nil, resolutionUnit: nil)
-    assert(ijMeta?.physicalSizeSource == "ImageJ" && abs((ijMeta?.physicalPixelSizeUM ?? 0) - 0.50) < 1e-4, "ImageJ spacing=0.50 µm parsing failed")
+    let ijMetaZOnly = BioImageProcessor.parseImageJDescription(imageJHeader, xResolution: nil, resolutionUnit: nil)
+    assert(ijMetaZOnly?.physicalPixelSizeUM == nil, "ImageJ spacing= is Z-spacing and must NOT be assigned to XY physicalPixelSizeUM")
+    assert(abs((ijMetaZOnly?.zSpacingUM ?? 0) - 0.50) < 1e-4, "ImageJ spacing=0.50 µm must be parsed into zSpacingUM")
+    let ijMetaXY = BioImageProcessor.parseImageJDescription(imageJHeader, xResolution: 2.0, resolutionUnit: nil)
+    assert(ijMetaXY?.physicalSizeSource == "ImageJ" && abs((ijMetaXY?.physicalPixelSizeUM ?? 0) - 0.50) < 1e-4, "ImageJ unit=micron + XResolution=2.0 must yield 0.50 µm/px")
 
     // 4. 从文件 URL 构造 BioImagePlane，验证自动 OME-XML 物理像素尺寸透传
     guard let loadedPlane = BioImagePlane.fromImageURL(tiffURL, maxDimension: 120) else {
@@ -3369,15 +3372,20 @@ do {
 
     // 串联重复验证 (插入第 100..220 片段副本)
     let refChars = Array(wpFx.refSeq)
-    let dupBlock = Array(refChars[100..<220])
-    let tandemQuery = String(refChars[0..<220] + dupBlock + refChars[220..<refChars.count])
+    let prefixPart = String(refChars[0..<220])
+    let dupPart = String(refChars[100..<220])
+    let suffixPart = String(refChars[220..<refChars.count])
+    let tandemQuery = prefixPart + dupPart + suffixPart
     let dupRep = PlasmidSequencingAssemblyEngine.verifyWholePlasmid(
         querySequence: tandemQuery,
         queryName: "TandemDup",
         referenceSequence: wpFx.refSeq,
         referenceName: wpFx.refName
     )
-    assert(dupRep.variants.contains(where: { $0.kind == .tandemDuplication || $0.kind == .largeInsertion }), "Expected tandem duplication/insertion detection")
+    let hasTandemDupOrIns = dupRep.variants.contains { v in
+        v.kind == .tandemDuplication || v.kind == .largeInsertion
+    }
+    assert(hasTandemDupOrIns, "Expected tandem duplication/insertion detection")
 
     pass("PlasmidSequencingAssemblyEngine passed (Sanger 2-strand Contig cov=\(String(format: "%.1f%%", contig.coveragePercent)), Nanopore Origin rotation + SNP + SV).")
 }
@@ -4091,6 +4099,1109 @@ do {
     pass("Batch 1 scientific rigor suite passed (Vandesompele/Pfaffl/qBase/Jensen/Median+Grubbs/Homology/Plate/SangerCov).")
 } catch {
     fatalError("Batch 1 scientific rigor test failed: \(error)")
+}
+
+// MARK: - Test 62: Sub-batch 2A — 酶标仪实验套件科研级升级 (ICH M10 4PL/5PL WLS、IC50 95%CI、Dunnett/Tukey/SW/BF/KW、BCA QR)
+func runTest62SubBatch2A() throws {
+    print("\n--- Test 62: Sub-batch 2A (PlateReaderAssayEngine 4PL/5PL WLS, ICH M10, IC50 CI, Dunnett/Tukey/SW/BF/KW, BCA QR) ---")
+
+    // 1. ELISA 4PL 1/Y² 加权 WLS + x=0 锚点保留 + ICH M10 回算与外推阻断
+    let trueA = 0.05, trueB = 1.20, trueC = 40.0, trueD = 2.80
+    func eval4PL(_ x: Double, a: Double, b: Double, c: Double, d: Double) -> Double {
+        if x <= 0 { return b > 0 ? a : d }
+        return d + (a - d) / (1.0 + pow(x / c, b))
+    }
+    let elisaLevels: [Double] = [0.0, 1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0]
+    var elisaStds: [(x: Double, y: Double)] = []
+    for (idx, x) in elisaLevels.enumerated() {
+        let y0 = eval4PL(x, a: trueA, b: trueB, c: trueC, d: trueD)
+        let delta = (idx % 2 == 0 ? 0.015 : -0.015) * max(0.02, y0)
+        elisaStds.append((x: x, y: y0 + delta))
+        elisaStds.append((x: x, y: y0 - delta))
+    }
+    guard let fitWLS = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: elisaStds, fiveParameter: false, weighting: .invY2) else {
+        fatalError("ELISA 4PL 1/Y² WLS fit returned nil")
+    }
+    assert(fitWLS.standardPoints.count == elisaStds.count, "x=0 anchor points must be retained in standardPoints")
+    assert(fitWLS.weighting == .invY2, "Weighting mode must be .invY2")
+    assert(abs(fitWLS.paramC - trueC) / trueC < 0.05, "4PL WLS C recovery error > 5%: got \(fitWLS.paramC)")
+    assert(abs(fitWLS.paramB - trueB) / trueB < 0.05, "4PL WLS B recovery error > 5%: got \(fitWLS.paramB)")
+    let ich = fitWLS.ichM10Report
+    assert(ich.meetsICHM10 && ich.nonZeroLevelCount == 7 && ich.passRatePercent >= 75.0, "ICH M10 validation should pass on clean 7-level standard curve")
+
+    // 外推阻断验证（低于 LLOQ 与高于 ULOQ 均阻断 finalConc == nil）
+    let quantSamples = PlateReaderAssayEngine.quantifyELISASamples(
+        samples: [
+            (name: "BelowLLOQ", replicates: [eval4PL(0.2, a: trueA, b: trueB, c: trueC, d: trueD)]),
+            (name: "InRange", replicates: [eval4PL(50.0, a: trueA, b: trueB, c: trueC, d: trueD)]),
+            (name: "AboveULOQ", replicates: [eval4PL(2500.0, a: trueA, b: trueB, c: trueC, d: trueD)])
+        ],
+        fit: fitWLS,
+        dilutionFactor: 1.0,
+        useValidatedLimits: true
+    )
+    assert(quantSamples[0].finalConc == nil && quantSamples[0].status == .belowLLOQ && quantSamples[0].extrapolationWarning != nil, "Below-LLOQ sample must block extrapolation with .belowLLOQ")
+    assert(quantSamples[1].finalConc != nil && abs((quantSamples[1].finalConc ?? 0) - 50.0) / 50.0 < 0.06, "In-range ELISA back-calc must be accurate")
+    assert(quantSamples[2].finalConc == nil && quantSamples[2].status == .aboveULOQ && quantSamples[2].extrapolationWarning != nil, "Above-ULOQ sample must block extrapolation with .aboveULOQ")
+
+    // 异方差标曲对比：高浓度大散点、低浓度精准条件下，1/Y² WLS 在 LLOQ 的回算误差必须显著优于无权重 OLS
+    var heteroStds: [(x: Double, y: Double)] = []
+    for x in [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0] {
+        let y0 = eval4PL(x, a: trueA, b: trueB, c: trueC, d: trueD)
+        if x == 1000.0 {
+            heteroStds.append((x: x, y: y0 + 0.55))
+            heteroStds.append((x: x, y: y0 + 0.45))
+        } else if x == 300.0 {
+            heteroStds.append((x: x, y: y0 - 0.35))
+            heteroStds.append((x: x, y: y0 - 0.30))
+        } else {
+            heteroStds.append((x: x, y: y0 + 0.001))
+            heteroStds.append((x: x, y: y0 - 0.001))
+        }
+    }
+    guard let fitHeteroOLS = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: heteroStds, fiveParameter: false, weighting: .none),
+          let fitHeteroWLS = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: heteroStds, fiveParameter: false, weighting: .invY2) else {
+        fatalError("Heteroscedastic 4PL fits returned nil")
+    }
+    let yLLOQTrue = eval4PL(1.0, a: trueA, b: trueB, c: trueC, d: trueD)
+    let qOLS = PlateReaderAssayEngine.quantifyELISASamples(samples: [(name: "LLOQ", replicates: [yLLOQTrue])], fit: fitHeteroOLS, dilutionFactor: 1.0, useValidatedLimits: false)
+    let qWLS = PlateReaderAssayEngine.quantifyELISASamples(samples: [(name: "LLOQ", replicates: [yLLOQTrue])], fit: fitHeteroWLS, dilutionFactor: 1.0, useValidatedLimits: false)
+    let reHeteroOLS = abs((qOLS[0].finalConc ?? 99.0) - 1.0)
+    let reHeteroWLS = abs((qWLS[0].finalConc ?? 99.0) - 1.0)
+    assert(reHeteroWLS < 0.05 && reHeteroOLS > 0.30 && reHeteroWLS < reHeteroOLS * 0.25, "1/Y² WLS must beat OLS at LLOQ under high-concentration heteroscedastic noise (WLS RE=\(reHeteroWLS), OLS RE=\(reHeteroOLS))")
+
+    // 2. 5PL 非对称曲线真 EC50 = C * (2^(1/G) - 1)^(1/B) (Gottschalk & Dunn 2005)
+    let g5 = 2.5, c5 = 35.0, b5 = 1.35, a5 = 0.08, d5 = 2.60
+    let expectedTrueEC50 = c5 * pow(pow(2.0, 1.0 / g5) - 1.0, 1.0 / b5)
+    let stds5PL: [(x: Double, y: Double)] = [0.0, 0.5, 2.0, 5.0, 15.0, 40.0, 120.0, 400.0, 1200.0].map { x in
+        let y = x <= 0 ? a5 : (d5 + (a5 - d5) / pow(1.0 + pow(x / c5, b5), g5))
+        return (x: x, y: y)
+    }
+    guard let fit5PL = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: stds5PL, fiveParameter: true, weighting: .none) else {
+        fatalError("5PL fit returned nil")
+    }
+    assert(abs(fit5PL.trueEC50 - expectedTrueEC50) / expectedTrueEC50 < 0.03, "5PL trueEC50 mismatch: got \(fit5PL.trueEC50), expected \(expectedTrueEC50)")
+    let yAtTrueEC50 = fit5PL.paramD + (fit5PL.paramA - fit5PL.paramD) / pow(1.0 + pow(fit5PL.trueEC50 / fit5PL.paramC, fit5PL.paramB), fit5PL.paramG)
+    assert(abs(yAtTrueEC50 - 0.5 * (fit5PL.paramA + fit5PL.paramD)) < 0.05, "y(trueEC50) must equal midpoint (A+D)/2")
+
+    // 3. 负 Hill 斜率抑制曲线 (B < 0) + IC50 95% CI + 固定参数约束 + Relative vs Absolute IC50 + 外推告警
+    let inhC = 50.0, inhB = -1.25, inhA = 20.0, inhD = 90.0
+    var inhPts: [(x: Double, y: Double)] = []
+    for (i, x) in [0.5, 2.0, 5.0, 15.0, 50.0, 150.0, 500.0, 2000.0].enumerated() {
+        let y = eval4PL(x, a: inhA, b: inhB, c: inhC, d: inhD)
+        let eps = (i % 2 == 0 ? 0.8 : -0.8)
+        inhPts.append((x: x, y: y + eps))
+        inhPts.append((x: x, y: y - eps))
+    }
+    guard let fitInh = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: inhPts, fiveParameter: false, weighting: .none) else {
+        fatalError("Inhibition 4PL fit returned nil")
+    }
+    assert(!fitInh.isIncreasing, "Inhibition curve must be monotonically decreasing (isIncreasing == false)")
+    assert(abs(fitInh.trueEC50 - inhC) / inhC < 0.03, "Inhibition 4PL EC50 recovery error > 3%: got \(fitInh.trueEC50)")
+    assert(fitInh.effectiveLLOQ < fitInh.effectiveULOQ, "LLOQ must be strictly less than ULOQ for decreasing curve")
+    // 显式固定 Bottom=20, Top=90 拟合下降曲线，验证渐近线约束与 LLOQ < ULOQ
+    let boundedConstraints = PlateReaderAssayEngine.LogisticParameterConstraints(fixedBottom: inhA, fixedTop: inhD)
+    guard let fitBounded = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: inhPts, fiveParameter: false, weighting: .none, constraints: boundedConstraints) else {
+        fatalError("Constrained bounded 4PL fit returned nil")
+    }
+    assert(!fitBounded.isIncreasing && abs(fitBounded.trueEC50 - inhC) < 1.0 && fitBounded.effectiveLLOQ < fitBounded.effectiveULOQ, "Fixed Bottom/Top decreasing curve must preserve monotonicity and LLOQ < ULOQ")
+    if let lo = fitInh.ec50CI95Low, let hi = fitInh.ec50CI95High,
+       let seLogC = fitInh.seLog10EC50, let seB = fitInh.seHillSlope {
+        assert(lo > 0 && lo < fitInh.trueEC50 && fitInh.trueEC50 < hi, "IC50 95% CI must bracket trueEC50")
+        // 对照 scipy.optimize.curve_fit (df=12): SE(log10C)=0.013843, CI=[46.6454, 53.5959], SE(B)=0.046399
+        assert(abs(seLogC - 0.013843) / 0.013843 < 0.02, "seLog10EC50 must match scipy.optimize.curve_fit (got \(seLogC))")
+        assert(abs(lo - 46.6454) < 0.5 && abs(hi - 53.5959) < 0.5, "IC50 95% CI must match SciPy [46.645, 53.596], got [\(lo), \(hi)]")
+        assert(abs(seB - 0.046399) / 0.046399 < 0.02, "seHillSlope must match scipy.optimize.curve_fit (got \(seB))")
+    } else {
+        fatalError("IC50 / Hill slope SE and 95% CI must be computed")
+    }
+    assert(fitInh.hillSlopeCI95Low != nil && fitInh.hillSlopeCI95High != nil, "Hill slope 95% CI must be computed")
+    // Relative IC50 对应 y=(20+90)/2=55%，Absolute IC50 对应 y=50%，下降曲线故 absIC50 > relIC50
+    if let abs50 = fitInh.absoluteIC50At50 {
+        assert(abs50 > fitInh.relativeIC50, "For A=20, D=90 decreasing curve, Absolute IC50 (y=50) must exceed Relative IC50 (y=55)")
+    } else {
+        fatalError("absoluteIC50At50 must be computed for A=20, D=90 curve")
+    }
+    // 固定 Bottom=0, Top=100, Hill=-1 与仅固定 Bottom=0, Hill=-1（验证 bottomIsIndex0 初始化）
+    let fixedPts: [(x: Double, y: Double)] = [1.0, 5.0, 20.0, 80.0, 320.0, 1280.0].map { x in
+        (x: x, y: eval4PL(x, a: 0.0, b: -1.0, c: 40.0, d: 100.0))
+    }
+    let constraints = PlateReaderAssayEngine.LogisticParameterConstraints(fixedBottom: 0.0, fixedTop: 100.0, fixedHillSlope: -1.0)
+    guard let fitFixed = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: fixedPts, fiveParameter: false, weighting: .none, constraints: constraints) else {
+        fatalError("Constrained 4PL fit returned nil")
+    }
+    assert(abs(fitFixed.paramA - 0.0) < 1e-9 && abs(fitFixed.paramD - 100.0) < 1e-9 && abs(fitFixed.paramB - (-1.0)) < 1e-9, "Fixed constraints must be honored exactly")
+    assert(fitFixed.freeParameterCount == 1 && abs(fitFixed.trueEC50 - 40.0) < 0.5, "Constrained 1-param fit must recover C=40")
+
+    let partialFixed = PlateReaderAssayEngine.LogisticParameterConstraints(fixedBottom: 0.0, fixedHillSlope: -1.0)
+    guard let fitPartialFixed = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: fixedPts, fiveParameter: false, weighting: .none, constraints: partialFixed) else {
+        fatalError("Partial constrained (fixedBottom=0, fixedHillSlope=-1) 4PL fit returned nil")
+    }
+    assert(abs(fitPartialFixed.trueEC50 - 40.0) < 0.5 && abs(fitPartialFixed.paramD - 100.0) < 1.0, "fixedBottom=0 + fixedHillSlope=-1 must not stall on flat A==D init")
+
+    // 真负 Hill 斜率 B < 0 (fitFixed, paramB == -1.0) 下降曲线 quantifyELISASamples 上下界枚举验证
+    assert(fitFixed.paramB < 0.0 && !fitFixed.isIncreasing, "fitFixed must actually exercise paramB < 0 branch")
+    let inhQuant = PlateReaderAssayEngine.quantifyELISASamples(
+        samples: [
+            (name: "LowConcHighY", replicates: [99.5]),
+            (name: "MidConc", replicates: [50.0]),
+            (name: "HighConcLowY", replicates: [0.5])
+        ],
+        fit: fitFixed,
+        dilutionFactor: 1.0,
+        useValidatedLimits: true
+    )
+    assert(inhQuant[0].finalConc == nil && inhQuant[0].status == .belowLLOQ, "B<0 high-response low-conc sample must block with .belowLLOQ, got \(inhQuant[0].status)")
+    assert(inhQuant[1].finalConc != nil && inhQuant[1].status == .inRange && abs((inhQuant[1].finalConc ?? 0) - 40.0) < 0.5, "B<0 mid-range sample must recover C≈40")
+    assert(inhQuant[2].finalConc == nil && inhQuant[2].status == .aboveULOQ, "B<0 low-response high-conc sample must block with .aboveULOQ, got \(inhQuant[2].status)")
+
+    // 5PL 对称曲线 (G=1) Delta Method 梯度保留验证（严禁跳过 gradH[4] 导致 SE 膨胀 6.91x）
+    let symStds: [(x: Double, y: Double)] = [0.5, 2.0, 5.0, 15.0, 40.0, 120.0, 400.0, 1200.0].flatMap { x -> [(x: Double, y: Double)] in
+        let y0 = eval4PL(x, a: 0.05, b: 1.2, c: 40.0, d: 2.5)
+        return [(x: x, y: y0 + 0.015), (x: x, y: y0 - 0.015)]
+    }
+    guard let fitSym4 = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: symStds, fiveParameter: false, weighting: .none),
+          let fitSym5 = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: symStds, fiveParameter: true, weighting: .none),
+          let se4 = fitSym4.seLog10EC50, let se5 = fitSym5.seLog10EC50 else {
+        fatalError("Symmetric 4PL/5PL Delta SE fit failed")
+    }
+    assert(se5 < se4 * 2.5, "5PL Delta Method at G≈1 must include ∂h/∂G and not inflate seLog10EC50 (se4=\(se4), se5=\(se5))")
+
+    // 化学发光 10^7 RLU 量级 1/Y² 加权 WLS 无量纲归一化与 95% CI 验证
+    let lumStds: [(x: Double, y: Double)] = [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0].flatMap { x -> [(x: Double, y: Double)] in
+        let y0 = eval4PL(x, a: 1e4, b: 1.15, c: 40.0, d: 1e7)
+        return [(x: x, y: y0 * 1.02), (x: x, y: y0 * 0.98)]
+    }
+    guard let fitLum = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: lumStds, fiveParameter: false, weighting: .invY2) else {
+        fatalError("10^7 RLU 1/Y² WLS fit returned nil")
+    }
+    assert(abs(fitLum.paramC - 40.0) / 40.0 < 0.05 && fitLum.ec50CI95Low != nil && fitLum.ec50CI95High != nil, "10^7 RLU 1/Y² WLS must recover C≈40 and valid 95% CI, got C=\(fitLum.paramC)")
+
+    // ICH M10 严格门控：6 个非零浓度中仅 5 个通过 (83.3%) 必须判定 meetsICHM10 == false
+    var sixLvlFail: [(x: Double, y: Double)] = [1.0, 3.0, 10.0, 30.0, 100.0, 300.0].map { x in
+        (x: x, y: eval4PL(x, a: trueA, b: trueB, c: trueC, d: trueD))
+    }
+    sixLvlFail[2].y *= 1.45 // 破坏第 3 级标品相对误差
+    guard let fitSixFail = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: sixLvlFail, fiveParameter: false, weighting: .none) else {
+        fatalError("6-level ICH M10 fail test fit returned nil")
+    }
+    assert(fitSixFail.ichM10Report.nonZeroLevelCount == 6 && !fitSixFail.ichM10Report.meetsICHM10, "ICH M10 requires passedCount >= 6; 5/6 passing must fail meetsICHM10")
+
+    // 外推告警测试（EC50 远大于最高浓度 10，使用 guard 杜绝静默跳过）
+    let extrapPts: [(x: Double, y: Double)] = [0.1, 0.3, 1.0, 3.0, 10.0].map { x in
+        (x: x, y: eval4PL(x, a: 0.0, b: -1.0, c: 200.0, d: 100.0))
+    }
+    let extrapConstraints = PlateReaderAssayEngine.LogisticParameterConstraints(fixedBottom: 0.0, fixedTop: 100.0)
+    guard let fitExtrap = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: extrapPts, fiveParameter: false, weighting: .none, constraints: extrapConstraints) else {
+        fatalError("Extrapolated EC50 4PL fit returned nil")
+    }
+    assert(fitExtrap.isEC50Extrapolated, "EC50 outside [0.1, 10] must set isEC50Extrapolated = true")
+
+    // 4. CCK-8 / MTT: Shapiro-Wilk n==3 精确校验 + n==1 隔离防污染 + 负值保留 + Dunnett/Tukey/SW/BF/KW
+    guard let swSym3 = PlateReaderAssayEngine.shapiroWilkTest([1.0, 2.0, 3.0]),
+          let swSkew3 = PlateReaderAssayEngine.shapiroWilkTest([0.0, 0.01, 100.0]) else {
+        fatalError("Shapiro-Wilk n==3 returned nil")
+    }
+    assert(swSym3.statisticW > 0.9999 && abs(swSym3.pValue - 1.0) < 1e-6, "Shapiro-Wilk n=3 symmetric [1,2,3] must return p==1.0, got p=\(swSym3.pValue)")
+    assert(abs(swSkew3.pValue - 0.00016541) < 1e-4, "Shapiro-Wilk n=3 extreme skew [0,0.01,100] must match SciPy p=0.000165, got p=\(swSkew3.pValue)")
+
+    let viabilityGroups: [(name: String, values: [Double])] = [
+        (name: "Control", values: [1.00, 1.04, 0.98, 1.02]),
+        (name: "LowDose", values: [0.99, 1.03, 0.97, 1.01]),
+        (name: "HighDose", values: [0.30, 0.33, 0.28, 0.31]),
+        (name: "DeadNeg", values: [0.02, 0.03, 0.01]),
+        (name: "SingleN1", values: [0.55])
+    ]
+    guard let viabOut = PlateReaderAssayEngine.analyzeViability(groups: viabilityGroups, controlGroupName: "Control", blankMean: 0.05, postHocMethod: .dunnett) else {
+        fatalError("analyzeViability returned nil")
+    }
+    let viabilityGroupsExtraN1 = viabilityGroups + [(name: "SingleN1_B", values: [0.60]), (name: "SingleN1_C", values: [0.70])]
+    guard let viabExtra = PlateReaderAssayEngine.analyzeViability(groups: viabilityGroupsExtraN1, controlGroupName: "Control", blankMean: 0.05, postHocMethod: .dunnett) else {
+        fatalError("analyzeViability with extra n=1 groups returned nil")
+    }
+    // 对 LowDose 验证 n==1 隔离（修复前 extra n==1 会将该值从 0.8656 污染至 0.9779，而 HighDose 始终为 0.0 空转）
+    let lowP1 = viabOut.groups.first(where: { $0.groupName == "LowDose" })!.pAdjusted!
+    let lowP2 = viabExtra.groups.first(where: { $0.groupName == "LowDose" })!.pAdjusted!
+    assert(abs(lowP1 - lowP2) < 1e-12, "Extra n==1 groups must NOT contaminate LowDose Dunnett family size or pAdjusted (got \(lowP1) vs \(lowP2))")
+    assert(abs((viabOut.shapiroWilk?.statisticW ?? 0) - (viabExtra.shapiroWilk?.statisticW ?? 1)) < 1e-12, "Extra n==1 groups must NOT inject structural 0.0 residuals into Shapiro-Wilk")
+
+    let deadGroup = viabOut.groups.first(where: { $0.groupName == "DeadNeg" })!
+    assert(deadGroup.meanViabilityPercent < 0.0, "Negative blank-subtracted OD must NOT be truncated to 0")
+    let n1Group = viabOut.groups.first(where: { $0.groupName == "SingleN1" })!
+    assert(n1Group.sdViabilityPercent == nil && n1Group.semViabilityPercent == nil && n1Group.pValue == nil, "n==1 group must report nil SD/SEM/p-value")
+    let lowGroup = viabOut.groups.first(where: { $0.groupName == "LowDose" })!
+    let highGroup = viabOut.groups.first(where: { $0.groupName == "HighDose" })!
+    assert((highGroup.pAdjusted ?? 1.0) < 0.001, "Dunnett adjusted p for HighDose must be < 0.001, got \(String(describing: highGroup.pAdjusted))")
+    assert(abs(lowP1 - 0.865607) < 2e-3 && abs((lowGroup.dunnettStatistic ?? 0) - (-0.632456)) < 1e-3, "Dunnett LowDose must match scipy.stats.dunnett (t=-0.632456, p=0.865607), got t=\(String(describing: lowGroup.dunnettStatistic)) p=\(lowP1)")
+    guard let swDiag = viabOut.shapiroWilk, let bfDiag = viabOut.brownForsythe else {
+        fatalError("Normality & homoscedasticity diagnostics must be populated")
+    }
+    assert(abs(swDiag.statisticW - 0.939054) < 1e-3 && abs(swDiag.pValue - 0.370629) < 2e-3, "Viability Shapiro-Wilk must match SciPy (W=0.939054, p=0.370629), got W=\(swDiag.statisticW) p=\(swDiag.pValue)")
+    assert(abs(bfDiag.fStatistic - 1.138596) < 1e-3 && abs(bfDiag.pValue - 0.376164) < 2e-3, "Brown-Forsythe must match SciPy levene(median) (F=1.138596, p=0.376164), got F=\(bfDiag.fStatistic) p=\(bfDiag.pValue)")
+
+    let tukey = PlateReaderAssayEngine.computeTukeyKramerHSD(
+        namedGroups: [
+            (name: "Ctrl", values: [100.0, 102.0, 98.0, 101.0]),
+            (name: "Low", values: [99.0, 101.0, 97.0, 100.0]),
+            (name: "High", values: [30.0, 32.0, 28.0, 31.0])
+        ]
+    )
+    assert(tukey.count == 3, "Tukey-Kramer for 3 groups must yield 3 pairwise comparisons")
+    let ctrlVsLowTukey = tukey.first { item in
+        (item.groupA == "Ctrl" && item.groupB == "Low") || (item.groupA == "Low" && item.groupB == "Ctrl")
+    }!
+    let ctrlVsHighTukey = tukey.first { item in
+        (item.groupA == "Ctrl" && item.groupB == "High") || (item.groupA == "High" && item.groupB == "Ctrl")
+    }!
+    assert(abs(ctrlVsLowTukey.statistic - 1.171080) < 2e-3 && abs(ctrlVsLowTukey.pAdjusted - 0.695971) < 2e-3, "Tukey-Kramer Ctrl vs Low must match scipy.stats.tukey_hsd (q=1.171080, p=0.695971), got q=\(ctrlVsLowTukey.statistic) p=\(ctrlVsLowTukey.pAdjusted)")
+    assert(abs(ctrlVsHighTukey.statistic - 81.9756) < 0.05 && ctrlVsHighTukey.pAdjusted < 0.001, "Tukey-Kramer Ctrl vs High q-statistic & p mismatch")
+
+    guard let viabKW = PlateReaderAssayEngine.analyzeViability(
+        groups: [
+            (name: "Control", values: [1.00, 1.05, 0.96, 1.02, 0.99]),
+            (name: "Treated", values: [0.30, 0.35, 0.28, 0.31, 0.29]),
+            (name: "Mid", values: [0.65, 0.68, 0.62, 0.66, 0.64])
+        ],
+        controlGroupName: "Control",
+        blankMean: 0.05,
+        postHocMethod: .kruskalDunn
+    ) else {
+        fatalError("analyzeViability kruskalDunn returned nil")
+    }
+    assert(abs((viabKW.kruskalWallis?.hStatistic ?? 0) - 12.5000) < 1e-3 && abs((viabKW.kruskalWallis?.pValue ?? 0) - 0.00193045) < 1e-4, "Kruskal-Wallis H & p must match scipy.stats.kruskal (H=12.5, p=0.001930)")
+    let trtKW = viabKW.groups.first(where: { $0.groupName == "Treated" })!
+    assert((trtKW.dunnPAdjusted ?? 1.0) < 0.01 && (trtKW.pAdjusted ?? 1.0) < 0.01, "Dunn post-hoc pAdjusted for Treated must be < 0.01")
+    guard let kwTied = PlateReaderAssayEngine.computeKruskalWallis(groups: [[1, 1, 2, 2], [2, 2, 3, 3], [3, 3, 4, 4]]) else {
+        fatalError("Tied Kruskal-Wallis returned nil")
+    }
+    assert(abs(kwTied.hStatistic - 8.166667) < 1e-4 && abs(kwTied.pValue - 0.0168512) < 1e-4, "Tie-corrected Kruskal-Wallis must match scipy.stats.kruskal (H=8.1667, p=0.01685)")
+
+    // 5. BCA 中心化缩放 Householder QR 二次回归 + 判别式 < 0 饱和阻断（禁止静默线性回退且 WB 上样体积归零）
+    let bcaConcs: [Double] = [0, 125, 250, 500, 750, 1000, 1500, 2000]
+    let bcaStds: [(concUgPerMl: Double, od: Double)] = bcaConcs.map { c in
+        let od = 0.08 + 1.1e-3 * c - 2.0e-7 * c * c
+        return (concUgPerMl: c, od: od)
+    }
+    guard let bcaOut = PlateReaderAssayEngine.analyzeBCA(
+        standards: bcaStds,
+        samples: [
+            (name: "Normal", replicates: [0.58]),
+            (name: "AboveMaxStd", replicates: [1.55]),
+            (name: "BeyondVertex", replicates: [1.85])
+        ],
+        model: .quadratic,
+        blankOD: 0.08
+    ) else {
+        fatalError("analyzeBCA quadratic returned nil")
+    }
+    assert(bcaOut.r2 > 0.999999 && bcaOut.rmse < 1e-6, "BCA centered Householder QR quadratic fit must be exact on noiseless data")
+    assert(abs(bcaOut.coeffA - (-2.0e-7)) < 1e-10 && abs(bcaOut.coeffB - 1.1e-3) < 1e-6 && abs(bcaOut.coeffC) < 1e-6 && bcaOut.degreesOfFreedom == 5, "BCA QR exact quadratic coefficients mismatch")
+    assert(bcaOut.samples[0].quantStatus == .inRange && abs(bcaOut.samples[0].fittedConcUgPerMl - 500.0) < 1e-2, "In-range BCA sample must recover 500.0 µg/mL, got \(bcaOut.samples[0].fittedConcUgPerMl)")
+    assert(bcaOut.samples[1].quantStatus == .aboveStandardRange, "OD above max standard must be flagged .aboveStandardRange")
+    assert(bcaOut.samples[2].quantStatus == .parabolicSaturated && bcaOut.samples[2].warningMessage != nil && bcaOut.samples[2].proteinVolumeUl == 0.0, "OD beyond quadratic vertex must return .parabolicSaturated with warning and zeroed WB protein volume")
+
+    pass("Sub-batch 2A scientific rigor suite passed (4PL/5PL WLS, ICH M10, IC50 95%CI, Dunnett/Tukey/SW/BF/KW, BCA QR).")
+}
+do {
+    try runTest62SubBatch2A()
+} catch {
+    fatalError("Sub-batch 2A test failed: \(error)")
+}
+
+// MARK: - Test 63: Sub-batch 2B — Western Blot 2D 滚球/旋转掩码同步/12-bit/sRGB/TPN/双带高斯去卷积/log2统计 & Python/MCP 数值一致性
+func runTest63SubBatch2B() throws {
+    print("\n--- Test 63: Sub-batch 2B (WesternBlotEngine 2D RollingBall, Skew+SatMask Sync, Deconv, TPN, log2 Stats & Python/MCP Parity) ---")
+
+    // 1. BioImageProcessor.findPeaks 真实拓扑显著性验证
+    let topoProfile: [Double] = [0.0, 2.0, 10.0, 8.0, 9.0, 7.0, 0.0]
+    // 峰1 在 idx=2 (值 10, 显著性 10), 峰2 在 idx=4 (值 9, 鞍点 idx=3 值 8 -> 显著性 = 9 - 8 = 1.0)
+    let peaksStrict = BioImageProcessor.findPeaks(profile: topoProfile, minProminence: 2.0, minGap: 1, smoothWindow: 1).map(\.index)
+    assert(peaksStrict == [2], "Topological prominence must reject shallow sub-peak (prom=1.0 < 2.0), got \(peaksStrict)")
+    let peaksLoose = BioImageProcessor.findPeaks(profile: topoProfile, minProminence: 0.5, minGap: 1, smoothWindow: 1).map(\.index)
+    assert(peaksLoose == [2, 4], "Topological prominence must retain sub-peak when minProminence=0.5, got \(peaksLoose)")
+
+    // 2. 有效位深自动检测 (8/12/16-bit 严格截断规则) + IEC 61966-2-1 sRGB 反 Gamma + 极性与 2D 椭球滚球验证
+    let raw12 = [Double](repeating: 200.0, count: 97) + [4095.0, 4095.0, 4095.0]
+    let eff12 = WesternBlotEngine.detectEffectiveBitDepth(rawValues: raw12, containerBitDepth: 16)
+    assert(eff12.effectiveBitDepth == 12 && abs(eff12.ceiling - 4095.0) < 1e-6, "12-bit-in-16-bit TIFF with pinned 4095 pixels must detect effective bitDepth=12, ceiling=4095")
+    let rawLowExp16 = [Double](repeating: 150.0, count: 99) + [4090.0]
+    let effLow16 = WesternBlotEngine.detectEffectiveBitDepth(rawValues: rawLowExp16, containerBitDepth: 16)
+    assert(effLow16.effectiveBitDepth == 16 && abs(effLow16.ceiling - 65535.0) < 1e-6, "Low-exposure 16-bit TIFF (vmax=4090) must NOT be downgraded to 12-bit")
+    let linHalf = WesternBlotEngine.linearizeSRGBValue(127.5) / 255.0
+    let expectedLinHalf = pow((0.5 + 0.055) / 1.055, 2.4)
+    assert(abs(linHalf - expectedLinHalf) < 1e-6, "IEC 61966-2-1 sRGB linearization mismatch")
+
+    // 8-bit 白底暗带 (bg=190, band=30, white border=255) 开启 linearizeSRGB 时，极性必须在反 Gamma 前正确识别为 inverted == true
+    var whiteBg8 = [Double](repeating: 190.0, count: 60 * 60)
+    for y in 0..<60 {
+        for x in 0..<60 {
+            if y < 3 || y >= 57 || x < 3 || x >= 57 {
+                whiteBg8[y * 60 + x] = 255.0
+            }
+        }
+    }
+    for y in 25..<35 { for x in 20..<40 { whiteBg8[y * 60 + x] = 30.0 } }
+    let whiteBuf8 = WesternBlotEngine.buildStandardizedBuffer(rawValues: whiteBg8, width: 60, height: 60, bitDepth: 8, linearizeSRGB: true)
+    assert(whiteBuf8.invertedPolarity, "8-bit white-background blot (bg=190, band=30) with linearizeSRGB=true must detect inverted polarity")
+
+    // 2D 椭球滚球在 [0, 1] 动态范围下必须保留 >70% 信号，且 quantifyBlot(.rollingBall/.totalLane) 保持 demo 膜回收率
+    var unitImg = [Double](repeating: 0.10, count: 60 * 60)
+    for y in 0..<60 {
+        for x in 0..<60 {
+            unitImg[y * 60 + x] += 0.60 * exp(-0.5 * (pow(Double(x - 30) / 5.0, 2.0) + pow(Double(y - 30) / 3.0, 2.0)))
+        }
+    }
+    let rbUnit = WesternBlotEngine.subtractRollingBallNative(signal: unitImg, width: 60, height: 60, radius: 18, intensityRange: nil)
+    assert(rbUnit.signedNet[30 * 60 + 30] > 0.42, "2D ellipsoid rolling ball on [0,1] image must preserve >70% peak signal, got \(rbUnit.signedNet[30 * 60 + 30])")
+
+    let demoPlane = BioImageProcessor.generateDemoWesternBlotPlane(width: 400, height: 240)
+    let demoLanes = WesternBlotEngine.autoDetectLanesAndBands(plane: demoPlane)
+    let qDemoRB = WesternBlotEngine.quantifyBlot(plane: demoPlane, lanes: demoLanes, backgroundMode: .rollingBall, normalizationMode: .loadingControl, controlGroup: "WT")
+    let qDemoTPN = WesternBlotEngine.quantifyBlot(plane: demoPlane, lanes: demoLanes, backgroundMode: .rollingBall, normalizationMode: .totalLane, controlGroup: "WT")
+    let demoWT = qDemoRB.laneRows.filter { $0.groupName == "WT" }.map(\.targetNetVolume).reduce(0, +)
+    let demoKO = qDemoRB.laneRows.filter { $0.groupName == "TP53-KO" }.map(\.targetNetVolume).reduce(0, +)
+    let demoOEFold = qDemoRB.groupStats.first(where: { $0.groupName == "TP53-OE" })?.meanFold ?? 0.0
+    assert(demoWT > 100.0 && demoKO > 20.0 && demoOEFold > 1.4 && demoOEFold < 2.5, "quantifyBlot(.rollingBall) must preserve [0,1] signal & OE/WT ratio (WT=\(demoWT), KO=\(demoKO), OE=\(demoOEFold))")
+    assert(qDemoTPN.laneRows.allSatisfy { $0.loadingNetVolume > 100.0 && $0.foldChange > 0.1 }, "quantifyBlot(.totalLane) must yield valid positive full-lane TPN normalization")
+
+    // 81% 零填充暗底 + 非常数饱和高斯亮带 (halo 3000..65535)：严禁误反转
+    var zpVals = [Double](repeating: 0.0, count: 60 * 60)
+    for y in 20..<40 {
+        for x in 20..<40 {
+            let gVal = 3000.0 + 62535.0 * exp(-0.5 * (pow(Double(x - 30) / 3.0, 2.0) + pow(Double(y - 30) / 3.0, 2.0)))
+            zpVals[y * 60 + x] = min(65535.0, gVal)
+        }
+    }
+    let zpBuf = WesternBlotEngine.buildStandardizedBuffer(
+        rawValues: zpVals, width: 60, height: 60, bitDepth: 16, linearizeSRGB: false
+    )
+    assert(!zpBuf.invertedPolarity, "81% zero-padded dark background with non-constant saturated bright band must NOT be inverted")
+
+    // 3. 低曝光 16-bit 合成 WB 膜（amps=[2000,2000,4000,4000]、倾斜背景、Lane 3 含单像素 65535 饱和）验证 2D 滚球缩放齐次性
+    let w = 160, h = 120
+    var synthVals = [Double](repeating: 0.0, count: w * h)
+    let laneCentersX = [25.0, 60.0, 95.0, 130.0]
+    let bandY = 58.0
+    let bandAmps = [2000.0, 2000.0, 4000.0, 4000.0]
+    for y in 0..<h {
+        for x in 0..<w {
+            var v = 500.0 + 3.0 * Double(y) + 1.5 * Double(x) // 平滑倾斜背景
+            for (li, cx) in laneCentersX.enumerated() {
+                let dx = Double(x) - cx
+                let dy = Double(y) - bandY
+                v += bandAmps[li] * exp(-0.5 * ((dx * dx) / (7.0 * 7.0) + (dy * dy) / (4.0 * 4.0)))
+            }
+            synthVals[y * w + x] = min(65535.0, v)
+        }
+    }
+    // 在 Lane 3 条带中心注入 1 个过曝像素 (65535)
+    synthVals[Int(bandY) * w + Int(laneCentersX[3])] = 65535.0
+
+    let synthBuf = WesternBlotEngine.buildStandardizedBuffer(
+        rawValues: synthVals, width: w, height: h, bitDepth: 16, linearizeSRGB: false
+    )
+    // 验证 deskewMaskNative 同步旋转饱和掩码
+    let rotatedSat = WesternBlotEngine.deskewMaskNative(synthBuf.saturated, width: w, height: h, angleDegrees: 2.5)
+    assert(rotatedSat.filter({ $0 }).count >= 1, "deskewMaskNative must preserve saturated pixel after 2.5 deg rotation")
+
+    let params2B = WBAnalysisParams(
+        rollingBallRadius: 28,
+        expectedLanes: 4,
+        autoDeskew: false,
+        saturationRatioThreshold: 0.0001,
+        backgroundMode: .globalRollingBall
+    )
+    let resSwift = WesternBlotEngine.analyzeNativeBuffer(
+        synthBuf, imagePath: "/tmp/synth_2b_test.tif", params: params2B
+    )
+    let row0: [WBBand] = resSwift.bands.filter { $0.rowIndex == 0 }.sorted { $0.laneIndex < $1.laneIndex }
+    assert(row0.count == 4, "Expected 4 detected bands in synthetic blot, got \(row0.count)")
+    let ratio2vs0 = row0[2].netIOD / max(1e-6, row0[0].netIOD)
+    assert(abs(ratio2vs0 - 2.0) / 2.0 < 0.05, "Dim 16-bit 2D Rolling Ball net IOD fold ratio must recover 2.0 ± 5%, got \(ratio2vs0)")
+    assert(row0[3].saturatedRatio > 0.0 && row0[3].isSaturated, "Synchronized sat_mask must detect the single saturated pixel in lane 3")
+    assert(row0[0].snr > 5.0, "Band SNR must be computed and > 5 for clean synthetic band")
+
+    // 3b. 缩放齐次性（曝光倍比 [1, 3, 6, 15]）+ 倾斜膜 autoDeskew=true 端到端旋转与饱和掩膜对齐验证
+    let cleanDimRaw: [Double] = {
+        var arr = synthVals
+        var bgAt = 500.0 + 3.0 * bandY + 1.5 * laneCentersX[3]
+        for (li, cx) in laneCentersX.enumerated() {
+            let dx = laneCentersX[3] - cx
+            bgAt += bandAmps[li] * exp(-0.5 * ((dx * dx) / 49.0))
+        }
+        arr[Int(bandY) * w + Int(laneCentersX[3])] = bgAt
+        return arr
+    }()
+    let dimBase = WesternBlotEngine.buildStandardizedBuffer(rawValues: cleanDimRaw, width: w, height: h, bitDepth: 16, linearizeSRGB: false)
+    let expFactors = [1.0, 3.0, 6.0, 15.0]
+    let expLane0IODs = expFactors.map { f -> Double in
+        let bScaled = WesternBlotEngine.scaleBufferForExposure(dimBase, factor: f)
+        let rScaled = WesternBlotEngine.analyzeNativeBuffer(bScaled, imagePath: "/tmp/scale_\(f).tif", params: params2B)
+        return rScaled.bands.filter { $0.rowIndex == 0 }.sorted { $0.laneIndex < $1.laneIndex }.first?.netIOD ?? 0.0
+    }
+    for (idx, f) in expFactors.enumerated() {
+        let obsRatio = expLane0IODs[idx] / max(1e-6, expLane0IODs[0])
+        assert(abs(obsRatio - f) / f < 0.015, "2D Rolling Ball scale homogeneity broken at \(f)x: expected \(f), got \(obsRatio)")
+    }
+
+    var tiltedSignal = WesternBlotEngine.deskewImageNative(cleanDimRaw, width: w, height: h, angleDegrees: -2.5, clipNegative: true)
+    tiltedSignal[Int(bandY) * w + Int(laneCentersX[3])] = 65535.0
+    tiltedSignal[Int(bandY) * w + Int(laneCentersX[3]) + 1] = 65535.0
+    let tiltedBuf = WesternBlotEngine.buildStandardizedBuffer(rawValues: tiltedSignal, width: w, height: h, bitDepth: 16, linearizeSRGB: false)
+    let paramsDeskew = WBAnalysisParams(rollingBallRadius: 28, expectedLanes: 4, autoDeskew: true, saturationRatioThreshold: 0.0001, backgroundMode: .globalRollingBall)
+    let resTilted = WesternBlotEngine.analyzeNativeBuffer(tiltedBuf, imagePath: "/tmp/tilted_2b.tif", params: paramsDeskew)
+    let tiltedRow0 = resTilted.bands.filter { $0.rowIndex == 0 }.sorted { $0.laneIndex < $1.laneIndex }
+    assert(abs(resTilted.skewAngle) >= 1.0 && tiltedRow0.count == 4, "Tilted blot must trigger autoDeskew and detect 4 bands, skew=\(resTilted.skewAngle), bands=\(tiltedRow0.count)")
+    let tiltedRatio = tiltedRow0[2].netIOD / max(1e-6, tiltedRow0[0].netIOD)
+    assert(abs(tiltedRatio - 2.0) / 2.0 < 0.05 && tiltedRow0[3].isSaturated, "Deskewed blot must recover ~2.0 ratio (got \(tiltedRatio)) and preserve Lane 3 saturation")
+
+    // 4. Python wbquant 语法编译校验 + 无条件 numpy/scipy 模块级对齐校验（去卷积/TPN/Deskew） + 若含 skimage 则全管线校验
+    let pyCompile = Process()
+    pyCompile.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    pyCompile.arguments = ["-m", "py_compile", "python/wbquant/models.py", "python/wbquant/io.py", "python/wbquant/preprocess.py", "python/wbquant/quantify.py", "python/wbquant/pipeline.py", "python/wbquant/cli.py"]
+    try pyCompile.run()
+    pyCompile.waitUntilExit()
+    assert(pyCompile.terminationStatus == 0, "python/wbquant/*.py py_compile syntax check failed")
+
+    let candidatePythons = [
+        "\(FileManager.default.currentDirectoryPath)/python/.venv/bin/python3",
+        "/opt/homebrew/bin/python3",
+        "/usr/local/bin/python3",
+        "/usr/bin/python3"
+    ]
+    func findPythonWithModules(_ modules: String) -> String? {
+        candidatePythons.first { pyPath in
+            guard FileManager.default.isExecutableFile(atPath: pyPath) else { return false }
+            let probe = Process()
+            probe.executableURL = URL(fileURLWithPath: pyPath)
+            probe.arguments = ["-c", "import \(modules)"]
+            probe.standardOutput = Pipe()
+            probe.standardError = Pipe()
+            do { try probe.run(); probe.waitUntilExit(); return probe.terminationStatus == 0 } catch { return false }
+        }
+    }
+    if let npSciPy = findPythonWithModules("numpy, scipy") {
+        let pyNumpyCode = """
+import json, sys, math
+sys.path.insert(0, '\(FileManager.default.currentDirectoryPath)/python')
+import numpy as np
+from wbquant.models import BandBox
+from wbquant.preprocess import deskew_image, deskew_mask
+from wbquant.quantify import deconvolve_overlapping_bands_gaussian, normalize_to_total_protein
+prof = [1000.0 * math.exp(-0.5 * ((i - 18.0) / 3.0) ** 2) + 500.0 * math.exp(-0.5 * ((i - 26.0) / 3.0) ** 2) for i in range(50)]
+dec = deconvolve_overlapping_bands_gaussian(prof, [18, 26])
+b0 = BandBox(id='b0', lane_index=0, row_index=0, x=10, y=10, width=10, height=10, peak_y=15, raw_iod=100.0, background_iod=0.0, net_iod=100.0, snr=10.0)
+b1 = BandBox(id='b1', lane_index=1, row_index=0, x=30, y=10, width=10, height=10, peak_y=15, raw_iod=200.0, background_iod=0.0, net_iod=200.0, snr=10.0)
+b2 = BandBox(id='b2', lane_index=0, row_index=1, x=10, y=50, width=10, height=10, peak_y=55, raw_iod=500.0, background_iod=0.0, net_iod=500.0, snr=10.0)
+b3 = BandBox(id='b3', lane_index=1, row_index=1, x=30, y=50, width=10, height=10, peak_y=55, raw_iod=1500.0, background_iod=0.0, net_iod=1500.0, snr=10.0)
+tpn = normalize_to_total_protein([b0, b1, b2, b3], {0: 1000.0, 1: 1000.0}, control_lane_index=0)
+m = np.zeros((40, 40), dtype=bool)
+m[20, 20] = True
+m_rot = deskew_mask(m, 2.5)
+print(json.dumps({
+    'area_ratio': dec[0]['area'] / dec[1]['area'],
+    'row1_lane1_fc': [b.fold_change for b in tpn if b.row_index == 1 and b.lane_index == 1][0],
+    'row1_lane0_fc': [b.fold_change for b in tpn if b.row_index == 1 and b.lane_index == 0][0],
+    'mask_rot_count': int(m_rot.sum())
+}))
+"""
+        let npProc = Process()
+        npProc.executableURL = URL(fileURLWithPath: npSciPy)
+        npProc.arguments = ["-c", pyNumpyCode]
+        let npPipe = Pipe()
+        npProc.standardOutput = npPipe
+        try npProc.run()
+        npProc.waitUntilExit()
+        assert(npProc.terminationStatus == 0, "Python wbquant numpy/scipy parity script failed")
+        let npObj = try JSONSerialization.jsonObject(with: npPipe.fileHandleForReading.readDataToEndOfFile()) as! [String: Any]
+        assert(abs((npObj["area_ratio"] as? Double ?? 0.0) - 2.0) < 0.02, "Python Gaussian doublet deconv must recover 2.0 area ratio")
+        assert(abs((npObj["row1_lane0_fc"] as? Double ?? 0.0) - 1.0) < 1e-6 && abs((npObj["row1_lane1_fc"] as? Double ?? 0.0) - 3.0) < 1e-6, "Python multi-row TPN normalization mismatch")
+        assert((npObj["mask_rot_count"] as? Int ?? 0) >= 1, "Python deskew_mask must preserve saturated pixel")
+    }
+    if let pyExec = findPythonWithModules("numpy, skimage") {
+        let pyParityCode = """
+import json, sys, math
+sys.path.insert(0, '\(FileManager.default.currentDirectoryPath)/python')
+import numpy as np
+from wbquant.pipeline import analyze_array
+from wbquant.models import AnalysisParams
+w, h = 160, 120
+lane_cx = [25.0, 60.0, 95.0, 130.0]
+amps = [2000.0, 2000.0, 4000.0, 4000.0]
+yy, xx = np.mgrid[0:h, 0:w].astype(np.float64)
+img = 500.0 + 3.0 * yy + 1.5 * xx
+for cx, a in zip(lane_cx, amps):
+    img += a * np.exp(-0.5 * (((xx - cx) / 7.0) ** 2 + ((yy - 58.0) / 4.0) ** 2))
+img = np.clip(img, 0.0, 65535.0)
+img[58, 130] = 65535.0
+p = AnalysisParams(expected_lanes=4, rolling_ball_radius=28, background_mode='globalRollingBall', auto_deskew=False, saturation_ratio_threshold=0.0001)
+res = analyze_array(img.astype(np.uint16), bit_depth=16, image_path='synth_py', params=p)
+row0 = sorted([b for b in res.bands if b.row_index == 0], key=lambda b: b.lane_index)
+print(json.dumps({
+    'count': len(row0),
+    'ratio2vs0': row0[2].net_iod / max(1e-6, row0[0].net_iod) if len(row0) >= 3 else 0.0,
+    'lane3_sat': row0[3].is_saturated if len(row0) >= 4 else False,
+    'lane3_sat_ratio': row0[3].saturated_ratio if len(row0) >= 4 else 0.0
+}))
+"""
+        let pyProc = Process()
+        pyProc.executableURL = URL(fileURLWithPath: pyExec)
+        pyProc.arguments = ["-c", pyParityCode]
+        let pyOutPipe = Pipe()
+        pyProc.standardOutput = pyOutPipe
+        try pyProc.run()
+        pyProc.waitUntilExit()
+        assert(pyProc.terminationStatus == 0, "Python wbquant parity script failed")
+        let pyData = pyOutPipe.fileHandleForReading.readDataToEndOfFile()
+        if let pyObj = try JSONSerialization.jsonObject(with: pyData) as? [String: Any] {
+            let pyRatio = pyObj["ratio2vs0"] as? Double ?? 0.0
+            let pySat = pyObj["lane3_sat"] as? Bool ?? false
+            let pySatRatio = pyObj["lane3_sat_ratio"] as? Double ?? 0.0
+            assert(abs(pyRatio - ratio2vs0) / max(1e-6, pyRatio) < 0.03, "Swift vs Python wbquant fold ratio mismatch: Swift=\(ratio2vs0), Py=\(pyRatio)")
+            assert(pySat && pySatRatio > 0.0, "Python wbquant must also detect saturated pixel in lane 3")
+        }
+    }
+
+    // 5. 重叠双带 1D 高斯混合去卷积 (LC3-I / LC3-II 模拟)
+    let doubletProfile: [Double] = (0..<50).map { i in
+        let x = Double(i)
+        return 1000.0 * exp(-0.5 * pow((x - 18.0) / 3.0, 2.0)) + 500.0 * exp(-0.5 * pow((x - 26.0) / 3.0, 2.0))
+    }
+    let deconv = WesternBlotEngine.deconvolveOverlappingBandsGaussian(profile: doubletProfile, peakIndices: [18, 26])
+    assert(deconv.count == 2, "Gaussian deconvolution must return 2 components")
+    let areaRatio = deconv[0].area / max(1e-6, deconv[1].area)
+    assert(abs(areaRatio - 2.0) / 2.0 < 0.03 && abs(deconv[0].fraction - (2.0 / 3.0)) < 0.02, "Gaussian doublet deconvolution must recover 2:1 area ratio (got \(areaRatio), frac=\(deconv[0].fraction))")
+
+    // 6. 总蛋白归一化 (TPN 多行独立) + log2 空间 Welch 95% CI & Kruskal-Dunn + 跨膜重锚定 + MCP 一致性
+    let tpnMap: [Int: Double] = [0: 10000.0, 1: 10200.0, 2: 9800.0, 3: 10000.0]
+    let tpnBands = WesternBlotEngine.normalizeToTotalProtein(targetBands: row0, totalProteinLaneIODs: tpnMap, controlLaneIndex: 0)
+    assert(abs(tpnBands[0].foldChange - 1.0) < 1e-6 && tpnBands[2].foldChange > 1.8, "TPN normalization must scale lane 2 by ~2x")
+    let row1Mock = row0.map { b -> WBBand in
+        var copy = b; copy.rowIndex = 1; copy.netIOD = b.netIOD * 5.0; return copy
+    }
+    let multiRowTPN = WesternBlotEngine.normalizeToTotalProtein(targetBands: row0 + row1Mock, totalProteinLaneIODs: tpnMap, controlLaneIndex: 0)
+    let row1Lane0 = multiRowTPN.first(where: { $0.rowIndex == 1 && $0.laneIndex == 0 })!
+    assert(abs(row1Lane0.foldChange - 1.0) < 1e-6, "Multi-row TPN must anchor each rowIndex independently to its own control lane")
+
+    let laneGroups: [Int: String] = [0: "WT", 1: "WT", 2: "KO", 3: "KO"]
+    let statsOut = WesternBlotEngine.computeGroupStatistics(
+        from: resSwift, laneGroups: laneGroups, controlGroup: "WT",
+        saturationPolicy: .warnOnly, totalProteinLaneIODs: tpnMap, postHocMethod: .welchHolm
+    )
+    let koStat = statsOut.groupStats.first(where: { $0.groupName == "KO" })!
+    assert(koStat.log2MeanFold != nil && (koStat.log2MeanFold ?? 0) > 0.8, "log2MeanFold must be populated in log2 space")
+    assert(koStat.pAdjusted != nil && koStat.foldCI95Low != nil && koStat.foldCI95High != nil, "Holm-adjusted p-value and two-sample Welch 95% CI must be populated")
+
+    let statsKD = WesternBlotEngine.computeGroupStatistics(
+        from: resSwift, laneGroups: laneGroups, controlGroup: "WT",
+        saturationPolicy: .warnOnly, totalProteinLaneIODs: tpnMap, postHocMethod: .kruskalDunn
+    )
+    let koKD = statsKD.groupStats.first(where: { $0.groupName == "KO" })!
+    assert(koKD.pAdjusted != nil, "kruskalDunn post-hoc must compute real Dunn adjusted p-value")
+
+    let combined = WesternBlotEngine.combineReplicateBlots(blots: [statsOut, statsOut], controlGroup: "WT")
+    assert(combined.laneRows.count == statsOut.laneRows.count * 2, "combineReplicateBlots must aggregate all replicate membrane rows")
+    if let wtComb = combined.groupStats.first(where: { $0.groupName == "WT" }) {
+        assert(abs(wtComb.meanFold - 1.0) < 1e-3, "combineReplicateBlots must re-anchor control group to 1.0, got \(wtComb.meanFold)")
+    }
+
+    // MCP analyze_western_blot TPN + log2 校验
+    let mcpWBCode = """
+import json, sys
+sys.path.insert(0, '\(FileManager.default.currentDirectoryPath)/Sources/CloneStudioCore/Resources')
+import clonestudio_mcp_server as srv
+out = srv.tool_analyze_western_blot({
+    'target_iods': [100.0, 105.0, 210.0, 220.0, 390.0, 410.0],
+    'total_protein_lane_iods': [1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0],
+    'lane_groups': ['WT', 'WT', 'DrugA', 'DrugA', 'DrugB', 'DrugB'],
+    'saturation_policy': 'excludeFromStats'
+})
+print(json.dumps(out))
+"""
+    let mcpProc = Process()
+    mcpProc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    mcpProc.arguments = ["-c", mcpWBCode]
+    let mcpPipe = Pipe()
+    mcpProc.standardOutput = mcpPipe
+    try mcpProc.run()
+    mcpProc.waitUntilExit()
+    assert(mcpProc.terminationStatus == 0, "MCP analyze_western_blot 2B parity script failed")
+    if let mcpObj = try JSONSerialization.jsonObject(with: mcpPipe.fileHandleForReading.readDataToEndOfFile()) as? [String: Any],
+       let gStats = mcpObj["group_statistics"] as? [[String: Any]] {
+        assert((mcpObj["normalization_mode"] as? String) == "totalProtein", "MCP must switch to totalProtein mode when total_protein_lane_iods is provided")
+        let drugB = gStats.first(where: { ($0["group"] as? String) == "DrugB" })!
+        assert((drugB["log2_mean_fold"] as? Double ?? 0) > 1.8, "MCP log2_mean_fold for ~4x DrugB must be ~2.0")
+        assert(drugB["p_adjusted"] != nil && drugB["fold_ci95_low"] != nil && drugB["fold_ci95_high"] != nil, "MCP must return Holm p_adjusted and 95% CI")
+    }
+
+    // 7. 多曝光曲线排除过曝帧后再拟合线性响应
+    let baseBuf = dimBase
+    let buf5 = WesternBlotEngine.scaleBufferForExposure(baseBuf, factor: 1.0)
+    let buf15 = WesternBlotEngine.scaleBufferForExposure(baseBuf, factor: 3.0)
+    let buf30 = WesternBlotEngine.scaleBufferForExposure(baseBuf, factor: 6.0)
+    let buf120 = WesternBlotEngine.scaleBufferForExposure(baseBuf, factor: 24.0) // 严重过曝截断于 65535
+    let expSeries: [(imagePath: String, exposureSeconds: Double, buffer: WesternBlotEngine.RawGrayBuffer16?)] = [
+        ("e5.tif", 5.0, buf5), ("e15.tif", 15.0, buf15), ("e30.tif", 30.0, buf30), ("e120.tif", 120.0, buf120)
+    ]
+    guard let expOut = WesternBlotEngine.analyzeExposureSeries(series: expSeries, params: params2B, referenceBands: row0) else {
+        fatalError("analyzeExposureSeries returned nil")
+    }
+    assert(expOut.recommendedExposureSeconds == 30.0, "analyzeExposureSeries must recommend 30s frame (excluding saturated 120s), got \(expOut.recommendedExposureSeconds)")
+    assert(expOut.bandLinearities.allSatisfy { $0.r2 > 0.99 }, "Linear regression after excluding saturated frame must achieve R² > 0.99")
+
+    pass("Sub-batch 2B scientific rigor suite passed (2D RollingBall, Skew+SatMask Sync, 12-bit/sRGB, Deconv, TPN, log2 Stats & Python/MCP parity).")
+}
+do {
+    try runTest63SubBatch2B()
+} catch {
+    fatalError("Sub-batch 2B test failed: \(error)")
+}
+
+// MARK: - Test 64: Sub-batch 2C — CRISPR Sanger 编辑反卷积 (TIDE/ICE 对齐、RFU 缩放、+1/-24bp KO、共线性告警 & MCP 一致性)
+func runTest64SubBatch2C() throws {
+    print("\n--- Test 64: Sub-batch 2C (CRISPRDeconvolutionEngine TIDE/ICE Alignment, RFU Scale, -24bp KO, Collinearity & MCP Parity) ---")
+
+    // 构造 240 bp 非重复 WT 序列与 sgRNA (cut0 = 60)
+    let wtSeq =
+        "GCTAGCTAGCATCGATCGATGCTAGCTAGCATGAGGCTCAGTACCTGATCCGATAGTCGA" + // 0..59 (60bp)
+        "TTGCAACGGTAACCGGTTAACTGACTGACTGATCGTACGTCCGGTTAACCAGTCGATCGA" + // 60..119
+        "TGCATGCATGAACCTTGGAAGGCCAATTGGCATGCATGCATCGATCGATCGGAATTCCGG" + // 120..179
+        "TTAACCGGTTACGTACGTACGCTAGCTAGCATCGATCGATAGGCTCAGTACCTGATCCGA"   // 180..239
+    let wtChars = Array(wtSeq)
+    let sgRNA = String(wtChars[43..<63]) // cut0 = 43 + 20 - 3 = 60
+
+    // 1. 错位 3 bp 的 100% 未编辑 WT 测序读数：上游对齐必须消除偏移并返回 WT ≈ 100%, indel < 1%
+    let shiftedWTSeq = "AAA" + wtSeq
+    let wtAB1 = SangerAlignmentEngine.generateSyntheticAB1Data(sequence: wtSeq, sampleName: "WT_2C.ab1", simulateNoisyEnds: false)
+    let shiftedAB1 = SangerAlignmentEngine.generateSyntheticAB1Data(sequence: shiftedWTSeq, sampleName: "Ed_Shifted_WT.ab1", simulateNoisyEnds: false)
+    let wtRec = SangerAlignmentEngine.parseData(wtAB1, filePath: "WT_2C.ab1")
+    let edShiftRec = SangerAlignmentEngine.parseData(shiftedAB1, filePath: "Ed_Shifted_WT.ab1")
+    let resShift = CRISPRDeconvolutionEngine.deconvolveChromatograms(wt: wtRec, edited: edShiftRec, sgRNASequence: sgRNA, requestedWindowBp: 120)
+    assert(resShift.alignmentOffsetBp == 3, "Upstream alignment must detect +3 bp offset, got \(resShift.alignmentOffsetBp)")
+    assert(resShift.wtPercent > 99.0 && resShift.indelPercent < 1.0, "Shifted 100% WT must report WT>99%, indel<1% (got WT=\(resShift.wtPercent), Indel=\(resShift.indelPercent))")
+
+    // 2. 随机 +1 bp 插入（非串联重复，插入碱基 'G' 与上游 'A' 不同）+ -24 bp 大片段框内缺失计入 KO Score
+    let wtPeaks = CRISPRDeconvolutionEngine.peaksFromSequence(wtSeq, primarySignal: 1000.0, backgroundSignal: 20.0)
+    let cut0 = 60
+    let winBp = 120
+    var mixWin: [[Double]] = []
+    for k in 0..<winBp {
+        let pWT = wtPeaks[cut0 + k]
+        let pIns1G = (k == 0) ? [20.0, 20.0, 1000.0, 20.0] : wtPeaks[cut0 + k - 1]
+        let pDel24 = wtPeaks[cut0 + k + 24]
+        let row = (0..<4).map { c in 0.40 * pWT[c] + 0.35 * pIns1G[c] + 0.25 * pDel24[c] }
+        mixWin.append(row)
+    }
+    let resMix = CRISPRDeconvolutionEngine.deconvolvePeakMatrices(
+        wtPeaksACGT: wtPeaks,
+        editedWindowPeaksACGT: mixWin,
+        cutIndex0Based: cut0,
+        requestedWindowBp: winBp,
+        shiftRange: -30...14
+    )
+    assert(abs(resMix.wtPercent - 40.0) < 0.5, "Mix WT% expected 40%, got \(resMix.wtPercent)")
+    assert(abs(resMix.indelPercent - 60.0) < 0.5, "Mix Indel% expected 60%, got \(resMix.indelPercent)")
+    assert(abs(resMix.koScore - 60.0) < 0.5, "Both +1G (35%) and -24bp in-frame deletion (25%) must count toward KO score = 60%, got \(resMix.koScore)")
+
+    // 3. 非循环 RFU 缩放不变性（300 vs 6000 RFU）+ 5'→3' 信号衰减（上游 2000 RFU / 下游 1200 RFU）验证
+    let shortHDRSeq = String(wtChars[30..<60]) + "GAATTCC" + String(wtChars[67..<140])
+    let fullHDRSeq = String(wtChars[0..<60]) + "GAATTCC" + String(wtChars[67...])
+    for rfu in [300.0, 6000.0] {
+        let wtScaled = CRISPRDeconvolutionEngine.peaksFromSequence(wtSeq, primarySignal: rfu, backgroundSignal: rfu * 0.02)
+        // 独立由物理 fullHDRSeq 构建观察混合物，引擎自主从下游窗推断尺度（绝不用 alignAndScaleHDRWindow 的输出构造观测！）
+        let hdrTrue = CRISPRDeconvolutionEngine.peaksFromSequence(fullHDRSeq, primarySignal: rfu, backgroundSignal: rfu * 0.02)
+        var hdrMix: [[Double]] = []
+        for k in 0..<winBp {
+            hdrMix.append((0..<4).map { c in 0.50 * wtScaled[cut0 + k][c] + 0.50 * hdrTrue[cut0 + k][c] })
+        }
+        let (inferredPrim, inferredBg) = CRISPRDeconvolutionEngine.estimateLocalSignalScale(wtPeaks: wtScaled, start: cut0, end: min(wtScaled.count, cut0 + winBp))
+        guard let hdrWin = CRISPRDeconvolutionEngine.alignAndScaleHDRWindow(
+            wtSequence: wtSeq, hdrDonorSequence: shortHDRSeq, wtCutIndex0Based: cut0,
+            requestedWindowBp: winBp, wtPrimarySignal: inferredPrim, wtBackgroundSignal: inferredBg
+        ) else {
+            fatalError("alignAndScaleHDRWindow failed for short donor")
+        }
+        let resHDR = CRISPRDeconvolutionEngine.deconvolvePeakMatrices(
+            wtPeaksACGT: wtScaled, editedWindowPeaksACGT: hdrMix, cutIndex0Based: cut0,
+            requestedWindowBp: winBp, shiftRange: -20...20, hdrWindowPeaksACGT: hdrWin
+        )
+        assert(abs(resHDR.hdrPercent - 50.0) < 0.5, "Non-circular HDR% must remain 50% invariant across RFU=\(rfu), got \(resHDR.hdrPercent)")
+    }
+
+    // 3b. 真实 40% 5'→3' 阶跃衰减（切点上游 2000 RFU，下游 1200 RFU）：验证无 -12.7% 系统偏差
+    let wtDecayPeaks: [[Double]] = wtChars.enumerated().map { idx, base in
+        let rfu = idx < cut0 ? 2000.0 : 1200.0
+        return CRISPRDeconvolutionEngine.peaksFromSequence(String(base), primarySignal: rfu, backgroundSignal: rfu * 0.02)[0]
+    }
+    let hdrDecayFull = Array(fullHDRSeq).enumerated().map { idx, base in
+        let rfu = idx < cut0 ? 2000.0 : 1200.0
+        return CRISPRDeconvolutionEngine.peaksFromSequence(String(base), primarySignal: rfu, backgroundSignal: rfu * 0.02)[0]
+    }
+    let decayMixWin: [[Double]] = (0..<winBp).map { k in
+        (0..<4).map { c in 0.50 * wtDecayPeaks[cut0 + k][c] + 0.50 * hdrDecayFull[cut0 + k][c] }
+    }
+    let (decayPrim, decayBg) = CRISPRDeconvolutionEngine.estimateLocalSignalScale(wtPeaks: wtDecayPeaks, start: cut0, end: min(wtDecayPeaks.count, cut0 + winBp))
+    guard let hdrDecayWin = CRISPRDeconvolutionEngine.alignAndScaleHDRWindow(
+        wtSequence: wtSeq, hdrDonorSequence: shortHDRSeq, wtCutIndex0Based: cut0,
+        requestedWindowBp: winBp, wtPrimarySignal: decayPrim, wtBackgroundSignal: decayBg
+    ) else {
+        fatalError("alignAndScaleHDRWindow failed under 5'->3' decay")
+    }
+    let resDecay = CRISPRDeconvolutionEngine.deconvolvePeakMatrices(
+        wtPeaksACGT: wtDecayPeaks, editedWindowPeaksACGT: decayMixWin, cutIndex0Based: cut0,
+        requestedWindowBp: winBp, shiftRange: -20...20, hdrWindowPeaksACGT: hdrDecayWin
+    )
+    assert(abs(resDecay.hdrPercent - 50.0) < 0.5, "Under 40% 5'->3' decay, downstream scaling must recover HDR=50% without -12.7% bias, got \(resDecay.hdrPercent)")
+
+    // 4. 单碱基点突变 HDR 触发 .hdrCollinearWithWT 共线性告警
+    var pointHDRChars = wtChars
+    pointHDRChars[cut0 + 2] = (pointHDRChars[cut0 + 2] == "A") ? "G" : "A"
+    let pointHDRWin = CRISPRDeconvolutionEngine.peaksFromSequence(String(pointHDRChars[cut0..<(cut0 + winBp)]), primarySignal: 1000.0, backgroundSignal: 20.0)
+    let resCollinear = CRISPRDeconvolutionEngine.deconvolvePeakMatrices(
+        wtPeaksACGT: wtPeaks, editedWindowPeaksACGT: Array(wtPeaks[cut0..<(cut0 + winBp)]),
+        cutIndex0Based: cut0, requestedWindowBp: winBp, shiftRange: -20...20, hdrWindowPeaksACGT: pointHDRWin
+    )
+    assert(resCollinear.warnings.contains(.hdrCollinearWithWT), "Single-base point mutation HDR must trigger .hdrCollinearWithWT warning")
+
+    // 4b. 'N' 碱基索引保留 + 非循环反义链 ssODN HDR 自动对齐 + 无关供体拒绝 + +1 合并协方差 SE/pValue + B2/B5/B8 边界
+    let wtWithN = "NNNNN" + wtSeq
+    guard let cutWithN = CRISPRDeconvolutionEngine.locateCutSite(wtSequence: wtWithN, sgRNASequence: sgRNA) else {
+        fatalError("locateCutSite failed on WT sequence containing leading N bases")
+    }
+    assert(cutWithN.cutIndex0Based == cut0 + 5, "Leading N bases must preserve 1:1 chromatogram indexing (expected \(cut0 + 5), got \(cutWithN.cutIndex0Based))")
+    assert(CRISPRDeconvolutionEngine.peaksFromSequence(wtWithN).count == wtWithN.count, "Swift peaksFromSequence must preserve N bases 1:1")
+
+    let antisenseHDR = BioSequence.reverseComplement(shortHDRSeq)
+    guard let hdrAntisenseWin = CRISPRDeconvolutionEngine.alignAndScaleHDRWindow(
+        wtSequence: wtSeq, hdrDonorSequence: antisenseHDR, wtCutIndex0Based: cut0,
+        requestedWindowBp: winBp, wtPrimarySignal: 1000.0, wtBackgroundSignal: 20.0
+    ) else {
+        fatalError("alignAndScaleHDRWindow must auto-align antisense ssODN donor")
+    }
+    // 使用独立物理 fullHDRSeq 构建混合物，绝不用 hdrAntisenseWin 自证
+    let hdrTrueBase = CRISPRDeconvolutionEngine.peaksFromSequence(fullHDRSeq, primarySignal: 1000.0, backgroundSignal: 20.0)
+    let hdrAntiMix: [[Double]] = (0..<winBp).map { k in
+        (0..<4).map { c in 0.50 * wtPeaks[cut0 + k][c] + 0.50 * hdrTrueBase[cut0 + k][c] }
+    }
+    let resAntiHDR = CRISPRDeconvolutionEngine.deconvolvePeakMatrices(
+        wtPeaksACGT: wtPeaks, editedWindowPeaksACGT: hdrAntiMix, cutIndex0Based: cut0,
+        requestedWindowBp: winBp, shiftRange: -20...20, hdrWindowPeaksACGT: hdrAntisenseWin
+    )
+    assert(abs(resAntiHDR.hdrPercent - 50.0) < 0.5, "Non-circular antisense ssODN HDR must recover 50%, got \(resAntiHDR.hdrPercent)")
+
+    let garbageDonor = String(repeating: "ACGT", count: 25)
+    let nilHDR = CRISPRDeconvolutionEngine.alignAndScaleHDRWindow(
+        wtSequence: wtSeq, hdrDonorSequence: garbageDonor, wtCutIndex0Based: cut0,
+        requestedWindowBp: winBp, wtPrimarySignal: 1000.0, wtBackgroundSignal: 20.0
+    )
+    assert(nilHDR == nil, "Unalignable garbage HDR donor must return nil instead of unaligned fallback")
+
+    // +1A/+1G 合并协方差验证（±30 RFU 伪随机噪声；正确实现 SE≈0.27% < 0.6%，漏算负协方差旧版 ≈2.96%）
+    var noisyMixWin: [[Double]] = []
+    for k in 0..<winBp {
+        let pWT = wtPeaks[cut0 + k]
+        let pIns1A = (k == 0) ? [1000.0, 20.0, 20.0, 20.0] : wtPeaks[cut0 + k - 1]
+        let pIns1G = (k == 0) ? [20.0, 20.0, 1000.0, 20.0] : wtPeaks[cut0 + k - 1]
+        let row = (0..<4).map { c -> Double in
+            let noise = 30.0 * sin(Double(k * 7 + c * 13 + 3))
+            return max(0.0, 0.50 * pWT[c] + 0.25 * pIns1A[c] + 0.25 * pIns1G[c] + noise)
+        }
+        noisyMixWin.append(row)
+    }
+    let resIns1Cov = CRISPRDeconvolutionEngine.deconvolvePeakMatrices(
+        wtPeaksACGT: wtPeaks, editedWindowPeaksACGT: noisyMixWin, cutIndex0Based: cut0,
+        requestedWindowBp: winBp, shiftRange: -20...14
+    )
+    if let ins1Contrib = resIns1Cov.contributions.first(where: { $0.shiftBp == 1 && !$0.isHDR }) {
+        let se1 = ins1Contrib.sePercent ?? 99.0
+        assert(se1 > 0.05 && se1 < 0.60 && (ins1Contrib.pValue ?? 1.0) < 0.001, "Combined +1A/+1G covariance (1^T Sigma 1) must keep SE < 0.6% (got \(se1)) and p < 0.001")
+    } else {
+        fatalError("Expected +1 bp indel contribution in noisyMixWin")
+    }
+
+    // B2 边界（cut0 >= editedLength 返回空窗告警而不伪造缺失）+ B5（m <= k 欠定 Gram 返回 se=nil, p=nil）+ B8（Mott 噪声首尾修剪）
+    let shortUpstreamAB1 = SangerAlignmentEngine.generateSyntheticAB1Data(sequence: String(wtChars[0..<50]), sampleName: "Ed_ShortUpstream.ab1", simulateNoisyEnds: false)
+    let shortUpstreamRec = SangerAlignmentEngine.parseData(shortUpstreamAB1, filePath: "Ed_ShortUpstream.ab1")
+    let resEmptyWin = CRISPRDeconvolutionEngine.deconvolveChromatograms(wt: wtRec, edited: shortUpstreamRec, sgRNASequence: sgRNA, requestedWindowBp: 120)
+    assert(resEmptyWin.effectiveWindowBp == 0 && resEmptyWin.warnings.contains(.insufficientDownstreamWindow) && resEmptyWin.indelPercent == 0.0, "Edited read ending upstream of cut0 must yield effectiveWindowBp==0 and .insufficientDownstreamWindow without fake deletions")
+
+    // [400, 500, 350, 300] 四通道均显著大于背景，无均匀碱基列 (-1...1)，数学上必须激活 >= 4 列 (k == 4 == m -> .unavailable)
+    let underdetMix: [[Double]] = [[400.0, 500.0, 350.0, 300.0]]
+    let resUnderdet = CRISPRDeconvolutionEngine.deconvolvePeakMatrices(
+        wtPeaksACGT: wtPeaks, editedWindowPeaksACGT: underdetMix, cutIndex0Based: cut0,
+        requestedWindowBp: 1, shiftRange: -1...1
+    )
+    assert(resUnderdet.contributions.allSatisfy { $0.sePercent == nil && $0.pValue == nil }, "Underdetermined (m <= k) Gram must report sePercent==nil && pValue==nil, NEVER pValue==0.0")
+
+    let wtNoisyAB1 = SangerAlignmentEngine.generateSyntheticAB1Data(sequence: wtSeq, sampleName: "WT_Noisy.ab1", simulateNoisyEnds: true)
+    let edNoisyAB1 = SangerAlignmentEngine.generateSyntheticAB1Data(sequence: wtSeq, sampleName: "Ed_Noisy.ab1", simulateNoisyEnds: true)
+    let resMott = CRISPRDeconvolutionEngine.deconvolveChromatograms(
+        wt: SangerAlignmentEngine.parseData(wtNoisyAB1, filePath: "WT_Noisy.ab1"),
+        edited: SangerAlignmentEngine.parseData(edNoisyAB1, filePath: "Ed_Noisy.ab1"),
+        sgRNASequence: sgRNA, requestedWindowBp: 100
+    )
+    assert(resMott.wtPercent > 95.0 && resMott.indelPercent < 5.0, "Mott trim + baseline subtraction on simulateNoisyEnds AB1 must recover WT > 95%, got \(resMott.wtPercent)")
+
+    // 5. Python MCP deconvolve_sanger_crispr（含 N 保留 + 衰减 HDR 非循环校验）与 tool_deconvolute_crispr_sanger (.ab1 E2E) 一致性校验
+    let tmpDir2C = FileManager.default.temporaryDirectory.appendingPathComponent("lw_2c_test_\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: tmpDir2C, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tmpDir2C) }
+    let wtAB1Path = tmpDir2C.appendingPathComponent("wt.ab1")
+    let edAB1Path = tmpDir2C.appendingPathComponent("ed_shifted.ab1")
+    let wtNoisyPath = tmpDir2C.appendingPathComponent("wt_noisy.ab1")
+    let edNoisyPath = tmpDir2C.appendingPathComponent("ed_noisy.ab1")
+    try wtAB1.write(to: wtAB1Path)
+    try shiftedAB1.write(to: edAB1Path)
+    try wtNoisyAB1.write(to: wtNoisyPath)
+    try edNoisyAB1.write(to: edNoisyPath)
+
+    let py2CCode = """
+import json, sys
+sys.path.insert(0, '\(FileManager.default.currentDirectoryPath)/Sources/CloneStudioCore/Resources')
+import clonestudio_mcp_server as srv
+wt = '\(wtSeq)'
+full_hdr = '\(fullHDRSeq)'
+short_hdr = '\(shortHDRSeq)'
+cut0, win_bp = 60, 120
+assert len(srv.peaks_from_sequence('NNN' + wt)) == len(wt) + 3, 'Python peaks_from_sequence must preserve N bases 1:1'
+wt_n = wt[:cut0 + 95] + 'N' + wt[cut0 + 96:]
+hdr_n_win = srv._align_and_scale_hdr_window(wt_n, short_hdr, cut0, win_bp, 1000.0, 20.0)
+assert hdr_n_win is not None and len(hdr_n_win) == win_bp, 'HDR tail stitching with N in WT must retain full 120-bp window'
+wt_p = srv.peaks_from_sequence(wt, 1000.0, 20.0)
+mix = []
+for k in range(win_bp):
+    p_wt = wt_p[cut0 + k]
+    p_ins = [20.0, 20.0, 1000.0, 20.0] if k == 0 else wt_p[cut0 + k - 1]
+    p_del24 = wt_p[cut0 + k + 24]
+    mix.append([0.40 * p_wt[c] + 0.35 * p_ins[c] + 0.25 * p_del24[c] for c in range(4)])
+out = srv.deconvolve_sanger_crispr({
+    'wt_sequence': wt, 'cut_index_0based': cut0, 'window_length_bp': win_bp,
+    'shift_min_bp': -30, 'shift_max_bp': 14, 'wt_peaks_acgt': wt_p, 'edited_peaks_acgt': mix
+})
+wt_decay = [srv.peaks_from_sequence(b, 2000.0 if i < cut0 else 1200.0, 40.0 if i < cut0 else 24.0)[0] for i, b in enumerate(wt)]
+hdr_decay = [srv.peaks_from_sequence(b, 2000.0 if i < cut0 else 1200.0, 40.0 if i < cut0 else 24.0)[0] for i, b in enumerate(full_hdr)]
+decay_mix = [[0.50 * wt_decay[cut0 + k][c] + 0.50 * hdr_decay[cut0 + k][c] for c in range(4)] for k in range(win_bp)]
+out_decay = srv.deconvolve_sanger_crispr({
+    'wt_sequence': wt, 'cut_index_0based': cut0, 'window_length_bp': win_bp,
+    'shift_min_bp': -20, 'shift_max_bp': 20, 'wt_peaks_acgt': wt_decay, 'edited_peaks_acgt': decay_mix,
+    'hdr_donor_sequence': short_hdr
+})
+ab1_out = srv.tool_deconvolute_crispr_sanger({
+    'wt_ab1_path': '\(wtAB1Path.path)',
+    'edited_ab1_path': '\(edAB1Path.path)',
+    'sgrna_sequence': '\(sgRNA)',
+    'window_length_bp': 120
+})
+ab1_noisy = srv.tool_deconvolute_crispr_sanger({
+    'wt_ab1_path': '\(wtNoisyPath.path)',
+    'edited_ab1_path': '\(edNoisyPath.path)',
+    'sgrna_sequence': '\(sgRNA)',
+    'window_length_bp': 100
+})
+print(json.dumps({
+    'wt': out['wt_percent'], 'indel': out['indel_percent'], 'ko': out['ko_score'],
+    'decay_hdr': out_decay['hdr_percent'],
+    'ab1_offset': ab1_out['alignment_offset_bp'], 'ab1_wt': ab1_out['wt_percent'], 'ab1_indel': ab1_out['indel_percent'],
+    'noisy_wt': ab1_noisy['wt_percent']
+}))
+"""
+    let proc2C = Process()
+    proc2C.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    proc2C.arguments = ["-c", py2CCode]
+    let pipe2C = Pipe()
+    proc2C.standardOutput = pipe2C
+    try proc2C.run()
+    proc2C.waitUntilExit()
+    assert(proc2C.terminationStatus == 0, "Python MCP 2C parity script failed")
+    if let obj = try JSONSerialization.jsonObject(with: pipe2C.fileHandleForReading.readDataToEndOfFile()) as? [String: Any] {
+        assert(abs((obj["ko"] as? Double ?? 0) - resMix.koScore) < 0.2, "Swift vs Python MCP 2C KO score mismatch")
+        assert(abs((obj["decay_hdr"] as? Double ?? 0) - 50.0) < 0.5, "Python MCP HDR under 40% decay must recover 50%, got \(String(describing: obj["decay_hdr"]))")
+        assert((obj["ab1_offset"] as? Int ?? -99) == 3, "Python MCP .ab1 E2E must detect alignment_offset_bp == 3")
+        assert((obj["ab1_wt"] as? Double ?? 0) > 99.0 && (obj["ab1_indel"] as? Double ?? 99) < 1.0, "Python MCP .ab1 E2E shifted WT must report WT>99%, indel<1%")
+        assert((obj["noisy_wt"] as? Double ?? 0) > 95.0, "Python MCP .ab1 noisy ends Mott trim must recover WT > 95%")
+    }
+
+    pass("Sub-batch 2C scientific rigor suite passed (Upstream Alignment, TIDE/ICE +1/-24bp KO, RFU Scale, Collinearity & MCP Parity).")
+}
+do {
+    try runTest64SubBatch2C()
+} catch {
+    fatalError("Sub-batch 2C test failed: \(error)")
+}
+
+// MARK: - Test 65: Sub-batch 2D — qPCR MIQE 2.0 (geNorm/NormFinder 稳定性、BH-FDR、效率误差传播、标曲外推、RDML 384 孔 & 孔板合并)
+func runTest65SubBatch2D() throws {
+    print("\n--- Test 65: Sub-batch 2D (qPCR geNorm/NormFinder MIQE, BH-FDR, Efficiency SE Propagation, Std Extrap, RDML 384-well & Plate Merge) ---")
+
+    // 1. geNorm / NormFinder 内参稳定性检验：稳定双内参 (GAPDH+ACTB) vs 处理诱导剧烈漂移的不稳定内参 (BADREF)
+    var stabWells: [QPCRWellRecord] = []
+    let sampleSpec: [(name: String, grp: String, gapdh: Double, actb: Double, badRef: Double, target1: Double, target2: Double)] = [
+        ("Ctrl1", "WT",   18.00, 19.10, 20.00, 24.00, 25.00),
+        ("Ctrl2", "WT",   18.12, 19.20, 20.15, 24.15, 25.08),
+        ("Ctrl3", "WT",   17.95, 19.04, 19.90, 23.92, 24.95),
+        ("Trt1",  "Drug", 18.08, 19.16, 23.40, 21.05, 24.88),
+        ("Trt2",  "Drug", 18.18, 19.25, 23.75, 21.18, 25.02),
+        ("Trt3",  "Drug", 18.02, 19.12, 23.55, 20.95, 24.94)
+    ]
+    var wIdx = 0
+    for s in sampleSpec {
+        for (tar, ct) in [("GAPDH", s.gapdh), ("ACTB", s.actb), ("BADREF", s.badRef), ("TP53", s.target1), ("BCL2", s.target2)] {
+            wIdx += 1
+            stabWells.append(QPCRWellRecord(id: "w_\(wIdx)", row: wIdx, well: "A\(wIdx)", sample: s.name, target: tar, group: s.grp, ct: ct))
+        }
+    }
+    let stableSettings = QPCRSettings(referenceTargets: ["GAPDH", "ACTB"], controlGroup: "WT", multipleComparison: .bhFDR)
+    let qcStable = QPCRAnalysisEngine.computeQC(wells: stabWells, settings: stableSettings)
+    let ddctStable = QPCRAnalysisEngine.computeDdct(wells: stabWells, settings: stableSettings, qc: qcStable)
+    let stdEmptyStable = QPCRAnalysisEngine.computeStandardCurve(wells: stabWells, settings: stableSettings, qc: qcStable)
+    let repStable = QPCRAnalysisEngine.evaluateReferenceStability(wells: stabWells, settings: stableSettings, qc: qcStable)
+    assert(repStable.isStable && (repStable.genes.first?.geNormM ?? 9.0) < 0.2, "Stable GAPDH+ACTB pair must pass geNorm (M < 0.2)")
+    assert(repStable.genes.allSatisfy { $0.normFinderRho == nil }, "NormFinder requires k >= 3 candidate reference genes and must return nil for k == 2")
+    let miqeStable = QPCRInstrumentAndRDMLEngine.evaluateMIQECompliance(
+        wells: stabWells, settings: stableSettings, qc: qcStable, ddctOut: ddctStable,
+        stdOut: stdEmptyStable, detectedFormat: .genericCSV
+    )
+    assert(miqeStable.items.first(where: { $0.id == "ref_genes" })?.status == .pass, "MIQE item 3 must PASS for stable GAPDH+ACTB")
+
+    let unstableSettings = QPCRSettings(referenceTargets: ["GAPDH", "ACTB", "BADREF"], controlGroup: "WT")
+    let qcUnstable = QPCRAnalysisEngine.computeQC(wells: stabWells, settings: unstableSettings)
+    let ddctUnstable = QPCRAnalysisEngine.computeDdct(wells: stabWells, settings: unstableSettings, qc: qcUnstable)
+    let stdEmptyUnstable = QPCRAnalysisEngine.computeStandardCurve(wells: stabWells, settings: unstableSettings, qc: qcUnstable)
+    let repUnstable = QPCRAnalysisEngine.evaluateReferenceStability(wells: stabWells, settings: unstableSettings, qc: qcUnstable)
+    assert(!repUnstable.isStable, "Treatment-shifted BADREF (+3.5 Ct) must fail stability check")
+    assert(repUnstable.stepwiseExclusionOrder.first == "BADREF", "geNorm stepwise exclusion must drop BADREF first, got \(repUnstable.stepwiseExclusionOrder)")
+    let badMetric = repUnstable.genes.first(where: { $0.target == "BADREF" })!
+    let gapdhMetric = repUnstable.genes.first(where: { $0.target == "GAPDH" })!
+    let badRho = badMetric.normFinderRho ?? 0.0
+    let gapdhRho = gapdhMetric.normFinderRho ?? 9.0
+    assert(badRho > 1.0 && gapdhRho < 0.65 && badRho > 2.0 * gapdhRho, "NormFinder (k=3, +3.5 Ct shift -> exact |d|≈1.17 vs 0.58) must penalize BADREF (>1.0, >2x GAPDH), got BADREF=\(badRho), GAPDH=\(gapdhRho)")
+    assert(badMetric.geNormM > 0.5 && gapdhMetric.geNormM < 0.2, "Stepwise geNorm M must separate excluded BADREF (>0.5) from final pair GAPDH (<0.2), got BADREF=\(badMetric.geNormM), GAPDH=\(gapdhMetric.geNormM)")
+    let miqeUnstable = QPCRInstrumentAndRDMLEngine.evaluateMIQECompliance(
+        wells: stabWells, settings: unstableSettings, qc: qcUnstable, ddctOut: ddctUnstable,
+        stdOut: stdEmptyUnstable, detectedFormat: .genericCSV
+    )
+    assert(miqeUnstable.items.first(where: { $0.id == "ref_genes" })?.status == .fail, "MIQE item 3 must FAIL when reference gene is unstable")
+
+    // 1b. 均匀 cDNA 上样偏移 (+2.0 Ct 同步平移 3 个稳定内参) 不应误判内参失稳，且忽略未上板的参考基因
+    var loadShiftWells: [QPCRWellRecord] = []
+    var lsIdx = 0
+    for (sName, grp, shift) in [("W1", "WT", 0.0), ("W2", "WT", 0.05), ("W3", "WT", -0.04), ("D1", "Drug", 2.0), ("D2", "Drug", 2.04), ("D3", "Drug", 1.97)] {
+        for (tar, baseCt) in [("GAPDH", 18.0), ("ACTB", 19.2), ("RPL13A", 20.1)] {
+            lsIdx += 1
+            loadShiftWells.append(QPCRWellRecord(id: "ls_\(lsIdx)", row: lsIdx, well: "B\(lsIdx)", sample: sName, target: tar, group: grp, ct: baseCt + shift))
+        }
+    }
+    let loadShiftSettings = QPCRSettings(referenceTargets: ["GAPDH", "ACTB", "RPL13A", "ABSENT_REF"], controlGroup: "WT")
+    let qcLoadShift = QPCRAnalysisEngine.computeQC(wells: loadShiftWells, settings: loadShiftSettings)
+    let repLoadShift = QPCRAnalysisEngine.evaluateReferenceStability(wells: loadShiftWells, settings: loadShiftSettings, qc: qcLoadShift)
+    assert(repLoadShift.isStable && repLoadShift.genes.count == 3, "Uniform cDNA loading shift across 3 stable refs must stay stable and ignore ABSENT_REF")
+
+    // 2. Benjamini–Hochberg FDR 校正精确值与逆序累积最小截断核验（对标 R p.adjust(..., method="BH")）
+    let bhAdj = QPCRStatistics.bhAdjust([0.001, 0.02, 0.04, 0.50])
+    assert(abs(bhAdj[0] - 0.004) < 1e-9 && abs(bhAdj[1] - 0.04) < 1e-9 && abs(bhAdj[2] - 0.0533333333) < 1e-6 && abs(bhAdj[3] - 0.50) < 1e-9, "BH-FDR values mismatch R p.adjust: got \(bhAdj)")
+    let bhClamp = QPCRStatistics.bhAdjust([0.01, 0.03, 0.025, 0.50])
+    assert(abs(bhClamp[0] - 0.04) < 1e-9 && abs(bhClamp[1] - 0.04) < 1e-9 && abs(bhClamp[2] - 0.04) < 1e-9 && abs(bhClamp[3] - 0.50) < 1e-9, "BH-FDR reverse cumulative minimum clamping mismatch: got \(bhClamp)")
+    let tp53Drug = ddctStable.groupResults.first(where: { $0.target == "TP53" && $0.category == "Drug" })!
+    assert(tp53Drug.multipleComparison == .bhFDR && (tp53Drug.pAdjusted ?? 1.0) < 0.01, "Cross-gene BH-FDR must mark strongly shifted TP53 significant")
+
+    // 3. 标准曲线斜率误差传播至效率 SE + 超标准曲线外推告警 + Pfaffl/qBase 效率误差传播至样本 SEM
+    let stdWells: [QPCRWellRecord] = [
+        QPCRWellRecord(id: "s1", well: "A1", sample: "Std1", target: "TP53", wellType: .standard, ct: 18.02, quantity: 10000),
+        QPCRWellRecord(id: "s2", well: "A2", sample: "Std2", target: "TP53", wellType: .standard, ct: 21.30, quantity: 1000),
+        QPCRWellRecord(id: "s3", well: "A3", sample: "Std3", target: "TP53", wellType: .standard, ct: 24.68, quantity: 100),
+        QPCRWellRecord(id: "s4", well: "A4", sample: "Std4", target: "TP53", wellType: .standard, ct: 27.95, quantity: 10),
+        QPCRWellRecord(id: "u1", well: "B1", sample: "InRangeSample", target: "TP53", wellType: .sample, ct: 23.0),
+        QPCRWellRecord(id: "u2", well: "B2", sample: "LowExtrapSample", target: "TP53", wellType: .sample, ct: 32.5),
+        QPCRWellRecord(id: "u3", well: "B3", sample: "HighExtrapSample", target: "TP53", wellType: .sample, ct: 14.0)
+    ]
+    let stdSettings = QPCRSettings(efficiencyCorrection: true)
+    let stdQC = QPCRAnalysisEngine.computeQC(wells: stdWells, settings: stdSettings)
+    let stdOut = QPCRAnalysisEngine.computeStandardCurve(wells: stdWells, settings: stdSettings, qc: stdQC)
+    guard let tpFit = stdOut.fits.first(where: { $0.target == "TP53" }) else { fatalError("Missing TP53 std fit") }
+    assert((tpFit.slopeSE ?? 0) > 0 && (tpFit.efficiencySE ?? 0) > 0, "Standard curve must compute slopeSE and Taylor-propagated efficiencySE")
+    let sIn = stdOut.samples.first(where: { $0.sample == "InRangeSample" })!
+    let sLo = stdOut.samples.first(where: { $0.sample == "LowExtrapSample" })!
+    let sHi = stdOut.samples.first(where: { $0.sample == "HighExtrapSample" })!
+    assert(!sIn.isExtrapolated && sLo.isExtrapolated && sHi.isExtrapolated && sLo.extrapolationWarning != nil, "Standard curve must flag out-of-range samples as extrapolated")
+
+    // Pfaffl/qBase 一阶泰勒效率误差传播验证：带噪声标曲 + 非零 ΔCq 应增大 foldChange 误差区间
+    let effPropWells: [QPCRWellRecord] = [
+        QPCRWellRecord(id: "ep_s1", well: "A1", sample: "S1", target: "TP53", wellType: .standard, ct: 18.0, quantity: 10000),
+        QPCRWellRecord(id: "ep_s2", well: "A2", sample: "S2", target: "TP53", wellType: .standard, ct: 21.8, quantity: 1000),
+        QPCRWellRecord(id: "ep_s3", well: "A3", sample: "S3", target: "TP53", wellType: .standard, ct: 24.4, quantity: 100),
+        QPCRWellRecord(id: "ep_s4", well: "A4", sample: "S4", target: "TP53", wellType: .standard, ct: 28.5, quantity: 10),
+        QPCRWellRecord(id: "ep_r1", well: "B1", sample: "R1", target: "GAPDH", wellType: .standard, ct: 17.0, quantity: 10000),
+        QPCRWellRecord(id: "ep_r2", well: "B2", sample: "R2", target: "GAPDH", wellType: .standard, ct: 20.6, quantity: 1000),
+        QPCRWellRecord(id: "ep_r3", well: "B3", sample: "R3", target: "GAPDH", wellType: .standard, ct: 23.3, quantity: 100),
+        QPCRWellRecord(id: "ep_r4", well: "B4", sample: "R4", target: "GAPDH", wellType: .standard, ct: 27.2, quantity: 10),
+        QPCRWellRecord(id: "ep_c1", well: "C1", sample: "Ctrl", target: "TP53", group: "WT", ct: 24.0),
+        QPCRWellRecord(id: "ep_c2", well: "C2", sample: "Ctrl", target: "TP53", group: "WT", ct: 24.05),
+        QPCRWellRecord(id: "ep_c3", well: "C3", sample: "Ctrl", target: "GAPDH", group: "WT", ct: 18.0),
+        QPCRWellRecord(id: "ep_c4", well: "C4", sample: "Ctrl", target: "GAPDH", group: "WT", ct: 18.05),
+        QPCRWellRecord(id: "ep_t1", well: "D1", sample: "Trt", target: "TP53", group: "Drug", ct: 20.0),
+        QPCRWellRecord(id: "ep_t2", well: "D2", sample: "Trt", target: "TP53", group: "Drug", ct: 20.05),
+        QPCRWellRecord(id: "ep_t3", well: "D3", sample: "Trt", target: "GAPDH", group: "Drug", ct: 19.5),
+        QPCRWellRecord(id: "ep_t4", well: "D4", sample: "Trt", target: "GAPDH", group: "Drug", ct: 19.55)
+    ]
+    let effSettingsOn = QPCRSettings(efficiencyCorrection: true, referenceTargets: ["GAPDH"], controlGroup: "WT")
+    let effSettingsOff = QPCRSettings(efficiencyCorrection: false, referenceTargets: ["GAPDH"], controlGroup: "WT")
+    let ddctEffOn = QPCRAnalysisEngine.computeDdct(wells: effPropWells, settings: effSettingsOn, qc: QPCRAnalysisEngine.computeQC(wells: effPropWells, settings: effSettingsOn))
+    let ddctEffOff = QPCRAnalysisEngine.computeDdct(wells: effPropWells, settings: effSettingsOff, qc: QPCRAnalysisEngine.computeQC(wells: effPropWells, settings: effSettingsOff))
+    let trtOn = ddctEffOn.sampleResults.first(where: { $0.sample == "Trt" && $0.target == "TP53" })!
+    let trtOff = ddctEffOff.sampleResults.first(where: { $0.sample == "Trt" && $0.target == "TP53" })!
+    assert(abs((trtOn.efficiencyPropagatedFoldSE ?? 0.0) - 6.858286) < 0.02 && trtOff.efficiencyPropagatedFoldSE == nil, "Pfaffl/qBase Taylor efficiency SE propagation must match finite-diff 6.858286, got \(String(describing: trtOn.efficiencyPropagatedFoldSE))")
+
+    // 4. RDML 384 孔板往返导出与解析无损校验 + 96 孔板非标准标签 ("NTC1"/"POS1"/"W13") 防误判
+    let wells384: [QPCRWellRecord] = [
+        QPCRWellRecord(id: "r1", well: "A1",  sample: "S_A1",  target: "GAPDH", ct: 18.1),
+        QPCRWellRecord(id: "r2", well: "A13", sample: "S_A13", target: "GAPDH", ct: 18.2),
+        QPCRWellRecord(id: "r3", well: "B1",  sample: "S_B1",  target: "TP53",  ct: 22.3),
+        QPCRWellRecord(id: "r4", well: "I24", sample: "S_I24", target: "TP53",  ct: 23.4),
+        QPCRWellRecord(id: "r5", well: "P24", sample: "S_P24", target: "TP53",  ct: 24.5)
+    ]
+    let rdml384XML = QPCRInstrumentAndRDMLEngine.exportRDMLXML(wells: wells384, settings: QPCRSettings(), experimentName: "Plate384Test")
+    assert(rdml384XML.contains("<rows>16</rows><columns>24</columns>"), "RDML export must emit 16x24 pcrFormat for 384-well plates")
+    assert(rdml384XML.contains("id=\"384\""), "P24 must map to react id 384")
+    let parsed384 = try QPCRInstrumentAndRDMLEngine.parseRDMLXML(rdml384XML)
+    let parsedWellLabels = parsed384.wells.map(\.well)
+    assert(parsedWellLabels == ["A1", "A13", "B1", "I24", "P24"], "384-well RDML round-trip mismatch: got \(parsedWellLabels)")
+
+    let wells96Special: [QPCRWellRecord] = [
+        QPCRWellRecord(id: "q1", well: "A1", sample: "S1", target: "GAPDH", ct: 18.0),
+        QPCRWellRecord(id: "q2", well: "NTC1", sample: "NTC", target: "GAPDH", wellType: .ntc, ct: nil),
+        QPCRWellRecord(id: "q3", well: "POS1", sample: "Pos", target: "GAPDH", ct: 17.5),
+        QPCRWellRecord(id: "q4", well: "W13", sample: "S2", target: "GAPDH", ct: 18.2)
+    ]
+    let rdml96XML = QPCRInstrumentAndRDMLEngine.exportRDMLXML(wells: wells96Special, settings: QPCRSettings(), experimentName: "Plate96Guard")
+    assert(rdml96XML.contains("<rows>8</rows><columns>12</columns>"), "Non-plate well labels (NTC1/POS1/W13) must NOT trigger 384-well RDML pcrFormat")
+
+    // 5. mergeWithPlateAssignments 保留靶基因与 .noRT/.standard、防大小写重复键崩溃与空默认靶基因保护
+    let existing = [
+        QPCRWellRecord(id: "e1", well: "A1", sample: "Old", target: "MYC", group: "", ct: 21.5),
+        QPCRWellRecord(id: "e2", well: "A2", sample: "", target: "MYC", group: "", ct: nil),
+        QPCRWellRecord(id: "e3", well: "A3", sample: "NoRT_1", target: "MYC", group: "WT", wellType: .noRT, ct: nil),
+        QPCRWellRecord(id: "e4", well: "A4", sample: "Std_1", target: "MYC", group: "", wellType: .standard, ct: 19.0, quantity: 1000)
+    ]
+    let plateAssign: [String: PlateWellAssignment] = [
+        "A1": PlateWellAssignment(well: "A1", row: 0, col: 0, type: .control, sampleName: "WT_Ctrl", group: "WT", replicate: 1),
+        "a1": PlateWellAssignment(well: "a1", row: 0, col: 0, type: .control, sampleName: "WT_Ctrl", group: "WT", replicate: 1),
+        "A2": PlateWellAssignment(well: "A2", row: 0, col: 1, type: .blank, sampleName: "", group: "", replicate: 0),
+        "A3": PlateWellAssignment(well: "A3", row: 0, col: 2, type: .sample, sampleName: "NoRT_1", group: "WT", replicate: 1),
+        "A4": PlateWellAssignment(well: "A4", row: 0, col: 3, type: .sample, sampleName: "Std_1", group: "Std", replicate: 1)
+    ]
+    let merged = QPCRAnalysisEngine.mergeWithPlateAssignments(existingWells: existing, assignments: plateAssign, defaultTargets: [])
+    assert(merged[0].target == "MYC" && merged[0].sample == "WT_Ctrl" && merged[0].group == "WT", "mergeWithPlateAssignments must preserve target while updating sample/group")
+    assert(merged[1].target == "MYC" && merged[1].wellType == .ntc && merged[1].sample == "NTC", "mergeWithPlateAssignments must map .blank to .ntc without dropping target")
+    assert(merged[2].wellType == .noRT && merged[3].wellType == .standard, "mergeWithPlateAssignments must preserve .noRT and .standard well types unless explicitly .blank")
+    let mergedEmptyTargets = QPCRAnalysisEngine.mergeWithPlateAssignments(existingWells: [], assignments: plateAssign, defaultTargets: [])
+    assert(!mergedEmptyTargets.isEmpty && mergedEmptyTargets.allSatisfy { !$0.target.isEmpty }, "mergeWithPlateAssignments must safely fall back when existingWells and defaultTargets are both empty")
+
+    pass("Sub-batch 2D scientific rigor suite passed (geNorm/NormFinder MIQE, BH-FDR, Efficiency SE Propagation, Std Extrap, RDML 384-well & Plate Merge).")
+}
+do {
+    try runTest65SubBatch2D()
+} catch {
+    fatalError("Sub-batch 2D test failed: \(error)")
 }
 
 let finalPyToolCount = await MainActor.run { PlasmidPoolManager.mcpToolsCatalog.count }

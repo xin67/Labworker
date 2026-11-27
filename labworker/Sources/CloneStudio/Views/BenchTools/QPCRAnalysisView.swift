@@ -711,7 +711,8 @@ public struct QPCRAnalysisView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                     Spacer()
-                    Text(L10n.tr("n（生物学重复）/ 复孔数 · 显著性星号基于 \(settings.multipleComparison == .holm ? "p (Holm)" : "p (raw)")", "n (biological replicates) / wells · Stars based on \(settings.multipleComparison == .holm ? "p (Holm)" : "p (raw)")"))
+                    let mcLabel = settings.multipleComparison == .bhFDR ? "q (BH-FDR)" : (settings.multipleComparison == .holm ? "p (Holm)" : "p (raw)")
+                    Text(L10n.tr("n（生物学重复）/ 复孔数 · 显著性星号基于 \(mcLabel)", "n (biological replicates) / wells · Stars based on \(mcLabel)"))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -754,8 +755,12 @@ public struct QPCRAnalysisView: View {
                                 StudioMetricBadge(label: L10n.t("n（生物学重复）/ 复孔数"), value: "\(row.nBiological)/\(row.nTechnicalWells)", color: .secondary)
                                 StudioMetricBadge(label: "Fold", value: String(format: "%.2f±%.2f", row.meanFold, row.semFold ?? 0), color: .blue)
                                 StudioMetricBadge(label: "Fold 95% CI", value: ci95Text, color: .indigo)
-                                StudioMetricBadge(label: "p (raw)", value: pRawText, color: .secondary)
-                                StudioMetricBadge(label: "p (Holm)", value: pHolmText, color: pBadgeColor)
+                                if settings.multipleComparison == .none {
+                                    StudioMetricBadge(label: "p (raw)", value: pHolmText, color: pBadgeColor)
+                                } else {
+                                    StudioMetricBadge(label: "p (raw)", value: pRawText, color: .secondary)
+                                    StudioMetricBadge(label: settings.multipleComparison == .bhFDR ? "q (BH-FDR)" : "p (Holm)", value: pHolmText, color: pBadgeColor)
+                                }
                             }
                             
                             VStack(alignment: .leading, spacing: 6) {
@@ -772,8 +777,12 @@ public struct QPCRAnalysisView: View {
                                     StudioMetricBadge(label: "ΔCt", value: String(format: "%.2f±%.2f", row.meanDCt, row.sdDCt ?? 0), color: .indigo)
                                     StudioMetricBadge(label: "Fold", value: String(format: "%.2f±%.2f", row.meanFold, row.semFold ?? 0), color: .blue)
                                     StudioMetricBadge(label: "Fold 95% CI", value: ci95Text, color: .indigo)
-                                    StudioMetricBadge(label: "p (raw)", value: pRawText, color: .secondary)
-                                    StudioMetricBadge(label: "p (Holm)", value: pHolmText, color: pBadgeColor)
+                                    if settings.multipleComparison == .none {
+                                        StudioMetricBadge(label: "p (raw)", value: pHolmText, color: pBadgeColor)
+                                    } else {
+                                        StudioMetricBadge(label: "p (raw)", value: pRawText, color: .secondary)
+                                        StudioMetricBadge(label: settings.multipleComparison == .bhFDR ? "q (BH-FDR)" : "p (Holm)", value: pHolmText, color: pBadgeColor)
+                                    }
                                 }
                             }
                         }

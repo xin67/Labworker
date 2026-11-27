@@ -2500,18 +2500,25 @@ def tool_analyze_protein_and_docking_box(args: dict) -> dict:
 
 
 def tool_analyze_western_blot(args: dict) -> dict:
-    """对 Western Blot 泳道灰度积分 (IOD) 与内参执行归一化、过曝条带剔除 (P03) 及双组 Welch t 检验"""
+    """对 Western Blot 泳道灰度积分 (IOD) 执行内参/总蛋白(TPN)归一化、过曝条带剔除 (P03) 及 log2 空间 Welch t + Holm 多重比较校正 (2B)"""
     target_iods = [float(x) for x in (args.get("target_iods") or [100.0, 108.0, 220.0, 235.0])]
-    control_iods = [float(x) for x in (args.get("loading_control_iods") or [100.0] * len(target_iods))]
+    total_protein_in = args.get("total_protein_lane_iods")
+    use_tpn = isinstance(total_protein_in, list) and len(total_protein_in) >= len(target_iods) and all(float(x) > 0 for x in total_protein_in[:len(target_iods)])
+    if use_tpn:
+        denom_iods = [float(x) for x in total_protein_in[:len(target_iods)]]
+        norm_mode = "totalProtein"
+    else:
+        denom_iods = [float(x) for x in (args.get("loading_control_iods") or [100.0] * len(target_iods))]
+        norm_mode = "loadingControl"
     groups = args.get("lane_groups") or (["Control"] * (len(target_iods) // 2) + ["Treated"] * (len(target_iods) - len(target_iods) // 2))
     is_saturated_in = args.get("is_saturated") or [False] * len(target_iods)
     saturation_policy = str(args.get("saturation_policy") or "excludeFromStats").strip()
     if saturation_policy not in ("excludeFromStats", "warnOnly"):
         saturation_policy = "excludeFromStats"
 
-    n = min(len(target_iods), len(control_iods), len(groups))
+    n = min(len(target_iods), len(denom_iods), len(groups))
     sat_flags = [bool(is_saturated_in[i]) if i < len(is_saturated_in) else False for i in range(n)]
-    raw_ratios = [target_iods[i] / max(1e-6, control_iods[i]) for i in range(n)]
+    raw_ratios = [target_iods[i] / max(1e-6, denom_iods[i]) for i in range(n)]
     ctrl_name = groups[0] if n > 0 else "Control"
 
     excluded_bands = []
@@ -2527,8 +2534,12 @@ def tool_analyze_western_blot(args: dict) -> dict:
     ctrl_valid = [raw_ratios[i] for i in range(n) if groups[i] == ctrl_name and not (saturation_policy == "excludeFromStats" and sat_flags[i])]
     if not ctrl_valid:
         ctrl_valid = [raw_ratios[i] for i in range(n) if groups[i] == ctrl_name]
-    ctrl_mean = sum(ctrl_valid) / max(1, len(ctrl_valid)) if ctrl_valid else 1.0
-    norm_folds = [round(r / max(1e-6, ctrl_mean), 4) for r in raw_ratios]
+    if ctrl_valid:
+        ctrl_log2_vals = [math.log2(max(1e-9, r)) for r in ctrl_valid]
+        ctrl_geo_mean = 2.0 ** (sum(ctrl_log2_vals) / len(ctrl_log2_vals))
+    else:
+        ctrl_geo_mean = 1.0
+    norm_folds = [round(r / max(1e-6, ctrl_geo_mean), 4) for r in raw_ratios]
 
     group_order = []
     for g in groups[:n]:
@@ -2536,32 +2547,64 @@ def tool_analyze_western_blot(args: dict) -> dict:
             group_order.append(g)
 
     ctrl_folds = [norm_folds[i] for i in range(n) if groups[i] == ctrl_name and not (saturation_policy == "excludeFromStats" and sat_flags[i])]
+    ctrl_log2_folds = [math.log2(max(1e-9, v)) for v in ctrl_folds]
     group_stats = []
+    raw_p_entries = []
     for g_name in group_order:
         g_indices = [i for i in range(n) if groups[i] == g_name]
         ex_cnt = sum(1 for i in g_indices if saturation_policy == "excludeFromStats" and sat_flags[i])
         vals = [norm_folds[i] for i in g_indices if not (saturation_policy == "excludeFromStats" and sat_flags[i])]
-        m = sum(vals) / len(vals) if vals else 0.0
-        sd = math.sqrt(sum((v - m) ** 2 for v in vals) / (len(vals) - 1)) if len(vals) > 1 else 0.0
+        log2_vals = [math.log2(max(1e-9, v)) for v in vals]
+        if vals:
+            log2_mean = sum(log2_vals) / len(log2_vals)
+            geo_mean = 2.0 ** log2_mean
+            lin_mean = sum(vals) / len(vals)
+            sd = math.sqrt(sum((v - lin_mean) ** 2 for v in vals) / (len(vals) - 1)) if len(vals) > 1 else 0.0
+            log2_sd = math.sqrt(sum((v - log2_mean) ** 2 for v in log2_vals) / (len(log2_vals) - 1)) if len(log2_vals) > 1 else 0.0
+        else:
+            log2_mean = 0.0
+            geo_mean = 0.0
+            sd = 0.0
+            log2_sd = 0.0
         p_val = None
-        if g_name != ctrl_name and len(vals) >= 2 and len(ctrl_folds) >= 2:
-            p_val = _welch_t_test_p(vals, ctrl_folds)
+        ci_low = None
+        ci_high = None
+        if g_name != ctrl_name and len(log2_vals) >= 2 and len(ctrl_log2_folds) >= 2:
+            p_val = _welch_t_test_p(log2_vals, ctrl_log2_folds)
+            ci_info = _welch_ci95([-v for v in log2_vals], [-v for v in ctrl_log2_folds], alpha=0.05, base=2.0)
+            if ci_info:
+                ci_low = round(ci_info["fold_low"], 4)
+                ci_high = round(ci_info["fold_high"], 4)
+        idx = len(group_stats)
+        if p_val is not None:
+            raw_p_entries.append((idx, p_val))
         group_stats.append({
             "group": g_name,
             "n": len(vals),
             "n_excluded_saturated": ex_cnt,
-            "mean_fold": round(m, 4),
+            "mean_fold": round(geo_mean, 4),
+            "log2_mean_fold": round(log2_mean, 4),
             "sd": round(sd, 4),
-            "p_value": p_val
+            "log2_sd": round(log2_sd, 4),
+            "p_value": p_val,
+            "p_adjusted": None,
+            "fold_ci95_low": ci_low,
+            "fold_ci95_high": ci_high
         })
 
+    if raw_p_entries:
+        adj_ps = _holm_adjust([p for _, p in raw_p_entries])
+        for (idx, _), p_adj in zip(raw_p_entries, adj_ps):
+            group_stats[idx]["p_adjusted"] = p_adj
+
     notify_gui_and_sync_primers(
-        action_summary=f"MCP Western Blot 归一化定量 ({n} 泳道, 剔除过曝={len(excluded_bands)})",
+        action_summary=f"MCP Western Blot 归一化定量 ({n} 泳道, 模式={norm_mode}, 剔除过曝={len(excluded_bands)})",
         primers=[],
         target_module="westernBlot"
     )
     return {
         "lane_count": n,
+        "normalization_mode": norm_mode,
         "saturation_policy": saturation_policy,
         "excluded_bands": excluded_bands,
         "normalized_folds": norm_folds,
@@ -3120,15 +3163,32 @@ def tool_analyze_qpcr_ddct(args: dict) -> dict:
                 "is_control": is_ctrl_cat
             })
 
-        # Target 内 Holm–Bonferroni 多重比较校正
-        valid_indices = [idx for idx, row in enumerate(gene_group_rows) if not row["is_control"] and row["p_value"] is not None]
-        if valid_indices:
-            raw_ps = [gene_group_rows[idx]["p_value"] for idx in valid_indices]
-            adj_ps = _holm_adjust(raw_ps) if mult_comp != "none" else raw_ps
-            for idx, p_adj in zip(valid_indices, adj_ps):
-                gene_group_rows[idx]["p_adjusted"] = p_adj
+        # Target 内 Holm–Bonferroni 多重比较校正（若选择 bh_fdr 则在下方跨全部靶基因统一计算 BH-FDR）
+        mc_norm = str(mult_comp or "holm").strip().lower()
+        if mc_norm not in ("bh_fdr", "bh", "fdr"):
+            valid_indices = [idx for idx, row in enumerate(gene_group_rows) if not row["is_control"] and row["p_value"] is not None]
+            if valid_indices:
+                raw_ps = [gene_group_rows[idx]["p_value"] for idx in valid_indices]
+                adj_ps = _holm_adjust(raw_ps) if mc_norm != "none" else raw_ps
+                for idx, p_adj in zip(valid_indices, adj_ps):
+                    gene_group_rows[idx]["p_adjusted"] = p_adj
 
         group_summaries.extend(gene_group_rows)
+
+    if str(mult_comp or "holm").strip().lower() in ("bh_fdr", "bh", "fdr"):
+        all_valid = [idx for idx, row in enumerate(group_summaries) if not row["is_control"] and row["p_value"] is not None]
+        if all_valid:
+            m_bh = len(all_valid)
+            indexed = sorted([(idx, float(group_summaries[idx]["p_value"])) for idx in all_valid], key=lambda item: item[1])
+            q_vals = [0.0] * m_bh
+            running_min = 1.0
+            for rank_rev in range(m_bh - 1, -1, -1):
+                _, pv = indexed[rank_rev]
+                cand = min(1.0, pv * m_bh / float(rank_rev + 1))
+                running_min = min(running_min, cand)
+                q_vals[rank_rev] = running_min
+            for (row_idx, _), qv in zip(indexed, q_vals):
+                group_summaries[row_idx]["p_adjusted"] = round(qv, 6)
 
     notify_gui_and_sync_primers(
         action_summary=f"MCP qPCR 2^(-ΔΔCt) 分析 (内参 {ref_gene}, {len(results)} 样品, {len(group_summaries)} 分组)",
@@ -3286,6 +3346,10 @@ def _extract_ab1_peaks_acgt(raw_bytes: bytes) -> Dict[str, Any]:
     pbas_bytes = get_bytes("PBAS#1") or get_bytes("PBAS#2")
     seq = "".join(ch for ch in pbas_bytes.decode("ascii", errors="ignore").upper() if ch in "ACGTN")
     plocs = get_i16_array("PLOC#1") or get_i16_array("PLOC#2")
+    pcon_bytes = get_bytes("PCON#1") or get_bytes("PCON#2")
+    qualities = [int(b) for b in pcon_bytes[:len(seq)]] if pcon_bytes else [0] * len(seq)
+    if len(qualities) < len(seq):
+        qualities.extend([0] * (len(seq) - len(qualities)))
 
     peaks_acgt: List[List[float]] = []
     for i in range(len(seq)):
@@ -3299,7 +3363,7 @@ def _extract_ab1_peaks_acgt(raw_bytes: bytes) -> Dict[str, Any]:
             row = [0.0, 0.0, 0.0, 0.0]
         peaks_acgt.append(row)
 
-    return {"is_ab1": True, "sequence": seq, "peaks_acgt": peaks_acgt}
+    return {"is_ab1": True, "sequence": seq, "peaks_acgt": peaks_acgt, "qualities": qualities}
 
 
 _DEFAULT_SANGER_PRIMER_SUFFIX_RE = re.compile(r"[-_.]?(F|R|Fwd|Rev|T7|T3|SP6|M13F|M13R|CMV[-_]?F|BGH[-_]?R|U6[-_]?F|Seq\d*)$", re.IGNORECASE)
@@ -3742,8 +3806,8 @@ def solve_nnls_deconv(columns: list, rhs: list) -> tuple:
 
 
 def peaks_from_sequence(seq: str, primary_signal: float = 1000.0, background_signal: float = 20.0) -> list:
-    """将 DNA 序列转为标准四通道荧光峰高矩阵 [[A, C, G, T]]"""
-    cleaned = clean_seq(seq)
+    """将 DNA 序列转为标准四通道荧光峰高矩阵 [[A, C, G, T]]（保留 'N' 退化四通道均值以保持 1:1 坐标映射）"""
+    cleaned = _clean_seq_preserving_n(seq)
     out = []
     for b in cleaned:
         if b == "A":
@@ -3760,9 +3824,20 @@ def peaks_from_sequence(seq: str, primary_signal: float = 1000.0, background_sig
     return out
 
 
+def _clean_seq_preserving_n(seq: str) -> str:
+    """清理 DNA 序列但严格保留 'N' 碱基，维持字符下标与 ABIF 峰位矩阵 1:1 等长映射。"""
+    out = []
+    for ch in (seq or "").upper():
+        if ch in "ACGTN":
+            out.append(ch)
+        elif ch == "U":
+            out.append("T")
+    return "".join(out)
+
+
 def locate_crispr_cut_site(wt_sequence: str, sgrna_sequence: str):
-    """在 WT 序列中定位 sgRNA 及其 SpCas9 切割位点 (0-based 下标)"""
-    clean_wt = clean_seq(wt_sequence)
+    """在 WT 序列中定位 sgRNA 及其 SpCas9 切割位点 (0-based 下标，保留 'N' 以确保 1:1 坐标映射)"""
+    clean_wt = _clean_seq_preserving_n(wt_sequence)
     clean_sg = clean_seq(sgrna_sequence)
     if len(clean_wt) < len(clean_sg) or len(clean_sg) < 12:
         return None
@@ -3776,15 +3851,256 @@ def locate_crispr_cut_site(wt_sequence: str, sgrna_sequence: str):
     return None
 
 
+def _subtract_channel_baselines(peaks: list, quantile: float = 0.10) -> list:
+    """四通道逐通道局部基线扣除（10% 分位数，与 Swift CRISPRDeconvolutionEngine.subtractChannelBaselines 严格对齐）"""
+    if not peaks:
+        return peaks
+    n = len(peaks)
+    baselines = [0.0, 0.0, 0.0, 0.0]
+    for ch in range(4):
+        vals = sorted(float(row[ch]) if len(row) > ch else 0.0 for row in peaks)
+        idx = min(n - 1, max(0, int((n - 1) * quantile)))
+        baselines[ch] = vals[idx]
+    return [
+        [max(0.0, (float(row[c]) if len(row) > c else 0.0) - baselines[c]) for c in range(4)]
+        for row in peaks
+    ]
+
+
+def _estimate_local_signal_scale(wt_peaks: list, start: int, end: int) -> tuple:
+    """估算 WT 局部主峰 RFU 振幅与背景基底（用于 HDR 列与插入基底的同量纲缩放）"""
+    n = len(wt_peaks)
+    s = max(0, min(n, start))
+    e = max(s, min(n, end))
+    sl = wt_peaks[s:e] if s < e else wt_peaks
+    if not sl:
+        return (1000.0, 0.0)
+    primaries = []
+    non_primaries = []
+    for row in sl:
+        vals = sorted(float(row[c]) if len(row) > c else 0.0 for c in range(4))
+        primaries.append(vals[3])
+        non_primaries.extend(vals[:3])
+    primaries.sort()
+    non_primaries.sort()
+    return (max(1.0, primaries[len(primaries) // 2]), non_primaries[len(non_primaries) // 2])
+
+
+def _mott_quality_trim_range(qualities: list, error_cutoff: float = 0.05) -> tuple:
+    """Phred Mott 最大子数组质量修剪算法，返回高质量有效区间 (start, end)。"""
+    n = len(qualities)
+    if n == 0 or all(int(q) <= 0 for q in qualities):
+        return (0, n)
+    cur_sum = 0.0
+    cur_start = 0
+    best_sum = 0.0
+    best_start = 0
+    best_end = 0
+    for i, q_raw in enumerate(qualities):
+        q = float(max(0, int(q_raw)))
+        score = error_cutoff - (10.0 ** (-q / 10.0))
+        if cur_sum + score <= 0.0:
+            cur_sum = 0.0
+            cur_start = i + 1
+        else:
+            cur_sum += score
+            if cur_sum > best_sum:
+                best_sum = cur_sum
+                best_start = cur_start
+                best_end = i + 1
+    if best_end - best_start < 20:
+        return (0, n)
+    return (best_start, best_end)
+
+
+def _student_t_two_sided_p(t_val: float, df: float) -> float:
+    if df <= 0.0:
+        return 1.0
+    if t_val == 0.0:
+        return 1.0
+    x = df / (df + t_val * t_val)
+    return min(1.0, max(0.0, _incomplete_beta(df / 2.0, 0.5, x)))
+
+
+def _estimate_active_covariance(columns: list, active_indices: list, ss_res: float, m: int):
+    """估算活跃支持集完整协方差矩阵 Σ_A = σ²(X_A^T X_A)^(-1)，区分 zero_residual / unavailable / matrix。"""
+    k = len(active_indices)
+    if k == 0 or m <= k:
+        return ("unavailable", None)
+    sigma2 = ss_res / float(m - k)
+    if sigma2 <= 1e-18:
+        return ("zero_residual", None)
+    gram = [[0.0] * k for _ in range(k)]
+    max_diag = 0.0
+    for i in range(k):
+        ci = columns[active_indices[i]]
+        for j in range(i, k):
+            cj = columns[active_indices[j]]
+            dot = sum(a * b for a, b in zip(ci, cj))
+            gram[i][j] = dot
+            gram[j][i] = dot
+        max_diag = max(max_diag, abs(gram[i][i]))
+    if max_diag <= 1e-18:
+        return ("unavailable", None)
+    pivot_tol = max(1e-14, 1e-12 * max_diag)
+    aug = [gram[i][:] + [1.0 if j == i else 0.0 for j in range(k)] for i in range(k)]
+    for col in range(k):
+        piv_row = max(range(col, k), key=lambda r: abs(aug[r][col]))
+        if abs(aug[piv_row][col]) <= pivot_tol:
+            return ("unavailable", None)
+        if piv_row != col:
+            aug[col], aug[piv_row] = aug[piv_row], aug[col]
+        diag = aug[col][col]
+        for c in range(2 * k):
+            aug[col][c] /= diag
+        for r in range(k):
+            if r == col:
+                continue
+            fac = aug[r][col]
+            if fac == 0.0:
+                continue
+            for c in range(2 * k):
+                aug[r][c] -= fac * aug[col][c]
+    cov_map = {}
+    for i in range(k):
+        row_dict = {}
+        for j in range(k):
+            val = sigma2 * aug[i][k + j]
+            if not math.isfinite(val):
+                return ("unavailable", None)
+            row_dict[active_indices[j]] = val
+        cov_map[active_indices[i]] = row_dict
+    return ("matrix", cov_map)
+
+
+def _estimate_upstream_alignment_offset(wt_seq: str, ed_seq: str, wt_peaks: list, ed_peaks: list, wt_cut0: int, max_offset: int = 50) -> int:
+    """切点上游窗口 WT vs Edited 序列锚点 + 四通道互相关对齐（保留 'N' 坐标 1:1 映射）"""
+    c_wt = _clean_seq_preserving_n(wt_seq)
+    c_ed = _clean_seq_preserving_n(ed_seq)
+    win_end = max(0, wt_cut0 - 15)
+    win_start = max(min(10, max(0, win_end - 25)), win_end - 95)
+    if win_end - win_start >= 12 and len(c_wt) >= win_end and len(c_ed) >= 12:
+        for anc_len in (20, 16, 12):
+            if win_end - win_start >= anc_len:
+                anc_start = win_end - anc_len
+                anchor = c_wt[anc_start:win_end]
+                if "N" in anchor:
+                    continue
+                pos = c_ed.find(anchor)
+                if pos != -1:
+                    cand = pos - anc_start
+                    if abs(cand) <= max_offset:
+                        return cand
+    p_end = min(len(wt_peaks), max(0, wt_cut0 - 10))
+    p_start = max(0, p_end - 80)
+    if p_end - p_start < 12 or not ed_peaks:
+        return 0
+    best_off = 0
+    best_score = -1e18
+    lim = min(max_offset, max(10, len(ed_peaks) // 2))
+    for delta in range(-lim, lim + 1):
+        dot = nw = ne = 0.0
+        ov = 0
+        for idx in range(p_start, p_end):
+            e_idx = idx + delta
+            if 0 <= e_idx < len(ed_peaks):
+                wp = wt_peaks[idx]
+                ep = ed_peaks[e_idx]
+                for c in range(4):
+                    wv = float(wp[c]) if len(wp) > c else 0.0
+                    ev = float(ep[c]) if len(ep) > c else 0.0
+                    dot += wv * ev
+                    nw += wv * wv
+                    ne += ev * ev
+                ov += 1
+        if ov >= 10 and nw > 1e-12 and ne > 1e-12:
+            corr = dot / (math.sqrt(nw) * math.sqrt(ne))
+            if corr > best_score + 1e-9 or (abs(corr - best_score) <= 1e-9 and abs(delta) < abs(best_off)):
+                best_score = corr
+                best_off = delta
+    return best_off
+
+
+def _align_and_scale_hdr_window(wt_seq: str, hdr_seq: str, wt_cut0: int, req_win: int, wt_primary: float, wt_bg: float):
+    """自动对齐正义或反义 HDR Donor 模板并按 WT 实测 RFU 同量纲构建下游峰值矩阵；无同源锚点且上游一致性 <80% 返回 None"""
+    c_wt = _clean_seq_preserving_n(wt_seq)
+    c_hdr_sense = clean_seq(hdr_seq)
+    if not c_hdr_sense or wt_cut0 < 0 or wt_cut0 >= len(c_wt):
+        return None
+    c_hdr_anti = rev_comp(c_hdr_sense)
+
+    def find_anchor(cand_hdr: str):
+        for anc_len in (20, 16, 12):
+            if wt_cut0 < anc_len + 3:
+                continue
+            for back in range(4, min(50, wt_cut0 - anc_len) + 1, 2):
+                a_start = wt_cut0 - back - anc_len
+                a_end = a_start + anc_len
+                if a_start >= 0 and a_end <= len(c_wt):
+                    anchor = c_wt[a_start:a_end]
+                    if "N" in anchor:
+                        continue
+                    pos = cand_hdr.find(anchor)
+                    if pos != -1:
+                        cand = pos + (wt_cut0 - a_start)
+                        if 0 <= cand < len(cand_hdr):
+                            return cand
+        return None
+
+    def upstream_matches(cand_hdr: str) -> bool:
+        if len(cand_hdr) != len(c_wt) or wt_cut0 < 10:
+            return False
+        u_start = max(0, wt_cut0 - 40)
+        matches = compared = 0
+        for i in range(u_start, wt_cut0):
+            if c_wt[i] == "N":
+                continue
+            compared += 1
+            if cand_hdr[i] == c_wt[i]:
+                matches += 1
+        return compared >= 8 and (matches / float(compared)) >= 0.80
+
+    final_hdr = None
+    hdr_cut0 = find_anchor(c_hdr_sense)
+    if hdr_cut0 is not None:
+        final_hdr = c_hdr_sense
+    else:
+        hdr_cut0 = find_anchor(c_hdr_anti)
+        if hdr_cut0 is not None:
+            final_hdr = c_hdr_anti
+        elif upstream_matches(c_hdr_sense):
+            final_hdr = c_hdr_sense
+            hdr_cut0 = wt_cut0
+        elif upstream_matches(c_hdr_anti):
+            final_hdr = c_hdr_anti
+            hdr_cut0 = wt_cut0
+    if final_hdr is None or hdr_cut0 is None:
+        return None
+    down = final_hdr[hdr_cut0:hdr_cut0 + req_win]
+    if len(down) < req_win and len(down) >= 12 and wt_cut0 < len(c_wt):
+        wt_tail = c_wt[wt_cut0:]
+        for tlen in (16, 12):
+            if len(down) >= tlen:
+                tail_anc = down[-tlen:]
+                pos = wt_tail.find(tail_anc)
+                if pos != -1:
+                    wt_end = wt_cut0 + pos + tlen
+                    down = down + c_wt[wt_end:wt_end + (req_win - len(down))]
+                    break
+    return peaks_from_sequence(down, primary_signal=wt_primary, background_signal=wt_bg)
+
+
 def deconvolve_sanger_crispr(args: dict) -> dict:
-    """Synthego ICE 风格 Sanger 编辑池四通道峰图 NNLS 解卷积（使用 scipy.optimize.nnls，对齐 Swift CRISPRDeconvolutionEngine）"""
-    wt_seq = clean_seq(args.get("wt_sequence") or "")
+    """Synthego ICE / TIDE 风格 Sanger 编辑池四通道峰图 NNLS 解卷积（与 Swift CRISPRDeconvolutionEngine 1:1 对齐）"""
+    wt_seq = _clean_seq_preserving_n(args.get("wt_sequence") or "")
     sgrna_seq = clean_seq(args.get("sgrna_sequence") or "")
     hdr_seq = clean_seq(args.get("hdr_donor_sequence") or "") if args.get("hdr_donor_sequence") else ""
     req_win = int(args.get("window_length_bp") or args.get("requested_window_length_bp") or 150)
     shift_min = int(args.get("shift_min_bp", -20))
     shift_max = int(args.get("shift_max_bp", 20))
     noise_floor = float(args.get("noise_floor_weight", 1e-6))
+    min_comp_pct = float(args.get("min_component_percent", 1.0))
+    align_offset_bp = int(args.get("alignment_offset_bp", 0))
 
     wt_peaks = args.get("wt_peaks_acgt")
     if not wt_peaks and wt_seq:
@@ -3814,19 +4130,14 @@ def deconvolve_sanger_crispr(args: dict) -> dict:
                 "r_squared": 0.0,
                 "residual_norm": 0.0,
                 "warnings": ["SGRNA_NOT_FOUND_IN_WT"],
+                "alignment_offset_bp": align_offset_bp,
+                "hdr_wt_cosine_similarity": None,
                 "contributions": [],
                 "dominant_indels": []
             }
         cut_idx, is_rev_sg = loc
 
     edited_win_peaks = [[float(v) for v in row[:4]] for row in (args.get("edited_peaks_acgt") or [])]
-    hdr_win_peaks = args.get("hdr_peaks_acgt")
-    if not hdr_win_peaks and hdr_seq:
-        hdr_full = peaks_from_sequence(hdr_seq)
-        if cut_idx < len(hdr_full):
-            hdr_win_peaks = hdr_full[cut_idx:cut_idx + req_win]
-    if hdr_win_peaks:
-        hdr_win_peaks = [[float(v) for v in row[:4]] for row in hdr_win_peaks]
 
     warnings = []
     n_wt = len(wt_peaks)
@@ -3856,25 +4167,81 @@ def deconvolve_sanger_crispr(args: dict) -> dict:
             "r_squared": 0.0,
             "residual_norm": 0.0,
             "warnings": warnings,
+            "alignment_offset_bp": align_offset_bp,
+            "hdr_wt_cosine_similarity": None,
             "contributions": [],
             "dominant_indels": []
         }
 
+    # 统一使用下游分解窗 [cut_idx, cut_idx + eff_w] 估算局部 RFU 振幅，消除 5'→3' 信号衰减偏差
+    local_primary, local_bg = _estimate_local_signal_scale(wt_peaks, cut_idx, min(n_wt, cut_idx + eff_w))
+
+    hdr_win_peaks = args.get("hdr_peaks_acgt")
+    if not hdr_win_peaks and hdr_seq:
+        if wt_seq:
+            hdr_win_peaks = _align_and_scale_hdr_window(wt_seq, hdr_seq, cut_idx, req_win, local_primary, local_bg)
+            if hdr_win_peaks is None:
+                warnings.append("HDR_ALIGNMENT_FAILED")
+        else:
+            hdr_full = peaks_from_sequence(hdr_seq, primary_signal=local_primary, background_signal=local_bg)
+            if cut_idx < len(hdr_full):
+                hdr_win_peaks = hdr_full[cut_idx:cut_idx + req_win]
+    if hdr_win_peaks:
+        hdr_win_peaks = [[float(v) for v in row[:4]] for row in hdr_win_peaks]
+
     shifts = list(range(shift_min, shift_max + 1))
+    degen_level = local_bg + 0.25 * (local_primary - local_bg)
     columns = []
-    for s in shifts:
-        col = []
-        for k in range(eff_w):
-            src_idx = min(max(0, cut_idx + k - s), n_wt - 1)
-            col.extend(wt_peaks[src_idx][:4])
-        columns.append(col)
+    col_metas = []
+    wt_col_idx = None
+
+    for s_idx, s in enumerate(shifts):
+        if s == 1:
+            for ins_b in range(4):
+                col = [local_primary if c == ins_b else local_bg for c in range(4)]
+                for k in range(1, eff_w):
+                    src_idx = min(max(0, cut_idx + k - 1), n_wt - 1)
+                    col.extend(wt_peaks[src_idx][:4])
+                columns.append(col)
+                col_metas.append((s_idx, False))
+        elif s >= 2:
+            col = []
+            for k in range(eff_w):
+                if k < s:
+                    col.extend([degen_level, degen_level, degen_level, degen_level])
+                else:
+                    src_idx = min(max(0, cut_idx + k - s), n_wt - 1)
+                    col.extend(wt_peaks[src_idx][:4])
+            columns.append(col)
+            col_metas.append((s_idx, False))
+        else:
+            if s == 0:
+                wt_col_idx = len(columns)
+            col = []
+            for k in range(eff_w):
+                src_idx = min(max(0, cut_idx + k - s), n_wt - 1)
+                col.extend(wt_peaks[src_idx][:4])
+            columns.append(col)
+            col_metas.append((s_idx, False))
 
     has_hdr = False
+    hdr_cos_sim = None
     if hdr_win_peaks and len(hdr_win_peaks) >= eff_w:
         hdr_col = []
         for k in range(eff_w):
             hdr_col.extend(hdr_win_peaks[k][:4])
+        if wt_col_idx is not None:
+            wt_col = columns[wt_col_idx]
+            dot = sum(a * b for a, b in zip(wt_col, hdr_col))
+            nw = sum(a * a for a in wt_col)
+            nh = sum(b * b for b in hdr_col)
+            if nw > 1e-12 and nh > 1e-12:
+                cos_val = dot / (math.sqrt(nw) * math.sqrt(nh))
+                hdr_cos_sim = cos_val
+                if cos_val > 0.96:
+                    warnings.append("HDR_COLLINEAR_WITH_WT")
         columns.append(hdr_col)
+        col_metas.append((None, True))
         has_hdr = True
 
     rhs = []
@@ -3882,6 +4249,37 @@ def deconvolve_sanger_crispr(args: dict) -> dict:
         rhs.extend(edited_win_peaks[k][:4])
 
     raw_weights, res_norm = solve_nnls_deconv(columns, rhs)
+
+    # Synthego ICE 稀疏剪枝 (< min_comp_pct%) + 支持集无偏重拟合
+    init_sum = sum(raw_weights)
+    if init_sum > 1e-12 and min_comp_pct > 0.0:
+        s_agg = [0.0] * len(shifts)
+        h_agg = 0.0
+        for c_idx, (s_idx, is_h) in enumerate(col_metas):
+            if s_idx is not None:
+                s_agg[s_idx] += raw_weights[c_idx]
+            elif is_h:
+                h_agg += raw_weights[c_idx]
+        keep_indices = []
+        for c_idx, (s_idx, is_h) in enumerate(col_metas):
+            if raw_weights[c_idx] < noise_floor:
+                continue
+            if s_idx is not None:
+                pct = (s_agg[s_idx] / init_sum) * 100.0
+                if pct >= min_comp_pct or shifts[s_idx] == 0:
+                    keep_indices.append(c_idx)
+            else:
+                if (h_agg / init_sum) * 100.0 >= min_comp_pct:
+                    keep_indices.append(c_idx)
+        if keep_indices and len(keep_indices) < len(columns):
+            sub_cols = [columns[i] for i in keep_indices]
+            sub_w, sub_res = solve_nnls_deconv(sub_cols, rhs)
+            refit_w = [0.0] * len(columns)
+            for li, oi in enumerate(keep_indices):
+                refit_w[oi] = sub_w[li]
+            raw_weights = refit_w
+            res_norm = sub_res
+
     ss_res = res_norm * res_norm
     mean_y = sum(rhs) / len(rhs)
     ss_tot = sum((val - mean_y) ** 2 for val in rhs)
@@ -3890,8 +4288,48 @@ def deconvolve_sanger_crispr(args: dict) -> dict:
         warnings.append("LOW_FIT_R_SQUARED")
 
     cleaned_weights = [w if w >= noise_floor else 0.0 for w in raw_weights]
-    w_sum = sum(cleaned_weights)
+    active_indices = [i for i, w in enumerate(cleaned_weights) if w > 0.0]
+    cov_status, cov_map = _estimate_active_covariance(columns, active_indices, ss_res, len(rhs))
+
+    shift_weights = [0.0] * len(shifts)
+    shift_active_cols = [[] for _ in range(len(shifts))]
+    hdr_weight = 0.0
+    hdr_active_cols = []
+    for c_idx, (s_idx, is_h) in enumerate(col_metas):
+        rw = cleaned_weights[c_idx]
+        if s_idx is not None:
+            shift_weights[s_idx] += rw
+            if rw > 0.0:
+                shift_active_cols[s_idx].append(c_idx)
+        elif is_h:
+            hdr_weight += rw
+            if rw > 0.0:
+                hdr_active_cols.append(c_idx)
+
+    w_sum = sum(shift_weights) + hdr_weight
     norm_scale = (100.0 / w_sum) if w_sum > 1e-12 else 0.0
+    df_stat = max(1, len(rhs) - max(1, len(active_indices)))
+
+    def _group_se_p(rw: float, pct: float, grp_cols: list):
+        if rw <= 0.0 or not grp_cols:
+            return (None, None)
+        if cov_status == "zero_residual":
+            return (0.0, 0.0)
+        if cov_status != "matrix" or cov_map is None:
+            return (None, None)
+        sum_var = 0.0
+        for ci in grp_cols:
+            row_m = cov_map.get(ci)
+            if row_m is None:
+                return (None, None)
+            for cj in grp_cols:
+                if cj not in row_m:
+                    return (None, None)
+                sum_var += row_m[cj]
+        se_pct = math.sqrt(max(0.0, sum_var)) * norm_scale
+        if se_pct <= 1e-12:
+            return (0.0, 0.0)
+        return (se_pct, _student_t_two_sided_p(pct / se_pct, float(df_stat)))
 
     wt_pct = 0.0
     indel_pct = 0.0
@@ -3900,36 +4338,42 @@ def deconvolve_sanger_crispr(args: dict) -> dict:
     contributions = []
 
     for idx, s in enumerate(shifts):
-        rw = cleaned_weights[idx]
+        rw = shift_weights[idx]
         pct = rw * norm_scale
-        is_fs = (abs(s) % 3) != 0
+        is_ko_shift = ((abs(s) % 3) != 0) or (s <= -21)
         lbl = f"+{s}" if s > 0 else f"{s}"
         if s == 0:
             wt_pct = pct
         else:
             indel_pct += pct
-            if is_fs:
+            if is_ko_shift:
                 ko_pct += pct
+        se_p, p_v = _group_se_p(rw, pct, shift_active_cols[idx])
         contributions.append({
             "label": lbl,
             "shift_bp": s,
             "is_hdr": False,
-            "is_frameshift": is_fs,
+            "is_frameshift": is_ko_shift,
             "raw_weight": rw,
-            "percent": pct
+            "percent": pct,
+            "se_percent": se_p,
+            "p_value": p_v
         })
 
     if has_hdr:
-        rw = cleaned_weights[len(shifts)]
+        rw = hdr_weight
         pct = rw * norm_scale
         hdr_pct = pct
+        se_p, p_v = _group_se_p(rw, pct, hdr_active_cols)
         contributions.append({
             "label": "HDR",
             "shift_bp": None,
             "is_hdr": True,
             "is_frameshift": False,
             "raw_weight": rw,
-            "percent": pct
+            "percent": pct,
+            "se_percent": se_p,
+            "p_value": p_v
         })
 
     dominant = sorted(
@@ -3950,6 +4394,8 @@ def deconvolve_sanger_crispr(args: dict) -> dict:
         "r_squared": r_squared,
         "residual_norm": res_norm,
         "warnings": warnings,
+        "alignment_offset_bp": align_offset_bp,
+        "hdr_wt_cosine_similarity": hdr_cos_sim,
         "contributions": contributions,
         "dominant_indels": dominant
     }
@@ -5772,6 +6218,8 @@ class IndelContributionDict(TypedDict):
     is_frameshift: bool
     raw_weight: float
     percent: float
+    se_percent: Optional[float]
+    p_value: Optional[float]
 
 
 class DeconvoluteCrisprSangerInputDict(TypedDict, total=False):
@@ -5788,6 +6236,8 @@ class DeconvoluteCrisprSangerInputDict(TypedDict, total=False):
     shift_min_bp: int
     shift_max_bp: int
     noise_floor_weight: float
+    min_component_percent: float
+    alignment_offset_bp: int
     wt_ab1_path: Optional[str]
     edited_ab1_path: Optional[str]
 
@@ -5805,6 +6255,8 @@ class DeconvoluteCrisprSangerOutputDict(TypedDict):
     r_squared: float
     residual_norm: float
     warnings: List[str]
+    alignment_offset_bp: int
+    hdr_wt_cosine_similarity: Optional[float]
     contributions: List[IndelContributionDict]
     dominant_indels: List[IndelContributionDict]
 
@@ -6057,14 +6509,18 @@ def _prepare_deconv_input_dict(raw: Dict[str, Any]) -> Dict[str, Any]:
     d = dict(raw)
     if d.get("is_reverse_strand_sgrna") is None:
         d["is_reverse_strand_sgrna"] = False
-    for k, dv in (("shift_min_bp", -20), ("shift_max_bp", 20), ("noise_floor_weight", 1e-6)):
+    is_ab1_mode = bool((d.get("wt_ab1_path") or "").strip()) or bool((d.get("edited_ab1_path") or "").strip())
+    default_smin = -30 if is_ab1_mode else -20
+    default_smax = 14 if is_ab1_mode else 20
+    for k, dv in (("shift_min_bp", default_smin), ("shift_max_bp", default_smax), ("noise_floor_weight", 1e-6), ("min_component_percent", 1.0), ("alignment_offset_bp", 0)):
         if d.get(k) is None:
             d[k] = dv
-    for k in ("window_length_bp", "requested_window_length_bp", "cut_index_0based", "shift_min_bp", "shift_max_bp"):
+    for k in ("window_length_bp", "requested_window_length_bp", "cut_index_0based", "shift_min_bp", "shift_max_bp", "alignment_offset_bp"):
         if d.get(k) is not None and not _is_non_bool_int(d[k]):
             raise ValueError(f"{k} 必须为整数，收到 {type(d[k]).__name__}")
-    if d.get("noise_floor_weight") is not None and not _is_non_bool_number(d["noise_floor_weight"]):
-        raise ValueError("noise_floor_weight 必须为数值")
+    for k in ("noise_floor_weight", "min_component_percent"):
+        if d.get(k) is not None and not _is_non_bool_number(d[k]):
+            raise ValueError(f"{k} 必须为数值")
     for k in ("wt_peaks_acgt", "edited_peaks_acgt", "hdr_peaks_acgt"):
         _validate_peaks_matrix(d.get(k), k)
     return d
@@ -6145,6 +6601,8 @@ if _HAS_PYDANTIC:
         is_frameshift: bool
         raw_weight: float
         percent: float
+        se_percent: Optional[float] = None
+        p_value: Optional[float] = None
 
 
     class DeconvoluteCrisprSangerInput(BaseModel):
@@ -6162,6 +6620,8 @@ if _HAS_PYDANTIC:
         shift_min_bp: int = Field(default=-20, ge=-50, le=0)
         shift_max_bp: int = Field(default=20, ge=0, le=50)
         noise_floor_weight: float = Field(default=1e-6, ge=0.0)
+        min_component_percent: float = Field(default=1.0, ge=0.0, le=50.0)
+        alignment_offset_bp: int = 0
         wt_ab1_path: Optional[str] = None
         edited_ab1_path: Optional[str] = None
 
@@ -6193,6 +6653,8 @@ if _HAS_PYDANTIC:
         r_squared: float
         residual_norm: float
         warnings: List[str]
+        alignment_offset_bp: int = 0
+        hdr_wt_cosine_similarity: Optional[float] = None
         contributions: List[IndelContributionModel]
         dominant_indels: List[IndelContributionModel]
 
@@ -6449,7 +6911,8 @@ def _stdlib_validate_deconv(raw: Dict[str, Any]) -> Dict[str, Any]:
         "wt_sequence", "sgrna_sequence", "wt_peaks_acgt", "edited_peaks_acgt",
         "hdr_donor_sequence", "hdr_peaks_acgt", "cut_index_0based",
         "is_reverse_strand_sgrna", "window_length_bp", "requested_window_length_bp",
-        "shift_min_bp", "shift_max_bp", "noise_floor_weight", "wt_ab1_path", "edited_ab1_path",
+        "shift_min_bp", "shift_max_bp", "noise_floor_weight", "min_component_percent",
+        "alignment_offset_bp", "wt_ab1_path", "edited_ab1_path",
     }
     unknown = set(raw.keys()) - allowed
     if unknown:
@@ -6466,6 +6929,9 @@ def _stdlib_validate_deconv(raw: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("移码范围必须满足 -50 <= shift_min_bp <= 0 <= shift_max_bp <= 50")
     if float(d.get("noise_floor_weight", 1e-6)) < 0.0:
         raise ValueError("noise_floor_weight 不能为负数")
+    mcp = float(d.get("min_component_percent", 1.0))
+    if not (0.0 <= mcp <= 50.0):
+        raise ValueError("min_component_percent 必须在 0.0–50.0 之间")
     has_wt = bool(d.get("wt_peaks_acgt")) or bool(str(d.get("wt_sequence") or "").strip()) or bool(str(d.get("wt_ab1_path") or "").strip())
     has_ed = bool(d.get("edited_peaks_acgt")) or bool(str(d.get("edited_ab1_path") or "").strip())
     if not has_wt:
@@ -6600,9 +7066,12 @@ def tool_deconvolute_crispr_sanger(args: Dict[str, Any]) -> DeconvoluteCrisprSan
             raise FileNotFoundError(f"找不到 WT .ab1 文件: {wt_ab1_path}")
         with open(full_wt, "rb") as f:
             wt_parsed = _extract_ab1_peaks_acgt(f.read())
-        validated["wt_peaks_acgt"] = wt_parsed["peaks_acgt"]
+        ws, we = _mott_quality_trim_range(wt_parsed.get("qualities") or [])
+        wt_seq_trim = wt_parsed["sequence"][ws:we]
+        wt_peaks_trim = wt_parsed["peaks_acgt"][ws:we]
+        validated["wt_peaks_acgt"] = _subtract_channel_baselines(wt_peaks_trim)
         if not validated.get("wt_sequence"):
-            validated["wt_sequence"] = wt_parsed["sequence"]
+            validated["wt_sequence"] = wt_seq_trim
 
     ed_ab1_path = validated.get("edited_ab1_path")
     if ed_ab1_path and not validated.get("edited_peaks_acgt"):
@@ -6611,22 +7080,25 @@ def tool_deconvolute_crispr_sanger(args: Dict[str, Any]) -> DeconvoluteCrisprSan
             raise FileNotFoundError(f"找不到 Edited .ab1 文件: {ed_ab1_path}")
         with open(full_ed, "rb") as f:
             ed_parsed = _extract_ab1_peaks_acgt(f.read())
+        es, ee = _mott_quality_trim_range(ed_parsed.get("qualities") or [])
+        ed_seq_trim = ed_parsed["sequence"][es:ee]
+        ed_peaks_corr = _subtract_channel_baselines(ed_parsed["peaks_acgt"][es:ee])
         cut_idx = validated.get("cut_index_0based")
-        wt_seq = clean_seq(validated.get("wt_sequence") or "")
+        wt_seq = _clean_seq_preserving_n(validated.get("wt_sequence") or "")
         sg_seq = clean_seq(validated.get("sgrna_sequence") or "")
         if cut_idx is None and wt_seq and sg_seq:
             loc = locate_crispr_cut_site(wt_seq, sg_seq)
             cut_idx = loc[0] if loc is not None else 0
         cut_idx = int(cut_idx or 0)
-        ed_cut_idx = cut_idx
-        if wt_seq and cut_idx >= 15 and ed_parsed["sequence"]:
-            anc_start = max(0, cut_idx - 25)
-            anchor = wt_seq[anc_start:cut_idx - 5]
-            if len(anchor) >= 10:
-                pos = ed_parsed["sequence"].find(anchor)
-                if pos != -1:
-                    ed_cut_idx = pos + (cut_idx - anc_start)
-        validated["edited_peaks_acgt"] = ed_parsed["peaks_acgt"][ed_cut_idx:ed_cut_idx + int(req_win)]
+        align_off = _estimate_upstream_alignment_offset(
+            wt_seq, ed_seq_trim, validated.get("wt_peaks_acgt") or [], ed_peaks_corr, cut_idx
+        )
+        validated["alignment_offset_bp"] = int(align_off)
+        ed_cut_idx = cut_idx + align_off
+        if ed_cut_idx < 0 or ed_cut_idx >= len(ed_peaks_corr):
+            validated["edited_peaks_acgt"] = []
+        else:
+            validated["edited_peaks_acgt"] = ed_peaks_corr[ed_cut_idx:ed_cut_idx + int(req_win)]
 
     result = deconvolve_sanger_crispr(validated)
     if _HAS_PYDANTIC:
@@ -6893,6 +7365,7 @@ MCP_TOOLS = [
             "properties": {
                 "target_iods": {"type": "array", "items": {"type": "number"}, "description": "各泳道目的蛋白条带积分光密度 (IOD) 数组"},
                 "loading_control_iods": {"type": "array", "items": {"type": "number"}, "description": "各泳道内参 (如 GAPDH/ACTB) 条带 IOD 数组"},
+                "total_protein_lane_iods": {"type": "array", "items": {"type": "number"}, "description": "可选：各泳道总蛋白染色 (TPN / Ponceau S / Stain-Free) 整泳道 IOD 数组，提供时优先替代内参归一化"},
                 "lane_groups": {"type": "array", "items": {"type": "string"}, "description": "各泳道所属实验分组名称数组（如 ['WT', 'WT', 'KO', 'KO']）"},
                 "is_saturated": {"type": "array", "items": {"type": "boolean"}, "description": "可选：各泳道是否存在过曝饱和 (true/false)"},
                 "saturation_policy": {"type": "string", "enum": ["excludeFromStats", "warnOnly"], "default": "excludeFromStats", "description": "过曝条带处理策略：默认 excludeFromStats 从统计中剔除"}
@@ -6909,6 +7382,7 @@ MCP_TOOLS = [
                 "reference_gene": {"type": "string", "description": "内参基因名称，默认 ACTB", "default": "ACTB"},
                 "control_sample": {"type": "string", "description": "对照组样本名称，默认 Control", "default": "Control"},
                 "sd_threshold": {"type": "number", "description": "复孔 Ct SD 告警阈值，默认 0.30", "default": 0.30},
+                "multiple_comparison": {"type": "string", "enum": ["holm", "bh_fdr", "none"], "default": "holm", "description": "多重比较校正方法：holm (靶标内 Holm-Bonferroni)、bh_fdr (跨基因 Benjamini-Hochberg FDR) 或 none"},
                 "records": {
                     "type": "array",
                     "description": "qPCR Ct 原始记录数组，每项含 sample, gene, ct",
@@ -7058,9 +7532,11 @@ MCP_TOOLS = [
                 "is_reverse_strand_sgrna": {"type": "boolean", "default": False, "description": "sgRNA 是否位于负链"},
                 "window_length_bp": {"type": ["integer", "null"], "minimum": 1, "maximum": 1000, "default": 150, "description": "解卷积分析切点下游窗口长度 (bp)，默认 150"},
                 "requested_window_length_bp": {"type": ["integer", "null"], "minimum": 1, "maximum": 1000, "description": "兼容字段：同 window_length_bp"},
-                "shift_min_bp": {"type": "integer", "minimum": -50, "maximum": 0, "default": -20, "description": "最小缺失移码偏移 (bp)，默认 -20"},
-                "shift_max_bp": {"type": "integer", "minimum": 0, "maximum": 50, "default": 20, "description": "最大插入移码偏移 (bp)，默认 20"},
+                "shift_min_bp": {"type": "integer", "minimum": -50, "maximum": 0, "default": -20, "description": "最小缺失移码偏移 (bp)，峰矩阵默认 -20，.ab1 默认 -30"},
+                "shift_max_bp": {"type": "integer", "minimum": 0, "maximum": 50, "default": 20, "description": "最大插入移码偏移 (bp)，峰矩阵默认 20，.ab1 默认 14"},
                 "noise_floor_weight": {"type": "number", "minimum": 0.0, "default": 1e-6, "description": "NNLS 权重噪声过滤阈值，默认 1e-6"},
+                "min_component_percent": {"type": "number", "minimum": 0.0, "maximum": 50.0, "default": 1.0, "description": "Synthego ICE 稀疏剪枝最小占比阈值 (%)，默认 1.0"},
+                "alignment_offset_bp": {"type": "integer", "default": 0, "description": "上游 WT vs Edited 对齐偏移量 (bp)"},
                 "wt_ab1_path": {"type": ["string", "null"], "description": "可选：野生型 .ab1/.abi 测序文件绝对路径"},
                 "edited_ab1_path": {"type": ["string", "null"], "description": "可选：编辑池 .ab1/.abi 测序文件绝对路径"}
             }
@@ -7081,6 +7557,8 @@ MCP_TOOLS = [
                 "r_squared": {"type": "number"},
                 "residual_norm": {"type": "number"},
                 "warnings": {"type": "array", "items": {"type": "string"}},
+                "alignment_offset_bp": {"type": "integer"},
+                "hdr_wt_cosine_similarity": {"type": ["number", "null"]},
                 "contributions": {
                     "type": "array",
                     "items": {
@@ -7091,7 +7569,9 @@ MCP_TOOLS = [
                             "is_hdr": {"type": "boolean"},
                             "is_frameshift": {"type": "boolean"},
                             "raw_weight": {"type": "number"},
-                            "percent": {"type": "number"}
+                            "percent": {"type": "number"},
+                            "se_percent": {"type": ["number", "null"]},
+                            "p_value": {"type": ["number", "null"]}
                         },
                         "required": ["label", "shift_bp", "is_hdr", "is_frameshift", "raw_weight", "percent"]
                     }
@@ -7106,7 +7586,9 @@ MCP_TOOLS = [
                             "is_hdr": {"type": "boolean"},
                             "is_frameshift": {"type": "boolean"},
                             "raw_weight": {"type": "number"},
-                            "percent": {"type": "number"}
+                            "percent": {"type": "number"},
+                            "se_percent": {"type": ["number", "null"]},
+                            "p_value": {"type": ["number", "null"]}
                         },
                         "required": ["label", "shift_bp", "is_hdr", "is_frameshift", "raw_weight", "percent"]
                     }

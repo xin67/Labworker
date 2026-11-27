@@ -8,6 +8,8 @@ import Accelerate
 public struct BioImageTIFFMetadata: Sendable, Equatable {
     public var physicalPixelSizeUM: Double?
     public var physicalSizeSource: String?
+    /// 3D Z 轴层距 (µm)，源于 ImageJ spacing= 或 OME PhysicalSizeZ（绝不混用于 XY 平面像素尺寸）
+    public var zSpacingUM: Double?
     public var channelNames: [String]?
     public var sizeC: Int?
     public var sizeZ: Int?
@@ -17,6 +19,7 @@ public struct BioImageTIFFMetadata: Sendable, Equatable {
     public init(
         physicalPixelSizeUM: Double? = nil,
         physicalSizeSource: String? = nil,
+        zSpacingUM: Double? = nil,
         channelNames: [String]? = nil,
         sizeC: Int? = nil,
         sizeZ: Int? = nil,
@@ -25,6 +28,7 @@ public struct BioImageTIFFMetadata: Sendable, Equatable {
     ) {
         self.physicalPixelSizeUM = physicalPixelSizeUM
         self.physicalSizeSource = physicalSizeSource
+        self.zSpacingUM = zSpacingUM
         self.channelNames = channelNames
         self.sizeC = sizeC
         self.sizeZ = sizeZ
@@ -826,26 +830,58 @@ public enum BioImageProcessor {
             smoothed[i] = s / Double(hi - lo + 1)
         }
         
+        // 标准拓扑显著性（Topological Prominence，等价 scipy.signal.peak_prominences）：
+        // 向左/向右分别扫描直至遇到严格更高的峰（或边界），各自记录途经的最低谷底，
+        // 取两者较高者 v_key = max(min_left, min_right)，真实显著度 = y_peak - v_key。
         var candidates: [BioSignalPeak] = []
         let gap = max(1, minGap)
-        for i in 1..<(n - 1) {
+        var i = 1
+        while i < n - 1 {
             let v = smoothed[i]
-            if v < smoothed[i - 1] || v <= smoothed[i + 1] { continue }
-            let lo = max(0, i - gap * 3)
-            let hi = min(n - 1, i + gap * 3)
-            var base = v
-            for j in lo...hi { base = min(base, smoothed[j]) }
-            let prom = v - base
+            if v <= smoothed[i - 1] {
+                i += 1
+                continue
+            }
+            // 扫描平顶高原右端，取平顶中点作为峰位（与 scipy.signal.find_peaks 一致）
+            var right = i
+            while right + 1 < n - 1 && smoothed[right + 1] == v {
+                right += 1
+            }
+            if v <= smoothed[right + 1] {
+                i = right + 1
+                continue
+            }
+            let peakIdx = (i + right) / 2
+
+            var leftMin = v
+            var j = i - 1
+            while j >= 0 {
+                if smoothed[j] > v { break }
+                if smoothed[j] < leftMin { leftMin = smoothed[j] }
+                j -= 1
+            }
+
+            var rightMin = v
+            var k = right + 1
+            while k < n {
+                if smoothed[k] > v { break }
+                if smoothed[k] < rightMin { rightMin = smoothed[k] }
+                k += 1
+            }
+
+            let keyCol = max(leftMin, rightMin)
+            let prom = v - keyCol
             if prom >= minProminence {
                 candidates.append(
                     BioSignalPeak(
-                        index: i,
-                        fraction: Double(i) / Double(max(1, n - 1)),
+                        index: peakIdx,
+                        fraction: Double(peakIdx) / Double(max(1, n - 1)),
                         value: v,
                         prominence: prom
                     )
                 )
             }
+            i = right + 1
         }
         candidates.sort { $0.prominence > $1.prominence }
         var kept: [BioSignalPeak] = []
@@ -1030,32 +1066,37 @@ public enum BioImageProcessor {
         return parser.parse()
     }
 
-    /// 解析 ImageJ 标头信息 (如 unit=micron, spacing=0.325, 或使用 XResolution) (P13)
+    /// 解析 ImageJ 标头信息：ImageJ 的 spacing= 代表 3D Z 轴层距，绝不用于 XY 平面像素尺寸；
+    /// XY 平面物理尺寸仅依据 unit=micron 配合 TIFF XResolution (pixels/µm -> 1/XResolution) 计算。
     public static func parseImageJDescription(_ desc: String, xResolution: Double?, resolutionUnit: Int?) -> BioImageTIFFMetadata? {
         var unitIsMicron = false
-        var spacingVal: Double? = nil
+        var zSpacingVal: Double? = nil
         let lines = desc.components(separatedBy: "\n")
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.lowercased().hasPrefix("unit=") {
                 let u = trimmed.dropFirst(5).trimmingCharacters(in: .whitespaces).lowercased()
-                if u == "micron" || u == "µm" || u == "um" || u == "microns" {
+                if u == "micron" || u == "µm" || u == "um" || u == "microns" || u == "\\u00b5m" {
                     unitIsMicron = true
                 }
             } else if trimmed.lowercased().hasPrefix("spacing=") {
                 if let v = Double(trimmed.dropFirst(8).trimmingCharacters(in: .whitespaces)), v > 0 {
-                    spacingVal = v
+                    zSpacingVal = v
                 }
             }
         }
         if unitIsMicron {
-            if let sp = spacingVal, sp > 0 {
-                return BioImageTIFFMetadata(physicalPixelSizeUM: sp, physicalSizeSource: "ImageJ")
-            }
             if let xr = xResolution, xr > 0 {
-                // ImageJ 常见为像素/微米
+                // ImageJ TIFF 中当 unit=micron 时，XResolution 为 pixels/µm
                 let um = 1.0 / xr
-                return BioImageTIFFMetadata(physicalPixelSizeUM: (um * 10000.0).rounded() / 10000.0, physicalSizeSource: "ImageJ")
+                return BioImageTIFFMetadata(
+                    physicalPixelSizeUM: (um * 10000.0).rounded() / 10000.0,
+                    physicalSizeSource: "ImageJ",
+                    zSpacingUM: zSpacingVal
+                )
+            }
+            if let zSp = zSpacingVal {
+                return BioImageTIFFMetadata(physicalPixelSizeUM: nil, physicalSizeSource: nil, zSpacingUM: zSp)
             }
         }
         return nil

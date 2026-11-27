@@ -294,11 +294,14 @@ public enum QPCRInstrumentAndRDMLEngine {
             throw parser.parserError ?? NSError(domain: "LabworkerRDML", code: 4, userInfo: [NSLocalizedDescriptionKey: L10n.t("RDML XML 语法解析失败。")])
         }
 
+        let maxNumericID = delegate.reacts.compactMap { Int($0.id.trimmingCharacters(in: .whitespacesAndNewlines)) }.max() ?? 0
+        let plateCols = (delegate.formatColumns == 24 || delegate.formatRows == 16 || maxNumericID > 96) ? 24 : 12
+        let plateRows = (plateCols == 24) ? 16 : 8
         var records: [QPCRWellRecord] = []
         for (idx, react) in delegate.reacts.enumerated() {
             let sampleID = react.sampleID
             let sMeta = delegate.samples[sampleID]
-            let wellName = formatRDMLWellLabel(react.id, fallbackIndex: idx + 1)
+            let wellName = formatRDMLWellLabel(react.id, rows: plateRows, columns: plateCols, fallbackIndex: idx + 1)
             let wType: QPCRWellType = {
                 switch (sMeta?.type ?? "").lowercased() {
                 case "ntc": return .ntc
@@ -396,11 +399,25 @@ public enum QPCRInstrumentAndRDMLEngine {
             lines.append("  </target>")
         }
 
+        let is384Plate = wells.contains { w in
+            let up = w.well.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            guard up.count >= 2 && up.count <= 3,
+                  let first = up.unicodeScalars.first,
+                  first.value >= 65 && first.value <= 80 else { return false } // 严格限定 A..P
+            let colStr = up.dropFirst()
+            guard colStr.allSatisfy({ $0.isASCII && $0.isNumber }),
+                  let col = Int(colStr),
+                  col >= 1 && col <= 24 else { return false }
+            return first.value >= 73 || col > 12 // I..P 或列号 13..24
+        }
+        let plateRows = is384Plate ? 16 : 8
+        let plateCols = is384Plate ? 24 : 12
+
         lines.append("  <experiment id=\"\(esc(experimentName))\">")
         lines.append("    <run id=\"run_1\">")
-        lines.append("      <pcrFormat><rows>8</rows><columns>12</columns><rowLabel>ABC</rowLabel><columnLabel>123</columnLabel></pcrFormat>")
+        lines.append("      <pcrFormat><rows>\(plateRows)</rows><columns>\(plateCols)</columns><rowLabel>ABC</rowLabel><columnLabel>123</columnLabel></pcrFormat>")
         for (idx, w) in wells.enumerated() {
-            let reactID = wellLabelToRDMLReactID(w.well, fallback: idx + 1)
+            let reactID = wellLabelToRDMLReactID(w.well, columns: plateCols, fallback: idx + 1)
             lines.append("      <react id=\"\(esc(reactID))\">")
             lines.append("        <sample id=\"\(esc(w.sample))\"/>")
             lines.append("        <data>")
@@ -485,17 +502,38 @@ public enum QPCRInstrumentAndRDMLEngine {
                 : String(format: L10n.tr("发现 %d 个反应孔超出复孔 SD 上限 (%.2f)，请核查加样一致性或勾选剔除离群孔。", "%d well(s) exceed Ct SD limit (%.2f); check pipetting or exclude outliers."), highSdCount, settings.sdLimit)
         ))
 
-        // 3. 内参基因数量与几何平均策略
+        // 3. 内参基因数量与 geNorm / NormFinder 稳定度真实检验 (MIQE 2.0 / Vandesompele 2002 / Andersen 2004)
         let refCount = ddctOut.references.count
-        let refStatus: MIQEStatus = refCount >= 2 ? .pass : (refCount == 1 ? .warning : .fail)
+        let refStability = QPCRAnalysisEngine.evaluateReferenceStability(wells: wells, settings: settings, qc: qc)
+        let refStatus: MIQEStatus = {
+            if refCount == 0 { return .fail }
+            if refCount == 1 { return .warning }
+            return refStability.isStable ? .pass : .fail
+        }()
+        let refEvidence: String = {
+            if refCount == 0 {
+                return L10n.t("未配置有效内参基因。")
+            }
+            if refCount == 1 {
+                return L10n.tr("当前仅使用单个内参 (\(ddctOut.references.first ?? ""))；MIQE 2.0 建议条件允许时使用 ≥2 个经稳定度验证的内参归一化。", "Single reference gene (\(ddctOut.references.first ?? "")) used; MIQE 2.0 recommends >= 2 stability-validated reference genes.")
+            }
+            let mDesc = refStability.genes.map { g in
+                let nfPart = g.normFinderRho.map { String(format: ", ρ=%.3f", $0) } ?? ""
+                return "\(g.target)(M=\(String(format: "%.3f", g.geNormM))\(nfPart))"
+            }.joined(separator: "; ")
+            if refStability.isStable {
+                return L10n.tr("已选用 \(refCount) 个内参通过 geNorm/NormFinder 稳定性验证：\(mDesc)。", "\(refCount) reference genes passed geNorm/NormFinder stability validation: \(mDesc).")
+            } else {
+                let warnText = refStability.warnings.joined(separator: " ")
+                return L10n.tr("警告：内参稳定性未通过 MIQE 2.0 检验（\(mDesc)）。\(warnText)", "Warning: Reference gene stability failed MIQE 2.0 check (\(mDesc)). \(warnText)")
+            }
+        }()
         items.append(MIQEChecklistItem(
             id: "ref_genes",
             itemNumber: 3,
-            title: L10n.t("内参基因归一化 (Vandesompele 策略)"),
+            title: L10n.t("内参基因归一化与稳定性验证 (geNorm / NormFinder)"),
             status: refStatus,
-            evidence: refCount >= 2
-                ? L10n.tr("已选用 \(refCount) 个内参 (\(ddctOut.references.joined(separator: ", "))) 执行 Vandesompele 线性相对量几何平均（Ct 等效均值）归一化。", "Vandesompele geometric-mean normalization of linear reference quantities (equivalent Ct-space mean) across \(refCount) reference gene(s) (\(ddctOut.references.joined(separator: ", "))).")
-                : (refCount == 1 ? L10n.tr("当前仅使用单个内参 (\(ddctOut.references.first ?? ""))；MIQE 2.0 建议条件允许时使用 ≥2 个经稳定度验证的内参归一化。", "Single reference gene (\(ddctOut.references.first ?? "")) used; MIQE 2.0 recommends >= 2 stability-validated reference genes.") : L10n.t("未配置有效内参基因。"))
+            evidence: refEvidence
         ))
 
         // 4. 扩增效率与标准曲线 R²
@@ -568,14 +606,15 @@ public enum QPCRInstrumentAndRDMLEngine {
         ))
 
         // 8. 多重比较校正与可复现溯源
+        let hasMultiComp = settings.multipleComparison == .holm || settings.multipleComparison == .bhFDR
         items.append(MIQEChecklistItem(
             id: "stats_provenance",
             itemNumber: 8,
             title: L10n.t("多重假设检验校正与溯源记录"),
-            status: settings.multipleComparison == .holm ? .pass : .warning,
-            evidence: settings.multipleComparison == .holm
-                ? L10n.t("已启用 Holm–Bonferroni 家族内多重检验校正，导出时自动伴生 AnalysisRun v2 (SHA-256) 溯源 JSON。")
-                : L10n.t("当前使用未校正 Raw p 值；建议开启 Holm–Bonferroni 校正。")
+            status: hasMultiComp ? .pass : .warning,
+            evidence: hasMultiComp
+                ? L10n.tr("已启用 \(settings.multipleComparison.title) 多重检验校正，导出时自动伴生 AnalysisRun v2 (SHA-256) 溯源 JSON。", "Multiple-testing correction (\(settings.multipleComparison.title)) enabled with AnalysisRun v2 (SHA-256) provenance JSON.")
+                : L10n.t("当前使用未校正 Raw p 值；建议开启 Holm–Bonferroni 或 Benjamini–Hochberg FDR 校正。")
         ))
 
         let pCnt = items.filter { $0.status == .pass }.count
@@ -629,25 +668,26 @@ public enum QPCRInstrumentAndRDMLEngine {
         return String(data: outData, encoding: .utf8) ?? ""
     }
 
-    private static func formatRDMLWellLabel(_ rawID: String, fallbackIndex: Int) -> String {
+    private static func formatRDMLWellLabel(_ rawID: String, rows: Int = 8, columns: Int = 12, fallbackIndex: Int) -> String {
         let t = rawID.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let num = Int(t), num >= 1 && num <= 96 {
-            let row = (num - 1) / 12
-            let col = (num - 1) % 12 + 1
-            let rowChar = Character(UnicodeScalar(65 + row)!)
-            return "\(rowChar)\(col)"
+        let maxWell = max(1, rows * columns)
+        if let num = Int(t), num >= 1 && num <= maxWell {
+            let row = (num - 1) / columns
+            let col = (num - 1) % columns + 1
+            if row >= 0 && row < 26, let scalar = UnicodeScalar(65 + row) {
+                return "\(Character(scalar))\(col)"
+            }
         }
         if !t.isEmpty { return t }
         return "W\(fallbackIndex)"
     }
 
-    private static func wellLabelToRDMLReactID(_ well: String, fallback: Int) -> String {
+    private static func wellLabelToRDMLReactID(_ well: String, columns: Int = 12, fallback: Int) -> String {
         let up = well.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         if let first = up.unicodeScalars.first, first.value >= 65 && first.value <= 80,
-           let col = Int(up.dropFirst()), col >= 1 && col <= 24 {
+           let col = Int(up.dropFirst()), col >= 1 && col <= columns {
             let row = Int(first.value) - 65
-            let cols = col > 12 ? 24 : 12
-            return "\(row * cols + col)"
+            return "\(row * columns + col)"
         }
         return "\(fallback)"
     }
@@ -672,6 +712,8 @@ public enum QPCRInstrumentAndRDMLEngine {
 
         var version: String = "1.3"
         var experimentID: String = "RDML_Experiment"
+        var formatRows: Int = 8
+        var formatColumns: Int = 12
         var samples: [String: SampleMeta] = [:]
         var reacts: [ReactEntry] = []
 
@@ -682,6 +724,7 @@ public enum QPCRInstrumentAndRDMLEngine {
         private var currentReact: ReactEntry? = nil
         private var currentData: ReactData? = nil
         private var insideQuantity: Bool = false
+        private var insidePcrFormat: Bool = false
 
         func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
             let tag = elementName.components(separatedBy: ":").last?.lowercased() ?? elementName.lowercased()
@@ -693,6 +736,8 @@ public enum QPCRInstrumentAndRDMLEngine {
                 if let v = attributeDict["version"] { version = v }
             case "experiment":
                 if let eid = attributeDict["id"] { experimentID = eid }
+            case "pcrformat":
+                insidePcrFormat = true
             case "sample":
                 let sid = attributeDict["id"] ?? ""
                 if currentReact != nil {
@@ -724,7 +769,11 @@ public enum QPCRInstrumentAndRDMLEngine {
             let tag = elementName.components(separatedBy: ":").last?.lowercased() ?? elementName.lowercased()
             let val = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            if currentData != nil {
+            if insidePcrFormat {
+                if tag == "rows", let r = Int(val), r > 0 { formatRows = r }
+                else if tag == "columns", let c = Int(val), c > 0 { formatColumns = c }
+                else if tag == "pcrformat" { insidePcrFormat = false }
+            } else if currentData != nil {
                 switch tag {
                 case "tar":
                     if currentData?.tarID.isEmpty == true && !val.isEmpty { currentData?.tarID = val }

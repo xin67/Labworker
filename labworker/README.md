@@ -14,7 +14,7 @@
   - `export_order.py`：灌装导出擎科（Tsingke）、生工（Sangon）商业引物合成与测序 Excel 订单。
   - `clonestudio_mcp_server.py`：**Labworker MCP Server 20261120**（JSON-RPC 2.0 协议，暴露 23 个全栈实验工具，算法与 Swift 核心引擎 100% 统一并支持实时同步回写 GUI 画布）。
   - `python/wbquant/`：16-bit TIFF 化学发光与明场 Marker 科学图像处理包（支持 CLI 与 PySide6 高级查看器）。
-- **自动化回归测试 (`Tests/CloneStudioVerify/main.swift`)**：内置 **59 项端到端自动化验证测试**，覆盖全部核心算法、多宿主密码子优化、全质粒 Nanopore 环状 SV 与多 Sanger Contig 拼接、GenBank/OpenCloning/SBOL3/完整 `mmCIF` 解析、qPCR 四仪器嗅探与 RDML 往返、酶标仪 BCA/4PL-5PL/IC50/CCK-8 曲线拟合、离线 Mol* 3D 与本地 Vina/Smina/Gnina/Boltz 桥接、国际订购批量模板/自定义 JSON 映射、生物科研全能计算与换算引擎、引物二级结构热力学质检、Sanger `.ab1` 二进制峰图与质粒比对、Swift-Python 跨引擎共享测试向量（`Tests/vectors/*.json`）一致性、真实质粒与 16-bit WB 样本、UI 偏好状态机、双语本地化与学术英文词典校验、第一批科研严谨度核心修复（qPCR Vandesompele/Pfaffl/qBase/Jensen/Median+Grubbs、shRNA/CRISPR 接头、同源臂、微孔板防边缘与 Sanger 覆盖度门禁）、多曝光线性检查及跨模块 `AnalysisRun` 质粒溯源；
+- **自动化回归测试 (`Tests/CloneStudioVerify/main.swift`)**：内置 **63 项端到端自动化验证测试**，覆盖全部核心算法、多宿主密码子优化、全质粒 Nanopore 环状 SV 与多 Sanger Contig 拼接、GenBank/OpenCloning/SBOL3/完整 `mmCIF` 解析、qPCR 四仪器嗅探与 RDML 往返、酶标仪 BCA/4PL-5PL/IC50/CCK-8 曲线拟合、离线 Mol* 3D 与本地 Vina/Smina/Gnina/Boltz 桥接、国际订购批量模板/自定义 JSON 映射、生物科研全能计算与换算引擎、引物二级结构热力学质检、Sanger `.ab1` 二进制峰图与质粒比对、Swift-Python 跨引擎共享测试向量（`Tests/vectors/*.json`）一致性、真实质粒与 16-bit WB 样本、UI 偏好状态机、双语本地化与学术英文词典校验、第一批科研严谨度核心修复（qPCR Vandesompele/Pfaffl/qBase/Jensen/Median+Grubbs、shRNA/CRISPR 接头、同源臂、微孔板防边缘与 Sanger 覆盖度门禁）、多曝光线性检查及跨模块 `AnalysisRun` 质粒溯源；
 
 ## 2. AI 协作与工程治理铁律（修改代码前必读）
 
@@ -39,7 +39,7 @@
    # 0. 校验测试数、MCP 工具数与模块数单一真值来源，并运行 Python 共享测试向量
    bash Scripts/check_doc_counts.sh && /usr/bin/python3 Tests/vectors/run_python_vectors.py
 
-   # 1. 编译并运行全部 59 项自动化验证测试
+   # 1. 编译并运行全部 63 项自动化验证测试
    swift build --disable-sandbox && swift run --disable-sandbox CloneStudioVerify
 
    # 2. 更新构建并签名 labworker/Labworker.app（及打包 Labworker-20261120.dmg + Cask 同步）

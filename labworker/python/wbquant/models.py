@@ -77,6 +77,7 @@ class BandBox:
     saturated_ratio: float = 0.0
     is_saturated: bool = False
     is_primary: bool = True
+    snr: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -96,6 +97,7 @@ class BandBox:
             "saturated_ratio": round(float(self.saturated_ratio), 4),
             "is_saturated": bool(self.is_saturated),
             "is_primary": bool(self.is_primary),
+            "snr": round(float(self.snr), 2),
         }
 
 
@@ -110,6 +112,10 @@ class AnalysisParams:
     auto_deskew: bool = False
     control_lane_index: int = 0
     primary_band_only: bool = True
+    saturation_ratio_threshold: float = 0.01
+    background_mode: str = "globalRollingBall"  # "globalRollingBall" | "localTrapezoid"
+    effective_bit_depth: int | None = None  # 可选显式指定 12 / 14 / 16 / 8
+    linearize_srgb: bool = False  # 仅当用户确认 8-bit 输入为标准 sRGB 时启用反 Gamma 线性化
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -129,6 +135,9 @@ class AnalysisResult:
     lanes: tuple[LaneRegion, ...]
     bands: tuple[BandBox, ...]
     params: AnalysisParams = field(default_factory=AnalysisParams)
+    effective_bit_depth: int = 16
+    is_nonlinear_8bit_warning: bool = False
+    warnings: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -136,6 +145,9 @@ class AnalysisResult:
             "width": int(self.width),
             "height": int(self.height),
             "bit_depth": int(self.bit_depth),
+            "effective_bit_depth": int(self.effective_bit_depth),
+            "is_nonlinear_8bit_warning": bool(self.is_nonlinear_8bit_warning),
+            "warnings": list(self.warnings),
             "inverted_polarity": bool(self.inverted_polarity),
             "skew_angle": round(float(self.skew_angle), 3),
             "strip_roi": self.strip_roi.to_dict(),

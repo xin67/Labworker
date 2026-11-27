@@ -151,7 +151,8 @@ public struct CRISPRDeconvolutionPanelView: View {
                         options: [
                             StudioMenuPickerOption(value: 10, title: "±10 bp"),
                             StudioMenuPickerOption(value: 15, title: "±15 bp"),
-                            StudioMenuPickerOption(value: 20, title: "±20 bp")
+                            StudioMenuPickerOption(value: 20, title: "±20 bp"),
+                            StudioMenuPickerOption(value: 30, title: "±30 bp")
                         ],
                         prefix: "移码范围",
                         compact: true
@@ -316,6 +317,8 @@ public struct CRISPRDeconvolutionPanelView: View {
             return L10n.t("切点下游有效测序碱基过短，不足以完成可靠解卷积。")
         case .hdrCollinearWithWT:
             return L10n.t("HDR 序列在分析窗口内与 WT 完全共线，已抑制重复 HDR 列。")
+        case .hdrAlignmentFailed:
+            return L10n.t("HDR 供体模板未能与 WT 上游同源臂对齐（已自动检查正反两条链），已忽略无效 HDR 列。")
         }
     }
 

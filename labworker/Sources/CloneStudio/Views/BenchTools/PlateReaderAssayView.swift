@@ -3,7 +3,7 @@ import Charts
 import AppKit
 import CloneStudioCore
 
-/// 酶标仪定量与曲线拟合工作台 (BCA / Bradford + WB 上样配液、ELISA 4PL/5PL、IC50/EC50 Hill、CCK-8 细胞活力 Welch/Holm/ANOVA)
+/// 酶标仪定量与曲线拟合工作台 (BCA / Bradford + WB 上样配液、ELISA 4PL/5PL ICH M10、IC50/EC50 95% CI、CCK-8 Dunnett/Tukey/ANOVA)
 public struct PlateReaderAssayView: View {
     @ObservedObject private var appState = AppState.shared
     @ObservedObject private var plateStore = PlateLayoutStore.shared
@@ -11,6 +11,12 @@ public struct PlateReaderAssayView: View {
     @State private var assayMode: PlateReaderAssayMode = .bca
     @State private var bcaModel: StandardCurveModel = .linear
     @State private var elisaModel: ELISACurveModel = .fourPL
+    @State private var elisaWeighting: LogisticWeightingMode = .invY2
+    @State private var doseWeighting: LogisticWeightingMode = .none
+    @State private var doseFixBottomZero: Bool = false
+    @State private var doseFixTopHundred: Bool = false
+    @State private var doseFixHillOne: Bool = false
+    @State private var viabilityPostHoc: ViabilityPostHocMethod = .dunnett
 
     // BCA & WB 配液参数
     @State private var blankODText: String = "0.082"
@@ -35,6 +41,48 @@ public struct PlateReaderAssayView: View {
 
     public init() {}
 
+    private struct RecomputeTrigger: Equatable {
+        let bcaModel: StandardCurveModel
+        let elisaModel: ELISACurveModel
+        let elisaWeighting: LogisticWeightingMode
+        let doseWeighting: LogisticWeightingMode
+        let doseFixBottomZero: Bool
+        let doseFixTopHundred: Bool
+        let doseFixHillOne: Bool
+        let viabilityPostHoc: ViabilityPostHocMethod
+        let stdInputText: String
+        let sampleInputText: String
+        let blankODText: String
+        let dilutionText: String
+        let targetLoadUgText: String
+        let targetTotalVolText: String
+        let loadingBufferX: Double
+        let ccK8ControlGroup: String
+        let appLanguage: AppLanguage
+    }
+
+    private var recomputeTrigger: RecomputeTrigger {
+        RecomputeTrigger(
+            bcaModel: bcaModel,
+            elisaModel: elisaModel,
+            elisaWeighting: elisaWeighting,
+            doseWeighting: doseWeighting,
+            doseFixBottomZero: doseFixBottomZero,
+            doseFixTopHundred: doseFixTopHundred,
+            doseFixHillOne: doseFixHillOne,
+            viabilityPostHoc: viabilityPostHoc,
+            stdInputText: stdInputText,
+            sampleInputText: sampleInputText,
+            blankODText: blankODText,
+            dilutionText: dilutionText,
+            targetLoadUgText: targetLoadUgText,
+            targetTotalVolText: targetTotalVolText,
+            loadingBufferX: loadingBufferX,
+            ccK8ControlGroup: ccK8ControlGroup,
+            appLanguage: appState.appLanguage
+        )
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             modeSwitchAndActionsBar
@@ -51,17 +99,7 @@ public struct PlateReaderAssayView: View {
                 recomputeActiveAssay()
             }
         }
-        .onChange(of: bcaModel) { _, _ in recomputeActiveAssay() }
-        .onChange(of: elisaModel) { _, _ in recomputeActiveAssay() }
-        .onChange(of: stdInputText) { _, _ in recomputeActiveAssay() }
-        .onChange(of: sampleInputText) { _, _ in recomputeActiveAssay() }
-        .onChange(of: blankODText) { _, _ in recomputeActiveAssay() }
-        .onChange(of: dilutionText) { _, _ in recomputeActiveAssay() }
-        .onChange(of: targetLoadUgText) { _, _ in recomputeActiveAssay() }
-        .onChange(of: targetTotalVolText) { _, _ in recomputeActiveAssay() }
-        .onChange(of: loadingBufferX) { _, _ in recomputeActiveAssay() }
-        .onChange(of: ccK8ControlGroup) { _, _ in recomputeActiveAssay() }
-        .onChange(of: appState.appLanguage) { _, _ in recomputeActiveAssay() }
+        .onChange(of: recomputeTrigger) { _, _ in recomputeActiveAssay() }
     }
 
     // MARK: - 顶部模式切换与快捷工具
@@ -135,23 +173,57 @@ public struct PlateReaderAssayView: View {
                     }
 
                 case .elisa:
-                    StudioMenuPicker(
-                        selection: $elisaModel,
-                        options: ELISACurveModel.allCases.map { StudioMenuPickerOption(value: $0, title: $0.rawValue) },
-                        prefix: "拟合方程",
-                        tint: .teal,
-                        compact: true
-                    )
+                    StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
+                        StudioMenuPicker(
+                            selection: $elisaModel,
+                            options: ELISACurveModel.allCases.map { StudioMenuPickerOption(value: $0, title: $0.rawValue) },
+                            prefix: "拟合方程",
+                            tint: .teal,
+                            compact: true
+                        )
+                        StudioMenuPicker(
+                            selection: $elisaWeighting,
+                            options: LogisticWeightingMode.allCases.map { StudioMenuPickerOption(value: $0, title: $0.rawValue) },
+                            prefix: "拟合权重",
+                            tint: .blue,
+                            compact: true
+                        )
+                    }
                     StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 8) {
                         labeledNumberField(L10n.t("样本稀释倍数"), text: $dilutionText, width: 64)
                     }
 
                 case .doseResponse:
-                    Text(L10n.t("自动在 log10(Conc) 空间执行 4 参数 Hill 非线性最小二乘 (Levenberg-Marquardt) 拟合，兼容抑制 IC50 与激活 EC50 曲线。"))
+                    StudioMenuPicker(
+                        selection: $doseWeighting,
+                        options: LogisticWeightingMode.allCases.map { StudioMenuPickerOption(value: $0, title: $0.rawValue) },
+                        prefix: "拟合权重",
+                        tint: .indigo,
+                        compact: true
+                    )
+                    StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 6) {
+                        Toggle(L10n.t("固定 Bottom = 0"), isOn: $doseFixBottomZero)
+                            .toggleStyle(.checkbox)
+                            .font(.system(size: 11.5))
+                        Toggle(L10n.t("固定 Top = 100"), isOn: $doseFixTopHundred)
+                            .toggleStyle(.checkbox)
+                            .font(.system(size: 11.5))
+                        Toggle(L10n.t("固定 Hill = 1"), isOn: $doseFixHillOne)
+                            .toggleStyle(.checkbox)
+                            .font(.system(size: 11.5))
+                    }
+                    Text(L10n.t("自动在 log10(Conc) 空间执行 4 参数 Hill 非线性最小二乘 (Levenberg-Marquardt) 拟合，输出 Relative/Absolute IC50 与 95% 置信区间。"))
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
 
                 case .viability:
+                    StudioMenuPicker(
+                        selection: $viabilityPostHoc,
+                        options: ViabilityPostHocMethod.allCases.map { StudioMenuPickerOption(value: $0, title: $0.rawValue) },
+                        prefix: "多重比较",
+                        tint: .green,
+                        compact: true
+                    )
                     StudioFlowLayout(horizontalSpacing: 10, verticalSpacing: 8) {
                         labeledNumberField(L10n.t("空白培养基 OD"), text: $blankODText, width: 70)
                         HStack(spacing: 6) {
@@ -228,7 +300,7 @@ public struct PlateReaderAssayView: View {
                     StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                         StudioMetricBadge(label: L10n.t("方程"), value: rep.equationText, color: .blue)
                         StudioMetricBadge(label: "R²", value: String(format: "%.5f", rep.r2), color: rep.r2 >= 0.99 ? .green : .orange)
-                        StudioMetricBadge(label: "RMSE", value: String(format: "%.4f", rep.rmse), color: .secondary)
+                        StudioMetricBadge(label: "RMSE (df=\(rep.degreesOfFreedom))", value: String(format: "%.4f", rep.rmse), color: .secondary)
                     }
                     Chart {
                         ForEach(rep.curvePoints) { pt in
@@ -255,23 +327,29 @@ public struct PlateReaderAssayView: View {
                                 Text(s.sampleName)
                                     .font(.system(size: 12.5, weight: .semibold))
                                     .frame(minWidth: 90, maxWidth: .infinity, alignment: .leading)
-                                StudioMetricBadge(label: L10n.t("原液浓度"), value: String(format: "%.2f µg/µL", s.stockConcUgPerMl / 1000.0), color: .blue)
-                                StudioMetricBadge(label: L10n.t("蛋白"), value: String(format: "%.2f µL", s.proteinVolumeUl), color: s.isDiluteWarning ? .orange : .green)
-                                StudioMetricBadge(label: L10n.t("裂解液"), value: String(format: "%.2f µL", s.lysisBufferVolumeUl), color: .secondary)
-                                StudioMetricBadge(label: "\(Int(loadingBufferX))×Buf", value: String(format: "%.2f µL", s.loadingBufferVolumeUl), color: .purple)
+                                StudioMetricBadge(label: L10n.t("原液浓度"), value: s.quantStatus == .parabolicSaturated ? "N/A" : String(format: "%.2f µg/µL", s.stockConcUgPerMl / 1000.0), color: s.isOutOfRangeWarning ? .orange : .blue)
+                                StudioMetricBadge(label: L10n.t("蛋白"), value: s.quantStatus == .parabolicSaturated ? "N/A" : String(format: "%.2f µL", s.proteinVolumeUl), color: (s.isDiluteWarning || s.isOutOfRangeWarning) ? .orange : .green)
+                                StudioMetricBadge(label: L10n.t("裂解液"), value: s.quantStatus == .parabolicSaturated ? "N/A" : String(format: "%.2f µL", s.lysisBufferVolumeUl), color: .secondary)
+                                StudioMetricBadge(label: "\(Int(loadingBufferX))×Buf", value: s.quantStatus == .parabolicSaturated ? "N/A" : String(format: "%.2f µL", s.loadingBufferVolumeUl), color: .purple)
                             }
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(s.sampleName).font(.system(size: 12.5, weight: .semibold))
                                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
-                                    StudioMetricBadge(label: L10n.t("原液浓度"), value: String(format: "%.2f µg/µL", s.stockConcUgPerMl / 1000.0), color: .blue)
-                                    StudioMetricBadge(label: L10n.t("蛋白"), value: String(format: "%.2f µL", s.proteinVolumeUl), color: s.isDiluteWarning ? .orange : .green)
-                                    StudioMetricBadge(label: L10n.t("裂解液"), value: String(format: "%.2f µL", s.lysisBufferVolumeUl), color: .secondary)
-                                    StudioMetricBadge(label: "\(Int(loadingBufferX))×Buf", value: String(format: "%.2f µL", s.loadingBufferVolumeUl), color: .purple)
+                                    StudioMetricBadge(label: L10n.t("原液浓度"), value: s.quantStatus == .parabolicSaturated ? "N/A" : String(format: "%.2f µg/µL", s.stockConcUgPerMl / 1000.0), color: s.isOutOfRangeWarning ? .orange : .blue)
+                                    StudioMetricBadge(label: L10n.t("蛋白"), value: s.quantStatus == .parabolicSaturated ? "N/A" : String(format: "%.2f µL", s.proteinVolumeUl), color: (s.isDiluteWarning || s.isOutOfRangeWarning) ? .orange : .green)
+                                    StudioMetricBadge(label: L10n.t("裂解液"), value: s.quantStatus == .parabolicSaturated ? "N/A" : String(format: "%.2f µL", s.lysisBufferVolumeUl), color: .secondary)
+                                    StudioMetricBadge(label: "\(Int(loadingBufferX))×Buf", value: s.quantStatus == .parabolicSaturated ? "N/A" : String(format: "%.2f µL", s.loadingBufferVolumeUl), color: .purple)
                                 }
                             }
                         }
-                        .studioInnerBox(tint: s.isDiluteWarning ? .orange : nil, paddingH: 10, paddingV: 7)
+                        .studioInnerBox(tint: (s.isDiluteWarning || s.isOutOfRangeWarning) ? .orange : nil, paddingH: 10, paddingV: 7)
 
+                        if let warn = s.warningMessage {
+                            Text("⚠️ \(s.sampleName): \(warn)")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.orange)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         if s.isDiluteWarning {
                             Text(L10n.tr("⚠️ 「\(s.sampleName)」浓度偏低，最大可上样量约为 \(String(format: "%.1f µg", s.maxLoadableUg))", "⚠️ \"\(s.sampleName)\" concentration too low; max loadable mass ≈ \(String(format: "%.1f µg", s.maxLoadableUg))"))
                                 .font(.system(size: 11))
@@ -292,22 +370,30 @@ public struct PlateReaderAssayView: View {
         let isFive = (elisaModel == .fivePL)
         if let fit = cachedELISAFit {
             let quants = cachedELISAQuants
-            StudioCard(title: L10n.tr("ELISA \(isFive ? "5PL" : "4PL") 非线性标准曲线 (Levenberg-Marquardt)", "ELISA \(isFive ? "5PL" : "4PL") Nonlinear Standard Curve (Levenberg–Marquardt)")) {
+            let ich = fit.ichM10Report
+            StudioCard(title: L10n.tr("ELISA \(isFive ? "5PL" : "4PL") 非线性标准曲线 (WLS Levenberg-Marquardt)", "ELISA \(isFive ? "5PL" : "4PL") Nonlinear Standard Curve (WLS Levenberg–Marquardt)")) {
+                StudioMetricBadge(
+                    label: "ICH M10",
+                    value: ich.meetsICHM10 ? L10n.tr("通过 (\(ich.passedLevelCount)/\(ich.nonZeroLevelCount))", "PASS (\(ich.passedLevelCount)/\(ich.nonZeroLevelCount))") : L10n.tr("未达标 (\(ich.passedLevelCount)/\(ich.nonZeroLevelCount))", "FAIL (\(ich.passedLevelCount)/\(ich.nonZeroLevelCount))"),
+                    color: ich.meetsICHM10 ? .green : .orange
+                )
+            } content: {
                 VStack(alignment: .leading, spacing: 10) {
                     StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
                         StudioMetricBadge(label: "R²", value: String(format: "%.5f", fit.r2), color: fit.r2 >= 0.99 ? .green : .orange)
-                        StudioMetricBadge(label: "EC50 (c)", value: String(format: "%.2f", fit.paramC), color: .teal)
+                        StudioMetricBadge(label: isFive ? L10n.t("真 EC50") : "EC50 (c)", value: BioMathFormatter.format(fit.trueEC50), color: .teal)
                         StudioMetricBadge(label: L10n.t("斜率 (b)"), value: String(format: "%.3f", fit.paramB), color: .blue)
                         if isFive {
                             StudioMetricBadge(label: L10n.t("非对称 g"), value: String(format: "%.3f", fit.paramG), color: .purple)
                         }
+                        StudioMetricBadge(label: "LLOQ–ULOQ", value: "\(BioMathFormatter.format(fit.effectiveLLOQ))–\(BioMathFormatter.format(fit.effectiveULOQ))", color: .secondary)
                     }
                     Chart {
                         ForEach(fit.curvePoints) { pt in
                             LineMark(x: .value("log10(Conc)", log10(pt.x)), y: .value("OD", pt.y))
                                 .foregroundStyle(Color.teal)
                         }
-                        ForEach(fit.standardPoints) { pt in
+                        ForEach(fit.standardPoints.filter { $0.x > 0 }) { pt in
                             PointMark(x: .value("log10(Conc)", log10(pt.x)), y: .value("OD", pt.y))
                                 .foregroundStyle(Color.blue)
                                 .symbolSize(60)
@@ -316,6 +402,16 @@ public struct PlateReaderAssayView: View {
                     .chartXAxisLabel(L10n.t("log10(标准品浓度)"))
                     .chartYAxisLabel(L10n.t("信号 / OD"))
                     .frame(height: 210)
+
+                    if !ich.warnings.isEmpty {
+                        VStack(alignment: .leading, spacing: 3) {
+                            ForEach(Array(ich.warnings.prefix(4).enumerated()), id: \.offset) { _, msg in
+                                Text("⚠️ \(msg)")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -329,7 +425,9 @@ public struct PlateReaderAssayView: View {
                                     .frame(minWidth: 90, maxWidth: .infinity, alignment: .leading)
                                 StudioMetricBadge(label: L10n.t("均值 OD"), value: String(format: "%.3f", q.meanOD), color: .secondary)
                                 if let fc = q.finalConc {
-                                    StudioMetricBadge(label: L10n.t("终浓度"), value: String(format: "%.2f", fc), color: q.status == .inRange ? .green : .orange)
+                                    StudioMetricBadge(label: L10n.t("终浓度"), value: String(format: "%.2f", fc), color: .green)
+                                } else {
+                                    StudioMetricBadge(label: L10n.t("终浓度"), value: L10n.t("已阻断外推"), color: .orange)
                                 }
                                 Text(L10n.t(q.status.rawValue))
                                     .font(.system(size: 10.5, weight: .bold))
@@ -341,7 +439,9 @@ public struct PlateReaderAssayView: View {
                                 StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                                     StudioMetricBadge(label: L10n.t("均值 OD"), value: String(format: "%.3f", q.meanOD), color: .secondary)
                                     if let fc = q.finalConc {
-                                        StudioMetricBadge(label: L10n.t("终浓度"), value: String(format: "%.2f", fc), color: q.status == .inRange ? .green : .orange)
+                                        StudioMetricBadge(label: L10n.t("终浓度"), value: String(format: "%.2f", fc), color: .green)
+                                    } else {
+                                        StudioMetricBadge(label: L10n.t("终浓度"), value: L10n.t("已阻断外推"), color: .orange)
                                     }
                                     Text(L10n.t(q.status.rawValue))
                                         .font(.system(size: 10.5, weight: .bold))
@@ -349,7 +449,14 @@ public struct PlateReaderAssayView: View {
                                 }
                             }
                         }
-                        .studioInnerBox(paddingH: 10, paddingV: 7)
+                        .studioInnerBox(tint: q.status == .inRange ? nil : .orange, paddingH: 10, paddingV: 7)
+
+                        if let warn = q.extrapolationWarning {
+                            Text("⚠️ \(q.sampleName): \(warn)")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.orange)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
             }
@@ -362,24 +469,34 @@ public struct PlateReaderAssayView: View {
     @ViewBuilder
     private var doseResponseRightColumn: some View {
         if let fit = cachedDoseFit {
-            StudioCard(title: "剂量-效应曲线拟合 (4 参数 Hill 方程)") {
+            StudioCard(title: "剂量-效应曲线拟合 (4 参数 Hill 方程与 95% CI)") {
                 VStack(alignment: .leading, spacing: 10) {
                     StudioFlowLayout(horizontalSpacing: 8, verticalSpacing: 6) {
-                        StudioMetricBadge(label: "IC50 / EC50", value: BioMathFormatter.format(fit.paramC), color: .indigo)
-                        StudioMetricBadge(label: "log(IC50)", value: String(format: "%.3f", log10(fit.paramC)), color: .blue)
+                        StudioMetricBadge(label: "Relative IC50", value: BioMathFormatter.format(fit.relativeIC50), color: .indigo)
+                        if let lo = fit.ec50CI95Low, let hi = fit.ec50CI95High {
+                            StudioMetricBadge(label: "95% CI", value: "[\(BioMathFormatter.format(lo)), \(BioMathFormatter.format(hi))]", color: .teal)
+                        }
+                        if let abs50 = fit.absoluteIC50At50 {
+                            StudioMetricBadge(label: "Absolute IC50 (50%)", value: BioMathFormatter.format(abs50), color: .blue)
+                        }
                         StudioMetricBadge(label: "Hill Slope", value: String(format: "%.3f", fit.paramB), color: .purple)
                         StudioMetricBadge(label: "Bottom / Top", value: String(format: "%.1f / %.1f", min(fit.paramA, fit.paramD), max(fit.paramA, fit.paramD)), color: .secondary)
                         StudioMetricBadge(label: "R²", value: String(format: "%.5f", fit.r2), color: fit.r2 >= 0.98 ? .green : .orange)
                     }
+                    if let warn = fit.extrapolationWarning {
+                        Text(warn)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.orange)
+                    }
                     Chart {
-                        RuleMark(x: .value("log10(IC50)", log10(fit.paramC)))
+                        RuleMark(x: .value("log10(IC50)", log10(fit.trueEC50)))
                             .foregroundStyle(.indigo.opacity(0.65))
                             .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                         ForEach(fit.curvePoints) { pt in
                             LineMark(x: .value("log10(Dose)", log10(pt.x)), y: .value(L10n.t("响应 %"), pt.y))
                                 .foregroundStyle(Color.indigo)
                         }
-                        ForEach(fit.standardPoints) { pt in
+                        ForEach(fit.standardPoints.filter { $0.x > 0 }) { pt in
                             PointMark(x: .value("log10(Dose)", log10(pt.x)), y: .value(L10n.t("响应 %"), pt.y))
                                 .foregroundStyle(Color.orange)
                                 .symbolSize(60)
@@ -399,16 +516,42 @@ public struct PlateReaderAssayView: View {
     @ViewBuilder
     private var viabilityRightColumn: some View {
         if let rep = cachedViabilityReport {
-            StudioCard(title: "CCK-8 / MTT 相对细胞活力统计 (One-Way ANOVA + Welch / Holm)") {
-                if let anova = rep.anova {
-                    StudioMetricBadge(
-                        label: "ANOVA",
-                        value: String(format: "F=%.2f, p=%.4g", anova.fStatistic, anova.pValue),
-                        color: anova.pValue < 0.05 ? .green : .secondary
-                    )
+            StudioCard(title: "CCK-8 / MTT 相对细胞活力统计 (One-Way ANOVA + Dunnett / Tukey / Kruskal)") {
+                StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
+                    if let anova = rep.anova {
+                        StudioMetricBadge(
+                            label: "ANOVA",
+                            value: String(format: "F=%.2f, p=%.4g", anova.fStatistic, anova.pValue),
+                            color: anova.pValue < 0.05 ? .green : .secondary
+                        )
+                    }
+                    if let sw = rep.shapiroWilk {
+                        StudioMetricBadge(
+                            label: "Shapiro–Wilk",
+                            value: String(format: "W=%.3f, p=%.3g", sw.statisticW, sw.pValue),
+                            color: sw.passed ? .blue : .orange
+                        )
+                    }
+                    if let bf = rep.brownForsythe {
+                        StudioMetricBadge(
+                            label: "Brown–Forsythe",
+                            value: String(format: "p=%.3g", bf.pValue),
+                            color: bf.passed ? .teal : .orange
+                        )
+                    }
                 }
             } content: {
                 VStack(alignment: .leading, spacing: 12) {
+                    if !rep.assumptionWarnings.isEmpty {
+                        VStack(alignment: .leading, spacing: 3) {
+                            ForEach(Array(rep.assumptionWarnings.enumerated()), id: \.offset) { _, warn in
+                                Text("⚠️ \(warn)")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+
                     Chart {
                         ForEach(rep.groups) { g in
                             BarMark(
@@ -417,30 +560,49 @@ public struct PlateReaderAssayView: View {
                             )
                             .foregroundStyle(g.isControl ? Color.blue : Color.green)
 
-                            RuleMark(
-                                x: .value(L10n.t("组别"), g.groupName),
-                                yStart: .value("Low", max(0, g.meanViabilityPercent - g.sdViabilityPercent)),
-                                yEnd: .value("High", g.meanViabilityPercent + g.sdViabilityPercent)
-                            )
-                            .foregroundStyle(Color.primary.opacity(0.75))
+                            if let sd = g.sdViabilityPercent {
+                                RuleMark(
+                                    x: .value(L10n.t("组别"), g.groupName),
+                                    yStart: .value("Low", g.meanViabilityPercent - sd),
+                                    yEnd: .value("High", g.meanViabilityPercent + sd)
+                                )
+                                .foregroundStyle(Color.primary.opacity(0.75))
+                            }
                         }
                     }
                     .chartYAxisLabel(L10n.t("相对活力 (% Control)"))
                     .frame(height: 210)
 
+                    let methodShortLabel: String = {
+                        switch rep.postHocMethod {
+                        case .dunnett: return "p (Dunnett)"
+                        case .tukeyHSD: return "p (Tukey)"
+                        case .welchHolm: return "p (Holm)"
+                        case .kruskalDunn: return "p (Dunn)"
+                        }
+                    }()
+
                     VStack(spacing: 6) {
                         ForEach(rep.groups) { g in
+                            let viaValText: String = {
+                                if let sd = g.sdViabilityPercent {
+                                    return String(format: "%.1f±%.1f%%", g.meanViabilityPercent, sd)
+                                }
+                                return String(format: "%.1f%% (SD: N/A)", g.meanViabilityPercent)
+                            }()
                             ViewThatFits(in: .horizontal) {
                                 HStack(spacing: 8) {
                                     Text(g.groupName)
                                         .font(.system(size: 12, weight: .semibold))
                                         .frame(minWidth: 80, maxWidth: .infinity, alignment: .leading)
                                     StudioMetricBadge(label: "n", value: "\(g.n)", color: .secondary)
-                                    StudioMetricBadge(label: L10n.t("活力"), value: String(format: "%.1f±%.1f%%", g.meanViabilityPercent, g.sdViabilityPercent), color: .green)
+                                    StudioMetricBadge(label: L10n.t("活力"), value: viaValText, color: .green)
                                     if let pa = g.pAdjusted {
-                                        StudioMetricBadge(label: "p (Holm)", value: String(format: "%.4f (%@)", pa, g.significanceStars), color: pa < 0.05 ? .pink : .secondary)
-                                    } else {
+                                        StudioMetricBadge(label: methodShortLabel, value: String(format: "%.4f (%@)", pa, g.significanceStars), color: pa < 0.05 ? .pink : .secondary)
+                                    } else if g.isControl {
                                         StudioMetricBadge(label: L10n.t("基准"), value: "100% Ref", color: .blue)
+                                    } else {
+                                        StudioMetricBadge(label: methodShortLabel, value: "N/A", color: .secondary)
                                     }
                                 }
                                 VStack(alignment: .leading, spacing: 5) {
@@ -448,11 +610,13 @@ public struct PlateReaderAssayView: View {
                                         .font(.system(size: 12, weight: .semibold))
                                     StudioFlowLayout(horizontalSpacing: 6, verticalSpacing: 4) {
                                         StudioMetricBadge(label: "n", value: "\(g.n)", color: .secondary)
-                                        StudioMetricBadge(label: L10n.t("活力"), value: String(format: "%.1f±%.1f%%", g.meanViabilityPercent, g.sdViabilityPercent), color: .green)
+                                        StudioMetricBadge(label: L10n.t("活力"), value: viaValText, color: .green)
                                         if let pa = g.pAdjusted {
-                                            StudioMetricBadge(label: "p (Holm)", value: String(format: "%.4f (%@)", pa, g.significanceStars), color: pa < 0.05 ? .pink : .secondary)
-                                        } else {
+                                            StudioMetricBadge(label: methodShortLabel, value: String(format: "%.4f (%@)", pa, g.significanceStars), color: pa < 0.05 ? .pink : .secondary)
+                                        } else if g.isControl {
                                             StudioMetricBadge(label: L10n.t("基准"), value: "100% Ref", color: .blue)
+                                        } else {
+                                            StudioMetricBadge(label: methodShortLabel, value: "N/A", color: .secondary)
                                         }
                                     }
                                 }
@@ -557,7 +721,11 @@ public struct PlateReaderAssayView: View {
             )
         case .elisa:
             let stdPts = parseTwoColumnPairs(stdInputText)
-            let fit = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: stdPts, fiveParameter: elisaModel == .fivePL)
+            let fit = PlateReaderAssayEngine.fitLogistic4PLOr5PL(
+                points: stdPts,
+                fiveParameter: elisaModel == .fivePL,
+                weighting: elisaWeighting
+            )
             cachedELISAFit = fit
             if let fit {
                 let samps = parseSampleRows(sampleInputText)
@@ -571,13 +739,24 @@ public struct PlateReaderAssayView: View {
             }
         case .doseResponse:
             let stdPts = parseTwoColumnPairs(stdInputText)
-            cachedDoseFit = PlateReaderAssayEngine.fitLogistic4PLOr5PL(points: stdPts, fiveParameter: false)
+            let constraints = PlateReaderAssayEngine.LogisticParameterConstraints(
+                fixedBottom: doseFixBottomZero ? 0.0 : nil,
+                fixedTop: doseFixTopHundred ? 100.0 : nil,
+                fixedHillSlope: doseFixHillOne ? 1.0 : nil
+            )
+            cachedDoseFit = PlateReaderAssayEngine.fitLogistic4PLOr5PL(
+                points: stdPts,
+                fiveParameter: false,
+                weighting: doseWeighting,
+                constraints: constraints
+            )
         case .viability:
             let groups = parseSampleRows(sampleInputText).map { (name: $0.name, values: $0.replicates) }
             cachedViabilityReport = PlateReaderAssayEngine.analyzeViability(
                 groups: groups,
                 controlGroupName: ccK8ControlGroup,
-                blankMean: Double(blankODText) ?? 0.0
+                blankMean: Double(blankODText) ?? 0.0,
+                postHocMethod: viabilityPostHoc
             )
         }
     }
@@ -624,16 +803,17 @@ public struct PlateReaderAssayView: View {
     }
 
     private func exportBCACSV(_ rep: PlateReaderAssayEngine.BCAAnalysisReport) {
-        var lines = ["Sample,CorrectedOD,StockConc_ug_mL,StockConc_ug_uL,Protein_uL,LysisBuffer_uL,LoadingBuffer_uL,DiluteWarning"]
+        var lines = ["Sample,CorrectedOD,StockConc_ug_mL,StockConc_ug_uL,Protein_uL,LysisBuffer_uL,LoadingBuffer_uL,QuantStatus,DiluteWarning"]
         for s in rep.samples {
             lines.append([
                 s.sampleName,
                 String(format: "%.4f", s.meanODCorrected),
-                String(format: "%.1f", s.stockConcUgPerMl),
-                String(format: "%.3f", s.stockConcMgPerMl),
+                s.quantStatus == .parabolicSaturated ? "SATURATED" : String(format: "%.1f", s.stockConcUgPerMl),
+                s.quantStatus == .parabolicSaturated ? "SATURATED" : String(format: "%.3f", s.stockConcMgPerMl),
                 String(format: "%.2f", s.proteinVolumeUl),
                 String(format: "%.2f", s.lysisBufferVolumeUl),
                 String(format: "%.2f", s.loadingBufferVolumeUl),
+                s.quantStatus.rawValue,
                 s.isDiluteWarning ? "YES" : "NO"
             ].joined(separator: ","))
         }
