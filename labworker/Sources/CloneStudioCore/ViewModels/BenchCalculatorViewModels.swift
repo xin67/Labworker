@@ -61,13 +61,14 @@ public final class CalculatorViewModel: ObservableObject {
     }
     
     public var vectorResult: DNAMolarCalculator.CalculationResult {
-        let len = Double(vectorLengthKb.trimmingCharacters(in: .whitespaces)) ?? 5.0
+        let rawLen = Double(vectorLengthKb.trimmingCharacters(in: .whitespaces)) ?? 5.0
+        let lenKb = DNAMolarCalculator.normalizeLengthToKb(rawLen)
         let conc = Double(vectorConcentration.trimmingCharacters(in: .whitespaces)) ?? 50.0
         let custom = Double(vectorCustomNg.trimmingCharacters(in: .whitespaces))
         return DNAMolarCalculator.calculate(
             cloneType: cloneType,
             isVector: true,
-            lengthKb: max(0.05, len),
+            lengthKb: max(0.05, lenKb),
             concentrationNgPerUl: max(0.1, conc),
             customNg: custom
         )
@@ -77,13 +78,14 @@ public final class CalculatorViewModel: ObservableObject {
         let lenStr = index < insertLengths.count ? insertLengths[index] : "1.0"
         let concStr = index < insertConcs.count ? insertConcs[index] : "20"
         let ngStr = index < insertCustomNgs.count ? insertCustomNgs[index] : ""
-        let len = Double(lenStr.trimmingCharacters(in: .whitespaces)) ?? 1.0
+        let rawLen = Double(lenStr.trimmingCharacters(in: .whitespaces)) ?? 1.0
+        let lenKb = DNAMolarCalculator.normalizeLengthToKb(rawLen)
         let conc = Double(concStr.trimmingCharacters(in: .whitespaces)) ?? 20.0
         let custom = Double(ngStr.trimmingCharacters(in: .whitespaces))
         return DNAMolarCalculator.calculate(
             cloneType: cloneType,
             isVector: false,
-            lengthKb: max(0.05, len),
+            lengthKb: max(0.05, lenKb),
             concentrationNgPerUl: max(0.1, conc),
             customNg: custom
         )

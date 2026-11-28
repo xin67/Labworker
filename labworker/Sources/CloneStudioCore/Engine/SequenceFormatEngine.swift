@@ -76,8 +76,10 @@ public enum SequenceFormatEngine {
                 continue
 
             case .origin:
+                // 保留完整 IUPAC 简并碱基 (ACGTNRYSWKMBDHV)，不再静默剥离 N/R/Y/S/W/K/M 等简并位点
+                let iupacValid = Set("ACGTNRYSWKMBDHV")
                 for ch in rawLine.uppercased() {
-                    if ch == "A" || ch == "T" || ch == "C" || ch == "G" {
+                    if iupacValid.contains(ch) {
                         originChars.append(ch)
                     }
                 }
@@ -165,11 +167,12 @@ public enum SequenceFormatEngine {
         qualifiers: [String: String]
     ) -> SnapGeneFeature {
         let cleanLoc = rawLocation.replacingOccurrences(of: " ", with: "")
-        let isRev = cleanLoc.lowercased().hasPrefix("complement(")
+        let lowerLoc = cleanLoc.lowercased()
+        let isRev = lowerLoc.hasPrefix("complement(") || lowerLoc.contains("complement(")
         var segments: [SnapGeneSegment] = []
 
-        // 使用 NSRegularExpression 提取所有 <start>..<end> 或单个位点坐标
-        let pattern = #"<?(\d+)(?:\.\.|^)?>?(\d+)?"#
+        // 正确转义 \^（位点间符号如 123^124），提取全部 <start>..<end>、start^end 或单点坐标
+        let pattern = #"<?(\d+)(?:(?:\.\.|\^)>?(\d+))?"#
         if let regex = try? NSRegularExpression(pattern: pattern) {
             let ns = cleanLoc as NSString
             let matches = regex.matches(in: cleanLoc, range: NSRange(location: 0, length: ns.length))
@@ -186,6 +189,10 @@ public enum SequenceFormatEngine {
                 let lo = min(s, e)
                 let hi = max(s, e)
                 segments.append(SnapGeneSegment(range: "\(lo)-\(hi)", start: lo, end: hi, color: color))
+            }
+            // 纯 join(complement(...),complement(...)) 复合段在 GenBank 中按反链 5'→3' 排列，无条件反转为正向坐标序（兼容跨原点特征）
+            if lowerLoc.hasPrefix("join(complement(") && segments.count > 1 {
+                segments.reverse()
             }
         }
 
@@ -204,8 +211,19 @@ public enum SequenceFormatEngine {
         )
     }
 
+    private static func cleanIUPACPreserving(_ raw: String) -> String {
+        let allowed = Set("ACGTNRYSWKMBDHV")
+        var out = ""
+        out.reserveCapacity(raw.count)
+        for ch in raw.uppercased() {
+            if ch == "U" { out.append("T") }
+            else if allowed.contains(ch) { out.append(ch) }
+        }
+        return out
+    }
+
     public static func exportGenBank(info: SnapGeneFileInfo, name: String? = nil) -> String {
-        let cleanSeq = BioSequence.clean(info.sequence)
+        let cleanSeq = cleanIUPACPreserving(info.sequence)
         let seqLen = cleanSeq.count
         let rawTitle = (name ?? info.fileName)
             .replacingOccurrences(of: ".dna", with: "")
@@ -320,7 +338,7 @@ public enum SequenceFormatEngine {
                         continue
                     }
                 }
-                let cleaned = BioSequence.clean(fileContent)
+                let cleaned = cleanIUPACPreserving(fileContent)
                 if !cleaned.isEmpty {
                     results.append(
                         SnapGeneFileInfo(
@@ -335,7 +353,7 @@ public enum SequenceFormatEngine {
                     )
                 }
             } else if let rawSeq = seqObj["sequence"] as? String {
-                let cleaned = BioSequence.clean(rawSeq)
+                let cleaned = cleanIUPACPreserving(rawSeq)
                 guard !cleaned.isEmpty else { continue }
                 let seqName = (seqObj["name"] as? String) ?? "OpenCloning_Seq_\(idx + 1)"
                 results.append(
@@ -367,22 +385,37 @@ public enum SequenceFormatEngine {
 
         var featureNodes: [[String: Any]] = []
         for (idx, feat) in info.features.enumerated() {
-            guard let firstSeg = feat.segments.first else { continue }
+            guard !feat.segments.isEmpty else { continue }
             let ori = (feat.directionality == "2" || feat.directionality == "-")
                 ? "https://identifiers.org/SO:0001031" // reverseComplement
                 : "https://identifiers.org/SO:0001030" // inline
+            // 多段或跨原点特征导出为 sbol:Range 数组，防止首尾拼接导致区间翻转丢失目标区
+            let locationValue: Any
+            if feat.segments.count == 1, let seg = feat.segments.first {
+                locationValue = [
+                    "@type": "sbol:Range",
+                    "sbol:hasSequence": seqURI,
+                    "sbol:start": seg.start,
+                    "sbol:end": seg.end
+                ]
+            } else {
+                locationValue = feat.segments.enumerated().map { sIdx, seg -> [String: Any] in
+                    [
+                        "@type": "sbol:Range",
+                        "sbol:hasSequence": seqURI,
+                        "sbol:order": sIdx + 1,
+                        "sbol:start": seg.start,
+                        "sbol:end": seg.end
+                    ]
+                }
+            }
             featureNodes.append([
                 "@id": "\(compURI)/feat_\(idx + 1)",
                 "@type": "sbol:SequenceFeature",
                 "sbol:name": feat.name,
                 "sbol:role": [feat.type],
                 "sbol:orientation": ori,
-                "sbol:hasLocation": [
-                    "@type": "sbol:Range",
-                    "sbol:hasSequence": seqURI,
-                    "sbol:start": firstSeg.start,
-                    "sbol:end": feat.segments.last?.end ?? firstSeg.end
-                ]
+                "sbol:hasLocation": locationValue
             ])
         }
 
@@ -400,7 +433,7 @@ public enum SequenceFormatEngine {
             "@id": seqURI,
             "@type": "sbol:Sequence",
             "sbol:displayId": "\(safeID)_seq",
-            "sbol:elements": BioSequence.clean(info.sequence).lowercased(),
+            "sbol:elements": cleanIUPACPreserving(info.sequence).lowercased(),
             "sbol:encoding": "https://identifiers.org/edam:format_1207",
             "sbol:isCircular": info.isCircular
         ]
@@ -430,7 +463,7 @@ public enum SequenceFormatEngine {
             if typ.contains("Sequence") && !typ.contains("Feature") {
                 if let id = node["@id"] as? String,
                    let elements = node["sbol:elements"] as? String {
-                    let cleaned = BioSequence.clean(elements)
+                    let cleaned = cleanIUPACPreserving(elements)
                     if !cleaned.isEmpty {
                         let circ = (node["sbol:isCircular"] as? Bool) ?? true
                         seqByID[id] = (cleaned, circ)
@@ -454,17 +487,39 @@ public enum SequenceFormatEngine {
                     let role = (fObj["sbol:role"] as? [String])?.first ?? "misc_feature"
                     let ori = (fObj["sbol:orientation"] as? String) ?? ""
                     let isRev = ori.contains("reverse") || ori.contains("SO:0001031")
-                    if let loc = fObj["sbol:hasLocation"] as? [String: Any],
-                       let s = (loc["sbol:start"] as? NSNumber)?.intValue,
-                       let e = (loc["sbol:end"] as? NSNumber)?.intValue {
-                        let lo = min(s, e)
-                        let hi = max(s, e)
+                    let color = colorForGenBankType(role)
+                    var parsedSegments: [SnapGeneSegment] = []
+                    let seqLen = seqEntry.seq.count
+                    func appendRangeDict(_ loc: [String: Any]) {
+                        guard let s = (loc["sbol:start"] as? NSNumber)?.intValue,
+                              let e = (loc["sbol:end"] as? NSNumber)?.intValue else { return }
+                        if s > e && seqEntry.isCircular && seqLen > 0 {
+                            // 兼容单 Range 表达的跨原点特征 (start > end)：拆分为 [s..seqLen, 1..e]，绝不反写为补集 [e..s]
+                            parsedSegments.append(SnapGeneSegment(range: "\(s)-\(seqLen)", start: s, end: seqLen, color: color))
+                            parsedSegments.append(SnapGeneSegment(range: "1-\(e)", start: 1, end: e, color: color))
+                        } else {
+                            let lo = min(s, e)
+                            let hi = max(s, e)
+                            parsedSegments.append(SnapGeneSegment(range: "\(lo)-\(hi)", start: lo, end: hi, color: color))
+                        }
+                    }
+                    if let locList = fObj["sbol:hasLocation"] as? [[String: Any]] {
+                        let ordered = locList.sorted { a, b in
+                            let oa = (a["sbol:order"] as? NSNumber)?.intValue ?? 0
+                            let ob = (b["sbol:order"] as? NSNumber)?.intValue ?? 0
+                            return oa < ob
+                        }
+                        for loc in ordered { appendRangeDict(loc) }
+                    } else if let loc = fObj["sbol:hasLocation"] as? [String: Any] {
+                        appendRangeDict(loc)
+                    }
+                    if !parsedSegments.isEmpty {
                         feats.append(
                             SnapGeneFeature(
                                 name: fname,
                                 type: role,
                                 directionality: isRev ? "2" : "1",
-                                segments: [SnapGeneSegment(range: "\(lo)-\(hi)", start: lo, end: hi, color: colorForGenBankType(role))]
+                                segments: parsedSegments
                             )
                         )
                     }

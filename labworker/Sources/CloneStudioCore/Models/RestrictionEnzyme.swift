@@ -8,6 +8,10 @@ public struct NEBBufferCompatibility: Sendable, Equatable {
     public let cutSmart: Int
     public let preferredBuffer: String
     public let heatInactivation: Bool
+    public let incubationTempC: Int
+    public let methylationSensitivity: [String]
+    public let starActivityNote: String?
+    public let isCuratedNEBEntry: Bool
     
     public init(
         r1_1: Int,
@@ -15,7 +19,11 @@ public struct NEBBufferCompatibility: Sendable, Equatable {
         r3_1: Int,
         cutSmart: Int,
         preferredBuffer: String = "CutSmart",
-        heatInactivation: Bool = true
+        heatInactivation: Bool = true,
+        incubationTempC: Int = 37,
+        methylationSensitivity: [String] = [],
+        starActivityNote: String? = nil,
+        isCuratedNEBEntry: Bool = true
     ) {
         self.r1_1 = r1_1
         self.r2_1 = r2_1
@@ -23,6 +31,10 @@ public struct NEBBufferCompatibility: Sendable, Equatable {
         self.cutSmart = cutSmart
         self.preferredBuffer = preferredBuffer
         self.heatInactivation = heatInactivation
+        self.incubationTempC = incubationTempC
+        self.methylationSensitivity = methylationSensitivity
+        self.starActivityNote = starActivityNote
+        self.isCuratedNEBEntry = isCuratedNEBEntry
     }
 }
 
@@ -102,7 +114,7 @@ public struct TypeIISEnzymeSpec: Sendable, Equatable, Codable {
         downstreamCutTop: Int,
         downstreamCutBottom: Int,
         overhangLength: Int,
-        defaultProtective5Prime: String = "GCA"
+        defaultProtective5Prime: String = "GCAATC"
     ) {
         self.name = name
         self.recognitionSite = recognitionSite
@@ -236,7 +248,7 @@ public struct RestrictionEnzyme: Identifiable, Hashable, Codable, Sendable {
         return snipOffsets.bottom - site.count
     }
 
-    /// Type IIS 常用组装酶规范表 (BsaI / BsmBI / BbsI / SapI)
+    /// Type IIS 常用组装酶规范表 (BsaI / BsmBI / BbsI / SapI；采用 NEB 推荐 6-bp 5' 端保护碱基)
     public static let typeIISCatalog: [String: TypeIISEnzymeSpec] = [
         "bsai": TypeIISEnzymeSpec(
             name: "BsaI",
@@ -245,7 +257,7 @@ public struct RestrictionEnzyme: Identifiable, Hashable, Codable, Sendable {
             downstreamCutTop: 1,
             downstreamCutBottom: 5,
             overhangLength: 4,
-            defaultProtective5Prime: "GCA"
+            defaultProtective5Prime: "GCAATC"
         ),
         "bsmbi": TypeIISEnzymeSpec(
             name: "BsmBI",
@@ -254,7 +266,7 @@ public struct RestrictionEnzyme: Identifiable, Hashable, Codable, Sendable {
             downstreamCutTop: 1,
             downstreamCutBottom: 5,
             overhangLength: 4,
-            defaultProtective5Prime: "GCA"
+            defaultProtective5Prime: "GCAATC"
         ),
         "bbsi": TypeIISEnzymeSpec(
             name: "BbsI",
@@ -263,7 +275,7 @@ public struct RestrictionEnzyme: Identifiable, Hashable, Codable, Sendable {
             downstreamCutTop: 2,
             downstreamCutBottom: 6,
             overhangLength: 4,
-            defaultProtective5Prime: "GCA"
+            defaultProtective5Prime: "GCAATC"
         ),
         "sapi": TypeIISEnzymeSpec(
             name: "SapI",
@@ -272,7 +284,7 @@ public struct RestrictionEnzyme: Identifiable, Hashable, Codable, Sendable {
             downstreamCutTop: 1,
             downstreamCutBottom: 4,
             overhangLength: 3,
-            defaultProtective5Prime: "GCA"
+            defaultProtective5Prime: "GCAATC"
         )
     ]
 
@@ -646,11 +658,116 @@ public final class RestrictionEnzymeDatabase: @unchecked Sendable {
     }
     
     /// 查询指定内切酶的 NEB Buffer 活性兼容数据
+    /// 典型 Dam / Dcm / CpG 甲基化阻断映射表（依据 NEB 官方 Methylation Sensitivity 规范）
+    public static let methylationSensitivityTable: [String: [String]] = [
+        "clai": ["Dam", "CpG"], "xbai": ["Dam"], "bcli": ["Dam"], "mboi": ["Dam"], "dpnii": ["Dam"],
+        "hphi": ["Dam"], "taqi": ["Dam"], "nrui": ["Dam", "CpG"],
+        "stui": ["Dcm"], "apai": ["Dcm", "CpG"], "ecorii": ["Dcm"], "sexai": ["Dcm"], "styi": ["Dcm"], "bsai": ["Dcm", "CpG"],
+        "noti": ["CpG"], "hpaii": ["CpG"], "smai": ["CpG"], "sali": ["CpG"], "xhoi": ["CpG"],
+        "agei": ["CpG"], "sacii": ["CpG"], "eagi": ["CpG"], "pvui": ["CpG"], "bsmbi": ["CpG"]
+    ]
+
+    /// 非 37°C 最适反应温度表（如 SmaI/ApaI 25°C、BclI/SfiI 50°C、BstEII 60°C、TaqI 65°C）
+    public static let non37IncubationTempTable: [String: Int] = [
+        "smai": 25, "apai": 25, "bcli": 50, "sfii": 50, "bsteii": 60, "taqi": 65, "bsmbi": 55, "bsli": 55
+    ]
+
+    /// 常见星号活性 (Star Activity) 条件提示表
+    public static let starActivityTable: [String: String] = [
+        "ecori": "甘油 >5% 或低盐高 pH 易诱发星号活性",
+        "bamhi": "甘油 >5% 或过量酶/过长时间易诱发星号活性（推荐使用 BamHI-HF）",
+        "hindiii": "甘油 >5% 或高酶量/低离子强度易诱发星号活性",
+        "sali": "甘油 >5% 或低盐条件易诱发星号活性",
+        "scai": "甘油 >5% 或过长孵育易诱发星号活性（推荐使用 ScaI-HF）",
+        "psti": "甘油 >5% 或高 pH 易诱发星号活性",
+        "pvuii": "甘油 >5% 或高酶量易诱发星号活性",
+        "xbai": "高甘油或超时孵育易诱发星号活性"
+    ]
+
     public func bufferCompatibility(for enzymeName: String) -> NEBBufferCompatibility {
-        if let hit = Self.nebBufferTable[enzymeName.lowercased()] {
-            return hit
+        let low = enzymeName.lowercased()
+        let meth = Self.methylationSensitivityTable[low] ?? []
+        let temp = Self.non37IncubationTempTable[low] ?? 37
+        let star = Self.starActivityTable[low].map { L10n.t($0) }
+        if let hit = Self.nebBufferTable[low] {
+            return NEBBufferCompatibility(
+                r1_1: hit.r1_1, r2_1: hit.r2_1, r3_1: hit.r3_1, cutSmart: hit.cutSmart,
+                preferredBuffer: hit.preferredBuffer, heatInactivation: hit.heatInactivation,
+                incubationTempC: temp, methylationSensitivity: meth, starActivityNote: star, isCuratedNEBEntry: true
+            )
         }
-        return NEBBufferCompatibility(r1_1: 75, r2_1: 100, r3_1: 75, cutSmart: 100, preferredBuffer: "CutSmart", heatInactivation: true)
+        // 未收录至精选 NEB 缓冲液表的酶不再盲目假设 CutSmart 100%，标记 isCuratedNEBEntry = false
+        return NEBBufferCompatibility(
+            r1_1: 50, r2_1: 50, r3_1: 50, cutSmart: 50,
+            preferredBuffer: "Verify NEB",
+            heatInactivation: true,
+            incubationTempC: temp,
+            methylationSensitivity: meth,
+            starActivityNote: star,
+            isCuratedNEBEntry: false
+        )
+    }
+
+    /// 检测给定切点在 Dam (GATC) / Dcm (CCWGG) / CpG (CG) 甲基化宿主中是否发生识别位点重叠阻断
+    public func checkMethylationBlock(
+        enzymeName: String,
+        sequence: String,
+        siteStart0Based: Int,
+        siteLength: Int,
+        circular: Bool = true,
+        damMethylated: Bool = true,
+        dcmMethylated: Bool = true,
+        cpgMethylated: Bool = false
+    ) -> [String] {
+        let sens = Self.methylationSensitivityTable[enzymeName.lowercased()] ?? []
+        guard !sens.isEmpty else { return [] }
+        let clean = BioSequence.clean(sequence)
+        let n = clean.count
+        guard n > 0 else { return [] }
+        let pad = 4
+        let chars = Array(clean)
+        var window = ""
+        var actualLeftPad = 0
+        for off in -pad..<(siteLength + pad) {
+            let idx = siteStart0Based + off
+            if circular {
+                let w = ((idx % n) + n) % n
+                window.append(chars[w])
+                if off < 0 { actualLeftPad += 1 }
+            } else if idx >= 0 && idx < n {
+                window.append(chars[idx])
+                if off < 0 { actualLeftPad += 1 }
+            }
+        }
+        // 严格依据实际左侧填充量定位识别位点 [siteLo, siteHi)，并仅当甲基化碱基本身落入识别位点内时才判定阻断
+        let siteLo = actualLeftPad
+        let siteHi = actualLeftPad + siteLength
+        let wChars = Array(window)
+        func methylatedBaseInsideSite(_ motif: String, methylatedOffsets: [Int]) -> Bool {
+            let mArr = Array(motif)
+            guard wChars.count >= mArr.count else { return false }
+            for i in 0...(wChars.count - mArr.count) {
+                var ok = true
+                for k in 0..<mArr.count where wChars[i + k] != mArr[k] { ok = false; break }
+                if ok {
+                    if methylatedOffsets.contains(where: { (i + $0) >= siteLo && (i + $0) < siteHi }) {
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+        var blockedBy: [String] = []
+        if damMethylated && sens.contains("Dam") && methylatedBaseInsideSite("GATC", methylatedOffsets: [1, 2]) {
+            blockedBy.append("Dam (GATC)")
+        }
+        if dcmMethylated && sens.contains("Dcm") && (methylatedBaseInsideSite("CCAGG", methylatedOffsets: [1, 3]) || methylatedBaseInsideSite("CCTGG", methylatedOffsets: [1, 3])) {
+            blockedBy.append("Dcm (CCWGG)")
+        }
+        if cpgMethylated && sens.contains("CpG") && methylatedBaseInsideSite("CG", methylatedOffsets: [0, 1]) {
+            blockedBy.append("CpG (CG)")
+        }
+        return blockedBy
     }
     
     private let scanCacheLock = NSLock()

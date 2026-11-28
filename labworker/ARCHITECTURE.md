@@ -34,7 +34,11 @@
 | `labworker/Scripts/harvest_ncbi_plasmid_features.py` | 从 NCBI GenBank 与 FPbase 在线采集真实质粒功能元件并执行 5 组黄金向量防冲突核验、生成 `plasmid_features_catalog.json` 的语料构建脚本 |
 | `labworker/Scripts/plasmid_features_catalog.json` | 经防冲突门禁检验的 **1,400** 个真实公共质粒标准元件离线词典（涵盖启动子、复制起点、抗性基因、荧光蛋白/标签、重组酶、终止子与病毒元件） |
 | `labworker/Scripts/seed_plasmid_features.py` | 在 `Libraries.sqlite` 中幂等创建 `plasmid_features` 表并写入 15 个经典核心种子 + `plasmid_features_catalog.json`（共 1,415 条标准元件，无损保留既有 `sgrna`/`shrna` 表） |
-| `labworker/Scripts/seed_neb_ligase_fidelity.py` | 在 `Libraries.sqlite` 中幂等创建 `neb_t4_overhang_stats` 与 `neb_t4_ligase_fidelity` 表并写入 NEB T4 DNA Ligase 4-bp 黏性末端配对/错配保真度矩阵 |
+| `labworker/Scripts/seed_neb_ligase_fidelity.py` | 校验 SHA-256 并从 `Scripts/data/pryor2020/` 幂等导入 Pryor et al. (*PLoS ONE* 2020) 4 套真实 PacBio SMRT 实测连接保真度矩阵（`BsaI-HFv2`、`BsmBI-v2`、`BbsI-HF` 256×256 与 `SapI` 3-bp 64×64）至 `Libraries.sqlite` |
+| `labworker/Scripts/data/pryor2020/S1_BsaI-HFv2.xlsx` | Pryor et al. (*PLoS ONE* 2020, DOI `10.1371/journal.pone.0238592.s001`, CC-BY 4.0) BsaI-HFv2 + T4 DNA Ligase 实测 4-bp 连接频次矩阵 |
+| `labworker/Scripts/data/pryor2020/S2_BsmBI-v2.xlsx` | Pryor et al. (*PLoS ONE* 2020, DOI `10.1371/journal.pone.0238592.s002`, CC-BY 4.0) BsmBI-v2 + T4 DNA Ligase 实测 4-bp 连接频次矩阵 |
+| `labworker/Scripts/data/pryor2020/S4_BbsI-HF.xlsx` | Pryor et al. (*PLoS ONE* 2020, DOI `10.1371/journal.pone.0238592.s004`, CC-BY 4.0) BbsI-HF + T4 DNA Ligase 实测 4-bp 连接频次矩阵 |
+| `labworker/Scripts/data/pryor2020/S5_SapI.xlsx` | Pryor et al. (*PLoS ONE* 2020, DOI `10.1371/journal.pone.0238592.s005`, CC-BY 4.0) SapI + T4 DNA Ligase 实测 3-bp 连接频次矩阵 |
 | `labworker/Samples/WB/gapdh_*.tif` | 迁移自 `WBStudio` 的真实 16-bit 原始化学发光图、常规发光图、明场 Marker 图与合成叠加图样本 |
 | `labworker/python/wbquant/` | 迁移自 `WBStudio` 的 Python 科学计算与 `PySide6 + pyqtgraph` 协同分析包（`__init__.py`、`models.py`、`io.py`、`preprocess.py`、`detect.py`、`quantify.py`、`pipeline.py`、`qt_viewer.py`、`cli.py`） |
 

@@ -15,6 +15,7 @@ public struct PlasmidAnnotationEngine: Sendable {
         public let sequence: String
         public let direction: Int       // 1 = 正向, -1 = 反向, 0 = 无方向性
         public let colorHex: String
+        public let sourceAccession: String?
 
         public init(
             id: Int,
@@ -22,7 +23,8 @@ public struct PlasmidAnnotationEngine: Sendable {
             category: String,
             sequence: String,
             direction: Int = 1,
-            colorHex: String = "#3B82F6"
+            colorHex: String = "#3B82F6",
+            sourceAccession: String? = nil
         ) {
             self.id = id
             self.name = name
@@ -30,6 +32,7 @@ public struct PlasmidAnnotationEngine: Sendable {
             self.sequence = BioSequence.clean(sequence)
             self.direction = direction
             self.colorHex = colorHex
+            self.sourceAccession = sourceAccession
         }
     }
 
@@ -55,6 +58,7 @@ public struct PlasmidAnnotationEngine: Sendable {
         public let isFragment: Bool             // 覆盖率在 30%–90% 之间的历史克隆残留片段标记
         public let fragmentWarning: String?     // 残留片段中文预警说明
         public let colorHex: String
+        public let sourceAccession: String?
 
         /// 转换为可直接用于图谱渲染或写入 .dna 文件的 SnapGeneFeature（跨零点自动拆分为双 Segment）
         public func toSnapGeneFeature(plasmidLength: Int) -> SnapGeneFeature {
@@ -144,7 +148,19 @@ public struct PlasmidAnnotationEngine: Sendable {
         }
         defer { sqlite3_close(openedDB) }
 
-        let sql = "SELECT id, name, category, sequence, direction, color_hex FROM plasmid_features ORDER BY id ASC;"
+        var hasSourceCol = false
+        var pragmaStmt: OpaquePointer? = nil
+        if sqlite3_prepare_v2(openedDB, "PRAGMA table_info(plasmid_features);", -1, &pragmaStmt, nil) == SQLITE_OK, let ps = pragmaStmt {
+            while sqlite3_step(ps) == SQLITE_ROW {
+                if let colC = sqlite3_column_text(ps, 1), String(cString: colC) == "source_accession" {
+                    hasSourceCol = true
+                }
+            }
+            sqlite3_finalize(ps)
+        }
+        let sql = hasSourceCol
+            ? "SELECT id, name, category, sequence, direction, color_hex, source_accession FROM plasmid_features ORDER BY id ASC;"
+            : "SELECT id, name, category, sequence, direction, color_hex FROM plasmid_features ORDER BY id ASC;"
         var stmt: OpaquePointer? = nil
         guard sqlite3_prepare_v2(openedDB, sql, -1, &stmt, nil) == SQLITE_OK, let prepared = stmt else {
             return []
@@ -161,6 +177,9 @@ public struct PlasmidAnnotationEngine: Sendable {
                 continue
             }
             let dir = Int(sqlite3_column_int(prepared, 4))
+            let srcAcc: String? = (hasSourceCol && sqlite3_column_type(prepared, 6) != SQLITE_NULL)
+                ? sqlite3_column_text(prepared, 6).map { String(cString: $0) }
+                : nil
             records.append(
                 PlasmidFeatureRecord(
                     id: id,
@@ -168,7 +187,8 @@ public struct PlasmidAnnotationEngine: Sendable {
                     category: String(cString: catC),
                     sequence: String(cString: seqC),
                     direction: dir,
-                    colorHex: String(cString: colorC)
+                    colorHex: String(cString: colorC),
+                    sourceAccession: srcAcc
                 )
             )
         }
@@ -412,6 +432,9 @@ public struct PlasmidAnnotationEngine: Sendable {
 
                     let identity = Double(matchCount) / Double(alignedLen)
                     let coverage = Double(alignedLen) / Double(refLen)
+                    let isFragCandidate = coverage < fullFeatureCoverageThreshold
+                    // 过滤 <21 bp 高频假阳性碎片，同时保留 >=18 bp 的完整全长短标签 (coverage >= 0.99)
+                    if isFragCandidate && alignedLen < 21 { continue }
                     guard identity >= minIdentity, coverage >= effectiveMinCov else { continue }
 
                     let alignScore = Double(matchCount) * 2.0 - Double(alignedLen - matchCount) * 6.0
@@ -446,9 +469,168 @@ public struct PlasmidAnnotationEngine: Sendable {
                         isOriginSpanning: originSpanning,
                         isFragment: isFrag,
                         fragmentWarning: fragWarn,
-                        colorHex: feat.colorHex
+                        colorHex: feat.colorHex,
+                        sourceAccession: feat.sourceAccession
                     )
                     candidates.append(CandidateHit(feature: ann, sStart0: sStart))
+                }
+
+                // 带状空位比对回退（容忍 1–6 bp 小 Indel 导致相邻对角线漂移的完整特征）
+                let sortedDiags = diagSet.sorted()
+                if sortedDiags.count >= 2 && refLen >= 40 && refLen <= 2500 {
+                    var dClusters: [(minD: Int, maxD: Int)] = []
+                    var cMin = sortedDiags[0], cMax = sortedDiags[0]
+                    for d in sortedDiags.dropFirst() {
+                        if d - cMax <= 6 {
+                            cMax = d
+                        } else {
+                            if cMax > cMin { dClusters.append((cMin, cMax)) }
+                            cMin = d; cMax = d
+                        }
+                    }
+                    if cMax > cMin { dClusters.append((cMin, cMax)) }
+                    for cl in dClusters where (cl.maxD - cl.minD) <= 8 {
+                        let winStart = max(0, cl.minD)
+                        let winEnd = min(searchLen, cl.maxD + refLen)
+                        let qLenWin = winEnd - winStart
+                        guard qLenWin >= minAlignedLen, qLenWin <= queryLen, abs(qLenWin - refLen) <= 10 else { continue }
+                        if isCircular && winStart >= queryLen { continue }
+                        if !isCircular && winEnd > queryLen { continue }
+                        let band = 8
+                        let m = refLen
+                        let n = qLenWin
+                        var prevRow = Array(repeating: -999999, count: n + 1)
+                        var currRow = Array(repeating: -999999, count: n + 1)
+                        for j in 0...min(n, band) { prevRow[j] = -4 * j }
+                        for i in 1...m {
+                            let jLo = max(0, i - band)
+                            let jHi = min(n, i + band)
+                            for j in jLo...jHi { currRow[j] = -999999 }
+                            if jLo == 0 { currRow[0] = -4 * i }
+                            for j in max(1, jLo)...jHi {
+                                let sub = (pBytes[i - 1] == searchBytes[winStart + j - 1]) ? 2 : -4
+                                var bestV = prevRow[j - 1] + sub
+                                if j <= i - 1 + band { bestV = max(bestV, prevRow[j] - 4) }
+                                if j - 1 >= jLo { bestV = max(bestV, currRow[j - 1] - 4) }
+                                currRow[j] = bestV
+                            }
+                            swap(&prevRow, &currRow)
+                        }
+                        let gappedScore = prevRow[n]
+                        let approxMatches = max(0, (gappedScore + 4 * abs(m - n)) / 2)
+                        let approxId = min(1.0, Double(approxMatches) / Double(max(m, n)))
+                        if approxId >= minIdentity && gappedScore > 0 {
+                            let start1 = (winStart % queryLen) + 1
+                            let end1 = ((winEnd - 1) % queryLen) + 1
+                            let originSpanning = isCircular && (winEnd > queryLen)
+                            let ann = AnnotatedFeature(
+                                featureID: feat.id,
+                                name: feat.name,
+                                displayName: feat.name,
+                                category: feat.category,
+                                strand: strand,
+                                canonicalDirection: feat.direction,
+                                start1Based: start1,
+                                end1Based: end1,
+                                matchedLength: qLenWin,
+                                referenceLength: refLen,
+                                featureStart1Based: 1,
+                                featureEnd1Based: refLen,
+                                coverage: 1.0,
+                                identity: approxId,
+                                alignmentScore: Double(gappedScore),
+                                isOriginSpanning: originSpanning,
+                                isFragment: false,
+                                fragmentWarning: nil,
+                                colorHex: feat.colorHex,
+                                sourceAccession: feat.sourceAccession
+                            )
+                            candidates.append(CandidateHit(feature: ann, sStart0: winStart))
+                        }
+                    }
+                }
+            }
+        }
+
+        // pLannotate 风格 6 框蛋白翻译同源检索（必须在 candidates.sort 之前汇入，确保完整 6 框蛋白命中优先于短 DNA 碎片）
+        let codingCategories: Set<String> = ["CDS", "reporter", "resistance", "tag"]
+        let searchFwd = searchSeq
+        let searchRev = BioSequence.reverseComplement(searchSeq)
+        var translatedFrames: [(strand: String, frame: Int, aa: [Character])] = []
+        for frame in 0..<3 {
+            let fwdAA = Array(CodonOptimizationEngine.translateDNA(String(searchFwd.dropFirst(frame))))
+            let revAA = Array(CodonOptimizationEngine.translateDNA(String(searchRev.dropFirst(frame))))
+            translatedFrames.append(("+", frame, fwdAA))
+            translatedFrames.append(("-", frame, revAA))
+        }
+        let aaSeedLen = 5
+        var aaFrameIndex: [[String: [Int]]] = Array(repeating: [:], count: translatedFrames.count)
+        for (fIdx, fr) in translatedFrames.enumerated() where fr.aa.count >= aaSeedLen {
+            for p in 0...(fr.aa.count - aaSeedLen) {
+                let seed = String(fr.aa[p..<(p + aaSeedLen)])
+                if seed.contains("*") || seed.contains("X") { continue }
+                aaFrameIndex[fIdx][seed, default: []].append(p)
+            }
+        }
+        for feat in library where codingCategories.contains(feat.category) {
+            let refClean = BioSequence.clean(feat.sequence)
+            guard refClean.count >= 150 && refClean.count % 3 == 0 else { continue }
+            let rawRefAA = Array(CodonOptimizationEngine.translateDNA(refClean))
+            let refAA = rawRefAA.last == "*" ? Array(rawRefAA.dropLast()) : rawRefAA
+            let refAALen = refAA.count
+            guard refAALen >= 50 else { continue }
+            let probeOffsets = [0, refAALen / 4, refAALen / 2, (3 * refAALen) / 4].filter { $0 + aaSeedLen <= refAALen }
+            for (fIdx, fr) in translatedFrames.enumerated() {
+                var diagAA = Set<Int>()
+                for off in probeOffsets {
+                    let seed = String(refAA[off..<(off + aaSeedLen)])
+                    if let hits = aaFrameIndex[fIdx][seed] {
+                        for h in hits { diagAA.insert(h - off) }
+                    }
+                }
+                for dAA in diagAA.sorted() {
+                    guard dAA >= 0 && dAA + refAALen <= fr.aa.count else { continue }
+                    var aaMatch = 0
+                    for k in 0..<refAALen where fr.aa[dAA + k] == refAA[k] { aaMatch += 1 }
+                    let aaId = Double(aaMatch) / Double(refAALen)
+                    guard aaId >= 0.85 else { continue }
+                    let dnaStartInOriented = fr.frame + dAA * 3
+                    let dnaLen = refAALen * 3
+                    let sStart0: Int
+                    if fr.strand == "+" {
+                        sStart0 = dnaStartInOriented
+                    } else {
+                        sStart0 = searchLen - (dnaStartInOriented + dnaLen)
+                    }
+                    guard sStart0 >= 0 && sStart0 < queryLen else { continue }
+                    if !isCircular && (sStart0 + dnaLen) > queryLen { continue }
+                    let sEnd0 = sStart0 + dnaLen
+                    let wrapsOrigin = isCircular && sEnd0 > queryLen
+                    let start1 = sStart0 + 1
+                    let end1 = wrapsOrigin ? ((sEnd0 - 1) % queryLen) + 1 : sEnd0
+                    let af = AnnotatedFeature(
+                        featureID: feat.id,
+                        name: feat.name,
+                        displayName: "\(feat.name) (protein match)",
+                        category: feat.category,
+                        strand: fr.strand,
+                        canonicalDirection: feat.direction,
+                        start1Based: start1,
+                        end1Based: end1,
+                        matchedLength: dnaLen,
+                        referenceLength: refClean.count,
+                        featureStart1Based: 1,
+                        featureEnd1Based: dnaLen,
+                        coverage: Double(dnaLen) / Double(refClean.count),
+                        identity: aaId,
+                        alignmentScore: Double(dnaLen) * aaId * 1.8,
+                        isOriginSpanning: wrapsOrigin,
+                        isFragment: false,
+                        fragmentWarning: nil,
+                        colorHex: feat.colorHex,
+                        sourceAccession: feat.sourceAccession
+                    )
+                    candidates.append(CandidateHit(feature: af, sStart0: sStart0))
                 }
             }
         }
@@ -478,16 +660,31 @@ public struct PlasmidAnnotationEngine: Sendable {
             return a.strand < b.strand
         }
 
-        // pLannotate 风格贪心非重叠抑制（允许 <=15% 边缘重叠，抑制同位点次优同源元件如 pUC vs ColE1）
-        var occupied = Array(repeating: false, count: queryLen)
+        // 按链方向与功能层（regulatory / coding / replication / tag / recombinase / misc）分桶贪心非重叠抑制
+        func featureLayer(_ category: String) -> String {
+            switch category.lowercased() {
+            case "promoter", "terminator", "enhancer", "polya", "regulator", "regulatory": return "regulatory"
+            case "ori", "origin", "replication": return "replication"
+            case "tag": return "tag"
+            case "recombinase": return "recombinase"
+            case "misc": return "misc"
+            default: return "coding"
+            }
+        }
+        var occupiedByBucket: [String: [Bool]] = [:]
+        var unionOccupied = Array(repeating: false, count: queryLen)
         var accepted: [AnnotatedFeature] = []
 
         for cand in candidates {
             let f = cand.feature
+            let layer = featureLayer(f.category)
+            let bucketKey = (layer == "replication") ? "replication" : "\(f.strand):\(layer)"
+            var occ = occupiedByBucket[bucketKey] ?? Array(repeating: false, count: queryLen)
             var alreadyOccupied = 0
             for offset in 0..<f.matchedLength {
                 let pos = (cand.sStart0 + offset) % queryLen
-                if occupied[pos] {
+                // 碎片命中 (isFragment) 不得叠加于任何已注释完整元件之上；完整全长特征按链与功能层独立判断
+                if f.isFragment ? unionOccupied[pos] : occ[pos] {
                     alreadyOccupied += 1
                 }
             }
@@ -496,8 +693,10 @@ public struct PlasmidAnnotationEngine: Sendable {
                 accepted.append(f)
                 for offset in 0..<f.matchedLength {
                     let pos = (cand.sStart0 + offset) % queryLen
-                    occupied[pos] = true
+                    occ[pos] = true
+                    unionOccupied[pos] = true
                 }
+                occupiedByBucket[bucketKey] = occ
             }
         }
 
@@ -509,7 +708,7 @@ public struct PlasmidAnnotationEngine: Sendable {
 
         let fragCount = accepted.filter(\.isFragment).count
         let originCount = accepted.filter(\.isOriginSpanning).count
-        let coveredBases = occupied.filter { $0 }.count
+        let coveredBases = unionOccupied.filter { $0 }.count
         let covPercent = (Double(coveredBases) * 100.0 / Double(queryLen))
 
         var warnings: [String] = []

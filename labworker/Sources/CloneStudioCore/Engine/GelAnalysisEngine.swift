@@ -135,20 +135,168 @@ public struct GelLaneItem: Identifiable, Hashable, Codable, Sendable {
 }
 
 public struct GelLadderCalibrationFit: Sendable {
-    /// log10(size) = slope * y + intercept
+    /// 全局对数线性参考回归：log10(size) = slope * y + intercept
     public let slope: Double
     public let intercept: Double
     public let r2: Double
     public let n: Int
     public let points: [(y: Double, log10Size: Double, size: Double)]
-    
-    public func size(atY y: Double) -> Double {
-        pow(10.0, slope * y + intercept)
+    /// 自然三次样条分段系数（按 y 升序排列，用于琼脂糖凝胶非对数线性两端的精确插值）
+    public let splineKnotsY: [Double]
+    public let splineA: [Double]
+    public let splineB: [Double]
+    public let splineC: [Double]
+    public let splineD: [Double]
+    /// 凝胶泳道顶部起点与前沿终点（用于计算规范相对迁移率 Rf）
+    public let wellOriginY: Double
+    public let dyeFrontY: Double
+
+    public init(
+        slope: Double,
+        intercept: Double,
+        r2: Double,
+        n: Int,
+        points: [(y: Double, log10Size: Double, size: Double)],
+        wellOriginY: Double = 0.05,
+        dyeFrontY: Double = 0.95
+    ) {
+        self.slope = slope
+        self.intercept = intercept
+        self.r2 = r2
+        self.n = n
+        self.points = points
+        self.wellOriginY = wellOriginY
+        self.dyeFrontY = max(wellOriginY + 0.1, dyeFrontY)
+
+        // 构建单调保形 Fritsch-Carlson PCHIP 三次 Hermite 样条拟合 y -> log10(size)（杜绝龙格过冲与边界跳变）
+        let sorted = points.sorted { $0.y < $1.y }
+        var uniqY: [Double] = []
+        var uniqLog: [Double] = []
+        for p in sorted {
+            if let lastY = uniqY.last, abs(p.y - lastY) < 1e-6 { continue }
+            uniqY.append(p.y)
+            uniqLog.append(p.log10Size)
+        }
+        let m = uniqY.count
+        if m >= 3 {
+            let k = m - 1
+            var h = Array(repeating: 0.0, count: k)
+            var delta = Array(repeating: 0.0, count: k)
+            for i in 0..<k {
+                h[i] = uniqY[i + 1] - uniqY[i]
+                delta[i] = (uniqLog[i + 1] - uniqLog[i]) / max(1e-12, h[i])
+            }
+            var dSlope = Array(repeating: 0.0, count: m)
+            // 内部节点使用 Fritsch-Carlson 加权调和均值保证严格单调性
+            for i in 1..<k {
+                if delta[i - 1] * delta[i] <= 0.0 {
+                    dSlope[i] = 0.0
+                } else {
+                    let w1 = 2.0 * h[i] + h[i - 1]
+                    let w2 = h[i] + 2.0 * h[i - 1]
+                    dSlope[i] = (w1 + w2) / (w1 / delta[i - 1] + w2 / delta[i])
+                }
+            }
+            // 端点单侧保形切线（Fritsch-Carlson / SciPy PchipInterpolator 标准公式）
+            func endpointSlope(_ h0: Double, _ h1: Double, _ del0: Double, _ del1: Double) -> Double {
+                var d0 = ((2.0 * h0 + h1) * del0 - h0 * del1) / max(1e-12, h0 + h1)
+                if d0 * del0 <= 0.0 {
+                    d0 = 0.0
+                } else if del0 * del1 <= 0.0 && abs(d0) > abs(3.0 * del0) {
+                    d0 = 3.0 * del0
+                }
+                return d0
+            }
+            dSlope[0] = endpointSlope(h[0], h[1], delta[0], delta[1])
+            dSlope[m - 1] = endpointSlope(h[k - 1], h[k - 2], delta[k - 1], delta[k - 2])
+
+            var a = Array(repeating: 0.0, count: k)
+            var b = Array(repeating: 0.0, count: k)
+            var c = Array(repeating: 0.0, count: k)
+            var d = Array(repeating: 0.0, count: k)
+            for j in 0..<k {
+                a[j] = uniqLog[j]
+                b[j] = dSlope[j]
+                c[j] = (3.0 * delta[j] - 2.0 * dSlope[j] - dSlope[j + 1]) / max(1e-12, h[j])
+                d[j] = (dSlope[j] + dSlope[j + 1] - 2.0 * delta[j]) / max(1e-12, h[j] * h[j])
+            }
+            self.splineKnotsY = uniqY
+            self.splineA = a
+            self.splineB = b
+            self.splineC = c
+            self.splineD = d
+        } else {
+            self.splineKnotsY = []
+            self.splineA = []
+            self.splineB = []
+            self.splineC = []
+            self.splineD = []
+        }
     }
-    
+
+    /// 规范相对迁移率 Rf = (y - wellOriginY) / (dyeFrontY - wellOriginY)
+    public func relativeMobility(atY y: Double) -> Double {
+        max(0.0, min(1.0, (y - wellOriginY) / (dyeFrontY - wellOriginY)))
+    }
+
+    /// 使用 Fritsch-Carlson PCHIP 单调样条内插；超出 Marker 范围时沿端点切线执行 C¹ 连续线性外推（消除边界跳变）
+    public func log10Size(atY y: Double) -> Double {
+        if splineKnotsY.count >= 3, let yFirst = splineKnotsY.first, let yLast = splineKnotsY.last {
+            if y < yFirst {
+                let endSlope = abs(splineB[0]) > 1e-6 ? splineB[0] : slope
+                return splineA[0] + endSlope * (y - yFirst)
+            }
+            if y > yLast {
+                let lastSeg = splineKnotsY.count - 2
+                let hLast = splineKnotsY[lastSeg + 1] - splineKnotsY[lastSeg]
+                let yEndVal = splineA[lastSeg] + splineB[lastSeg] * hLast + splineC[lastSeg] * hLast * hLast + splineD[lastSeg] * hLast * hLast * hLast
+                let dEnd = splineB[lastSeg] + 2.0 * splineC[lastSeg] * hLast + 3.0 * splineD[lastSeg] * hLast * hLast
+                let endSlope = abs(dEnd) > 1e-6 ? dEnd : slope
+                return yEndVal + endSlope * (y - yLast)
+            }
+            var seg = splineKnotsY.count - 2
+            for i in 0..<(splineKnotsY.count - 1) {
+                if y >= splineKnotsY[i] && y <= splineKnotsY[i + 1] {
+                    seg = i
+                    break
+                }
+            }
+            let dy = y - splineKnotsY[seg]
+            return splineA[seg] + splineB[seg] * dy + splineC[seg] * dy * dy + splineD[seg] * dy * dy * dy
+        }
+        return slope * y + intercept
+    }
+
+    public func size(atY y: Double) -> Double {
+        pow(10.0, log10Size(atY: y))
+    }
+
     public func yPosition(forSize size: Double) -> Double {
         guard size > 0, abs(slope) > 1e-9 else { return 0.5 }
-        return min(0.92, max(0.08, (log10(size) - intercept) / slope))
+        let targetLog = log10(size)
+        // 若在样条覆盖的分子量区间内，使用二分法反求三次样条精确迁移位置 y
+        if splineKnotsY.count >= 3, let yFirst = splineKnotsY.first, let yLast = splineKnotsY.last {
+            let logFirst = log10Size(atY: yFirst)
+            let logLast = log10Size(atY: yLast)
+            let loLog = min(logFirst, logLast)
+            let hiLog = max(logFirst, logLast)
+            if targetLog >= loLog && targetLog <= hiLog {
+                var loY = yFirst
+                var hiY = yLast
+                let decreasing = logFirst > logLast
+                for _ in 0..<32 {
+                    let mid = 0.5 * (loY + hiY)
+                    let val = log10Size(atY: mid)
+                    if (decreasing && val > targetLog) || (!decreasing && val < targetLog) {
+                        loY = mid
+                    } else {
+                        hiY = mid
+                    }
+                }
+                return min(0.92, max(0.08, 0.5 * (loY + hiY)))
+            }
+        }
+        return min(0.92, max(0.08, (targetLog - intercept) / slope))
     }
 }
 
@@ -280,15 +428,30 @@ public enum GelAnalysisEngine {
         
         if let ladderIdx = updated.firstIndex(where: \.isLadderLane) {
             let sortedBands = updated[ladderIdx].bands.sorted { $0.yFraction < $1.yFraction }
-            var assignedBands: [GelBandItem] = []
-            for (i, var b) in sortedBands.enumerated() {
-                if i < ladder.sizes.count {
-                    let sz = ladder.sizes[i]
-                    b.knownSize = sz
-                    b.estimatedSize = sz
-                    calibrationPoints.append((y: b.yFraction, log10Size: log10(sz), size: sz))
+            var assignedBands = sortedBands
+            var sizeAssignment = Array<Double?>(repeating: nil, count: sortedBands.count)
+            if sortedBands.count == ladder.sizes.count {
+                for i in 0..<sortedBands.count { sizeAssignment[i] = ladder.sizes[i] }
+            } else if !ladder.highlightSizes.isEmpty && sortedBands.count >= 2 {
+                // 使用 Marker 高亮指示条带 (highlightSizes) 与实测最高显著度峰锚定对齐，避免漏检条带引发全列错位
+                if let anchorSize = ladder.highlightSizes.first,
+                   let anchorSizeIdx = ladder.sizes.firstIndex(of: anchorSize),
+                   let bestBandIdx = sortedBands.indices.max(by: { sortedBands[$0].prominence < sortedBands[$1].prominence }) {
+                    for i in 0..<sortedBands.count {
+                        let targetIdx = anchorSizeIdx + (i - bestBandIdx)
+                        if targetIdx >= 0 && targetIdx < ladder.sizes.count {
+                            sizeAssignment[i] = ladder.sizes[targetIdx]
+                        }
+                    }
                 }
-                assignedBands.append(b)
+            }
+            for i in 0..<assignedBands.count {
+                let sz = sizeAssignment[i] ?? (i < ladder.sizes.count ? ladder.sizes[i] : nil)
+                if let sz = sz {
+                    assignedBands[i].knownSize = sz
+                    assignedBands[i].estimatedSize = sz
+                    calibrationPoints.append((y: assignedBands[i].yFraction, log10Size: log10(sz), size: sz))
+                }
             }
             updated[ladderIdx].bands = assignedBands
         }

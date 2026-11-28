@@ -132,17 +132,26 @@ public enum LabDNAConverter {
     }
 
     /// dsDNA: 质量 (µg) → 摩尔数 (pmol)
-    /// 公式: pmol = (µg / bp) × 1515.1  (基于平均碱基对分子量 660 pg/pmol)
-    public static func dsdnaUgToPmol(lengthBp: Double, massUg: Double) -> Double? {
+    /// 支持统一口径选择：hydrated660 (660 Da/bp，默认) 或 anhydrous650 (650 Da/bp)
+    public static func dsdnaUgToPmol(
+        lengthBp: Double,
+        massUg: Double,
+        convention: DNAMolarCalculator.DSDNAMolarMassConvention = .hydrated660
+    ) -> Double? {
         guard lengthBp > 0, massUg >= 0 else { return nil }
-        return (massUg / lengthBp) * 1515.1
+        let factor = (convention == .hydrated660) ? 1515.1 : (1_000_000.0 / convention.daPerBp)
+        return (massUg / lengthBp) * factor
     }
 
     /// dsDNA: 摩尔数 (pmol) → 质量 (µg)
-    /// 公式: µg = pmol × bp × 660 × 10^-6
-    public static func dsdnaPmolToUg(lengthBp: Double, pmol: Double) -> Double? {
+    /// 公式: µg = pmol × bp × daPerBp × 10^-6
+    public static func dsdnaPmolToUg(
+        lengthBp: Double,
+        pmol: Double,
+        convention: DNAMolarCalculator.DSDNAMolarMassConvention = .hydrated660
+    ) -> Double? {
         guard lengthBp > 0, pmol >= 0 else { return nil }
-        return pmol * lengthBp * 0.00066
+        return pmol * lengthBp * (convention.daPerBp * 1e-6)
     }
 
     /// ssDNA: 质量浓度 (µg/mL) → 摩尔浓度 (pmol/µL)
@@ -164,6 +173,52 @@ public enum LabDNAConverter {
     public static func linearDNAUgToPmolEnds(lengthKb: Double, massUg: Double) -> Double? {
         guard lengthKb > 0, massUg >= 0 else { return nil }
         return (massUg * 3.03) / lengthKb
+    }
+
+    /// 基于 Tataurov et al. (2008) / IDT 最近邻次色效 (Nearest-Neighbor Hypochromicity) 的单链寡核苷酸序列专属消光系数 ε260 (L/(mol·cm))
+    /// ε260 = Σ_{i=1}^{N-1} ε_NN(b_i, b_{i+1}) - Σ_{i=2}^{N-1} ε_mono(b_i)
+    public static func oligoExtinctionCoefficient260(sequence: String) -> (epsilon260: Double, mwDa: Double, ugPerOD260: Double)? {
+        let clean = BioSequence.clean(sequence)
+        let chars = Array(clean)
+        guard !chars.isEmpty else { return nil }
+        let monoEps: [Character: Double] = ["A": 15400.0, "C": 7400.0, "G": 11500.0, "T": 8700.0]
+        let nnEps: [String: Double] = [
+            "AA": 27400, "AC": 21200, "AG": 25000, "AT": 22800,
+            "CA": 21200, "CC": 14600, "CG": 18000, "CT": 15200,
+            "GA": 25200, "GC": 17600, "GG": 21600, "GT": 20000,
+            "TA": 23400, "TC": 16200, "TG": 19000, "TT": 16800
+        ]
+        let monoMW: [Character: Double] = ["A": 313.21, "C": 289.18, "G": 329.21, "T": 304.20]
+        var eps = 0.0
+        if chars.count == 1 {
+            eps = monoEps[chars[0]] ?? 10000.0
+        } else {
+            for i in 0..<(chars.count - 1) {
+                let pair = String([chars[i], chars[i + 1]])
+                eps += nnEps[pair] ?? ((monoEps[chars[i]] ?? 10000.0) + (monoEps[chars[i + 1]] ?? 10000.0))
+            }
+            if chars.count > 2 {
+                for i in 1..<(chars.count - 1) {
+                    eps -= monoEps[chars[i]] ?? 10000.0
+                }
+            }
+        }
+        // 标准无 5'-磷酸合成 ssOligo 分子量 = Σ dNMP - 61.96 Da
+        let mw = max(100.0, chars.reduce(0.0) { $0 + (monoMW[$1] ?? 308.9) } - 61.96)
+        let ugPerOD = (mw / max(1.0, eps)) * 1000.0
+        return (eps, mw, ugPerOD)
+    }
+
+    /// 序列专属 ssOligo OD260 → 精确质量浓度 (µg/mL) 与摩尔浓度 (µM)
+    public static func od260ToOligoConcentration(
+        od260: Double,
+        sequence: String,
+        dilutionFactor: Double = 1.0
+    ) -> (concentrationUgPerMl: Double, concentrationMicroMolar: Double, epsilon260: Double, ugPerOD260: Double)? {
+        guard od260 >= 0, dilutionFactor > 0, let props = oligoExtinctionCoefficient260(sequence: sequence) else { return nil }
+        let microMolar = (od260 * dilutionFactor / props.epsilon260) * 1_000_000.0
+        let ugPerMl = od260 * dilutionFactor * props.ugPerOD260
+        return (ugPerMl, microMolar, props.epsilon260, props.ugPerOD260)
     }
 
     /// Nucleic Acid: OD260 → 浓度 (µg/mL 与 ng/µL 等值)

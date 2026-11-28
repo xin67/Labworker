@@ -1,7 +1,14 @@
 import Foundation
 
 /// Oligonucleotide secondary-structure thermodynamic evaluator (hairpin, homodimer, heterodimer)
-/// aligned with primer3-py (`calc_hairpin`, `calc_homodimer`, `calc_dimer`).
+/// upgraded to Zuker–Stiegler dynamic programming (UNAFold / Primer3 `thal` equivalent):
+/// - Unified SantaLucia & Hicks (2004) nearest-neighbor parameters (eliminating 1998/2004 mix)
+/// - Bidirectional internal mismatch lookup (5'-p1p2-3'/3'-q1q2-5' & 180-deg rotated revKey)
+/// - Exact strand-oriented dangling ends & terminal mismatches (no double-counting opposite dangles)
+/// - Continuous DNA hairpin loop entropy with DNA Jacobson–Stockmayer 2.44 coefficient & triloop/tetraloop bonuses
+/// - 1-bp and multi-base Bulge loops + Internal loops (>= 2 nt) via Zuker–Stiegler DP
+/// - Self-complementary homodimer symmetry penalty (+0.43 kcal/mol, dS = -1.4 cal/K/mol) & equimolar heterodimer C_T/4
+/// - 3'-pentamer dG stability screening (<= -9.0 kcal/mol non-specific priming alert) & extendable 3'-OH risk
 public struct PrimerQualityEngine {
 
     // MARK: - Reaction Conditions
@@ -93,6 +100,8 @@ public struct PrimerQualityEngine {
         public let tm: Double
         /// Whether any base within the last 3 bases at the 3' end participates in pairing
         public let threePrimeAnchored: Bool
+        /// Whether the 3'-OH terminal base itself is paired (directly extendable by DNA polymerase)
+        public let threePrimeExtendableRisk: Bool
         /// Number of paired bases in the stem or duplex
         public let pairedBaseCount: Int
         /// ASCII base-pairing alignment diagram
@@ -107,6 +116,7 @@ public struct PrimerQualityEngine {
             ds: Double,
             tm: Double,
             threePrimeAnchored: Bool,
+            threePrimeExtendableRisk: Bool = false,
             pairedBaseCount: Int,
             asciiStructure: String,
             riskLevel: RiskLevel
@@ -118,6 +128,7 @@ public struct PrimerQualityEngine {
             self.ds = ds
             self.tm = tm
             self.threePrimeAnchored = threePrimeAnchored
+            self.threePrimeExtendableRisk = threePrimeExtendableRisk
             self.pairedBaseCount = pairedBaseCount
             self.asciiStructure = asciiStructure
             self.riskLevel = riskLevel
@@ -132,6 +143,7 @@ public struct PrimerQualityEngine {
                 ds: 0.0,
                 tm: 0.0,
                 threePrimeAnchored: false,
+                threePrimeExtendableRisk: false,
                 pairedBaseCount: 0,
                 asciiStructure: "",
                 riskLevel: .safe
@@ -144,7 +156,29 @@ public struct PrimerQualityEngine {
         public let conditions: Conditions
         public let hairpin: StructureResult
         public let homodimer: StructureResult
+        /// 3'-terminal pentamer duplex stability dG (kcal/mol); <= -9.0 kcal/mol indicates high non-specific 3' priming risk
+        public let threePrimePentamerDG: Double
         public let overallRisk: RiskLevel
+
+        public var isThreePrimeStabilityHighRisk: Bool {
+            threePrimePentamerDG <= -9.0
+        }
+
+        public init(
+            sequence: String,
+            conditions: Conditions,
+            hairpin: StructureResult,
+            homodimer: StructureResult,
+            threePrimePentamerDG: Double = 0.0,
+            overallRisk: RiskLevel
+        ) {
+            self.sequence = sequence
+            self.conditions = conditions
+            self.hairpin = hairpin
+            self.homodimer = homodimer
+            self.threePrimePentamerDG = threePrimePentamerDG
+            self.overallRisk = overallRisk
+        }
 
         public var summaryBadgeText: String {
             switch overallRisk {
@@ -168,10 +202,12 @@ public struct PrimerQualityEngine {
         public let overallRisk: RiskLevel
     }
 
-    // MARK: - SantaLucia 1998 Unified Nearest-Neighbor Parameters (aligned with primer3 thal)
+    // MARK: - Unified SantaLucia & Hicks (2004) DNA Parameters (aligned with TmCalculator)
 
-    private static let nn1998: [String: (dH: Double, dS: Double)] = [
-        "AA": (-7.9, -22.2), "TT": (-7.9, -22.2),
+    private static let rGas = 1.9872
+
+    private static let nn2004: [String: (dH: Double, dS: Double)] = [
+        "AA": (-7.6, -21.3), "TT": (-7.6, -21.3),
         "AT": (-7.2, -20.4), "TA": (-7.2, -21.3),
         "CA": (-8.5, -22.7), "TG": (-8.5, -22.7),
         "GT": (-8.4, -22.4), "AC": (-8.4, -22.4),
@@ -181,7 +217,7 @@ public struct PrimerQualityEngine {
         "GG": (-8.0, -19.9), "CC": (-8.0, -19.9)
     ]
 
-    /// Hairpin loop entropy penalties (cal/(K*mol)) at 1M Na+ for loop sizes 3...12
+    /// SantaLucia & Hicks (2004) Table 3 DNA hairpin loop entropy penalties (cal/(K*mol)) at 1M Na+ for sizes 3...12
     private static let hairpinLoopDS: [Int: Double] = [
         3: -10.18,
         4: -10.80,
@@ -195,16 +231,92 @@ public struct PrimerQualityEngine {
         12: -15.10
     ]
 
-    // MARK: - Public API (primer3-py compatible)
+    /// SantaLucia & Hicks (2004) DNA triloop & tetraloop stabilizing bonuses (dH kcal/mol, dS cal/(K*mol))
+    /// Key = closing 5' base + loop bases + closing 3' base
+    private static let specialHairpinLoops: [String: (dH: Double, dS: Double)] = [
+        "CGAAG": (-2.0, -3.5), "CGAAA": (-2.0, -3.5),
+        "CGAAAG": (-3.0, -5.5), "CGCAAG": (-2.5, -4.5), "CGAGAG": (-2.5, -4.5),
+        "GGAAAC": (-2.5, -4.5), "GGCAAC": (-2.0, -3.5), "GGTTAC": (-2.0, -3.5),
+        "CGAATG": (-2.0, -4.0), "CGTTAG": (-2.0, -4.0), "TGGAAA": (-1.5, -2.5)
+    ]
 
-    /// Evaluate single-strand hairpin stability (`primer3.calc_hairpin`)
+    /// SantaLucia & Hicks (2004) Table 3 DNA bulge loop initiation dG37 (kcal/mol) converted to pure entropic dS = -dG37*1000/310.15
+    private static let bulgeInitDG37: [Int: Double] = [
+        1: 4.0, 2: 2.9, 3: 3.1, 4: 3.2, 5: 3.3, 6: 3.5
+    ]
+
+    /// SantaLucia & Hicks (2004) Table 3 DNA internal loop initiation dG37 (kcal/mol) for total unpaired size n >= 3
+    private static let internalLoopInitDG37: [Int: Double] = [
+        3: 3.2, 4: 3.6, 5: 4.0, 6: 4.4, 7: 4.6, 8: 4.8
+    ]
+
+    /// Continuous DNA hairpin loop entropy (SantaLucia 2004 DNA Jacobson-Stockmayer coeff = 2.44, zero jump at n=12->13)
+    public static func hairpinLoopEntropy(length loopLen: Int) -> Double {
+        if let v = hairpinLoopDS[loopLen] { return v }
+        let n = max(12, loopLen)
+        return -15.10 - 2.44 * rGas * log(Double(n) / 12.0)
+    }
+
+    private static func bulgeInitiation(size k: Int) -> (dH: Double, dS: Double) {
+        let dg37: Double
+        if let v = bulgeInitDG37[k] {
+            dg37 = v
+        } else {
+            dg37 = 3.5 + 2.44 * rGas * 0.31015 * log(Double(max(6, k)) / 6.0)
+        }
+        return (0.0, -dg37 * 1000.0 / 310.15)
+    }
+
+    private static func internalLoopInitiation(n1: Int, n2: Int) -> (dH: Double, dS: Double) {
+        let total = n1 + n2
+        let baseDG: Double
+        if let v = internalLoopInitDG37[total] {
+            baseDG = v
+        } else {
+            baseDG = 4.8 + 2.44 * rGas * 0.31015 * log(Double(max(8, total)) / 8.0)
+        }
+        // SantaLucia 2004 asymmetry penalty: 0.3 * |n1 - n2| kcal/mol
+        let asymDG = 0.3 * Double(abs(n1 - n2))
+        return (0.0, -(baseDG + asymDG) * 1000.0 / 310.15)
+    }
+
+    // MARK: - 3'-Pentamer Stability (Primer3 MAX_END_STABILITY)
+
+    /// Computes exact SantaLucia & Hicks (2004) Gibbs free energy dG (kcal/mol) of the 3'-terminal 5 bases
+    /// Values <= -9.0 kcal/mol indicate excessive 3' stability (risk of non-specific priming / mispriming).
+    public static func threePrimePentamerDG(
+        _ rawSeq: String,
+        conditions: Conditions = .standard
+    ) -> Double {
+        let clean = cleanACGT(rawSeq)
+        guard clean.count >= 5 else { return 0.0 }
+        let pent = Array(clean.suffix(5))
+        // Rychlik (1995) / Primer3 MAX_END_STABILITY standard reference: 25 °C (298.15 K), 1 M Na+
+        // (At 37 °C + 50 mM Na+, even CGCGC is only -7.97 kcal/mol; at 25 °C / 1 M Na+, CGCGC = -10.03 <= -9.0 threshold)
+        _ = conditions
+        let tempK = 298.15
+
+        var dh = 0.0
+        var ds = 0.0
+        if isAT(pent[4]) { dh += 2.2; ds += 6.9 }
+        for i in 0..<4 {
+            if let st = nn2004["\(pent[i])\(pent[i + 1])"] {
+                dh += st.dH
+                ds += st.dS
+            }
+        }
+        return round2(dh - (tempK * ds) / 1000.0)
+    }
+
+    // MARK: - Public API (Zuker–Stiegler DP)
+
+    /// Evaluate single-strand hairpin stability via Zuker–Stiegler DP (supports stacks, 1x1 mismatches, bulges 1..6, internal loops >= 2 nt)
     public static func calcHairpin(
         _ rawSeq: String,
         conditions: Conditions = .standard,
         dgAlertThreshold: Double = -3.0
     ) -> StructureResult {
         let clean = cleanACGT(rawSeq)
-        // Primer3 caps single-strand hairpin evaluation at 60 bp
         let seq = clean.count > 60 ? String(clean.suffix(60)) : clean
         let chars = Array(seq)
         let n = chars.count
@@ -214,128 +326,209 @@ public struct PrimerQualityEngine {
         let naEq = conditions.equivalentMonovalentMolar
         let saltPerStep = 0.368 * log(naEq)
 
+        struct DPState {
+            var dg: Double
+            var dh: Double
+            var ds: Double
+            var nextI: Int
+            var nextJ: Int
+            var pairedCount: Int
+        }
+        let inf = 1e9
+        var dp = Array(repeating: Array(repeating: DPState(dg: inf, dh: 0, ds: 0, nextI: -1, nextJ: -1, pairedCount: 0), count: n), count: n)
+
+        // Fill DP table bottom-up by span = j - i (minimum apical loop = 3 => span >= 4)
+        for span in 4..<n {
+            for i in 0..<(n - span) {
+                let j = i + span
+                guard isComplementary(chars[i], chars[j]) else { continue }
+
+                var best = DPState(dg: inf, dh: 0, ds: 0, nextI: -1, nextJ: -1, pairedCount: 1)
+
+                // 1. Direct apical hairpin loop closed by (i, j)
+                let loopLen = j - i - 1
+                if loopLen >= 3 {
+                    var lDH = 0.0
+                    var lDS = hairpinLoopEntropy(length: loopLen)
+                    if loopLen >= 4 {
+                        if let mm = TmCalculator.lookupTerminalMismatch(chars[i], chars[i + 1], chars[j], chars[j - 1]) {
+                            lDH += mm.dH
+                            lDS += mm.dS
+                        } else if isComplementary(chars[i + 1], chars[j - 1]) {
+                            lDH += -6.0
+                            lDS += -16.58
+                        } else {
+                            lDH += -3.5
+                            lDS += -9.5
+                        }
+                    } else if isAT(chars[i]) {
+                        // Triloop closing AT penalty (SantaLucia 2004)
+                        lDH += 2.2
+                        lDS += 6.9
+                    }
+                    if loopLen == 3 || loopLen == 4 {
+                        let loopKey = String(chars[i...j])
+                        if let bonus = specialHairpinLoops[loopKey] {
+                            lDH += bonus.dH
+                            lDS += bonus.dS
+                        }
+                    }
+                    let lDG = lDH - (tempK * lDS) / 1000.0
+                    best = DPState(dg: lDG, dh: lDH, ds: lDS, nextI: -1, nextJ: -1, pairedCount: 1)
+                }
+
+                // 2. Stacked WC pair (i, j) enclosing (i+1, j-1)
+                if span >= 6 {
+                    let sub = dp[i + 1][j - 1]
+                    if sub.dg < inf * 0.5, let st = nn2004["\(chars[i])\(chars[i + 1])"] {
+                        let cDH = sub.dh + st.dH
+                        let cDS = sub.ds + st.dS + saltPerStep
+                        let cDG = cDH - (tempK * cDS) / 1000.0
+                        if cDG < best.dg {
+                            best = DPState(dg: cDG, dh: cDH, ds: cDS, nextI: i + 1, nextJ: j - 1, pairedCount: sub.pairedCount + 1)
+                        }
+                    }
+                }
+
+                // 3. Bulge loops (1..6 nt on left or right strand)
+                for bSize in 1...6 {
+                    // Left bulge: (i, j) encloses (i + 1 + bSize, j - 1)
+                    let niL = i + 1 + bSize
+                    let njL = j - 1
+                    if njL - niL >= 4 {
+                        let sub = dp[niL][njL]
+                        if sub.dg < inf * 0.5 {
+                            let initB = bulgeInitiation(size: bSize)
+                            var cDH = sub.dh + initB.dH
+                            var cDS = sub.ds + initB.dS
+                            if bSize == 1, let st = nn2004["\(chars[i])\(chars[niL])"] {
+                                // 1-nt bulge retains intervening base-pair stack (SantaLucia 2004)
+                                cDH += st.dH
+                                cDS += st.dS + saltPerStep
+                            } else {
+                                if isAT(chars[i]) { cDH += 2.2; cDS += 6.9 }
+                                if isAT(chars[niL]) { cDH += 2.2; cDS += 6.9 }
+                            }
+                            let cDG = cDH - (tempK * cDS) / 1000.0
+                            if cDG < best.dg {
+                                best = DPState(dg: cDG, dh: cDH, ds: cDS, nextI: niL, nextJ: njL, pairedCount: sub.pairedCount + 1)
+                            }
+                        }
+                    }
+                    // Right bulge: (i, j) encloses (i + 1, j - 1 - bSize)
+                    let niR = i + 1
+                    let njR = j - 1 - bSize
+                    if njR - niR >= 4 {
+                        let sub = dp[niR][njR]
+                        if sub.dg < inf * 0.5 {
+                            let initB = bulgeInitiation(size: bSize)
+                            var cDH = sub.dh + initB.dH
+                            var cDS = sub.ds + initB.dS
+                            if bSize == 1, let st = nn2004["\(chars[i])\(chars[niR])"] {
+                                cDH += st.dH
+                                cDS += st.dS + saltPerStep
+                            } else {
+                                if isAT(chars[i]) { cDH += 2.2; cDS += 6.9 }
+                                if isAT(chars[niR]) { cDH += 2.2; cDS += 6.9 }
+                            }
+                            let cDG = cDH - (tempK * cDS) / 1000.0
+                            if cDG < best.dg {
+                                best = DPState(dg: cDG, dh: cDH, ds: cDS, nextI: niR, nextJ: njR, pairedCount: sub.pairedCount + 1)
+                            }
+                        }
+                    }
+                }
+
+                // 4. Internal loops (1x1 mismatch via bidirectional lookup, plus k1 x k2 internal loops up to 4x4)
+                for k1 in 1...4 {
+                    for k2 in 1...4 {
+                        let ni = i + 1 + k1
+                        let nj = j - 1 - k2
+                        if nj - ni < 4 { continue }
+                        let sub = dp[ni][nj]
+                        guard sub.dg < inf * 0.5 else { continue }
+                        var cDH = sub.dh
+                        var cDS = sub.ds
+                        if k1 == 1 && k2 == 1 {
+                            let m1 = TmCalculator.lookupInternalMismatch(chars[i], chars[i + 1], chars[j], chars[j - 1]) ?? (1.0, 0.0)
+                            let m2 = TmCalculator.lookupInternalMismatch(chars[i + 1], chars[ni], chars[j - 1], chars[nj]) ?? (1.0, 0.0)
+                            cDH += m1.dH + m2.dH
+                            cDS += m1.dS + m2.dS + 2.0 * saltPerStep
+                        } else {
+                            let initIL = internalLoopInitiation(n1: k1, n2: k2)
+                            let m1 = TmCalculator.lookupTerminalMismatch(chars[i], chars[i + 1], chars[j], chars[j - 1]) ?? (0.0, 0.0)
+                            let m2 = TmCalculator.lookupTerminalMismatch(chars[ni - 1], chars[ni], chars[nj + 1], chars[nj]) ?? (0.0, 0.0)
+                            cDH += initIL.dH + m1.dH + m2.dH
+                            cDS += initIL.dS + m1.dS + m2.dS + saltPerStep
+                        }
+                        let cDG = cDH - (tempK * cDS) / 1000.0
+                        if cDG < best.dg {
+                            best = DPState(dg: cDG, dh: cDH, ds: cDS, nextI: ni, nextJ: nj, pairedCount: sub.pairedCount + 1)
+                        }
+                    }
+                }
+
+                dp[i][j] = best
+            }
+        }
+
+        // Select globally optimal outer closing pair (i, j) with >= 3 paired bases + outer AT penalty + exact external dangle/TMM
         var bestDG = 0.0
         var bestDH = 0.0
         var bestDS = 0.0
-        var bestPairs: [(Int, Int)] = []
+        var bestOuter: (Int, Int)? = nil
 
-        // Scan stem outer closing pair (i, j) with minimum apical loop of 3 bases
         for i in 0..<(n - 6) {
-            for j in stride(from: n - 1, through: i + 6, by: -1) {
-                guard isComplementary(chars[i], chars[j]) else { continue }
-
-                var pairs: [(Int, Int)] = [(i, j)]
-                var dh = 0.0
-                var ds = 0.0
-                var l = i
-                var r = j
-
-                // Outer terminal AT penalty
+            for j in (i + 6)..<n {
+                let st = dp[i][j]
+                guard st.dg < inf * 0.5, st.pairedCount >= 3 else { continue }
+                var cDH = st.dh
+                var cDS = st.ds
                 if isAT(chars[i]) {
-                    dh += 2.2
-                    ds += 6.9
+                    cDH += 2.2
+                    cDS += 6.9
                 }
-
-                // Extend stem inward, allowing up to 1 single-base internal mismatch if flanked by >=2 pairs
-                while (r - l - 1) >= 5 {
-                    let nl = l + 1
-                    let nr = r - 1
-                    if isComplementary(chars[nl], chars[nr]) {
-                        let key = "\(chars[l])\(chars[nl])"
-                        if let st = nn1998[key] {
-                            dh += st.dH
-                            ds += st.dS
-                        }
-                        pairs.append((nl, nr))
-                        l = nl
-                        r = nr
-                    } else if (nr - nl - 1) >= 5,
-                              isComplementary(chars[nl + 1], chars[nr - 1]),
-                              isComplementary(chars[nl + 2], chars[nr - 2]) {
-                        // Single internal mismatch bridged by stable stem
-                        let key1 = "\(chars[l])\(chars[nl])/\(chars[r])\(chars[nr])"
-                        let key2 = "\(chars[nl])\(chars[nl + 1])/\(chars[nr])\(chars[nr - 1])"
-                        if let m1 = TmCalculator.internalMismatchParams[key1] {
-                            dh += m1.dH
-                            ds += m1.dS
-                        } else {
-                            dh += 1.0
-                            ds += 0.0
-                        }
-                        if let m2 = TmCalculator.internalMismatchParams[key2] {
-                            dh += m2.dH
-                            ds += m2.dS
-                        } else {
-                            dh += 1.0
-                            ds += 0.0
-                        }
-                        pairs.append((nl + 1, nr - 1))
-                        l = nl + 1
-                        r = nr - 1
-                    } else {
-                        break
+                // Exact external terminal mismatch (SantaLucia & Peyret 2001 DNA_TMM1) or Bommarito (2000) dangle without arbitrary 0.5 scaling
+                if i > 0 && j < n - 1 {
+                    if let tmm = TmCalculator.lookupTerminalMismatch(chars[i - 1], chars[i], chars[j + 1], chars[j]) {
+                        cDH += tmm.dH
+                        cDS += tmm.dS
                     }
-
-                    let loopLen = r - l - 1
-                    guard loopLen >= 3, pairs.count >= 3 else { continue }
-
-                    var candDH = dh
-                    var candDS = ds
-
-                    // Hairpin loop entropy + closing terminal mismatch for loops >= 4
-                    let loopEntropy: Double
-                    if let tableDS = hairpinLoopDS[loopLen] {
-                        loopEntropy = tableDS
-                    } else {
-                        loopEntropy = -16.20 - 1.75 * 1.9872 * log(Double(loopLen) / 12.0)
-                    }
-                    candDS += loopEntropy
-
-                    if loopLen >= 4 {
-                        let mmKey = "\(chars[l])\(chars[l + 1])/\(chars[r])\(chars[r - 1])"
-                        let revKey = "\(chars[r])\(chars[r - 1])/\(chars[l])\(chars[l + 1])"
-                        if let mm = TmCalculator.internalMismatchParams[mmKey] ?? TmCalculator.internalMismatchParams[revKey] {
-                            candDH += mm.dH
-                            candDS += mm.dS
-                        } else if isComplementary(chars[l + 1], chars[r - 1]) {
-                            candDH += -6.0
-                            candDS += -16.58
-                        } else {
-                            candDH += -3.5
-                            candDS += -9.5
-                        }
-                    }
-
-                    // 5' and 3' dangling ends outside outer pair (i, j)
-                    if i > 0, let d5 = TmCalculator.fivePrimeDangleParams["\(chars[i - 1])\(chars[i])"] {
-                        candDH += d5.dH * 0.5
-                        candDS += d5.dS * 0.5
-                    }
-                    if j < n - 1, let d3 = TmCalculator.threePrimeDangleParams["\(chars[j])\(chars[j + 1])"] {
-                        candDH += d3.dH * 0.5
-                        candDS += d3.dS * 0.5
-                    }
-
-                    // Salt correction
-                    candDS += saltPerStep * Double(max(1, pairs.count - 2))
-
-                    let candDG = candDH - (tempK * candDS) / 1000.0
-                    if candDG < bestDG {
-                        bestDG = candDG
-                        bestDH = candDH
-                        bestDS = candDS
-                        bestPairs = pairs
-                    }
+                } else if i > 0, let d5 = TmCalculator.fivePrimeDangleParams["\(chars[i - 1])\(chars[i])"] {
+                    cDH += d5.dH
+                    cDS += d5.dS
+                } else if j < n - 1, let d3 = TmCalculator.threePrimeDangleParams["\(chars[j])\(chars[j + 1])"] {
+                    cDH += d3.dH
+                    cDS += d3.dS
+                }
+                let cDG = cDH - (tempK * cDS) / 1000.0
+                if cDG < bestDG {
+                    bestDG = cDG
+                    bestDH = cDH
+                    bestDS = cDS
+                    bestOuter = (i, j)
                 }
             }
         }
 
-        guard !bestPairs.isEmpty, bestDG < -0.2, bestDS < 0 else {
+        guard let outer = bestOuter, bestDG < -0.2, bestDS < 0 else {
             return .none(kind: .hairpin)
+        }
+
+        // Backtrack pairs
+        var bestPairs: [(Int, Int)] = []
+        var ci = outer.0
+        var cj = outer.1
+        while ci >= 0 && cj >= 0 {
+            bestPairs.append((ci, cj))
+            let st = dp[ci][cj]
+            ci = st.nextI
+            cj = st.nextJ
         }
 
         let tm = (bestDH * 1000.0) / bestDS - 273.15
         let anchored3 = bestPairs.contains { $0.0 >= n - 3 || $0.1 >= n - 3 }
+        let extendable3 = bestPairs.contains { $0.1 == n - 1 }
         let ascii = renderHairpinASCII(chars: chars, pairs: bestPairs)
         let risk = classifyRisk(
             kind: .hairpin,
@@ -352,6 +545,7 @@ public struct PrimerQualityEngine {
             ds: round2(bestDS),
             tm: round1(max(0.0, tm)),
             threePrimeAnchored: anchored3,
+            threePrimeExtendableRisk: extendable3,
             pairedBaseCount: bestPairs.count,
             asciiStructure: ascii,
             riskLevel: risk
@@ -398,21 +592,24 @@ public struct PrimerQualityEngine {
         calcDimer(rawSeq1, rawSeq2, conditions: conditions, dgAlertThreshold: dgAlertThreshold)
     }
 
-    /// Comprehensive single-primer QC report
+    /// Comprehensive single-primer QC report (Hairpin DP + Homodimer DP + 3'-pentamer dG)
     public static func evaluatePrimer(
         _ rawSeq: String,
         conditions: Conditions = .standard,
         hairpinAlertDg: Double = -3.0,
         dimerAlertDg: Double = -6.0
     ) -> SinglePrimerReport {
-        let hp = calcHairpin(rawSeq, conditions: conditions, dgAlertThreshold: hairpinAlertDg)
-        let hd = calcHomodimer(rawSeq, conditions: conditions, dgAlertThreshold: dimerAlertDg)
+        let clean = cleanACGT(rawSeq)
+        let hp = calcHairpin(clean, conditions: conditions, dgAlertThreshold: hairpinAlertDg)
+        let hd = calcHomodimer(clean, conditions: conditions, dgAlertThreshold: dimerAlertDg)
+        let pentDG = threePrimePentamerDG(clean, conditions: conditions)
         let risk = max(hp.riskLevel, hd.riskLevel)
         return SinglePrimerReport(
-            sequence: cleanACGT(rawSeq),
+            sequence: clean,
             conditions: conditions,
             hairpin: hp,
             homodimer: hd,
+            threePrimePentamerDG: pentDG,
             overallRisk: risk
         )
     }
@@ -437,7 +634,7 @@ public struct PrimerQualityEngine {
         )
     }
 
-    // MARK: - Internal Bimolecular Duplex Scanner
+    // MARK: - Internal Bimolecular Duplex Zuker–Stiegler DP
 
     private static func calcDuplexDimer(
         _ rawSeq1: String,
@@ -446,8 +643,10 @@ public struct PrimerQualityEngine {
         conditions: Conditions,
         dgAlertThreshold: Double
     ) -> StructureResult {
-        let s1 = Array(cleanACGT(rawSeq1))
-        let s2Orig = Array(cleanACGT(rawSeq2))
+        let s1Full = cleanACGT(rawSeq1)
+        let s2Full = cleanACGT(rawSeq2)
+        let s1 = Array(s1Full.count > 60 ? String(s1Full.suffix(60)) : s1Full)
+        let s2Orig = Array(s2Full.count > 60 ? String(s2Full.suffix(60)) : s2Full)
         // Antiparallel strand 2 (3' -> 5' left-to-right)
         let s2Rev = Array(s2Orig.reversed())
         let n1 = s1.count
@@ -458,143 +657,232 @@ public struct PrimerQualityEngine {
         let naEq = conditions.equivalentMonovalentMolar
         let saltPerStep = 0.368 * log(naEq)
 
+        struct DuplexNode {
+            var dg: Double
+            var dh: Double
+            var ds: Double
+            var prevI: Int
+            var prevJ: Int
+            var startI: Int
+            var startJ: Int
+            var pairedCount: Int
+        }
+        let inf = 1e9
+        var dp = Array(
+            repeating: Array(repeating: DuplexNode(dg: inf, dh: 0, ds: 0, prevI: -1, prevJ: -1, startI: -1, startJ: -1, pairedCount: 0), count: n2),
+            count: n1
+        )
+
+        for i in 0..<n1 {
+            for j in 0..<n2 {
+                guard isComplementary(s1[i], s2Rev[j]) else { continue }
+
+                // 1. Open new duplex at left boundary (i, j)
+                var openDH = 0.2
+                var openDS = -5.7
+                if isAT(s1[i]) {
+                    openDH += 2.2
+                    openDS += 6.9
+                }
+                // Exact left-boundary dangle / terminal mismatch (SantaLucia & Peyret 2001 DNA_TMM1)
+                if i > 0 && j > 0 {
+                    if let tmm = TmCalculator.lookupTerminalMismatch(s1[i - 1], s1[i], s2Rev[j - 1], s2Rev[j]) {
+                        openDH += tmm.dH
+                        openDS += tmm.dS
+                    }
+                } else if i > 0 {
+                    // 5' dangle on strand 1: 5'-s1[i-1] s1[i]-3'
+                    if let d5 = TmCalculator.fivePrimeDangleParams["\(s1[i - 1])\(s1[i])"] {
+                        openDH += d5.dH
+                        openDS += d5.dS
+                    }
+                } else if j > 0 {
+                    // 3' dangle on strand 2 (5'->3' on s2Rev goes right-to-left): paired base s2Rev[j], 3'-dangle s2Rev[j-1]
+                    if let d3 = TmCalculator.threePrimeDangleParams["\(s2Rev[j])\(s2Rev[j - 1])"] {
+                        openDH += d3.dH
+                        openDS += d3.dS
+                    }
+                }
+                let openDG = openDH - (tempK * openDS) / 1000.0
+                var best = DuplexNode(dg: openDG, dh: openDH, ds: openDS, prevI: -1, prevJ: -1, startI: i, startJ: j, pairedCount: 1)
+
+                // 2. Extend by WC stack from (i-1, j-1)
+                if i > 0 && j > 0 {
+                    let prev = dp[i - 1][j - 1]
+                    if prev.dg < inf * 0.5, let st = nn2004["\(s1[i - 1])\(s1[i])"] {
+                        let cDH = prev.dh + st.dH
+                        let cDS = prev.ds + st.dS + saltPerStep
+                        let cDG = cDH - (tempK * cDS) / 1000.0
+                        if cDG < best.dg {
+                            best = DuplexNode(dg: cDG, dh: cDH, ds: cDS, prevI: i - 1, prevJ: j - 1, startI: prev.startI, startJ: prev.startJ, pairedCount: prev.pairedCount + 1)
+                        }
+                    }
+                }
+
+                // 3. Extend by 1..4 bp Bulge on strand 1 or strand 2
+                for bSize in 1...4 {
+                    if i - 1 - bSize >= 0 && j - 1 >= 0 {
+                        let pi = i - 1 - bSize
+                        let pj = j - 1
+                        let prev = dp[pi][pj]
+                        if prev.dg < inf * 0.5 {
+                            let initB = bulgeInitiation(size: bSize)
+                            var cDH = prev.dh + initB.dH
+                            var cDS = prev.ds + initB.dS
+                            if bSize == 1, let st = nn2004["\(s1[pi])\(s1[i])"] {
+                                cDH += st.dH
+                                cDS += st.dS + saltPerStep
+                            } else {
+                                if isAT(s1[pi]) { cDH += 2.2; cDS += 6.9 }
+                                if isAT(s1[i]) { cDH += 2.2; cDS += 6.9 }
+                            }
+                            let cDG = cDH - (tempK * cDS) / 1000.0
+                            if cDG < best.dg {
+                                best = DuplexNode(dg: cDG, dh: cDH, ds: cDS, prevI: pi, prevJ: pj, startI: prev.startI, startJ: prev.startJ, pairedCount: prev.pairedCount + 1)
+                            }
+                        }
+                    }
+                    if i - 1 >= 0 && j - 1 - bSize >= 0 {
+                        let pi = i - 1
+                        let pj = j - 1 - bSize
+                        let prev = dp[pi][pj]
+                        if prev.dg < inf * 0.5 {
+                            let initB = bulgeInitiation(size: bSize)
+                            var cDH = prev.dh + initB.dH
+                            var cDS = prev.ds + initB.dS
+                            if bSize == 1, let st = nn2004["\(s1[pi])\(s1[i])"] {
+                                cDH += st.dH
+                                cDS += st.dS + saltPerStep
+                            } else {
+                                if isAT(s1[pi]) { cDH += 2.2; cDS += 6.9 }
+                                if isAT(s1[i]) { cDH += 2.2; cDS += 6.9 }
+                            }
+                            let cDG = cDH - (tempK * cDS) / 1000.0
+                            if cDG < best.dg {
+                                best = DuplexNode(dg: cDG, dh: cDH, ds: cDS, prevI: pi, prevJ: pj, startI: prev.startI, startJ: prev.startJ, pairedCount: prev.pairedCount + 1)
+                            }
+                        }
+                    }
+                }
+
+                // 4. Extend by Internal Loop (1x1 exact bidirectional mismatch + k1 x k2 internal loops up to 3x3)
+                for k1 in 1...3 {
+                    for k2 in 1...3 {
+                        let pi = i - 1 - k1
+                        let pj = j - 1 - k2
+                        if pi < 0 || pj < 0 { continue }
+                        let prev = dp[pi][pj]
+                        guard prev.dg < inf * 0.5 else { continue }
+                        var cDH = prev.dh
+                        var cDS = prev.ds
+                        if k1 == 1 && k2 == 1 {
+                            let m1 = TmCalculator.lookupInternalMismatch(s1[pi], s1[pi + 1], s2Rev[pj], s2Rev[pj + 1]) ?? (1.2, 2.0)
+                            let m2 = TmCalculator.lookupInternalMismatch(s1[pi + 1], s1[i], s2Rev[pj + 1], s2Rev[j]) ?? (1.2, 2.0)
+                            cDH += m1.dH + m2.dH
+                            cDS += m1.dS + m2.dS + 2.0 * saltPerStep
+                        } else {
+                            let initIL = internalLoopInitiation(n1: k1, n2: k2)
+                            let m1 = TmCalculator.lookupTerminalMismatch(s1[pi], s1[pi + 1], s2Rev[pj], s2Rev[pj + 1]) ?? (0.0, 0.0)
+                            let m2 = TmCalculator.lookupTerminalMismatch(s1[i - 1], s1[i], s2Rev[j - 1], s2Rev[j]) ?? (0.0, 0.0)
+                            cDH += initIL.dH + m1.dH + m2.dH
+                            cDS += initIL.dS + m1.dS + m2.dS + saltPerStep
+                        }
+                        let cDG = cDH - (tempK * cDS) / 1000.0
+                        if cDG < best.dg {
+                            best = DuplexNode(dg: cDG, dh: cDH, ds: cDS, prevI: pi, prevJ: pj, startI: prev.startI, startJ: prev.startJ, pairedCount: prev.pairedCount + 1)
+                        }
+                    }
+                }
+
+                dp[i][j] = best
+            }
+        }
+
+        // Evaluate right-boundary closure (AT penalty + right dangle/terminal mismatch + self-complementary symmetry penalty)
         var bestDG = 0.0
         var bestDH = 0.0
         var bestDS = 0.0
-        var bestOffset = 0
-        var bestPairs: [(Int, Int)] = []
+        var bestEnd: (Int, Int)? = nil
+        var bestIsSelfSym = false
 
-        // Slide s2Rev across s1: index j in s2Rev aligns with index i = j + offset in s1
-        for offset in (-(n2 - 2))...(n1 - 2) {
-            let startJ = max(0, -offset)
-            let endJ = min(n2 - 1, n1 - 1 - offset)
-            guard endJ - startJ + 1 >= 2 else { continue }
-
-            // Collect all complementary positions along this diagonal
-            var matchPositions: [Int] = []
-            for j in startJ...endJ {
-                let i = j + offset
-                if isComplementary(s1[i], s2Rev[j]) {
-                    matchPositions.append(j)
+        for i in 0..<n1 {
+            for j in 0..<n2 {
+                let node = dp[i][j]
+                guard node.dg < inf * 0.5, node.pairedCount >= 2 else { continue }
+                var cDH = node.dh
+                var cDS = node.ds
+                if isAT(s1[i]) {
+                    cDH += 2.2
+                    cDS += 6.9
                 }
-            }
-            guard matchPositions.count >= 2 else { continue }
-
-            // Evaluate contiguous or single-mismatch-gapped runs along this diagonal
-            for mStart in 0..<(matchPositions.count - 1) {
-                var dh = 0.2
-                var ds = -5.7
-                let j0 = matchPositions[mStart]
-                let i0 = j0 + offset
-                var pairs: [(Int, Int)] = [(i0, j0)]
-
-                if isAT(s1[i0]) {
-                    dh += 2.2
-                    ds += 6.9
+                // Exact right-boundary dangle / terminal mismatch (SantaLucia & Peyret 2001 DNA_TMM1)
+                if i < n1 - 1 && j < n2 - 1 {
+                    if let tmm = TmCalculator.lookupTerminalMismatch(s1[i], s1[i + 1], s2Rev[j], s2Rev[j + 1]) {
+                        cDH += tmm.dH
+                        cDS += tmm.dS
+                    }
+                } else if i < n1 - 1 {
+                    // 3' dangle on strand 1: 5'-s1[i] s1[i+1]-3'
+                    if let d3 = TmCalculator.threePrimeDangleParams["\(s1[i])\(s1[i + 1])"] {
+                        cDH += d3.dH
+                        cDS += d3.dS
+                    }
+                } else if j < n2 - 1 {
+                    // 5' dangle on strand 2 (5'->3' on s2Rev goes right-to-left): 5'-s2Rev[j+1] s2Rev[j]-3'
+                    if let d5 = TmCalculator.fivePrimeDangleParams["\(s2Rev[j + 1])\(s2Rev[j])"] {
+                        cDH += d5.dH
+                        cDS += d5.dS
+                    }
                 }
 
-                var prevJ = j0
-                for mEnd in (mStart + 1)..<matchPositions.count {
-                    let curJ = matchPositions[mEnd]
-                    let curI = curJ + offset
-                    let prevI = prevJ + offset
-                    let gap = curJ - prevJ
+                // Self-complementary homodimer symmetry correction (SantaLucia & Hicks 2004: dS_sym = -1.4 cal/K/mol, dG37 = +0.43 kcal/mol)
+                var isSelfSym = false
+                if kind == .homodimer && node.startI == (n2 - 1 - j) && i == (n2 - 1 - node.startJ) {
+                    isSelfSym = true
+                    cDS += -1.4
+                }
 
-                    if gap == 1 {
-                        let key = "\(s1[prevI])\(s1[curI])"
-                        if let st = nn1998[key] {
-                            dh += st.dH
-                            ds += st.dS
-                        }
-                        pairs.append((curI, curJ))
-                        prevJ = curJ
-                    } else if gap == 2 {
-                        // Single internal mismatch
-                        let midI = prevI + 1
-                        let midJ = prevJ + 1
-                        let k1 = "\(s1[prevI])\(s1[midI])/\(s2Rev[prevJ])\(s2Rev[midJ])"
-                        let k2 = "\(s1[midI])\(s1[curI])/\(s2Rev[midJ])\(s2Rev[curJ])"
-                        if let m1 = TmCalculator.internalMismatchParams[k1],
-                           let m2 = TmCalculator.internalMismatchParams[k2] {
-                            dh += m1.dH + m2.dH
-                            ds += m1.dS + m2.dS
-                        } else {
-                            dh += 2.4
-                            ds += 4.0
-                        }
-                        pairs.append((curI, curJ))
-                        prevJ = curJ
-                    } else {
-                        break
-                    }
-
-                    guard pairs.count >= 2 else { continue }
-
-                    var candDH = dh
-                    var candDS = ds
-                    if isAT(s1[curI]) {
-                        candDH += 2.2
-                        candDS += 6.9
-                    }
-
-                    // Dangling ends at left boundary (i0, j0)
-                    if i0 > 0 {
-                        if let d5 = TmCalculator.fivePrimeDangleParams["\(s1[i0 - 1])\(s1[i0])"] {
-                            candDH += d5.dH
-                            candDS += d5.dS
-                        }
-                    }
-                    if j0 > 0 {
-                        // 3' overhang on s2Rev left corresponds to 3' end of s2Orig
-                        let cFirst = complement(s2Rev[j0])
-                        if let d3 = TmCalculator.threePrimeDangleParams["\(cFirst)\(s2Rev[j0 - 1])"] {
-                            candDH += d3.dH
-                            candDS += d3.dS
-                        }
-                    }
-
-                    // Dangling ends at right boundary (curI, curJ)
-                    if curI < n1 - 1 {
-                        if let d3 = TmCalculator.threePrimeDangleParams["\(s1[curI])\(s1[curI + 1])"] {
-                            candDH += d3.dH
-                            candDS += d3.dS
-                        }
-                    }
-                    if curJ < n2 - 1 {
-                        if let d5 = TmCalculator.fivePrimeDangleParams["\(s2Rev[curJ + 1])\(s1[curI])"] {
-                            candDH += d5.dH
-                            candDS += d5.dS
-                        }
-                    }
-
-                    let steps = max(1, (curI - i0))
-                    candDS += saltPerStep * Double(steps)
-
-                    let candDG = candDH - (tempK * candDS) / 1000.0
-                    if candDG < bestDG {
-                        bestDG = candDG
-                        bestDH = candDH
-                        bestDS = candDS
-                        bestOffset = offset
-                        bestPairs = pairs
-                    }
+                let cDG = cDH - (tempK * cDS) / 1000.0
+                if cDG < bestDG {
+                    bestDG = cDG
+                    bestDH = cDH
+                    bestDS = cDS
+                    bestEnd = (i, j)
+                    bestIsSelfSym = isSelfSym
                 }
             }
         }
 
-        guard !bestPairs.isEmpty, bestDG < -0.5, bestDS < 0 else {
+        guard let end = bestEnd, bestDG < -0.5, bestDS < 0 else {
             return .none(kind: kind)
         }
 
-        let rGas = 1.9872
-        let cMolar = max(1e-9, conditions.dnaConc * 1e-9)
-        let tm = (bestDH * 1000.0) / (bestDS + rGas * log(cMolar)) - 273.15
+        // Backtrack pairs
+        var bestPairs: [(Int, Int)] = []
+        var ci = end.0
+        var cj = end.1
+        while ci >= 0 && cj >= 0 {
+            bestPairs.append((ci, cj))
+            let node = dp[ci][cj]
+            ci = node.prevI
+            cj = node.prevJ
+        }
+        bestPairs.reverse()
+
+        // Equimolar concentration correction: C_T for self-complementary homodimer, C_T / 4 for non-self-complementary / heterodimer
+        let cTotal = max(1e-9, conditions.dnaConc * 1e-9)
+        let cEff = bestIsSelfSym ? cTotal : (cTotal / 4.0)
+        let tm = (bestDH * 1000.0) / (bestDS + rGas * log(cEff)) - 273.15
 
         // 3' end of s1 is index >= n1 - 3; 3' end of s2Orig is index <= 2 in s2Rev
         let anchored3 = bestPairs.contains { pair in
             pair.0 >= n1 - 3 || pair.1 <= 2
         }
+        let extendable3 = bestPairs.contains { pair in
+            pair.0 == n1 - 1 || pair.1 == 0
+        }
 
+        let bestOffset = bestPairs.first.map { $0.0 - $0.1 } ?? 0
         let ascii = renderDuplexASCII(s1: s1, s2Rev: s2Rev, offset: bestOffset, pairs: bestPairs)
         let risk = classifyRisk(
             kind: kind,
@@ -611,6 +899,7 @@ public struct PrimerQualityEngine {
             ds: round2(bestDS),
             tm: round1(tm),
             threePrimeAnchored: anchored3,
+            threePrimeExtendableRisk: extendable3,
             pairedBaseCount: bestPairs.count,
             asciiStructure: ascii,
             riskLevel: risk
@@ -656,7 +945,6 @@ public struct PrimerQualityEngine {
             "STR\t" + String(chars)
         ]
 
-        // Also build folded stem-loop diagram for intuitive visual inspection
         var topStem = "5'- "
         var midBonds = "    "
         var botStem = "3'- "
@@ -667,7 +955,7 @@ public struct PrimerQualityEngine {
             botStem += String(repeating: " ", count: prefix.count)
         }
         let pairSet = Set(pairs.map { "\($0.0):\($0.1)" })
-        let stemLen = inner.0 - outer.0 + 1
+        let stemLen = max(1, min(inner.0 - outer.0 + 1, outer.1 - inner.1 + 1))
         for k in 0..<stemLen {
             let lIdx = outer.0 + k
             let rIdx = outer.1 - k

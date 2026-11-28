@@ -240,9 +240,14 @@ public struct SangerAlignmentEngine {
             let count = min(entry.numElements, bytes.count / 2)
             var arr: [Int] = []
             arr.reserveCapacity(count)
+            let isUnsigned16 = (entry.elemType == 5) // ABIF elemType 5 = unsigned short (UInt16)
             for i in 0..<count {
-                let v = Int(readInt16BE(bytes, i * 2))
-                arr.append(max(0, v))
+                if isUnsigned16 {
+                    arr.append(Int(readUInt16BE(bytes, i * 2)))
+                } else {
+                    let v = Int(readInt16BE(bytes, i * 2))
+                    arr.append(max(0, v))
+                }
             }
             return arr
         }
@@ -271,8 +276,14 @@ public struct SangerAlignmentEngine {
               let rawBaseStr = String(data: pbasBytes, encoding: .ascii) else {
             return nil
         }
-        let validBases = Set("ACGTNacgtn")
-        let cleanBases = rawBaseStr.uppercased().filter { validBases.contains($0) }
+        let standardBases = Set("ACGTN")
+        let iupacAmbiguous = Set("RYSWKMBDHV")
+        // 保留与 PLOC/PCON 严格 1:1 位置对齐：IUPAC 简并碱基映射为 N 而非直接删除
+        let cleanBases = String(rawBaseStr.uppercased().compactMap { ch -> Character? in
+            if standardBases.contains(ch) { return ch }
+            if iupacAmbiguous.contains(ch) { return "N" }
+            return nil
+        })
         guard !cleanBases.isEmpty else { return nil }
 
         // 4. 读取 Peak Locations (PLOC#1 或 PLOC#2)
@@ -331,20 +342,56 @@ public struct SangerAlignmentEngine {
         filePath: String? = nil,
         trimQualityThreshold: Int = 20
     ) -> ChromatogramRecord {
-        let lines = rawText.components(separatedBy: .newlines)
+        let lines = rawText.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         var headerName = sampleName
-        var bodyLines: [String] = []
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix(">") {
-                let h = String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces)
-                if !h.isEmpty { headerName = h }
-            } else {
-                bodyLines.append(trimmed)
-            }
-        }
+        var cleanSeq = ""
+        var parsedFastqQuals: [Int]? = nil
         let valid = Set("ACGTN")
-        let cleanSeq = String(bodyLines.joined().uppercased().filter { valid.contains($0) })
+
+        // 支持标准 4 行 FASTQ (@header / seq / + / Phred+33 quality)
+        if lines.count >= 4 && lines[0].hasPrefix("@") && lines[2].hasPrefix("+") {
+            let h = String(lines[0].dropFirst()).trimmingCharacters(in: .whitespaces)
+            if !h.isEmpty { headerName = h }
+            let seqChars = Array(lines[1].uppercased())
+            let qualBytes = Array(lines[3].utf8)
+            var keptSeq: [Character] = []
+            var keptQ: [Int] = []
+            for (idx, ch) in seqChars.enumerated() where valid.contains(ch) {
+                keptSeq.append(ch)
+                let q = idx < qualBytes.count ? max(0, Int(qualBytes[idx]) - 33) : 20
+                keptQ.append(q)
+            }
+            cleanSeq = String(keptSeq)
+            parsedFastqQuals = keptQ
+        } else {
+            var bodyLines: [String] = []
+            for line in lines {
+                if line.hasPrefix(">") {
+                    let h = String(line.dropFirst()).trimmingCharacters(in: .whitespaces)
+                    if !h.isEmpty { headerName = h }
+                } else {
+                    bodyLines.append(line)
+                }
+            }
+            cleanSeq = String(bodyLines.joined().uppercased().filter { valid.contains($0) })
+        }
+
+        if let fqQuals = parsedFastqQuals, !cleanSeq.isEmpty {
+            let peakLocs = (0..<cleanSeq.count).map { $0 * 10 + 5 }
+            return buildChromatogramRecord(
+                sampleName: headerName,
+                filePath: filePath,
+                isBinaryAB1: false,
+                rawSequence: cleanSeq,
+                peakLocations: peakLocs,
+                qualities: fqQuals,
+                traceA: [],
+                traceC: [],
+                traceG: [],
+                traceT: [],
+                trimQualityThreshold: trimQualityThreshold
+            )
+        }
         let syntheticData = generateSyntheticAB1Data(sequence: cleanSeq, sampleName: headerName)
         if let rec = parseABIFBinary(syntheticData, fallbackSampleName: headerName, filePath: filePath, trimQualityThreshold: trimQualityThreshold) {
             return ChromatogramRecord(
@@ -430,24 +477,24 @@ public struct SangerAlignmentEngine {
             peakList.append((b, tIdx, primarySig, secBase, (ratio * 100).rounded() / 100.0, qScore))
         }
 
-        // 滑动窗口修剪 5' 与 3' 低质量端 (首尾边界碱基 Q >= trimQualityThreshold 且 10bp 窗口平均 Q >= trimQualityThreshold)
-        let winSize = min(10, max(1, n / 4))
+        // Phred 官方 Mott's Modified Quality Trimming 算法：s_i = 10^(-Q_cutoff/10) - 10^(-Q_i/10)
+        // 寻找最大累积和连续区间；若全读段质量均低于阈值 (bestSum <= 0)，则整段修剪 (trimStart == trimEnd == 0)
+        let errorCutoff = pow(10.0, -Double(max(1, trimQualityThreshold)) / 10.0)
+        var runningSum = 0.0
+        var runningStart = 0
+        var bestSum = 0.0
         var trimStart = 0
-        var trimEnd = n
-        if n > winSize * 2 {
-            for i in 0..<(n - winSize) {
-                let avg = Double(finalQualities[i..<(i + winSize)].reduce(0, +)) / Double(winSize)
-                if finalQualities[i] >= trimQualityThreshold && avg >= Double(trimQualityThreshold) {
-                    trimStart = i
-                    break
-                }
-            }
-            for i in stride(from: n, through: trimStart + winSize, by: -1) {
-                let avg = Double(finalQualities[(i - winSize)..<i].reduce(0, +)) / Double(winSize)
-                if finalQualities[i - 1] >= trimQualityThreshold && avg >= Double(trimQualityThreshold) {
-                    trimEnd = i
-                    break
-                }
+        var trimEnd = 0
+        for i in 0..<n {
+            let errProb = pow(10.0, -Double(max(0, finalQualities[i])) / 10.0)
+            runningSum += (errorCutoff - errProb)
+            if runningSum <= 0.0 {
+                runningSum = 0.0
+                runningStart = i + 1
+            } else if runningSum > bestSum {
+                bestSum = runningSum
+                trimStart = runningStart
+                trimEnd = i + 1
             }
         }
 
@@ -665,14 +712,16 @@ public struct SangerAlignmentEngine {
         }
 
         let qLen = orientedQuery.count
-        let refWindowStart0 = max(0, min(doubledRef.count - qLen, chosenSeed.estimatedRefStart0))
-        let refWindowEnd0 = min(doubledRef.count, refWindowStart0 + qLen + 12)
+        let slicePad = 32
+        let refWindowStart0 = max(0, min(doubledRef.count - qLen, chosenSeed.estimatedRefStart0 - slicePad))
+        let refWindowEnd0 = min(doubledRef.count, chosenSeed.estimatedRefStart0 + qLen + slicePad)
         let refChars = Array(doubledRef)
         let refSlice = Array(refChars[refWindowStart0..<refWindowEnd0])
         let qChars = Array(orientedQuery)
 
-        // 2. 带状全局-半全局比对 (允许末端悬垂与内部 SNP / Indel)
-        let alignedPairs = bandedSemiGlobalAlign(refSlice: refSlice, querySlice: qChars)
+        // 2. 带状全局-半全局比对 (Gotoh 仿射空位，返回实际参考起始偏移 refStartOffset 以精确对齐 ±32bp 切片边距)
+        let alignResult = bandedSemiGlobalAlign(refSlice: refSlice, querySlice: qChars)
+        let alignedPairs = alignResult.pairs
 
         // 3. 构建逐位点比对列与变异清单
         var columns: [AlignedColumn] = []
@@ -683,7 +732,7 @@ public struct SangerAlignmentEngine {
         var deletionCount = 0
         var doublePeakCount = 0
 
-        var curRef0 = refWindowStart0
+        var curRef0 = refWindowStart0 + alignResult.refStartOffset
         var curQuery0 = 0
         var firstMatchedRef1: Int?
         var lastMatchedRef1: Int?
@@ -767,25 +816,15 @@ public struct SangerAlignmentEngine {
                 )
             )
 
-            if eventKind != .match {
+            if eventKind == .mismatchSNP || eventKind == .doublePeak {
                 let hgvs: String
                 let impact: String
-                switch eventKind {
-                case .mismatchSNP:
+                if eventKind == .mismatchSNP {
                     hgvs = "g.\(wrappedRef1)\(rChar)>\(qChar)"
                     impact = inferCodonImpact(refChars: Array(cleanRef), refPos1Based: wrappedRef1, newBase: qChar, cdsStart1Based: cdsStart1Based)
-                case .insertion:
-                    hgvs = "g.\(wrappedRef1)ins\(qChar)"
-                    impact = L10n.t("单碱基插入（若位于 CDS 区将导致 3n+1 移码突变）")
-                case .deletion:
-                    hgvs = "g.\(wrappedRef1)del\(rChar)"
-                    impact = L10n.t("单碱基缺失（若位于 CDS 区将导致 3n-1 移码突变）")
-                case .doublePeak:
+                } else {
                     hgvs = "g.\(wrappedRef1)\(rChar)/\(secBase ?? "N")"
                     impact = L10n.tr("主峰 \(qChar) 伴随 \(Int((secRatio * 100).rounded()))% 次峰 \(secBase ?? "N")（提示菌落不纯或杂合突变）", "Primary peak \(qChar) with \(Int((secRatio * 100).rounded()))% secondary \(secBase ?? "N") (mixed colony or heterozygote)")
-                case .match:
-                    hgvs = ""
-                    impact = ""
                 }
                 variants.append(
                     VariantCall(
@@ -802,6 +841,57 @@ public struct SangerAlignmentEngine {
                 )
             }
         }
+
+        // 将连续插入或缺失列合并坍缩为单个多碱基 Indel 变异事件（区分 3n 整码 vs 移码）
+        var cIdx = 0
+        while cIdx < columns.count {
+            let k = columns[cIdx].eventKind
+            if k == .insertion || k == .deletion {
+                let startIdx = cIdx
+                var bases = ""
+                var minQ = columns[cIdx].phredQuality
+                while cIdx < columns.count && columns[cIdx].eventKind == k {
+                    bases.append(k == .insertion ? columns[cIdx].readBase : columns[cIdx].refBase)
+                    minQ = min(minQ, columns[cIdx].phredQuality)
+                    cIdx += 1
+                }
+                let firstCol = columns[startIdx]
+                let lastCol = columns[cIdx - 1]
+                let len = bases.count
+                let hgvs: String
+                let impact: String
+                if k == .insertion {
+                    let prevRef1 = firstCol.refPos1Based > 1 ? (firstCol.refPos1Based - 1) : refLen
+                    hgvs = "g.\(prevRef1)_\(firstCol.refPos1Based)ins\(bases)"
+                    impact = (len % 3 == 0)
+                        ? L10n.tr("\(len) bp 整码插入 (In-frame insertion)", "\(len) bp in-frame insertion")
+                        : L10n.tr("\(len) bp 插入（若位于 CDS 区将导致移码突变）", "\(len) bp insertion (frameshift if within CDS)")
+                } else {
+                    hgvs = (len == 1)
+                        ? "g.\(firstCol.refPos1Based)del\(bases)"
+                        : "g.\(firstCol.refPos1Based)_\(lastCol.refPos1Based)del\(bases)"
+                    impact = (len % 3 == 0)
+                        ? L10n.tr("\(len) bp 整码缺失 (In-frame deletion)", "\(len) bp in-frame deletion")
+                        : L10n.tr("\(len) bp 缺失（若位于 CDS 区将导致移码突变）", "\(len) bp deletion (frameshift if within CDS)")
+                }
+                variants.append(
+                    VariantCall(
+                        id: "\(firstCol.refPos1Based)-indel-\(startIdx)",
+                        refPos1Based: firstCol.refPos1Based,
+                        readPos1Based: firstCol.readPos1Based,
+                        traceSampleIndex: firstCol.traceSampleIndex,
+                        kind: k,
+                        hgvsNotation: hgvs,
+                        codonImpactNote: impact,
+                        phredQuality: minQ,
+                        secondaryRatio: firstCol.secondaryRatio
+                    )
+                )
+            } else {
+                cIdx += 1
+            }
+        }
+        variants.sort { ($0.refPos1Based, $0.id) < ($1.refPos1Based, $1.id) }
 
         let alignedLen = max(1, columns.count)
         let identity = (Double(matchCount) * 1000.0 / Double(alignedLen)).rounded() / 10.0
@@ -879,73 +969,109 @@ public struct SangerAlignmentEngine {
             }
         }
 
-        guard let best = offsetVotes.max(by: { $0.value < $1.value }) else {
+        guard let best = offsetVotes.max(by: { $0.value != $1.value ? $0.value < $1.value : $0.key > $1.key }) else {
             return (0, 0)
         }
         return (best.key, best.value)
     }
 
+    /// Gotoh (1982) 仿射空位罚分带状半全局比对 (g_open = -6, g_extend = -1，允许参考序列 5'/3' 自由悬垂)
     private static func bandedSemiGlobalAlign(
         refSlice: [Character],
         querySlice: [Character]
-    ) -> [(ref: Character, query: Character)] {
+    ) -> (refStartOffset: Int, pairs: [(ref: Character, query: Character)]) {
         let m = refSlice.count
         let n = querySlice.count
-        guard m > 0 && n > 0 else { return [] }
+        guard m > 0 && n > 0 else { return (0, []) }
 
         let matchScore = 3
         let mismatchScore = -2
-        let gapPenalty = -4
-        let band = max(16, abs(m - n) + 12)
+        let gapOpen = -6
+        let gapExtend = -1
+        let band = max(24, abs(m - n) + 20)
 
         let negInf = -1_000_000
-        var dp = Array(repeating: Array(repeating: negInf, count: n + 1), count: m + 1)
-        var trace = Array(repeating: Array(repeating: UInt8(0), count: n + 1), count: m + 1)
-        // Reference 5' leading gaps free (semi-global on ref start)
+        // 3 状态 DP: M (match/mismatch), D (deletion in query, ref moves), I (insertion in query, query moves)
+        var matM = Array(repeating: Array(repeating: negInf, count: n + 1), count: m + 1)
+        var matD = Array(repeating: Array(repeating: negInf, count: n + 1), count: m + 1)
+        var matI = Array(repeating: Array(repeating: negInf, count: n + 1), count: m + 1)
+        // 回溯来源: 0 = from M, 1 = from D, 2 = from I
+        var trM = Array(repeating: Array(repeating: UInt8(0), count: n + 1), count: m + 1)
+        var trD = Array(repeating: Array(repeating: UInt8(0), count: n + 1), count: m + 1)
+        var trI = Array(repeating: Array(repeating: UInt8(0), count: n + 1), count: m + 1)
+
+        // 参考序列 5' 端允许任意免费起跳 (semi-global on ref start)
         for i in 0...min(m, band) {
-            dp[i][0] = 0
-            trace[i][0] = 1
+            matM[i][0] = 0
         }
         for j in 1...min(n, band) {
-            dp[0][j] = j * gapPenalty
-            trace[0][j] = 2
+            matI[0][j] = gapOpen + (j - 1) * gapExtend
+            trI[0][j] = (j == 1) ? 0 : 2
         }
 
         for i in 1...m {
             let jMin = max(1, i - band)
             let jMax = min(n, i + band)
             for j in jMin...jMax {
-                let sDiag = dp[i - 1][j - 1] + (refSlice[i - 1] == querySlice[j - 1] ? matchScore : mismatchScore)
-                let sUp = dp[i - 1][j] + gapPenalty      // deletion in query
-                let sLeft = dp[i][j - 1] + gapPenalty    // insertion in query
-
-                if sDiag >= sUp && sDiag >= sLeft {
-                    dp[i][j] = sDiag
-                    trace[i][j] = 0
-                } else if sUp >= sLeft {
-                    dp[i][j] = sUp
-                    trace[i][j] = 1
+                // D[i][j]: deletion in query (consume refSlice[i-1])
+                let dFromM = matM[i - 1][j] + gapOpen
+                let dFromD = matD[i - 1][j] + gapExtend
+                if dFromM >= dFromD {
+                    matD[i][j] = dFromM
+                    trD[i][j] = 0
                 } else {
-                    dp[i][j] = sLeft
-                    trace[i][j] = 2
+                    matD[i][j] = dFromD
+                    trD[i][j] = 1
+                }
+
+                // I[i][j]: insertion in query (consume querySlice[j-1])
+                let iFromM = matM[i][j - 1] + gapOpen
+                let iFromI = matI[i][j - 1] + gapExtend
+                if iFromM >= iFromI {
+                    matI[i][j] = iFromM
+                    trI[i][j] = 0
+                } else {
+                    matI[i][j] = iFromI
+                    trI[i][j] = 2
+                }
+
+                // M[i][j]: align refSlice[i-1] with querySlice[j-1]
+                let sub = (refSlice[i - 1] == querySlice[j - 1]) ? matchScore : mismatchScore
+                let prevM = matM[i - 1][j - 1]
+                let prevD = matD[i - 1][j - 1]
+                let prevI = matI[i - 1][j - 1]
+                if prevM >= prevD && prevM >= prevI {
+                    matM[i][j] = prevM + sub
+                    trM[i][j] = 0
+                } else if prevD >= prevI {
+                    matM[i][j] = prevD + sub
+                    trM[i][j] = 1
+                } else {
+                    matM[i][j] = prevI + sub
+                    trM[i][j] = 2
                 }
             }
         }
 
-        // 选取 query 完全比对完 (j = n) 时得分最高的 ref 终点 i
+        // 选取 query 完全比对完 (j = n) 时得分最高的 ref 终点 i 与状态
         var bestI = min(m, n)
+        var bestState: UInt8 = 0
         var bestScore = negInf
-        for i in max(1, n - band)...min(m, n + band) {
-            if dp[i][n] > bestScore {
-                bestScore = dp[i][n]
-                bestI = i
+        let iLo = max(1, n - band)
+        let iHi = min(m, n + band)
+        if iLo <= iHi {
+            for i in iLo...iHi {
+                if matM[i][n] > bestScore { bestScore = matM[i][n]; bestI = i; bestState = 0 }
+                if matD[i][n] > bestScore { bestScore = matD[i][n]; bestI = i; bestState = 1 }
+                if matI[i][n] > bestScore { bestScore = matI[i][n]; bestI = i; bestState = 2 }
             }
         }
 
         var i = bestI
         var j = n
+        var state = bestState
         var aligned: [(ref: Character, query: Character)] = []
-        aligned.reserveCapacity(n + 8)
+        aligned.reserveCapacity(n + 16)
 
         while j > 0 {
             if i == 0 {
@@ -953,20 +1079,25 @@ public struct SangerAlignmentEngine {
                 j -= 1
                 continue
             }
-            let dir = trace[i][j]
-            if dir == 0 {
+            if state == 0 {
+                let prev = trM[i][j]
                 aligned.append((refSlice[i - 1], querySlice[j - 1]))
                 i -= 1
                 j -= 1
-            } else if dir == 1 {
+                state = prev
+            } else if state == 1 {
+                let prev = trD[i][j]
                 aligned.append((refSlice[i - 1], "-"))
                 i -= 1
+                state = prev
             } else {
+                let prev = trI[i][j]
                 aligned.append(("-", querySlice[j - 1]))
                 j -= 1
+                state = prev
             }
         }
-        return aligned.reversed()
+        return (i, aligned.reversed())
     }
 
     private static func inferCodonImpact(

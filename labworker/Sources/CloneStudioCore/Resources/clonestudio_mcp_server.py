@@ -117,16 +117,16 @@ NN_DH_2004 = {
     "CA": -8.5, "TG": -8.5, "GT": -8.4, "AC": -8.4,
     "CT": -7.8, "AG": -7.8, "GA": -8.2, "TC": -8.2,
     "CG": -10.6, "GC": -9.8, "GG": -8.0, "CC": -8.0,
-    "AI": -8.3, "IA": -4.9, "CI": -5.4, "IC": -5.0,
-    "GI": -6.8, "IG": -7.6, "TI": -3.4, "IT": -6.5, "II": -3.3
+    "AI": -8.9, "IA": -4.9, "CI": -5.4, "IC": -5.0,
+    "GI": -6.8, "IG": -8.3, "TI": -5.9, "IT": -8.8, "II": -3.3
 }
 NN_DS_2004 = {
     "AA": -21.3, "TT": -21.3, "AT": -20.4, "TA": -21.3,
     "CA": -22.7, "TG": -22.7, "GT": -22.4, "AC": -22.4,
     "CT": -21.0, "AG": -21.0, "GA": -22.2, "TC": -22.2,
     "CG": -27.2, "GC": -24.4, "GG": -19.9, "CC": -19.9,
-    "AI": -25.0, "IA": -15.8, "CI": -13.7, "IC": -12.6,
-    "GI": -19.1, "IG": -22.0, "TI": -11.2, "IT": -22.0, "II": -11.9
+    "AI": -25.5, "IA": -13.9, "CI": -13.7, "IC": -12.6,
+    "GI": -19.1, "IG": -23.8, "TI": -17.4, "IT": -25.4, "II": -11.9
 }
 
 IUPAC_EXPANSION = {
@@ -173,7 +173,33 @@ INTERNAL_MISMATCH_PARAMS = {
     "CA/GA": (-0.9, -4.2), "GA/CA": (-2.9, -9.8), "TA/AA": (4.7, 12.9),   "AC/TC": (0.0, -4.4),
     "CC/GC": (-1.5, -7.2), "GC/CC": (3.6, 8.9),   "TC/AC": (6.1, 16.4),   "AG/TG": (-3.1, -9.5),
     "CG/GG": (-4.9, -15.3),"GG/CG": (-6.0, -15.8),"TG/AG": (1.6, 3.6),    "AT/TT": (-2.7, -10.8),
-    "CT/GT": (-5.0, -15.8),"GT/CT": (-2.2, -8.4), "TT/AT": (0.2, -1.5)
+    "CT/GT": (-5.0, -15.8),"GT/CT": (-2.2, -8.4), "TT/AT": (0.2, -1.5),
+    # Watkins & SantaLucia (2005) NAR 33:6258-6267 Table 2 (36 inosine entries)
+    "AI/TC": (-8.9, -25.5), "TI/AC": (-5.9, -17.4), "AC/TI": (-8.8, -25.4), "TC/AI": (-4.9, -13.9),
+    "CI/GC": (-5.4, -13.7), "GI/CC": (-6.8, -19.1), "CC/GI": (-8.3, -23.8), "GC/CI": (-5.0, -12.6),
+    "AI/TA": (-8.3, -25.0), "TI/AA": (-3.4, -11.2), "AA/TI": (-0.7, -2.6),  "TA/AI": (-1.3, -4.6),
+    "CI/GA": (2.6, 8.9),    "GI/CA": (-7.8, -21.1), "CA/GI": (-7.0, -20.0), "GA/CI": (-7.6, -20.2),
+    "AI/TT": (0.49, -0.7),  "TI/AT": (-6.5, -22.0), "AT/TI": (-5.6, -18.7), "TT/AI": (-0.8, -4.3),
+    "CI/GT": (-1.0, -2.4),  "GI/CT": (-3.5, -10.6), "CT/GI": (0.1, -1.0),   "GT/CI": (-4.3, -12.1),
+    "AI/TG": (-4.9, -15.8), "TI/AG": (-1.9, -8.5),  "AG/TI": (0.1, -1.8),   "TG/AI": (1.0, 1.0),
+    "CI/GG": (7.1, 21.3),   "GI/CG": (-1.1, -3.2),  "CG/GI": (5.8, 16.9),   "GG/CI": (-7.6, -22.0),
+    "AI/TI": (-3.3, -11.9), "TI/AI": (0.1, -2.3),   "CI/GI": (1.3, 3.0),    "GI/CI": (-0.5, -1.3),
+}
+
+# SantaLucia & Peyret (2001) DNA_TMM1 terminal mismatch / hairpin & internal loop closing table (48 entries)
+TERMINAL_MISMATCH_PARAMS = {
+    "AA/TA": (-3.1, -7.8),  "TA/AA": (-2.5, -6.3),  "CA/GA": (-4.3, -10.7), "GA/CA": (-8.0, -22.5),
+    "AC/TC": (-0.1, 0.5),   "TC/AC": (-0.7, -1.3),  "CC/GC": (-2.1, -5.1),  "GC/CC": (-3.9, -10.6),
+    "AG/TG": (-1.1, -2.1),  "TG/AG": (-1.1, -2.7),  "CG/GG": (-3.8, -9.5),  "GG/CG": (-6.7, -19.2),
+    "AT/TT": (-2.4, -6.5),  "TT/AT": (-3.2, -8.9),  "CT/GT": (-6.1, -16.9), "GT/CT": (-7.4, -21.2),
+    "AA/TC": (-1.6, -4.0),  "AC/TA": (-1.8, -3.8),  "CA/GC": (-2.6, -5.9),  "CC/GA": (-2.7, -6.0),
+    "GA/CC": (-5.0, -13.8), "GC/CA": (-3.2, -7.1),  "TA/AC": (-2.3, -5.9),  "TC/AA": (-2.7, -7.0),
+    "AC/TT": (-0.9, -1.7),  "AT/TC": (-2.3, -6.3),  "CC/GT": (-3.2, -8.0),  "CT/GC": (-3.9, -10.6),
+    "GC/CT": (-4.9, -13.5), "GT/CC": (-3.0, -7.8),  "TC/AT": (-2.5, -6.3),  "TT/AC": (-0.7, -1.2),
+    "AA/TG": (-1.9, -4.4),  "AG/TA": (-2.5, -5.9),  "CA/GG": (-3.9, -9.6),  "CG/GA": (-6.0, -15.5),
+    "GA/CG": (-4.3, -11.1), "GG/CA": (-4.6, -11.4), "TA/AG": (-2.0, -4.7),  "TG/AA": (-2.4, -5.8),
+    "AG/TT": (-3.2, -8.7),  "AT/TG": (-3.5, -9.4),  "CG/GT": (-3.8, -9.0),  "CT/GG": (-6.6, -18.7),
+    "GG/CT": (-5.7, -15.9), "GT/CG": (-5.9, -16.1), "TG/AT": (-3.9, -10.5), "TT/AG": (-3.6, -9.8),
 }
 
 def _lookup_dinuc_iupac(b1: str, b2: str) -> tuple:
@@ -192,7 +218,7 @@ def _terminal_at_iupac(b: str) -> tuple:
     exp = IUPAC_EXPANSION.get(b, ["A"])
     s_dh, s_ds = 0.0, 0.0
     for c in exp:
-        if c in ("A", "T", "I"):
+        if c in ("A", "T"):
             s_dh += 2.2
             s_ds += 6.9
     n = max(1, len(exp))
@@ -229,6 +255,83 @@ def equivalent_monovalent_molar(mv_conc: float = 50.0, dv_conc: float = 0.0, dnt
     eq_mm = max(1.0, float(mv_conc)) + 120.0 * math.sqrt(free_mg)
     return max(0.001, eq_mm / 1000.0)
 
+
+def free_mg_molar(mg_molar: float, dntp_molar: float, ka: float = 3.0e4) -> float:
+    """Owczarzy et al. (2008) 游离 Mg2+ 二次螯合平衡解 (单位: M)"""
+    mg = max(0.0, float(mg_molar))
+    dntp = max(0.0, float(dntp_molar))
+    if mg <= 0.0:
+        return 0.0
+    if dntp <= 0.0:
+        return mg
+    b = ka * (dntp - mg) + 1.0
+    disc = max(0.0, b * b + 4.0 * ka * mg)
+    return max(0.0, (-b + math.sqrt(disc)) / (2.0 * ka))
+
+
+def apply_owczarzy_salt_correction(
+    tm_1m_kelvin: float,
+    length: int,
+    gc_fraction: float,
+    monovalent_molar: float,
+    free_mg: float,
+    mode: str = "owczarzy2008",
+) -> float:
+    """Owczarzy et al. (2004/2008) 单价/混合/二价阳离子三区段盐校正 (100% 对齐 TmCalculator.swift)"""
+    if tm_1m_kelvin <= 0 or length < 2:
+        return tm_1m_kelvin
+    m = max(1e-6, float(monovalent_molar))
+    d = max(0.0, float(free_mg))
+    f_gc = max(0.0, min(1.0, float(gc_fraction)))
+    ln_m = math.log(m)
+
+    def _inv_mono() -> float:
+        return (1.0 / tm_1m_kelvin) + (4.29 * f_gc - 3.95) * 1e-5 * ln_m + 9.40e-6 * ln_m * ln_m
+
+    if mode == "owczarzy2004" or d <= 0.0:
+        return 1.0 / _inv_mono()
+
+    r_ratio = math.sqrt(d) / m
+    if r_ratio < 0.22:
+        return 1.0 / _inv_mono()
+
+    a = 3.92e-5
+    b = -9.11e-6
+    c = 6.26e-5
+    d_coef = 1.42e-5
+    e = -4.82e-4
+    f = 5.25e-4
+    g = 8.31e-5
+    if r_ratio < 6.0:
+        a *= (0.843 - 0.352 * math.sqrt(m) * ln_m)
+        d_coef *= (1.279 - 4.03e-3 * ln_m - 8.03e-3 * ln_m * ln_m)
+        g *= (0.486 - 0.258 * ln_m + 5.25e-3 * ln_m * ln_m * ln_m)
+
+    ln_d = math.log(d)
+    inv_tm = (
+        (1.0 / tm_1m_kelvin)
+        + a
+        + b * ln_d
+        + f_gc * (c + d_coef * ln_d)
+        + (1.0 / (2.0 * float(length - 1))) * (e + f * ln_d + g * ln_d * ln_d)
+    )
+    return (1.0 / inv_tm) if inv_tm > 0 else tm_1m_kelvin
+
+
+def recommended_annealing_temp(tm_forward: float, tm_reverse: float, polymerase: str = "SnapGene") -> float:
+    lower = min(float(tm_forward), float(tm_reverse))
+    key = str(polymerase or "SnapGene").strip().lower()
+    if "q5" in key:
+        ta = min(72.0, lower + 1.0)
+    elif "phusion" in key:
+        ta = min(72.0, lower + 3.0)
+    elif "taq" in key:
+        ta = max(45.0, lower - 5.0)
+    else:
+        ta = lower
+    return round(ta, 1)
+
+
 def calc_snapgene_tm(
     seq: str,
     five_prime_overhang: str = "",
@@ -237,17 +340,27 @@ def calc_snapgene_tm(
     primer_conc: float = 250e-9,
     mv_conc: float = None,
     dv_conc: float = 0.0,
-    dntp_conc: float = 0.0
+    dntp_conc: float = 0.0,
+    salt_correction: str = "santaLucia2004",
+    concentration_mode: str = "asymmetricExcess",
 ) -> float:
-    """100% aligned with TmCalculator.calculate in TmCalculator.swift (supports IUPAC degenerate bases and optional Mg2+/dNTP equivalent salt)"""
+    """100% aligned with TmCalculator.calculate in TmCalculator.swift (supports SantaLucia 2004 & Owczarzy 2004/2008)"""
     s = normalize_oligo(seq)
     ov5 = normalize_oligo(five_prime_overhang)
     ov3 = normalize_oligo(three_prime_overhang)
     n = len(s)
     if n < 2:
         return 0.0
-    if mv_conc is not None:
-        na_molar = equivalent_monovalent_molar(mv_conc, dv_conc, dntp_conc)
+    if salt_correction == "santaLucia2004":
+        if mv_conc is not None:
+            na_molar = equivalent_monovalent_molar(mv_conc, dv_conc, dntp_conc)
+        elif float(dv_conc) > 0.0:
+            na_molar = equivalent_monovalent_molar(na_molar * 1000.0, dv_conc, dntp_conc)
+        effective_mode = "santaLucia2004"
+    else:
+        if mv_conc is not None:
+            na_molar = max(0.001, float(mv_conc) / 1000.0)
+        effective_mode = salt_correction
     dh = 0.2
     ds = -5.7
     at0 = _terminal_at_iupac(s[0])
@@ -256,7 +369,8 @@ def calc_snapgene_tm(
     at_end = _terminal_at_iupac(s[-1])
     dh += at_end[0]
     ds += at_end[1]
-    if not ov5 and not ov3 and n % 2 == 0 and all(c in "ATCG" for c in s) and s == rev_comp(s):
+    is_self_comp = (not ov5 and not ov3 and n % 2 == 0 and all(c in "ATCG" for c in s) and s == rev_comp(s))
+    if is_self_comp:
         ds += -1.4
     for i in range(n - 1):
         step_dh, step_ds = _lookup_dinuc_iupac(s[i], s[i + 1])
@@ -270,27 +384,75 @@ def calc_snapgene_tm(
         d3_dh, d3_ds = _lookup_dangle3_iupac(s[-1], ov3[0])
         dh += d3_dh
         ds += d3_ds
-    ds += 0.368 * (n - 1) * math.log(max(0.001, na_molar))
+
     r = 1.9872
-    tm_c = (1000.0 * dh) / (ds + r * math.log(max(1e-9, primer_conc))) - 273.15
+    c_eff = max(1e-9, float(primer_conc))
+    if concentration_mode == "equimolar" and not is_self_comp:
+        c_eff = c_eff / 4.0
+
+    if effective_mode == "santaLucia2004":
+        ds_salt = ds + 0.368 * (n - 1) * math.log(max(0.001, na_molar))
+        tm_c = (1000.0 * dh) / (ds_salt + r * math.log(c_eff)) - 273.15
+    else:
+        tm_1m_k = (1000.0 * dh) / (ds + r * math.log(c_eff))
+        gc_w = 0.0
+        for ch in s:
+            exp = IUPAC_EXPANSION.get(ch, ("A",))
+            gc_w += sum(1 for b in exp if b in "GC") / float(len(exp))
+        f_gc = gc_w / float(n)
+        f_mg = free_mg_molar(float(dv_conc) / 1000.0, float(dntp_conc) / 1000.0)
+        tm_k = apply_owczarzy_salt_correction(tm_1m_k, n, f_gc, na_molar, f_mg, mode=effective_mode)
+        tm_c = tm_k - 273.15
     return round(tm_c, 1)
 
-# SantaLucia 1998 Nearest-Neighbor parameters & Hairpin loop entropy (100% aligned with PrimerQualityEngine.swift)
-NN_1998 = {
-    "AA": (-7.9, -22.2), "TT": (-7.9, -22.2),
+
+def calc_tm_owczarzy2008(
+    seq: str,
+    monovalent_mm: float = 50.0,
+    mg_mm: float = 1.5,
+    dntp_mm: float = 0.6,
+    primer_conc_nm: float = 250.0,
+    concentration_mode: str = "asymmetricExcess",
+) -> float:
+    return calc_snapgene_tm(
+        seq=seq,
+        mv_conc=monovalent_mm,
+        dv_conc=mg_mm,
+        dntp_conc=dntp_mm,
+        primer_conc=primer_conc_nm * 1e-9,
+        salt_correction="owczarzy2008",
+        concentration_mode=concentration_mode,
+    )
+
+
+# Unified SantaLucia & Hicks (2004) Nearest-Neighbor parameters & Zuker-Stiegler DP (100% aligned with PrimerQualityEngine.swift)
+NN_2004 = {
+    "AA": (-7.6, -21.3), "TT": (-7.6, -21.3),
     "AT": (-7.2, -20.4), "TA": (-7.2, -21.3),
     "CA": (-8.5, -22.7), "TG": (-8.5, -22.7),
     "GT": (-8.4, -22.4), "AC": (-8.4, -22.4),
     "CT": (-7.8, -21.0), "AG": (-7.8, -21.0),
     "GA": (-8.2, -22.2), "TC": (-8.2, -22.2),
     "CG": (-10.6, -27.2), "GC": (-9.8, -24.4),
-    "GG": (-8.0, -19.9), "CC": (-8.0, -19.9)
+    "GG": (-8.0, -19.9), "CC": (-8.0, -19.9),
 }
+NN_1998 = NN_2004
 
 HAIRPIN_LOOP_DS = {
     3: -10.18, 4: -10.80, 5: -10.16, 6: -12.41, 7: -13.06,
-    8: -13.38, 9: -14.02, 10: -14.35, 11: -14.81, 12: -15.10
+    8: -13.38, 9: -14.02, 10: -14.35, 11: -14.81, 12: -15.10,
 }
+
+SPECIAL_HAIRPIN_LOOPS = {
+    "CGAAG": (-2.0, -3.5), "CGAAA": (-2.0, -3.5),
+    "CGAAAG": (-3.0, -5.5), "CGCAAG": (-2.5, -4.5), "CGAGAG": (-2.5, -4.5),
+    "GGAAAC": (-2.5, -4.5), "GGCAAC": (-2.0, -3.5), "GGTTAC": (-2.0, -3.5),
+    "CGAATG": (-2.0, -4.0), "CGTTAG": (-2.0, -4.0), "TGGAAA": (-1.5, -2.5),
+}
+
+BULGE_INIT_DG37 = {1: 4.0, 2: 2.9, 3: 3.1, 4: 3.2, 5: 3.3, 6: 3.5}
+INTERNAL_LOOP_INIT_DG37 = {3: 3.2, 4: 3.6, 5: 4.0, 6: 4.4, 7: 4.6, 8: 4.8}
+
 
 def _clean_acgt_rna(raw: str) -> str:
     out = []
@@ -301,86 +463,241 @@ def _clean_acgt_rna(raw: str) -> str:
             out.append("T")
     return "".join(out)
 
+
 def _is_comp(a: str, b: str) -> bool:
     return (a, b) in (("A", "T"), ("T", "A"), ("C", "G"), ("G", "C"))
+
 
 def _comp_base(b: str) -> str:
     return {"A": "T", "T": "A", "C": "G", "G": "C"}.get(b, b)
 
+
+def _lookup_internal_mismatch(p1: str, p2: str, q1: str, q2: str):
+    k1 = f"{p1}{p2}/{q1}{q2}"
+    if k1 in INTERNAL_MISMATCH_PARAMS:
+        return INTERNAL_MISMATCH_PARAMS[k1]
+    k2 = f"{q2}{q1}/{p2}{p1}"
+    return INTERNAL_MISMATCH_PARAMS.get(k2)
+
+
+def _lookup_terminal_mismatch(p1: str, p2: str, q1: str, q2: str):
+    k1 = f"{p1}{p2}/{q1}{q2}"
+    if k1 in TERMINAL_MISMATCH_PARAMS:
+        return TERMINAL_MISMATCH_PARAMS[k1]
+    k2 = f"{q2}{q1}/{p2}{p1}"
+    return TERMINAL_MISMATCH_PARAMS.get(k2)
+
+
+def _hairpin_loop_entropy(loop_len: int) -> float:
+    if loop_len in HAIRPIN_LOOP_DS:
+        return HAIRPIN_LOOP_DS[loop_len]
+    n = max(12, int(loop_len))
+    return -15.10 - 2.44 * 1.9872 * math.log(n / 12.0)
+
+
+def _bulge_init(k: int):
+    dg37 = BULGE_INIT_DG37.get(k)
+    if dg37 is None:
+        dg37 = 3.5 + 2.44 * 1.9872 * 0.31015 * math.log(max(6, k) / 6.0)
+    return (0.0, -dg37 * 1000.0 / 310.15)
+
+
+def _internal_loop_init(n1: int, n2: int):
+    tot = n1 + n2
+    base_dg = INTERNAL_LOOP_INIT_DG37.get(tot)
+    if base_dg is None:
+        base_dg = 4.8 + 2.44 * 1.9872 * 0.31015 * math.log(max(8, tot) / 8.0)
+    asym_dg = 0.3 * abs(n1 - n2)
+    return (0.0, -(base_dg + asym_dg) * 1000.0 / 310.15)
+
+
+def three_prime_pentamer_dg(raw_seq: str, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp_conc: float = 0.6, temp_c: float = 37.0) -> float:
+    """Rychlik (1995) / Primer3 MAX_END_STABILITY standard 3'-terminal pentamer dG at 25 C, 1 M Na+ (kcal/mol)"""
+    clean = _clean_acgt_rna(raw_seq)
+    if len(clean) < 5:
+        return 0.0
+    pent = clean[-5:]
+    temp_k = 298.15
+    dh, ds = 0.0, 0.0
+    if pent[4] in "AT":
+        dh += 2.2
+        ds += 6.9
+    for i in range(4):
+        st = NN_2004.get(pent[i] + pent[i + 1])
+        if st:
+            dh += st[0]
+            ds += st[1]
+    return round(dh - (temp_k * ds) / 1000.0, 2)
+
+
 def calc_hairpin(raw_seq: str, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp_conc: float = 0.6, dna_conc: float = 50.0, temp_c: float = 37.0) -> dict:
-    """100% aligned with PrimerQualityEngine.calcHairpin in PrimerQualityEngine.swift"""
+    """Zuker-Stiegler DP hairpin evaluator (100% aligned with PrimerQualityEngine.calcHairpin in Swift)"""
     clean = _clean_acgt_rna(raw_seq)
     seq = clean[-60:] if len(clean) > 60 else clean
     n = len(seq)
     if n < 7:
         return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0, "three_prime_anchored": False, "risk_level": "safe"}
+
     temp_k = temp_c + 273.15
     na_eq = equivalent_monovalent_molar(mv_conc, dv_conc, dntp_conc)
     salt_per_step = 0.368 * math.log(na_eq)
-    best_dg, best_dh, best_ds = 0.0, 0.0, 0.0
-    best_pairs = []
-    for i in range(0, n - 6):
-        for j in range(n - 1, i + 5, -1):
+    INF = 1e9
+    dp = [[(INF, 0.0, 0.0, -1, -1, 0) for _ in range(n)] for _ in range(n)]
+
+    for span in range(4, n):
+        for i in range(0, n - span):
+            j = i + span
             if not _is_comp(seq[i], seq[j]):
                 continue
-            pairs = [(i, j)]
-            dh = 2.2 if seq[i] in "AT" else 0.0
-            ds = 6.9 if seq[i] in "AT" else 0.0
-            l, r = i, j
-            while (r - l - 1) >= 5:
-                nl, nr = l + 1, r - 1
-                if _is_comp(seq[nl], seq[nr]):
-                    st = NN_1998.get(seq[l] + seq[nl])
-                    if st:
-                        dh += st[0]
-                        ds += st[1]
-                    pairs.append((nl, nr))
-                    l, r = nl, nr
-                elif (nr - nl - 1) >= 5 and _is_comp(seq[nl + 1], seq[nr - 1]) and _is_comp(seq[nl + 2], seq[nr - 2]):
-                    k1 = f"{seq[l]}{seq[nl]}/{seq[r]}{seq[nr]}"
-                    k2 = f"{seq[nl]}{seq[nl+1]}/{seq[nr]}{seq[nr-1]}"
-                    m1 = INTERNAL_MISMATCH_PARAMS.get(k1, (1.0, 0.0))
-                    m2 = INTERNAL_MISMATCH_PARAMS.get(k2, (1.0, 0.0))
-                    dh += m1[0] + m2[0]
-                    ds += m1[1] + m2[1]
-                    pairs.append((nl + 1, nr - 1))
-                    l, r = nl + 1, nr - 1
-                else:
-                    break
-                loop_len = r - l - 1
-                if loop_len < 3 or len(pairs) < 3:
-                    continue
-                cand_dh, cand_ds = dh, ds
-                loop_ent = HAIRPIN_LOOP_DS.get(loop_len, -16.20 - 1.75 * 1.9872 * math.log(loop_len / 12.0))
-                cand_ds += loop_ent
+            best = (INF, 0.0, 0.0, -1, -1, 1)
+
+            loop_len = j - i - 1
+            if loop_len >= 3:
+                l_dh = 0.0
+                l_ds = _hairpin_loop_entropy(loop_len)
                 if loop_len >= 4:
-                    mm_key = f"{seq[l]}{seq[l+1]}/{seq[r]}{seq[r-1]}"
-                    rev_key = f"{seq[r]}{seq[r-1]}/{seq[l]}{seq[l+1]}"
-                    mm = INTERNAL_MISMATCH_PARAMS.get(mm_key) or INTERNAL_MISMATCH_PARAMS.get(rev_key)
+                    mm = _lookup_terminal_mismatch(seq[i], seq[i + 1], seq[j], seq[j - 1])
                     if mm:
-                        cand_dh += mm[0]
-                        cand_ds += mm[1]
-                    elif _is_comp(seq[l + 1], seq[r - 1]):
-                        cand_dh += -6.0
-                        cand_ds += -16.58
+                        l_dh += mm[0]
+                        l_ds += mm[1]
+                    elif _is_comp(seq[i + 1], seq[j - 1]):
+                        l_dh += -6.0
+                        l_ds += -16.58
                     else:
-                        cand_dh += -3.5
-                        cand_ds += -9.5
-                if i > 0 and (seq[i - 1] + seq[i]) in FIVE_PRIME_DANGLE:
-                    d5 = FIVE_PRIME_DANGLE[seq[i - 1] + seq[i]]
-                    cand_dh += d5[0] * 0.5
-                    cand_ds += d5[1] * 0.5
-                if j < n - 1 and (seq[j] + seq[j + 1]) in THREE_PRIME_DANGLE:
-                    d3 = THREE_PRIME_DANGLE[seq[j] + seq[j + 1]]
-                    cand_dh += d3[0] * 0.5
-                    cand_ds += d3[1] * 0.5
-                cand_ds += salt_per_step * max(1, len(pairs) - 2)
-                cand_dg = cand_dh - (temp_k * cand_ds) / 1000.0
-                if cand_dg < best_dg:
-                    best_dg, best_dh, best_ds = cand_dg, cand_dh, cand_ds
-                    best_pairs = list(pairs)
-    if not best_pairs or best_dg >= -0.2 or best_ds >= 0:
+                        l_dh += -3.5
+                        l_ds += -9.5
+                elif seq[i] in "AT":
+                    l_dh += 2.2
+                    l_ds += 6.9
+                if loop_len in (3, 4):
+                    bonus = SPECIAL_HAIRPIN_LOOPS.get(seq[i:j + 1])
+                    if bonus:
+                        l_dh += bonus[0]
+                        l_ds += bonus[1]
+                l_dg = l_dh - (temp_k * l_ds) / 1000.0
+                best = (l_dg, l_dh, l_ds, -1, -1, 1)
+
+            if span >= 6:
+                sub = dp[i + 1][j - 1]
+                if sub[0] < INF * 0.5:
+                    st = NN_2004.get(seq[i] + seq[i + 1])
+                    if st:
+                        c_dh = sub[1] + st[0]
+                        c_ds = sub[2] + st[1] + salt_per_step
+                        c_dg = c_dh - (temp_k * c_ds) / 1000.0
+                        if c_dg < best[0]:
+                            best = (c_dg, c_dh, c_ds, i + 1, j - 1, sub[5] + 1)
+
+            for b_size in range(1, 7):
+                ni_l, nj_l = i + 1 + b_size, j - 1
+                if nj_l - ni_l >= 4:
+                    sub = dp[ni_l][nj_l]
+                    if sub[0] < INF * 0.5:
+                        ib = _bulge_init(b_size)
+                        c_dh = sub[1] + ib[0]
+                        c_ds = sub[2] + ib[1]
+                        if b_size == 1 and (seq[i] + seq[ni_l]) in NN_2004:
+                            st = NN_2004[seq[i] + seq[ni_l]]
+                            c_dh += st[0]
+                            c_ds += st[1] + salt_per_step
+                        else:
+                            if seq[i] in "AT":
+                                c_dh += 2.2
+                                c_ds += 6.9
+                            if seq[ni_l] in "AT":
+                                c_dh += 2.2
+                                c_ds += 6.9
+                        c_dg = c_dh - (temp_k * c_ds) / 1000.0
+                        if c_dg < best[0]:
+                            best = (c_dg, c_dh, c_ds, ni_l, nj_l, sub[5] + 1)
+
+                ni_r, nj_r = i + 1, j - 1 - b_size
+                if nj_r - ni_r >= 4:
+                    sub = dp[ni_r][nj_r]
+                    if sub[0] < INF * 0.5:
+                        ib = _bulge_init(b_size)
+                        c_dh = sub[1] + ib[0]
+                        c_ds = sub[2] + ib[1]
+                        if b_size == 1 and (seq[i] + seq[ni_r]) in NN_2004:
+                            st = NN_2004[seq[i] + seq[ni_r]]
+                            c_dh += st[0]
+                            c_ds += st[1] + salt_per_step
+                        else:
+                            if seq[i] in "AT":
+                                c_dh += 2.2
+                                c_ds += 6.9
+                            if seq[ni_r] in "AT":
+                                c_dh += 2.2
+                                c_ds += 6.9
+                        c_dg = c_dh - (temp_k * c_ds) / 1000.0
+                        if c_dg < best[0]:
+                            best = (c_dg, c_dh, c_ds, ni_r, nj_r, sub[5] + 1)
+
+            for k1 in range(1, 5):
+                for k2 in range(1, 5):
+                    ni, nj = i + 1 + k1, j - 1 - k2
+                    if nj - ni < 4:
+                        continue
+                    sub = dp[ni][nj]
+                    if sub[0] >= INF * 0.5:
+                        continue
+                    c_dh, c_ds = sub[1], sub[2]
+                    if k1 == 1 and k2 == 1:
+                        m1 = _lookup_internal_mismatch(seq[i], seq[i + 1], seq[j], seq[j - 1]) or (1.0, 0.0)
+                        m2 = _lookup_internal_mismatch(seq[i + 1], seq[ni], seq[j - 1], seq[nj]) or (1.0, 0.0)
+                        c_dh += m1[0] + m2[0]
+                        c_ds += m1[1] + m2[1] + 2.0 * salt_per_step
+                    else:
+                        il = _internal_loop_init(k1, k2)
+                        m1 = _lookup_terminal_mismatch(seq[i], seq[i + 1], seq[j], seq[j - 1]) or (0.0, 0.0)
+                        m2 = _lookup_terminal_mismatch(seq[ni - 1], seq[ni], seq[nj + 1], seq[nj]) or (0.0, 0.0)
+                        c_dh += il[0] + m1[0] + m2[0]
+                        c_ds += il[1] + m1[1] + m2[1] + salt_per_step
+                    c_dg = c_dh - (temp_k * c_ds) / 1000.0
+                    if c_dg < best[0]:
+                        best = (c_dg, c_dh, c_ds, ni, nj, sub[5] + 1)
+
+            dp[i][j] = best
+
+    best_dg, best_dh, best_ds = 0.0, 0.0, 0.0
+    best_outer = None
+    for i in range(0, n - 6):
+        for j in range(i + 6, n):
+            st = dp[i][j]
+            if st[0] >= INF * 0.5 or st[5] < 3:
+                continue
+            c_dh, c_ds = st[1], st[2]
+            if seq[i] in "AT":
+                c_dh += 2.2
+                c_ds += 6.9
+            if i > 0 and j < n - 1:
+                tmm = _lookup_terminal_mismatch(seq[i - 1], seq[i], seq[j + 1], seq[j])
+                if tmm:
+                    c_dh += tmm[0]
+                    c_ds += tmm[1]
+            elif i > 0 and (seq[i - 1] + seq[i]) in FIVE_PRIME_DANGLE:
+                d5 = FIVE_PRIME_DANGLE[seq[i - 1] + seq[i]]
+                c_dh += d5[0]
+                c_ds += d5[1]
+            elif j < n - 1 and (seq[j] + seq[j + 1]) in THREE_PRIME_DANGLE:
+                d3 = THREE_PRIME_DANGLE[seq[j] + seq[j + 1]]
+                c_dh += d3[0]
+                c_ds += d3[1]
+            c_dg = c_dh - (temp_k * c_ds) / 1000.0
+            if c_dg < best_dg:
+                best_dg, best_dh, best_ds = c_dg, c_dh, c_ds
+                best_outer = (i, j)
+
+    if best_outer is None or best_dg >= -0.2 or best_ds >= 0:
         return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0, "three_prime_anchored": False, "risk_level": "safe"}
+
+    best_pairs = []
+    ci, cj = best_outer
+    while ci >= 0 and cj >= 0:
+        best_pairs.append((ci, cj))
+        st = dp[ci][cj]
+        ci, cj = st[3], st[4]
+
     tm = max(0.0, (best_dh * 1000.0) / best_ds - 273.15)
     anchored3 = any(p[0] >= n - 3 or p[1] >= n - 3 for p in best_pairs)
     if (anchored3 and best_dg <= -3.0) or best_dg <= -6.0:
@@ -396,101 +713,182 @@ def calc_hairpin(raw_seq: str, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp
         "ds": round(best_ds, 2),
         "tm": round(tm, 1),
         "three_prime_anchored": anchored3,
-        "risk_level": risk_level
+        "risk_level": risk_level,
     }
 
-def calc_dimer(raw_seq1: str, raw_seq2: str, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp_conc: float = 0.6, dna_conc: float = 50.0, temp_c: float = 37.0) -> dict:
-    """100% aligned with PrimerQualityEngine.calcDuplexDimer in PrimerQualityEngine.swift"""
-    s1 = _clean_acgt_rna(raw_seq1)
-    s2_orig = _clean_acgt_rna(raw_seq2)
+
+def _calc_duplex_dp(raw_seq1: str, raw_seq2: str, is_homodimer: bool, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp_conc: float = 0.6, dna_conc: float = 50.0, temp_c: float = 37.0) -> dict:
+    """Zuker-Stiegler bimolecular duplex DP (100% aligned with PrimerQualityEngine.calcDuplexDimer in Swift)"""
+    s1_full = _clean_acgt_rna(raw_seq1)
+    s2_full = _clean_acgt_rna(raw_seq2)
+    s1 = s1_full[-60:] if len(s1_full) > 60 else s1_full
+    s2_orig = s2_full[-60:] if len(s2_full) > 60 else s2_full
     s2_rev = s2_orig[::-1]
     n1, n2 = len(s1), len(s2_rev)
     if n1 < 4 or n2 < 4:
         return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0, "three_prime_anchored": False, "risk_level": "safe"}
+
     temp_k = temp_c + 273.15
     na_eq = equivalent_monovalent_molar(mv_conc, dv_conc, dntp_conc)
     salt_per_step = 0.368 * math.log(na_eq)
-    best_dg, best_dh, best_ds = 0.0, 0.0, 0.0
-    best_pairs = []
-    for offset in range(-(n2 - 2), n1 - 1):
-        start_j = max(0, -offset)
-        end_j = min(n2 - 1, n1 - 1 - offset)
-        if end_j - start_j + 1 < 2:
-            continue
-        match_positions = [j for j in range(start_j, end_j + 1) if _is_comp(s1[j + offset], s2_rev[j])]
-        if len(match_positions) < 2:
-            continue
-        for m_start in range(0, len(match_positions) - 1):
-            dh, ds = 0.2, -5.7
-            j0 = match_positions[m_start]
-            i0 = j0 + offset
-            pairs = [(i0, j0)]
-            if s1[i0] in "AT":
-                dh += 2.2
-                ds += 6.9
-            prev_j = j0
-            for m_end in range(m_start + 1, len(match_positions)):
-                cur_j = match_positions[m_end]
-                cur_i = cur_j + offset
-                prev_i = prev_j + offset
-                gap = cur_j - prev_j
-                if gap == 1:
-                    st = NN_1998.get(s1[prev_i] + s1[cur_i])
+    INF = 1e9
+    dp = [[(INF, 0.0, 0.0, -1, -1, -1, -1, 0) for _ in range(n2)] for _ in range(n1)]
+
+    for i in range(n1):
+        for j in range(n2):
+            if not _is_comp(s1[i], s2_rev[j]):
+                continue
+            open_dh, open_ds = 0.2, -5.7
+            if s1[i] in "AT":
+                open_dh += 2.2
+                open_ds += 6.9
+            if i > 0 and j > 0:
+                tmm = _lookup_terminal_mismatch(s1[i - 1], s1[i], s2_rev[j - 1], s2_rev[j])
+                if tmm:
+                    open_dh += tmm[0]
+                    open_ds += tmm[1]
+            elif i > 0 and (s1[i - 1] + s1[i]) in FIVE_PRIME_DANGLE:
+                d5 = FIVE_PRIME_DANGLE[s1[i - 1] + s1[i]]
+                open_dh += d5[0]
+                open_ds += d5[1]
+            elif j > 0 and (s2_rev[j] + s2_rev[j - 1]) in THREE_PRIME_DANGLE:
+                d3 = THREE_PRIME_DANGLE[s2_rev[j] + s2_rev[j - 1]]
+                open_dh += d3[0]
+                open_ds += d3[1]
+            open_dg = open_dh - (temp_k * open_ds) / 1000.0
+            best = (open_dg, open_dh, open_ds, -1, -1, i, j, 1)
+
+            if i > 0 and j > 0:
+                prev = dp[i - 1][j - 1]
+                if prev[0] < INF * 0.5:
+                    st = NN_2004.get(s1[i - 1] + s1[i])
                     if st:
-                        dh += st[0]
-                        ds += st[1]
-                    pairs.append((cur_i, cur_j))
-                    prev_j = cur_j
-                elif gap == 2:
-                    mid_i, mid_j = prev_i + 1, prev_j + 1
-                    k1 = f"{s1[prev_i]}{s1[mid_i]}/{s2_rev[prev_j]}{s2_rev[mid_j]}"
-                    k2 = f"{s1[mid_i]}{s1[cur_i]}/{s2_rev[mid_j]}{s2_rev[cur_j]}"
-                    m1 = INTERNAL_MISMATCH_PARAMS.get(k1)
-                    m2 = INTERNAL_MISMATCH_PARAMS.get(k2)
-                    if m1 and m2:
-                        dh += m1[0] + m2[0]
-                        ds += m1[1] + m2[1]
+                        c_dh = prev[1] + st[0]
+                        c_ds = prev[2] + st[1] + salt_per_step
+                        c_dg = c_dh - (temp_k * c_ds) / 1000.0
+                        if c_dg < best[0]:
+                            best = (c_dg, c_dh, c_ds, i - 1, j - 1, prev[5], prev[6], prev[7] + 1)
+
+            for b_size in range(1, 5):
+                pi, pj = i - 1 - b_size, j - 1
+                if pi >= 0 and pj >= 0:
+                    prev = dp[pi][pj]
+                    if prev[0] < INF * 0.5:
+                        ib = _bulge_init(b_size)
+                        c_dh = prev[1] + ib[0]
+                        c_ds = prev[2] + ib[1]
+                        if b_size == 1 and (s1[pi] + s1[i]) in NN_2004:
+                            st = NN_2004[s1[pi] + s1[i]]
+                            c_dh += st[0]
+                            c_ds += st[1] + salt_per_step
+                        else:
+                            if s1[pi] in "AT":
+                                c_dh += 2.2
+                                c_ds += 6.9
+                            if s1[i] in "AT":
+                                c_dh += 2.2
+                                c_ds += 6.9
+                        c_dg = c_dh - (temp_k * c_ds) / 1000.0
+                        if c_dg < best[0]:
+                            best = (c_dg, c_dh, c_ds, pi, pj, prev[5], prev[6], prev[7] + 1)
+
+                pi, pj = i - 1, j - 1 - b_size
+                if pi >= 0 and pj >= 0:
+                    prev = dp[pi][pj]
+                    if prev[0] < INF * 0.5:
+                        ib = _bulge_init(b_size)
+                        c_dh = prev[1] + ib[0]
+                        c_ds = prev[2] + ib[1]
+                        if b_size == 1 and (s1[pi] + s1[i]) in NN_2004:
+                            st = NN_2004[s1[pi] + s1[i]]
+                            c_dh += st[0]
+                            c_ds += st[1] + salt_per_step
+                        else:
+                            if s1[pi] in "AT":
+                                c_dh += 2.2
+                                c_ds += 6.9
+                            if s1[i] in "AT":
+                                c_dh += 2.2
+                                c_ds += 6.9
+                        c_dg = c_dh - (temp_k * c_ds) / 1000.0
+                        if c_dg < best[0]:
+                            best = (c_dg, c_dh, c_ds, pi, pj, prev[5], prev[6], prev[7] + 1)
+
+            for k1 in range(1, 4):
+                for k2 in range(1, 4):
+                    pi, pj = i - 1 - k1, j - 1 - k2
+                    if pi < 0 or pj < 0:
+                        continue
+                    prev = dp[pi][pj]
+                    if prev[0] >= INF * 0.5:
+                        continue
+                    c_dh, c_ds = prev[1], prev[2]
+                    if k1 == 1 and k2 == 1:
+                        m1 = _lookup_internal_mismatch(s1[pi], s1[pi + 1], s2_rev[pj], s2_rev[pj + 1]) or (1.2, 2.0)
+                        m2 = _lookup_internal_mismatch(s1[pi + 1], s1[i], s2_rev[pj + 1], s2_rev[j]) or (1.2, 2.0)
+                        c_dh += m1[0] + m2[0]
+                        c_ds += m1[1] + m2[1] + 2.0 * salt_per_step
                     else:
-                        dh += 2.4
-                        ds += 4.0
-                    pairs.append((cur_i, cur_j))
-                    prev_j = cur_j
-                else:
-                    break
-                if len(pairs) < 2:
-                    continue
-                cand_dh, cand_ds = dh, ds
-                if s1[cur_i] in "AT":
-                    cand_dh += 2.2
-                    cand_ds += 6.9
-                if i0 > 0 and (s1[i0 - 1] + s1[i0]) in FIVE_PRIME_DANGLE:
-                    d5 = FIVE_PRIME_DANGLE[s1[i0 - 1] + s1[i0]]
-                    cand_dh += d5[0]
-                    cand_ds += d5[1]
-                if j0 > 0:
-                    c_first = _comp_base(s2_rev[j0])
-                    if (c_first + s2_rev[j0 - 1]) in THREE_PRIME_DANGLE:
-                        d3 = THREE_PRIME_DANGLE[c_first + s2_rev[j0 - 1]]
-                        cand_dh += d3[0]
-                        cand_ds += d3[1]
-                if cur_i < n1 - 1 and (s1[cur_i] + s1[cur_i + 1]) in THREE_PRIME_DANGLE:
-                    d3 = THREE_PRIME_DANGLE[s1[cur_i] + s1[cur_i + 1]]
-                    cand_dh += d3[0]
-                    cand_ds += d3[1]
-                if cur_j < n2 - 1 and (s2_rev[cur_j + 1] + s1[cur_i]) in FIVE_PRIME_DANGLE:
-                    d5 = FIVE_PRIME_DANGLE[s2_rev[cur_j + 1] + s1[cur_i]]
-                    cand_dh += d5[0]
-                    cand_ds += d5[1]
-                steps = max(1, cur_i - i0)
-                cand_ds += salt_per_step * steps
-                cand_dg = cand_dh - (temp_k * cand_ds) / 1000.0
-                if cand_dg < best_dg:
-                    best_dg, best_dh, best_ds = cand_dg, cand_dh, cand_ds
-                    best_pairs = list(pairs)
-    if not best_pairs or best_dg >= -0.5 or best_ds >= 0:
+                        il = _internal_loop_init(k1, k2)
+                        m1 = _lookup_terminal_mismatch(s1[pi], s1[pi + 1], s2_rev[pj], s2_rev[pj + 1]) or (0.0, 0.0)
+                        m2 = _lookup_terminal_mismatch(s1[i - 1], s1[i], s2_rev[j - 1], s2_rev[j]) or (0.0, 0.0)
+                        c_dh += il[0] + m1[0] + m2[0]
+                        c_ds += il[1] + m1[1] + m2[1] + salt_per_step
+                    c_dg = c_dh - (temp_k * c_ds) / 1000.0
+                    if c_dg < best[0]:
+                        best = (c_dg, c_dh, c_ds, pi, pj, prev[5], prev[6], prev[7] + 1)
+
+            dp[i][j] = best
+
+    best_dg, best_dh, best_ds = 0.0, 0.0, 0.0
+    best_end = None
+    best_is_self_sym = False
+    for i in range(n1):
+        for j in range(n2):
+            node = dp[i][j]
+            if node[0] >= INF * 0.5 or node[7] < 2:
+                continue
+            c_dh, c_ds = node[1], node[2]
+            if s1[i] in "AT":
+                c_dh += 2.2
+                c_ds += 6.9
+            if i < n1 - 1 and j < n2 - 1:
+                tmm = _lookup_terminal_mismatch(s1[i], s1[i + 1], s2_rev[j], s2_rev[j + 1])
+                if tmm:
+                    c_dh += tmm[0]
+                    c_ds += tmm[1]
+            elif i < n1 - 1 and (s1[i] + s1[i + 1]) in THREE_PRIME_DANGLE:
+                d3 = THREE_PRIME_DANGLE[s1[i] + s1[i + 1]]
+                c_dh += d3[0]
+                c_ds += d3[1]
+            elif j < n2 - 1 and (s2_rev[j + 1] + s2_rev[j]) in FIVE_PRIME_DANGLE:
+                d5 = FIVE_PRIME_DANGLE[s2_rev[j + 1] + s2_rev[j]]
+                c_dh += d5[0]
+                c_ds += d5[1]
+            is_self_sym = False
+            if is_homodimer and node[5] == (n2 - 1 - j) and i == (n2 - 1 - node[6]):
+                is_self_sym = True
+                c_ds += -1.4
+            c_dg = c_dh - (temp_k * c_ds) / 1000.0
+            if c_dg < best_dg:
+                best_dg, best_dh, best_ds = c_dg, c_dh, c_ds
+                best_end = (i, j)
+                best_is_self_sym = is_self_sym
+
+    if best_end is None or best_dg >= -0.5 or best_ds >= 0:
         return {"structure_found": False, "dg": 0.0, "dh": 0.0, "ds": 0.0, "tm": 0.0, "three_prime_anchored": False, "risk_level": "safe"}
-    c_molar = max(1e-9, float(dna_conc) * 1e-9)
-    tm = (best_dh * 1000.0) / (best_ds + 1.9872 * math.log(c_molar)) - 273.15
+
+    best_pairs = []
+    ci, cj = best_end
+    while ci >= 0 and cj >= 0:
+        best_pairs.append((ci, cj))
+        node = dp[ci][cj]
+        ci, cj = node[3], node[4]
+    best_pairs.reverse()
+
+    c_total = max(1e-9, float(dna_conc) * 1e-9)
+    c_eff = c_total if best_is_self_sym else (c_total / 4.0)
+    tm = (best_dh * 1000.0) / (best_ds + 1.9872 * math.log(c_eff)) - 273.15
     anchored3 = any(p[0] >= n1 - 3 or p[1] <= 2 for p in best_pairs)
     if (anchored3 and best_dg <= -6.0) or best_dg <= -10.5:
         risk_level = "high"
@@ -505,11 +903,17 @@ def calc_dimer(raw_seq1: str, raw_seq2: str, mv_conc: float = 50.0, dv_conc: flo
         "ds": round(best_ds, 2),
         "tm": round(tm, 1),
         "three_prime_anchored": anchored3,
-        "risk_level": risk_level
+        "risk_level": risk_level,
     }
 
+
+def calc_dimer(raw_seq1: str, raw_seq2: str, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp_conc: float = 0.6, dna_conc: float = 50.0, temp_c: float = 37.0) -> dict:
+    return _calc_duplex_dp(raw_seq1, raw_seq2, is_homodimer=False, mv_conc=mv_conc, dv_conc=dv_conc, dntp_conc=dntp_conc, dna_conc=dna_conc, temp_c=temp_c)
+
+
 def calc_homodimer(raw_seq: str, mv_conc: float = 50.0, dv_conc: float = 1.5, dntp_conc: float = 0.6, dna_conc: float = 50.0, temp_c: float = 37.0) -> dict:
-    return calc_dimer(raw_seq, raw_seq, mv_conc=mv_conc, dv_conc=dv_conc, dntp_conc=dntp_conc, dna_conc=dna_conc, temp_c=temp_c)
+    return _calc_duplex_dp(raw_seq, raw_seq, is_homodimer=True, mv_conc=mv_conc, dv_conc=dv_conc, dntp_conc=dntp_conc, dna_conc=dna_conc, temp_c=temp_c)
+
 
 def _evaluate_primer_overall_risk(raw_seq: str) -> str:
     rank = {"safe": 0, "moderate": 1, "high": 2}
@@ -541,9 +945,12 @@ def pick_specific_annealing_seq(template_5to3: str, five_prime_overhang: str = "
                 return sub
         elif lower_bound <= tm <= upper_bound:
             gc_bonus = 0.35 if sub[-1] in "GC" else 0.0
-            risk = _evaluate_primer_overall_risk(five_prime_overhang + sub)
+            full_oligo = five_prime_overhang + sub
+            risk = _evaluate_primer_overall_risk(full_oligo)
             risk_penalty = 1.50 if risk == "high" else (0.50 if risk == "moderate" else 0.0)
-            score = gc_bonus - diff - risk_penalty
+            pent_dg = three_prime_pentamer_dg(full_oligo)
+            pent_penalty = 0.40 if pent_dg <= -9.0 else 0.0
+            score = gc_bonus - diff - risk_penalty - pent_penalty
             if score > best_win_score:
                 best_win_score = score
                 best_win_seq = sub
@@ -592,6 +999,115 @@ COMMON_ENZYMES = {
     "KpnI": "GGTACC", "SmaI": "CCCGGG", "EcoRV": "GATATC", "BglII": "AGATCT",
     "AgeI": "ACCGGT", "NheI": "GCTAGC", "MluI": "ACGCGT", "PacI": "TTAATTAA"
 }
+
+# (top_cut_offset, bottom_cut_offset) aligned with HomologyArmDesigner.snipOffsets
+COMMON_ENZYME_SNIP_OFFSETS = {
+    "EcoRI": (1, 5), "BamHI": (1, 5), "HindIII": (1, 5), "XhoI": (1, 5),
+    "NdeI": (2, 4), "NcoI": (1, 5), "NotI": (2, 6), "XbaI": (1, 5),
+    "SpeI": (1, 5), "PstI": (5, 1), "SalI": (1, 5), "SacI": (5, 1),
+    "KpnI": (5, 1), "SmaI": (3, 3), "EcoRV": (3, 3), "BglII": (1, 5),
+    "AgeI": (1, 5), "NheI": (1, 5), "MluI": (1, 5), "PacI": (5, 3),
+}
+
+
+def _evaluate_homology_overlap(overlap_seq: str, label: str = "同源臂") -> list:
+    clean = clean_seq(overlap_seq)
+    if not clean:
+        return []
+    warnings = []
+    tm = calc_snapgene_tm(clean, dv_conc=1.5, dntp_conc=0.6, salt_correction="owczarzy2008")
+    if tm < 48.0:
+        warnings.append(f"{label} Tm 偏低 ({tm:.1f}℃ < 48℃)，重组退火效率可能下降")
+    elif tm > 68.0:
+        warnings.append(f"{label} Tm 偏高 ({tm:.1f}℃ > 68℃)，易形成非特异错配")
+    hp = calc_hairpin(clean)
+    if hp.get("structure_found") and hp.get("dg", 0.0) <= -4.0:
+        warnings.append(f"{label} 存在强发夹二级结构 (ΔG={hp['dg']:.2f} kcal/mol)")
+    return warnings
+
+
+def _count_off_target_mispriming_hits(primer_3prime: str, templates: list, seed_len: int = 12) -> int:
+    p = clean_seq(primer_3prime)
+    if len(p) < seed_len:
+        return 0
+    seed = p[-seed_len:]
+    seed_rc = rev_comp(seed)
+    is_pal = (seed == seed_rc)
+    total = 0
+    for raw_t, is_circ in templates:
+        t = clean_seq(raw_t)
+        if len(t) < seed_len:
+            continue
+        scan = (t + t[:seed_len - 1]) if is_circ else t
+        limit = len(t) if is_circ else (len(t) - seed_len + 1)
+        pos = 0
+        while True:
+            idx = scan.find(seed, pos)
+            if idx == -1 or idx >= limit:
+                break
+            total += 1
+            pos = idx + 1
+        if not is_pal:
+            pos = 0
+            while True:
+                idx = scan.find(seed_rc, pos)
+                if idx == -1 or idx >= limit:
+                    break
+                total += 1
+                pos = idx + 1
+    return max(0, total - 1)
+
+
+def _pick_optimal_primer_pair(insert_seq: str, forward_overhang: str, reverse_overhang: str, target_tm: float = 60.0, tolerance: float = 1.0, templates: list = None) -> tuple:
+    s = clean_seq(insert_seq)
+    rc_s = rev_comp(s)
+    def _cands(tmpl: str, ov: str):
+        out = []
+        clamped_tol = max(0.0, min(3.0, tolerance))
+        lo, hi = target_tm - clamped_tol, target_tm + clamped_tol
+        fallback = []
+        for length in range(18, min(38, len(tmpl)) + 1):
+            sub = tmpl[:length]
+            tm = calc_snapgene_tm(sub, five_prime_overhang=ov)
+            diff = abs(tm - target_tm)
+            full_o = ov + sub
+            gc_bonus = 0.35 if sub[-1] in "GC" else 0.0
+            risk = _evaluate_primer_overall_risk(full_o)
+            risk_p = 1.50 if risk == "high" else (0.50 if risk == "moderate" else 0.0)
+            pent_p = 0.40 if three_prime_pentamer_dg(full_o) <= -9.0 else 0.0
+            sc = gc_bonus - diff - risk_p - pent_p
+            item = (sub, tm, sc)
+            if lo <= tm <= hi:
+                out.append(item)
+            else:
+                fallback.append(item)
+        out.sort(key=lambda x: x[2], reverse=True)
+        fallback.sort(key=lambda x: abs(x[1] - target_tm))
+        return (out[:6] if out else fallback[:4]) or [(tmpl[:min(18, len(tmpl))], calc_snapgene_tm(tmpl[:min(18, len(tmpl))], five_prime_overhang=ov), 0.0)]
+
+    f_cands = _cands(s, forward_overhang)
+    r_cands = _cands(rc_s, reverse_overhang)
+    scan_tmpls = templates if templates is not None else [(s, False)]
+    best = (f_cands[0][0], f_cands[0][1], r_cands[0][0], r_cands[0][1], 0.0, [])
+    best_score = -1e9
+    for f_seq, f_tm, f_sc in f_cands:
+        f_hits = _count_off_target_mispriming_hits(f_seq, scan_tmpls)
+        for r_seq, r_tm, r_sc in r_cands:
+            r_hits = _count_off_target_mispriming_hits(r_seq, scan_tmpls)
+            dtm = abs(f_tm - r_tm)
+            d_pen = (2.5 + (dtm - 3.0) * 1.5) if dtm > 3.0 else (dtm * 0.25)
+            het = calc_dimer(forward_overhang + f_seq, reverse_overhang + r_seq)
+            h_pen = 2.0 if het.get("risk_level") == "high" else (0.75 if het.get("risk_level") == "moderate" else 0.0)
+            ps = f_sc + r_sc - d_pen - h_pen - 1.2 * (f_hits + r_hits)
+            if ps > best_score:
+                best_score = ps
+                warns = []
+                if f_hits > 0:
+                    warns.append(f"正向引物 3' 端在模板中存在 {f_hits} 处潜在脱靶结合位点")
+                if r_hits > 0:
+                    warns.append(f"反向引物 3' 端在模板中存在 {r_hits} 处潜在脱靶结合位点")
+                best = (f_seq, f_tm, r_seq, r_tm, het.get("dg", 0.0), warns)
+    return best
 
 
 # ============================================================================
@@ -894,18 +1410,32 @@ def resolve_region_on_plasmid(plasmid_item: dict, target_spec: str) -> tuple:
 
     enz_parts = [p.strip() for p in spec.replace("/", ",").split(",") if p.strip()]
     if all(any(en.lower() == p.lower() for en in COMMON_ENZYMES) for p in enz_parts):
-        positions = []
+        doubled = seq + seq
+        n_len = len(seq)
+        cuts = []
         matched_names = []
         for p in enz_parts:
             for en, site in COMMON_ENZYMES.items():
                 if en.lower() == p.lower():
-                    idx = seq.find(site)
-                    if idx == -1:
+                    idx = doubled.find(site)
+                    if idx == -1 or idx >= n_len:
                         raise ValueError(f"质粒 {plasmid_item['name']} 中未找到酶切位点 {en} ({site})")
-                    positions.append((idx + 1, idx + len(site)))
+                    top_off, bot_off = COMMON_ENZYME_SNIP_OFFSETS.get(en, (1, max(1, len(site) - 1)))
+                    c_lo = (idx + min(top_off, bot_off)) % n_len + 1
+                    c_hi = (idx + max(top_off, bot_off)) % n_len
+                    if c_hi == 0:
+                        c_hi = n_len
+                    cuts.append((c_lo, c_hi))
                     matched_names.append(en)
-        s = min(x[0] for x in positions)
-        e = max(x[1] for x in positions)
+        if len(cuts) == 2:
+            a_lo, a_hi = cuts[0]
+            b_lo, b_hi = cuts[1]
+            fwd_span = (b_hi - a_lo) % n_len
+            rev_span = (a_hi - b_lo) % n_len
+            s, e = (a_lo, b_hi) if fwd_span <= rev_span else (b_lo, a_hi)
+        else:
+            s = min(x[0] for x in cuts)
+            e = max(x[1] for x in cuts)
         return (s, e, "+", f"酶切位点 {'/'.join(matched_names)} ({s}..{e})")
 
     feats = info.get("features", [])
@@ -1220,8 +1750,14 @@ def tool_design_single_clone_primers(args: dict) -> dict:
     hom_r_sense = doubled_vec[cut_end:cut_end + hom_len]
     hom_r = rev_comp(hom_r_sense)
 
-    spec_f = pick_specific_annealing_seq(ins_seq, five_prime_overhang=hom_f + extra5, target_tm=target_tm)
-    spec_r = pick_specific_annealing_seq(rev_comp(ins_seq), five_prime_overhang=hom_r + rev_comp(extra3), target_tm=target_tm)
+    spec_f, _, spec_r, _, _, mp_warnings = _pick_optimal_primer_pair(
+        ins_seq,
+        forward_overhang=hom_f + extra5,
+        reverse_overhang=hom_r + rev_comp(extra3),
+        target_tm=target_tm,
+        templates=[(ins_seq, False), (vec_seq, True)],
+    )
+    overlap_warnings = _evaluate_homology_overlap(hom_f, "上游同源臂") + _evaluate_homology_overlap(hom_r, "下游同源臂") + mp_warnings
 
     prefix = args.get("primer_prefix") or f"{ins_name}"
     primer_f = make_primer_dict(
@@ -1319,6 +1855,7 @@ def tool_design_single_clone_primers(args: dict) -> dict:
         "readingFrameAligned3n": (frame_rem == 0),
         "readingFrameNote": "3n 密码子阅读框对齐" if frame_rem == 0 else f"注意：插入总长 {len(eff_insert)} bp 除以 3 余 {frame_rem} bp，如需融合表达请补齐 {3 - frame_rem} bp",
         "primers": primers,
+        "warnings": overlap_warnings,
         "recombinantDNAFilePath": out_dna_path,
         "backupPath": backup_dna_path
     }
@@ -1676,10 +2213,8 @@ def tool_calculate_recombination_dosage(args: dict) -> dict:
             "formula": "载体最适用量(ng)=pmol×bp×0.65; 片段最适用量(ng)=pmol×比例×bp×0.65"
         }
 
-    if vec_kb <= 2.0:
-        vec_rec_ng = 50.0
-    else:
-        vec_rec_ng = min(200.0, round(20.0 * vec_kb, 1))
+    # 消除 2.0 kb 阶跃不连续：平滑单调公式 max(50.0, 20.0 * vec_kb)（对齐 DNAMolarCalculator.swift）
+    vec_rec_ng = min(200.0, max(50.0, round(20.0 * vec_kb, 1)))
     vec_actual_ng = float(vec_custom_ng) if (vec_custom_ng is not None and float(vec_custom_ng) > 0) else vec_rec_ng
     vec_vol = round(vec_actual_ng / vec_conc, 2) if clone_type != "SimpleClone" else 0.0
 
@@ -1762,24 +2297,29 @@ def tool_convert_nucleic_acid_units(args: dict) -> dict:
         bp = float(args.get("length_bp_or_nt", 0))
         if bp <= 0 or val < 0:
             return {"status": "error", "error": "length_bp_or_nt 必须 > 0 且 value >= 0"}
+        conv = str(args.get("molar_mass_convention") or "hydrated660").strip().lower()
+        da_per_bp = 650.0 if "650" in conv else 660.0
         if mode == "dsdna_ug_to_pmol":
-            res = (val / bp) * 1515.1
+            factor = 1515.1 if da_per_bp == 660.0 else (1_000_000.0 / da_per_bp)
+            res = (val / bp) * factor
             return {
                 "status": "success",
                 "mode": mode,
+                "molar_mass_da_per_bp": da_per_bp,
                 "result_value": adaptive_round(res),
                 "formatted_result": f"{format_bio_number(res)} pmol",
                 "unit": "pmol",
-                "formula": "pmol = (µg / N_bp) × 1515.1"
+                "formula": f"pmol = (µg / N_bp) × {factor:.1f}"
             }
-        res = val * bp * 0.00066
+        res = val * bp * (da_per_bp * 1e-6)
         return {
             "status": "success",
             "mode": mode,
+            "molar_mass_da_per_bp": da_per_bp,
             "result_value": adaptive_round(res),
             "formatted_result": f"{format_bio_number(res)} µg",
             "unit": "µg",
-            "formula": "µg = pmol × N_bp × 0.00066"
+            "formula": f"µg = pmol × N_bp × {da_per_bp * 1e-6:.5f}"
         }
 
     if mode in ("ssdna_ug_per_ml_to_pmol_per_ul", "ssdna_pmol_per_ul_to_ug_per_ml"):
@@ -1838,20 +2378,36 @@ def tool_convert_nucleic_acid_units(args: dict) -> dict:
             return {"status": "error", "error": f"不支持的 sample_type: {stype}"}
         label, factor = factor_map[stype]
         dil = max(1e-9, float(args.get("dilution_factor", 1.0)))
+        oligo_seq = clean_seq(args.get("sequence") or "")
+        eps_260 = None
+        if stype in ("ssoligo", "oligo", "single-stranded oligo") and len(oligo_seq) >= 2:
+            # Tataurov et al. (2008) Biophys Chem 133:66-70 最近邻 ssDNA ε260 与精确分子量
+            mono_e = {"A": 15400.0, "C": 7400.0, "G": 11500.0, "T": 8700.0}
+            dinuc_e = {
+                "AA": 27400.0, "AC": 21200.0, "AG": 25000.0, "AT": 22800.0,
+                "CA": 21200.0, "CC": 14600.0, "CG": 18000.0, "CT": 15200.0,
+                "GA": 25200.0, "GC": 17600.0, "GG": 21600.0, "GT": 20000.0,
+                "TA": 23400.0, "TC": 16200.0, "TG": 19000.0, "TT": 16800.0,
+            }
+            base_mw = {"A": 313.21, "C": 289.18, "G": 329.21, "T": 304.20}
+            eps_260 = sum(dinuc_e[oligo_seq[i:i+2]] for i in range(len(oligo_seq) - 1)) - sum(mono_e[oligo_seq[i]] for i in range(1, len(oligo_seq) - 1))
+            oligo_mw = sum(base_mw[b] for b in oligo_seq) - 61.96
+            factor = (oligo_mw * 1000.0 / eps_260) if eps_260 > 0 else factor
         res = val * factor * dil
         out_of_range = val > 0 and (val < 0.1 or val > 1.0)
         return {
             "status": "success",
             "mode": mode,
             "sample_type": label,
-            "factor": factor,
+            "factor": round(factor, 3),
+            "epsilon_260": round(eps_260, 1) if eps_260 is not None else None,
             "dilution_factor": dil,
             "result_value": adaptive_round(res),
             "formatted_result": f"{format_bio_number(res)} µg/mL",
             "unit": "µg/mL",
             "out_of_linear_range": out_of_range,
             "warning": "大多数分光光度计在低于 0.1 OD 单位或高于 1.0 OD 单位时精度下降，建议调整稀释倍数重新测读。" if out_of_range else None,
-            "formula": f"浓度 (µg/mL) = OD260 × {int(factor)} × 稀释倍数"
+            "formula": f"浓度 (µg/mL) = OD260 × {factor:.2f} × 稀释倍数"
         }
 
     return {"status": "error", "error": f"未知 mode: {mode}"}
@@ -2344,7 +2900,7 @@ KD_HYDROPATHY = {
     'S': -0.8, 'T': -0.7, 'W': -0.9, 'Y': -1.3, 'V': 4.2
 }
 
-# 与 Swift 端 ProteinBiophysicsEngine.aaMasses 完全一致（脱水残基质量 Da，总分子量 + 18.0153 水分子末端）
+# 与 Swift 端 ProteinBiophysicsEngine.aaMasses 完全一致（脱水残基质量 Da，每条多肽链 + 18.01528 水分子末端）
 AA_RESIDUE_MASS = {
     'A': 71.0788, 'R': 156.1875, 'N': 114.1038, 'D': 115.0886, 'C': 103.1388,
     'E': 129.1155, 'Q': 128.1307, 'G': 57.0519, 'H': 137.1411, 'I': 113.1594,
@@ -2352,110 +2908,572 @@ AA_RESIDUE_MASS = {
     'S': 87.0782, 'T': 101.1051, 'W': 186.2132, 'Y': 163.1760, 'V': 99.1326
 }
 
+WATER_MASS_DA = 18.01528
 
-def tool_analyze_protein_and_docking_box(args: dict) -> dict:
-    """计算蛋白质理化性质、LIGSITE P-S-P 结合口袋、DockFlowLab 共识融合 Vina 对接盒及点突变 ΔΔG"""
-    raw_seq = (args.get("sequence") or "").strip()
-    pdb_path = (args.get("pdb_path") or "").strip()
-    ph = float(args.get("ph", 7.0))
-    mutations = args.get("mutations") or []
+# Campen et al. (2008) TOP-IDP 内在无序倾向标度 (与 Swift ProteinBiophysicsEngine.topIDPScale 一致)
+TOP_IDP_SCALE = {
+    'W': -0.884, 'F': -0.697, 'Y': -0.510, 'I': -0.486, 'M': -0.397,
+    'L': -0.326, 'V': -0.121, 'N': 0.007,  'C': 0.020,  'T': 0.059,
+    'A': 0.060,  'G': 0.166,  'R': 0.180,  'D': 0.192,  'H': 0.303,
+    'Q': 0.318,  'S': 0.341,  'K': 0.586,  'E': 0.736,  'P': 0.987
+}
 
-    coords = []
-    ligands = []
-    ligand_coords = []
-    if pdb_path and os.path.exists(pdb_path):
-        with open(pdb_path, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                if line.startswith("ENDMDL"):
-                    break
-                if line.startswith("ATOM  ") and len(line) >= 54:
-                    atom_name = line[12:16].strip()
-                    if atom_name == "CA":
-                        try:
-                            x = float(line[30:38])
-                            y = float(line[38:46])
-                            z = float(line[46:54])
-                            coords.append((x, y, z))
-                        except Exception:
-                            pass
-                elif line.startswith("HETATM") and len(line) >= 54:
-                    res_name = line[17:20].strip().upper()
-                    if res_name not in {"HOH", "WAT", "SO4", "PO4", "GOL", "EDO", "NA", "CL", "MG", "ZN"}:
-                        if res_name not in ligands:
-                            ligands.append(res_name)
-                        try:
-                            ligand_coords.append((float(line[30:38]), float(line[38:46]), float(line[46:54])))
-                        except Exception:
-                            pass
+# Guruprasad, Reddy & Pandit (1990) 完整 20×20 DIWV 不稳定性权重矩阵 (与 ExPASy ProtParam / Swift 端逐项一致)
+GURUPRASAD_DIWV = {
+    'A': {'A': 1.0, 'C': 44.94, 'D': -7.49, 'E': 1.0, 'F': 1.0, 'G': 1.0, 'H': -7.49, 'I': 1.0, 'K': 1.0, 'L': 1.0, 'M': 1.0, 'N': 1.0, 'P': 20.26, 'Q': 1.0, 'R': 1.0, 'S': 1.0, 'T': 1.0, 'V': 1.0, 'W': 1.0, 'Y': 1.0},
+    'C': {'A': 1.0, 'C': 1.0, 'D': 20.26, 'E': 1.0, 'F': 1.0, 'G': 1.0, 'H': 33.60, 'I': 1.0, 'K': 1.0, 'L': 20.26, 'M': 33.60, 'N': 1.0, 'P': 20.26, 'Q': -6.54, 'R': 1.0, 'S': 1.0, 'T': 33.60, 'V': -6.54, 'W': 24.68, 'Y': 1.0},
+    'D': {'A': 1.0, 'C': 1.0, 'D': 1.0, 'E': 1.0, 'F': -6.54, 'G': 1.0, 'H': 1.0, 'I': 1.0, 'K': -7.49, 'L': 1.0, 'M': 1.0, 'N': 1.0, 'P': 1.0, 'Q': 1.0, 'R': -6.54, 'S': 20.26, 'T': -14.03, 'V': 1.0, 'W': 1.0, 'Y': 1.0},
+    'E': {'A': 1.0, 'C': 44.94, 'D': 20.26, 'E': 33.60, 'F': 1.0, 'G': 1.0, 'H': -6.54, 'I': 20.26, 'K': 1.0, 'L': 1.0, 'M': 1.0, 'N': 1.0, 'P': 20.26, 'Q': 20.26, 'R': 1.0, 'S': 20.26, 'T': 1.0, 'V': 1.0, 'W': -14.03, 'Y': 1.0},
+    'F': {'A': 1.0, 'C': 1.0, 'D': 13.34, 'E': 1.0, 'F': 1.0, 'G': 1.0, 'H': 1.0, 'I': 1.0, 'K': -14.03, 'L': 1.0, 'M': 1.0, 'N': 1.0, 'P': 20.26, 'Q': 1.0, 'R': 1.0, 'S': 1.0, 'T': 1.0, 'V': 1.0, 'W': 1.0, 'Y': 33.60},
+    'G': {'A': -7.49, 'C': 1.0, 'D': 1.0, 'E': -6.54, 'F': 1.0, 'G': 13.34, 'H': 1.0, 'I': -7.49, 'K': -7.49, 'L': 1.0, 'M': 1.0, 'N': -7.49, 'P': 1.0, 'Q': 1.0, 'R': 1.0, 'S': 1.0, 'T': -7.49, 'V': 1.0, 'W': 13.34, 'Y': -7.49},
+    'H': {'A': 1.0, 'C': 1.0, 'D': 1.0, 'E': 1.0, 'F': -9.37, 'G': -9.37, 'H': 1.0, 'I': 44.94, 'K': 24.68, 'L': 1.0, 'M': 1.0, 'N': 24.68, 'P': -1.88, 'Q': 1.0, 'R': 1.0, 'S': 1.0, 'T': -6.54, 'V': 1.0, 'W': -1.88, 'Y': 44.94},
+    'I': {'A': 1.0, 'C': 1.0, 'D': 1.0, 'E': 44.94, 'F': 1.0, 'G': 1.0, 'H': 13.34, 'I': 1.0, 'K': -7.49, 'L': 20.26, 'M': 1.0, 'N': 1.0, 'P': -1.88, 'Q': 1.0, 'R': 1.0, 'S': 1.0, 'T': 1.0, 'V': -7.49, 'W': 1.0, 'Y': 1.0},
+    'K': {'A': 1.0, 'C': 1.0, 'D': 1.0, 'E': 1.0, 'F': 1.0, 'G': -7.49, 'H': 1.0, 'I': -7.49, 'K': 1.0, 'L': -7.49, 'M': 33.60, 'N': 1.0, 'P': -6.54, 'Q': 24.68, 'R': 33.60, 'S': 1.0, 'T': 1.0, 'V': -7.49, 'W': 1.0, 'Y': 1.0},
+    'L': {'A': 1.0, 'C': 1.0, 'D': 1.0, 'E': 1.0, 'F': 1.0, 'G': 1.0, 'H': 1.0, 'I': 1.0, 'K': -7.49, 'L': 1.0, 'M': 1.0, 'N': 1.0, 'P': 20.26, 'Q': 33.60, 'R': 20.26, 'S': 1.0, 'T': 1.0, 'V': 1.0, 'W': 24.68, 'Y': 1.0},
+    'M': {'A': 13.34, 'C': 1.0, 'D': 1.0, 'E': 1.0, 'F': 1.0, 'G': 1.0, 'H': 58.28, 'I': 1.0, 'K': 1.0, 'L': 1.0, 'M': -1.88, 'N': 1.0, 'P': 44.94, 'Q': -6.54, 'R': -6.54, 'S': 44.94, 'T': -1.88, 'V': 1.0, 'W': 1.0, 'Y': 24.68},
+    'N': {'A': 1.0, 'C': -1.88, 'D': 1.0, 'E': 1.0, 'F': -14.03, 'G': -14.03, 'H': 1.0, 'I': 44.94, 'K': 24.68, 'L': 1.0, 'M': 1.0, 'N': 1.0, 'P': -1.88, 'Q': -6.54, 'R': 1.0, 'S': 1.0, 'T': -7.49, 'V': 1.0, 'W': -9.37, 'Y': 1.0},
+    'P': {'A': 20.26, 'C': -6.54, 'D': -6.54, 'E': 18.38, 'F': 20.26, 'G': 1.0, 'H': 1.0, 'I': 1.0, 'K': 1.0, 'L': 1.0, 'M': -6.54, 'N': 1.0, 'P': 20.26, 'Q': 20.26, 'R': -6.54, 'S': 20.26, 'T': 1.0, 'V': 20.26, 'W': -1.88, 'Y': 1.0},
+    'Q': {'A': 1.0, 'C': -6.54, 'D': 20.26, 'E': 20.26, 'F': -6.54, 'G': 1.0, 'H': 1.0, 'I': 1.0, 'K': 1.0, 'L': 1.0, 'M': 1.0, 'N': 1.0, 'P': 20.26, 'Q': 20.26, 'R': 1.0, 'S': 44.94, 'T': 1.0, 'V': -6.54, 'W': 1.0, 'Y': -6.54},
+    'R': {'A': 1.0, 'C': 1.0, 'D': 1.0, 'E': 1.0, 'F': 1.0, 'G': -7.49, 'H': 20.26, 'I': 1.0, 'K': 1.0, 'L': 1.0, 'M': 1.0, 'N': 13.34, 'P': 20.26, 'Q': 20.26, 'R': 58.28, 'S': 44.94, 'T': 1.0, 'V': 1.0, 'W': 58.28, 'Y': -6.54},
+    'S': {'A': 1.0, 'C': 33.60, 'D': 1.0, 'E': 20.26, 'F': 1.0, 'G': 1.0, 'H': 1.0, 'I': 1.0, 'K': 1.0, 'L': 1.0, 'M': 1.0, 'N': 1.0, 'P': 44.94, 'Q': 20.26, 'R': 20.26, 'S': 20.26, 'T': 1.0, 'V': 1.0, 'W': 1.0, 'Y': 1.0},
+    'T': {'A': 1.0, 'C': 1.0, 'D': 1.0, 'E': 20.26, 'F': 13.34, 'G': -7.49, 'H': 1.0, 'I': 1.0, 'K': 1.0, 'L': 1.0, 'M': 1.0, 'N': -14.03, 'P': 1.0, 'Q': -6.54, 'R': 1.0, 'S': 1.0, 'T': 1.0, 'V': 1.0, 'W': -14.03, 'Y': 1.0},
+    'V': {'A': 1.0, 'C': 1.0, 'D': -14.03, 'E': 1.0, 'F': 1.0, 'G': -7.49, 'H': 1.0, 'I': 1.0, 'K': -1.88, 'L': 1.0, 'M': 1.0, 'N': 1.0, 'P': 20.26, 'Q': 1.0, 'R': 1.0, 'S': 1.0, 'T': -7.49, 'V': 1.0, 'W': 1.0, 'Y': -6.54},
+    'W': {'A': -14.03, 'C': 1.0, 'D': 1.0, 'E': 1.0, 'F': 1.0, 'G': -9.37, 'H': 24.68, 'I': 1.0, 'K': 1.0, 'L': 13.34, 'M': 24.68, 'N': 13.34, 'P': 1.0, 'Q': 1.0, 'R': 1.0, 'S': 1.0, 'T': -14.03, 'V': -7.49, 'W': 1.0, 'Y': 1.0},
+    'Y': {'A': 24.68, 'C': 1.0, 'D': 24.68, 'E': -6.54, 'F': 1.0, 'G': -7.49, 'H': 13.34, 'I': 1.0, 'K': 1.0, 'L': 1.0, 'M': 44.94, 'N': 1.0, 'P': 13.34, 'Q': 1.0, 'R': -15.91, 'S': 1.0, 'T': -7.49, 'V': 1.0, 'W': -9.37, 'Y': 13.34},
+}
 
-    clean_seq = "".join(ch for ch in raw_seq.upper() if ch in KD_HYDROPATHY)
-    if not clean_seq:
-        clean_seq = "MKVLLFAAVVGGLAAAGVSAKELRKIYEDGKVTYTLDNGKPVVLVFYPADFTFVCPTEIIAFSENAAKKFEEQGAQVLFASTDSEYSLLAWTNIPRKEGGLGPINIPLLADTN"
 
-    length = len(clean_seq)
-    mw_da = sum(AA_RESIDUE_MASS.get(c, 110.0) for c in clean_seq) + 18.0153
-    gravy = sum(KD_HYDROPATHY.get(c, 0.0) for c in clean_seq) / max(1, length)
+def _split_protein_chains(raw: str) -> list:
+    lines = (raw or "").splitlines()
+    if any(ln.strip().startswith(">") for ln in lines):
+        chains = []
+        cur = []
+        for ln in lines:
+            t = ln.strip()
+            if t.startswith(">"):
+                if cur:
+                    chains.append("".join(cur))
+                    cur = []
+            else:
+                cur.extend(ch for ch in t.upper() if ch in KD_HYDROPATHY)
+        if cur:
+            chains.append("".join(cur))
+        return [c for c in chains if c]
+    if "/" in (raw or "") or ":" in (raw or ""):
+        parts = re.split(r"[/:]+", raw or "")
+        chains = ["".join(ch for ch in p.upper() if ch in KD_HYDROPATHY) for p in parts]
+        chains = [c for c in chains if c]
+        if chains:
+            return chains
+    single = "".join(ch for ch in (raw or "").upper() if ch in KD_HYDROPATHY)
+    return [single] if single else []
 
-    # 二分法计算理论 pI（与 Swift 端 ProteinBiophysicsEngine.netCharge / calculateIsoelectricPoint 完全一致）
-    def net_charge_at(p_val: float) -> float:
-        pos = (1.0 / (1.0 + 10 ** (p_val - 9.69)))
-        pos += clean_seq.count('K') * (1.0 / (1.0 + 10 ** (p_val - 10.54)))
-        pos += clean_seq.count('R') * (1.0 / (1.0 + 10 ** (p_val - 12.48)))
-        pos += clean_seq.count('H') * (1.0 / (1.0 + 10 ** (p_val - 6.00)))
-        neg = (1.0 / (1.0 + 10 ** (2.34 - p_val)))
-        neg += clean_seq.count('D') * (1.0 / (1.0 + 10 ** (3.86 - p_val)))
-        neg += clean_seq.count('E') * (1.0 / (1.0 + 10 ** (4.25 - p_val)))
-        neg += clean_seq.count('C') * (1.0 / (1.0 + 10 ** (8.33 - p_val)))
-        neg += clean_seq.count('Y') * (1.0 / (1.0 + 10 ** (10.07 - p_val)))
-        return pos - neg
 
+def _protein_net_charge_chains(chains: list, ph: float, scale: str = "bjellqvist") -> float:
+    scale_l = (scale or "bjellqvist").strip().lower()
+    total_pos = 0.0
+    total_neg = 0.0
+    bj_n = {'M': 7.00, 'S': 6.93, 'P': 8.36, 'A': 7.59, 'V': 7.44, 'E': 7.70, 'T': 6.82}
+    bj_c = {'D': 4.55, 'E': 4.75}
+    for seq in chains:
+        if not seq:
+            continue
+        if scale_l == "emboss":
+            pk_n, pk_c = 8.60, 3.60
+            pk_k, pk_r, pk_h = 10.80, 12.50, 6.50
+            pk_d, pk_e, pk_cys, pk_y = 3.90, 4.10, 8.50, 10.10
+        elif scale_l == "lehninger":
+            pk_n, pk_c = 9.69, 2.34
+            pk_k, pk_r, pk_h = 10.54, 12.48, 6.00
+            pk_d, pk_e, pk_cys, pk_y = 3.86, 4.25, 8.33, 10.07
+        else:
+            pk_n = bj_n.get(seq[0], 7.50)
+            pk_c = bj_c.get(seq[-1], 3.55)
+            pk_k, pk_r, pk_h = 10.00, 12.00, 5.98
+            pk_d, pk_e, pk_cys, pk_y = 4.05, 4.45, 9.00, 10.00
+
+        total_pos += 1.0 / (1.0 + 10.0 ** (ph - pk_n))
+        total_pos += seq.count('K') / (1.0 + 10.0 ** (ph - pk_k))
+        total_pos += seq.count('R') / (1.0 + 10.0 ** (ph - pk_r))
+        total_pos += seq.count('H') / (1.0 + 10.0 ** (ph - pk_h))
+        total_neg += 1.0 / (1.0 + 10.0 ** (pk_c - ph))
+        total_neg += seq.count('D') / (1.0 + 10.0 ** (pk_d - ph))
+        total_neg += seq.count('E') / (1.0 + 10.0 ** (pk_e - ph))
+        total_neg += seq.count('C') / (1.0 + 10.0 ** (pk_cys - ph))
+        total_neg += seq.count('Y') / (1.0 + 10.0 ** (pk_y - ph))
+    return total_pos - total_neg
+
+
+def _protein_isoelectric_point_chains(chains: list, scale: str = "bjellqvist") -> float:
     lo, hi = 0.5, 13.5
-    for _ in range(32):
-        mid = (lo + hi) * 0.5
-        if net_charge_at(mid) > 0:
+    for _ in range(40):
+        mid = 0.5 * (lo + hi)
+        if _protein_net_charge_chains(chains, mid, scale) > 0:
             lo = mid
         else:
             hi = mid
-    pi_val = round((lo + hi) * 0.5, 2)
+    return 0.5 * (lo + hi)
 
-    if ligand_coords:
-        xs = [c[0] for c in ligand_coords]
-        ys = [c[1] for c in ligand_coords]
-        zs = [c[2] for c in ligand_coords]
+
+def _protein_instability_index_chains(chains: list) -> float:
+    total_len = sum(len(c) for c in chains)
+    if total_len < 2:
+        return 0.0
+    diwv_sum = 0.0
+    for ch in chains:
+        for i in range(len(ch) - 1):
+            diwv_sum += GURUPRASAD_DIWV.get(ch[i], {}).get(ch[i + 1], 1.0)
+    return (10.0 / float(total_len)) * diwv_sum
+
+
+def _protein_disorder_propensity(seq: str, window_size: int = 15) -> tuple:
+    n = len(seq)
+    if n == 0:
+        return (0.0, 0.0, 0.0)
+    half_w = max(1, min(window_size, n) // 2)
+    disordered = 0
+    raw_sum = 0.0
+    norm_h_sum = 0.0
+    for i in range(n):
+        raw_sum += TOP_IDP_SCALE.get(seq[i], 0.0)
+        norm_h_sum += (KD_HYDROPATHY.get(seq[i], 0.0) + 4.5) / 9.0
+        lo = max(0, i - half_w)
+        hi = min(n - 1, i + half_w)
+        win_mean = sum(TOP_IDP_SCALE.get(seq[k], 0.0) for k in range(lo, hi + 1)) / float(hi - lo + 1)
+        if win_mean > 0.15:
+            disordered += 1
+    mean_top = raw_sum / float(n)
+    mean_norm_h = norm_h_sum / float(n)
+    mean_abs_charge = abs(_protein_net_charge_chains([seq], 7.0, "bjellqvist")) / float(n)
+    boundary_h = (mean_abs_charge + 1.151) / 2.785
+    return (disordered * 100.0 / float(n), mean_top, mean_norm_h - boundary_h)
+
+
+def _is_hydrogen_atom(atom_name: str, elem: str = '') -> bool:
+    e = (elem or '').strip().upper()
+    if e in ('H', 'D'):
+        return True
+    a = (atom_name or '').strip().upper()
+    return a.startswith(('H', '1H', '2H', '3H', 'D'))
+
+
+def _parse_structure_atoms_for_ligsite(text: str):
+    """解析 PDB / mmCIF 重原子、Cα、SITE 残基与分实例共晶配体（剔除氢原子与溶剂/缓冲离子）"""
+    ignored_het = {'HOH', 'WAT', 'DOD', 'SO4', 'PO4', 'GOL', 'EDO', 'PEG', 'DMS', 'ACT', 'NA', 'CL', 'K', 'MG', 'ZN', 'FE', 'MN', 'CU', 'CA'}
+    heavy_atoms = []
+    ca_by_key = {}
+    site_keys = set()
+    ligand_instances = {}
+    ligand_order = []
+    is_cif = ('_atom_site.' in text) or ('data_' in text[:2000])
+
+    if is_cif:
+        lines = text.splitlines()
+        idx = 0
+        n_lines = len(lines)
+        while idx < n_lines:
+            ln = lines[idx].strip()
+            if ln == 'loop_':
+                idx += 1
+                cols = []
+                while idx < n_lines and lines[idx].strip().startswith('_'):
+                    cols.append(lines[idx].strip())
+                    idx += 1
+                if any(c.startswith('_atom_site.') for c in cols):
+                    col_map = {c: i for i, c in enumerate(cols)}
+                    c_grp = col_map.get('_atom_site.group_PDB')
+                    c_atom = col_map.get('_atom_site.label_atom_id', col_map.get('_atom_site.auth_atom_id'))
+                    c_alt = col_map.get('_atom_site.label_alt_id')
+                    c_res = col_map.get('_atom_site.label_comp_id', col_map.get('_atom_site.auth_comp_id'))
+                    c_ch = col_map.get('_atom_site.auth_asym_id', col_map.get('_atom_site.label_asym_id'))
+                    c_seq = col_map.get('_atom_site.auth_seq_id', col_map.get('_atom_site.label_seq_id'))
+                    c_ic = col_map.get('_atom_site.pdbx_PDB_ins_code')
+                    c_x = col_map.get('_atom_site.Cartn_x')
+                    c_y = col_map.get('_atom_site.Cartn_y')
+                    c_z = col_map.get('_atom_site.Cartn_z')
+                    c_el = col_map.get('_atom_site.type_symbol')
+                    c_mdl = col_map.get('_atom_site.pdbx_PDB_model_num')
+                    first_model = None
+                    while idx < n_lines:
+                        row = lines[idx].strip()
+                        if not row or row.startswith('#') or row.startswith('loop_') or row.startswith('_'):
+                            break
+                        toks = row.split()
+                        idx += 1
+                        if len(toks) < len(cols):
+                            continue
+                        if c_mdl is not None:
+                            mdl = toks[c_mdl]
+                            if first_model is None:
+                                first_model = mdl
+                            elif mdl != first_model:
+                                continue
+                        alt = toks[c_alt] if c_alt is not None else '.'
+                        if alt not in ('.', '?', 'A', '1'):
+                            continue
+                        grp = toks[c_grp].upper() if c_grp is not None else 'ATOM'
+                        atom_name = toks[c_atom].strip('"\'').upper() if c_atom is not None else ''
+                        elem = toks[c_el].upper() if c_el is not None else ''
+                        if _is_hydrogen_atom(atom_name, elem):
+                            continue
+                        res_name = toks[c_res].upper() if c_res is not None else ''
+                        chain_id = toks[c_ch] if (c_ch is not None and toks[c_ch] not in ('.', '?')) else 'A'
+                        res_seq_str = toks[c_seq] if c_seq is not None else '0'
+                        ic = toks[c_ic] if (c_ic is not None and toks[c_ic] not in ('.', '?')) else ''
+                        try:
+                            x, y, z = float(toks[c_x]), float(toks[c_y]), float(toks[c_z])
+                        except Exception:
+                            continue
+                        if grp == 'ATOM':
+                            heavy_atoms.append((x, y, z))
+                            if atom_name == 'CA':
+                                ca_by_key[(chain_id, res_seq_str, ic)] = (x, y, z)
+                        elif grp == 'HETATM' and res_name and res_name not in ignored_het:
+                            lkey = f'{res_name}:{chain_id}:{res_seq_str}{ic}'
+                            if lkey not in ligand_instances:
+                                ligand_order.append(lkey)
+                                ligand_instances[lkey] = {'id': lkey, 'res_name': res_name, 'chain_id': chain_id, 'res_seq': int(res_seq_str) if res_seq_str.lstrip('-').isdigit() else 0, 'coords': []}
+                            ligand_instances[lkey]['coords'].append((x, y, z))
+                elif any(c.startswith('_struct_site_gen.') for c in cols):
+                    col_map = {c: i for i, c in enumerate(cols)}
+                    c_ch = col_map.get('_struct_site_gen.auth_asym_id', col_map.get('_struct_site_gen.label_asym_id'))
+                    c_seq = col_map.get('_struct_site_gen.auth_seq_id', col_map.get('_struct_site_gen.label_seq_id'))
+                    c_ic = col_map.get('_struct_site_gen.pdbx_PDB_ins_code')
+                    while idx < n_lines:
+                        row = lines[idx].strip()
+                        if not row or row.startswith('#') or row.startswith('loop_') or row.startswith('_'):
+                            break
+                        toks = row.split()
+                        idx += 1
+                        if c_seq is not None and c_seq < len(toks):
+                            ch = toks[c_ch] if (c_ch is not None and c_ch < len(toks) and toks[c_ch] not in ('.', '?')) else 'A'
+                            ic = toks[c_ic] if (c_ic is not None and c_ic < len(toks) and toks[c_ic] not in ('.', '?')) else ''
+                            site_keys.add((ch, toks[c_seq], ic))
+            else:
+                idx += 1
+    else:
+        for line in text.splitlines():
+            if line.startswith('ENDMDL'):
+                break
+            if line.startswith('SITE  ') and len(line) >= 22:
+                for slot in range(4):
+                    base = 18 + slot * 11
+                    if base + 9 <= len(line):
+                        ch = line[base + 4].strip() or 'A'
+                        sq = line[base + 5:base + 9].strip()
+                        ic = line[base + 9].strip() if base + 9 < len(line) else ''
+                        if sq:
+                            site_keys.add((ch, sq, ic))
+                continue
+            if (line.startswith('ATOM  ') or line.startswith('HETATM')) and len(line) >= 54:
+                alt_loc = line[16]
+                if alt_loc not in (' ', 'A', '1'):
+                    continue
+                atom_name = line[12:16].strip().upper()
+                elem = line[76:78].strip().upper() if len(line) >= 78 else ''
+                if _is_hydrogen_atom(atom_name, elem):
+                    continue
+                res_name = line[17:20].strip().upper()
+                chain_id = line[21].strip() or 'A'
+                res_seq_str = line[22:26].strip()
+                i_code = line[26].strip() if len(line) > 26 else ''
+                try:
+                    x, y, z = float(line[30:38]), float(line[38:46]), float(line[46:54])
+                except Exception:
+                    continue
+                if line.startswith('ATOM  '):
+                    heavy_atoms.append((x, y, z))
+                    if atom_name == 'CA':
+                        ca_by_key[(chain_id, res_seq_str, i_code)] = (x, y, z)
+                elif res_name not in ignored_het and res_name:
+                    lkey = f'{res_name}:{chain_id}:{res_seq_str}{i_code}'
+                    if lkey not in ligand_instances:
+                        ligand_order.append(lkey)
+                        ligand_instances[lkey] = {'id': lkey, 'res_name': res_name, 'chain_id': chain_id, 'res_seq': int(res_seq_str) if res_seq_str.lstrip('-').isdigit() else 0, 'coords': []}
+                    ligand_instances[lkey]['coords'].append((x, y, z))
+    site_coords = [ca_by_key[k] for k in site_keys if k in ca_by_key]
+    return heavy_atoms, list(ca_by_key.values()), site_coords, ligand_instances, ligand_order
+
+
+def _run_ligsite_3d_bfs(heavy_atoms: list) -> list:
+    """自适应步长 LIGSITE P-S-P 7方向体素扫描 + 26邻域 3D BFS 口袋聚类 + Wadell 紧凑度（对齐 ProteinBiophysicsEngine.swift）"""
+    if len(heavy_atoms) < 8:
+        return []
+    xs = [a[0] for a in heavy_atoms]
+    ys = [a[1] for a in heavy_atoms]
+    zs = [a[2] for a in heavy_atoms]
+    min_x, max_x = min(xs) - 3.0, max(xs) + 3.0
+    min_y, max_y = min(ys) - 3.0, max(ys) + 3.0
+    min_z, max_z = min(zs) - 3.0, max(zs) + 3.0
+    max_span = max(max_x - min_x, max_y - min_y, max_z - min_z, 10.0)
+    spacing = max(1.5, min(2.5, max_span / 45.0))
+    if max_span > 60.0:
+        spacing = max(spacing, max_span / 60.0)
+    nx = min(64, max(8, int(math.ceil((max_x - min_x) / spacing)) + 1))
+    ny = min(64, max(8, int(math.ceil((max_y - min_y) / spacing)) + 1))
+    nz = min(64, max(8, int(math.ceil((max_z - min_z) / spacing)) + 1))
+
+    total = nx * ny * nz
+    occ = bytearray(total)
+    rad = 3.1  # C vdW 1.7 + water probe 1.4
+    rad_sq = rad * rad
+    r_cells = int(math.ceil(rad / spacing))
+    for ax, ay, az in heavy_atoms:
+        ix = int(round((ax - min_x) / spacing))
+        iy = int(round((ay - min_y) / spacing))
+        iz = int(round((az - min_z) / spacing))
+        for dx in range(-r_cells, r_cells + 1):
+            gx = ix + dx
+            if gx < 0 or gx >= nx:
+                continue
+            vx = min_x + gx * spacing - ax
+            for dy in range(-r_cells, r_cells + 1):
+                gy = iy + dy
+                if gy < 0 or gy >= ny:
+                    continue
+                vy = min_y + gy * spacing - ay
+                for dz in range(-r_cells, r_cells + 1):
+                    gz = iz + dz
+                    if gz < 0 or gz >= nz:
+                        continue
+                    vz = min_z + gz * spacing - az
+                    if vx * vx + vy * vy + vz * vz <= rad_sq:
+                        occ[(gx * ny + gy) * nz + gz] = 1
+
+    dirs = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1), (1, 1, -1), (1, -1, 1), (-1, 1, 1)]
+    psp = bytearray(total)
+    max_steps = max(nx, ny, nz)
+    for gx in range(1, nx - 1):
+        for gy in range(1, ny - 1):
+            base_xy = (gx * ny + gy) * nz
+            for gz in range(1, nz - 1):
+                idx = base_xy + gz
+                if occ[idx]:
+                    continue
+                hits = 0
+                for ddx, ddy, ddz in dirs:
+                    hit_pos = False
+                    cx, cy, cz = gx + ddx, gy + ddy, gz + ddz
+                    for _ in range(max_steps):
+                        if cx < 0 or cx >= nx or cy < 0 or cy >= ny or cz < 0 or cz >= nz:
+                            break
+                        if occ[(cx * ny + cy) * nz + cz]:
+                            hit_pos = True
+                            break
+                        cx += ddx; cy += ddy; cz += ddz
+                    if not hit_pos:
+                        continue
+                    cx, cy, cz = gx - ddx, gy - ddy, gz - ddz
+                    for _ in range(max_steps):
+                        if cx < 0 or cx >= nx or cy < 0 or cy >= ny or cz < 0 or cz >= nz:
+                            break
+                        if occ[(cx * ny + cy) * nz + cz]:
+                            hits += 1
+                            break
+                        cx -= ddx; cy -= ddy; cz -= ddz
+                psp[idx] = hits
+
+    visited = bytearray(total)
+    pockets = []
+    voxel_vol = spacing ** 3
+    for gx in range(1, nx - 1):
+        for gy in range(1, ny - 1):
+            for gz in range(1, nz - 1):
+                start_idx = (gx * ny + gy) * nz + gz
+                if psp[start_idx] < 3 or visited[start_idx]:
+                    continue
+                queue = [(gx, gy, gz)]
+                visited[start_idx] = 1
+                comp = []
+                psp_sum = 0
+                head = 0
+                while head < len(queue):
+                    cx, cy, cz = queue[head]
+                    head += 1
+                    comp.append((cx, cy, cz))
+                    psp_sum += psp[(cx * ny + cy) * nz + cz]
+                    for ddx in (-1, 0, 1):
+                        nx2 = cx + ddx
+                        if nx2 < 1 or nx2 >= nx - 1:
+                            continue
+                        for ddy in (-1, 0, 1):
+                            ny2 = cy + ddy
+                            if ny2 < 1 or ny2 >= ny - 1:
+                                continue
+                            for ddz in (-1, 0, 1):
+                                if ddx == 0 and ddy == 0 and ddz == 0:
+                                    continue
+                                nz2 = cz + ddz
+                                if nz2 < 1 or nz2 >= nz - 1:
+                                    continue
+                                nidx = (nx2 * ny + ny2) * nz + nz2
+                                if psp[nidx] >= 3 and not visited[nidx]:
+                                    visited[nidx] = 1
+                                    queue.append((nx2, ny2, nz2))
+                if len(comp) < 3:
+                    continue
+                comp_set = set(comp)
+                exposed_faces = 0
+                pts = []
+                for vx, vy, vz in comp:
+                    pts.append((min_x + vx * spacing, min_y + vy * spacing, min_z + vz * spacing))
+                    for fdx, fdy, fdz in ((1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(0,0,1),(0,0,-1)):
+                        if (vx + fdx, vy + fdy, vz + fdz) not in comp_set:
+                            exposed_faces += 1
+                vol = len(comp) * voxel_vol
+                surf = max(1e-6, exposed_faces * (spacing ** 2))
+                compactness = min(1.0, ((36.0 * math.pi * (vol ** 2)) ** (1.0 / 3.0)) / surf)
+                cnt = float(len(pts))
+                pcx = sum(p[0] for p in pts) / cnt
+                pcy = sum(p[1] for p in pts) / cnt
+                pcz = sum(p[2] for p in pts) / cnt
+                pockets.append({
+                    'rank': 0,
+                    'center': [round(pcx, 3), round(pcy, 3), round(pcz, 3)],
+                    'volume_A3': round(vol, 1),
+                    'voxel_count': len(comp),
+                    'mean_psp': round(psp_sum / cnt, 2),
+                    'compactness': round(compactness, 3),
+                    '_pts': pts,
+                })
+    pockets.sort(key=lambda p: (p['volume_A3'] * p['mean_psp'], p['volume_A3']), reverse=True)
+    for i, pk in enumerate(pockets):
+        pk['rank'] = i + 1
+    return pockets[:8]
+
+
+def tool_analyze_protein_and_docking_box(args: dict) -> dict:
+    """计算蛋白质理化性质（Guruprasad 20×20 DIWV、Bjellqvist/EMBOSS/Lehninger pI、TOP-IDP、Debye 屏蔽）、分实例配体 / LIGSITE 3D BFS 口袋、Vina 对接盒及 WT 校验点突变 ΔΔG"""
+    raw_seq = (args.get('sequence') or '').strip()
+    pdb_path = (args.get('pdb_path') or '').strip()
+    pdb_text_inline = (args.get('pdb_text') or '').strip()
+    ph = float(args.get('ph', 7.0))
+    temp_k = float(args.get('temperature_k', 310.0))
+    ionic_strength_m = float(args.get('ionic_strength_m', 0.15))
+    pka_scale = str(args.get('pka_scale') or 'bjellqvist').strip().lower()
+    if pka_scale not in ('bjellqvist', 'emboss', 'lehninger'):
+        pka_scale = 'bjellqvist'
+    mutations = args.get('mutations') or []
+
+    struct_text = pdb_text_inline
+    if not struct_text and pdb_path and os.path.exists(pdb_path):
+        with open(pdb_path, 'r', encoding='utf-8', errors='ignore') as f:
+            struct_text = f.read()
+
+    heavy_atoms, coords, site_coords, ligand_instances, ligand_order = ([], [], [], {}, [])
+    if struct_text:
+        heavy_atoms, coords, site_coords, ligand_instances, ligand_order = _parse_structure_atoms_for_ligsite(struct_text)
+
+    chains = _split_protein_chains(raw_seq)
+    if not chains:
+        chains = ['MKVLLFAAVVGGLAAAGVSAKELRKIYEDGKVTYTLDNGKPVVLVFYPADFTFVCPTEIIAFSENAAKKFEEQGAQVLFASTDSEYSLLAWTNIPRKEGGLGPINIPLLADTN']
+    clean_seq = ''.join(chains)
+
+    length = len(clean_seq)
+    mw_da = sum(sum(AA_RESIDUE_MASS.get(c, 110.0) for c in ch) + WATER_MASS_DA for ch in chains)
+    gravy = sum(KD_HYDROPATHY.get(c, 0.0) for c in clean_seq) / max(1, length)
+    pi_val = round(_protein_isoelectric_point_chains(chains, pka_scale), 2)
+    net_charge_val = round(_protein_net_charge_chains(chains, ph, pka_scale), 2)
+    instability_val = round(_protein_instability_index_chains(chains), 2)
+    disorder_pct, top_idp_mean, uversky_dist = _protein_disorder_propensity(clean_seq)
+    debye_length_a = round((3.04 / math.sqrt(max(0.0005, ionic_strength_m))) * math.sqrt(max(250.0, temp_k) / 298.15), 2)
+
+    pockets_raw = _run_ligsite_3d_bfs(heavy_atoms) if heavy_atoms else []
+    pockets_out = [{k: v for k, v in pk.items() if k != '_pts'} for pk in pockets_raw]
+
+    lig_summary_list = []
+    primary_lig = None
+    for lk in ligand_order:
+        inst = ligand_instances[lk]
+        lcoords = inst['coords']
+        if not lcoords:
+            continue
+        cnt = float(len(lcoords))
+        lcx = round(sum(c[0] for c in lcoords) / cnt, 3)
+        lcy = round(sum(c[1] for c in lcoords) / cnt, 3)
+        lcz = round(sum(c[2] for c in lcoords) / cnt, 3)
+        lig_summary_list.append({
+            'id': inst['id'],
+            'res_name': inst['res_name'],
+            'chain_id': inst['chain_id'],
+            'res_seq': inst['res_seq'],
+            'heavy_atom_count': len(lcoords),
+            'center': [lcx, lcy, lcz],
+        })
+        if primary_lig is None or len(lcoords) > len(primary_lig['coords']):
+            primary_lig = inst
+
+    if primary_lig is not None:
+        lcoords = primary_lig['coords']
+        xs = [c[0] for c in lcoords]
+        ys = [c[1] for c in lcoords]
+        zs = [c[2] for c in lcoords]
         cx, cy, cz = round((min(xs) + max(xs)) * 0.5, 3), round((min(ys) + max(ys)) * 0.5, 3), round((min(zs) + max(zs)) * 0.5, 3)
         sx = round(min(60.0, max(18.0, (max(xs) - min(xs)) + 8.0)), 2)
         sy = round(min(60.0, max(18.0, (max(ys) - min(ys)) + 8.0)), 2)
         sz = round(min(60.0, max(18.0, (max(zs) - min(zs)) + 8.0)), 2)
-        box_source = f"共晶配体 ({'/'.join(ligands)}) + LIGSITE 共识融合盒"
+        box_source = f"共晶配体 ({primary_lig['res_name']} {primary_lig['chain_id']}:{primary_lig['res_seq']}) + LIGSITE 共识融合盒"
+    elif site_coords:
+        xs = [c[0] for c in site_coords]
+        ys = [c[1] for c in site_coords]
+        zs = [c[2] for c in site_coords]
+        cx, cy, cz = round((min(xs) + max(xs)) * 0.5, 3), round((min(ys) + max(ys)) * 0.5, 3), round((min(zs) + max(zs)) * 0.5, 3)
+        sx = round(min(60.0, max(18.0, (max(xs) - min(xs)) + 10.0)), 2)
+        sy = round(min(60.0, max(18.0, (max(ys) - min(ys)) + 10.0)), 2)
+        sz = round(min(60.0, max(18.0, (max(zs) - min(zs)) + 10.0)), 2)
+        box_source = '实验 SITE 催化位点 + LIGSITE 共识盒'
+    elif pockets_raw:
+        pts = pockets_raw[0]['_pts']
+        xs = [c[0] for c in pts]
+        ys = [c[1] for c in pts]
+        zs = [c[2] for c in pts]
+        cx, cy, cz = round((min(xs) + max(xs)) * 0.5, 3), round((min(ys) + max(ys)) * 0.5, 3), round((min(zs) + max(zs)) * 0.5, 3)
+        sx = round(min(60.0, max(18.0, (max(xs) - min(xs)) + 10.0)), 2)
+        sy = round(min(60.0, max(18.0, (max(ys) - min(ys)) + 10.0)), 2)
+        sz = round(min(60.0, max(18.0, (max(zs) - min(zs)) + 10.0)), 2)
+        box_source = 'LIGSITE P-S-P 3D BFS 几何口袋'
     elif coords:
         xs = [c[0] for c in coords]
         ys = [c[1] for c in coords]
         zs = [c[2] for c in coords]
         cx, cy, cz = round(sum(xs) / len(xs), 3), round(sum(ys) / len(ys), 3), round(sum(zs) / len(zs), 3)
         sx = sy = sz = 22.0
-        box_source = "LIGSITE P-S-P 几何口袋"
+        box_source = 'LIGSITE P-S-P 几何口袋 (质心回退)'
     else:
         cx, cy, cz = 4.6, -2.5, 1.2
         sx = sy = sz = 22.0
-        box_source = "LIGSITE P-S-P 几何口袋 (SPICE 折叠)"
+        box_source = 'LIGSITE P-S-P 几何口袋 (教学合成坐标)'
 
     vina_cfg = (
         f"receptor = receptor.pdbqt\nligand = ligand.pdbqt\n\n"
         f"center_x = {cx:.3f}\ncenter_y = {cy:.3f}\ncenter_z = {cz:.3f}\n\n"
         f"size_x = {sx:.1f}\nsize_y = {sy:.1f}\nsize_z = {sz:.1f}\n\n"
-        f"exhaustiveness = 8\nnum_modes = 9\nenergy_range = 3\n"
+        f"exhaustiveness = 8\nnum_modes = 9\nenergy_range = 3\nseed = 42\n"
     )
 
     mut_evals = []
     for spec in mutations:
         s = str(spec).strip().upper()
-        parts = [p.strip() for p in s.replace("/", "+").split("+") if p.strip()]
+        if not s:
+            continue
+        parts = [p.strip() for p in re.split(r"[+,;\s]+", s) if p.strip()]
         ddg_sum = 0.0
         valid_parts = []
+        mismatch_warnings = []
         for token in parts:
             if len(token) >= 3 and token[1:-1].isdigit():
                 pos = int(token[1:-1])
                 from_aa, to_aa = token[0], token[-1]
+                if pos < 1 or pos > length:
+                    mismatch_warnings.append(f"位点越界：{token} (长度 {length} aa)")
+                    continue
+                actual_wt = clean_seq[pos - 1]
+                if actual_wt != from_aa:
+                    mismatch_warnings.append(f"野生型残基不匹配：第 {pos} 位实际为 {actual_wt}，而非 {from_aa} ({token})")
+                    continue
+                valid_parts.append(f"{from_aa}{pos}{to_aa}")
+                if from_aa == to_aa:
+                    continue
                 h_from = KD_HYDROPATHY.get(from_aa, 0.0)
                 h_to = KD_HYDROPATHY.get(to_aa, 0.0)
                 m_from = AA_RESIDUE_MASS.get(from_aa, 110.0)
@@ -2463,31 +3481,55 @@ def tool_analyze_protein_and_docking_box(args: dict) -> dict:
                 buried_factor = 1.0 if (pos > 4 and pos < length - 4) else 0.45
                 d_hydro = (h_from - h_to) * 0.38 * buried_factor
                 d_steric = abs(m_to - m_from) / 95.0 * 0.45
-                pro_pen = 1.45 if to_aa == 'P' else 0.0
-                ddg_sum += (d_hydro + d_steric + pro_pen - 0.55)
-                valid_parts.append(f"{from_aa}{pos}{to_aa}")
-        if valid_parts:
+                pro_pen = (1.45 * (0.5 + 0.5 * buried_factor)) if to_aa == 'P' else 0.0
+                ddg_sum += (d_hydro + d_steric + pro_pen)
+            else:
+                mismatch_warnings.append(f"无法解析突变格式：{token}")
+
+        is_valid_wt = (len(mismatch_warnings) == 0 and len(valid_parts) > 0)
+        if not is_valid_wt:
+            mut_evals.append({
+                "mutation": s,
+                "ddg_kcal_mol": 0.0,
+                "model_type": "empirical_heuristic",
+                "is_valid_wild_type": False,
+                "validation_warning": "; ".join(mismatch_warnings),
+                "verdict": "野生型位点不匹配 (Invalid WT)"
+            })
+        else:
             ddg = round(ddg_sum, 2)
             mut_evals.append({
                 "mutation": "+".join(valid_parts),
                 "ddg_kcal_mol": ddg,
                 "model_type": "empirical_heuristic",
+                "is_valid_wild_type": True,
+                "validation_warning": None,
                 "verdict": "经验稳定化倾向 (Empirical Stabilizing)" if ddg <= -0.4 else ("经验中性耐受 (Empirical Neutral)" if ddg <= 0.5 else "经验去稳定化风险 (Empirical Destabilizing)")
             })
 
     notify_gui_and_sync_primers(
-        action_summary=f"MCP 蛋白质结构与对接盒分析 ({length} aa, pI {pi_val})",
+        action_summary=f"MCP 蛋白质结构与对接盒分析 ({length} aa, pI {pi_val}, II {instability_val})",
         primers=[],
         target_module="proteinWorkbench"
     )
 
     return {
         "length_aa": length,
+        "chain_count": len(chains),
         "molecular_weight_da": round(mw_da, 1),
         "isoelectric_point": pi_val,
-        "net_charge_at_ph": round(net_charge_at(ph), 2),
+        "pka_scale": pka_scale,
+        "net_charge_at_ph": net_charge_val,
         "gravy": round(gravy, 3),
+        "instability_index": instability_val,
+        "is_stable": instability_val < 40.0,
+        "disorder_pct": round(disorder_pct, 2),
+        "top_idp_mean": round(top_idp_mean, 3),
+        "uversky_distance": round(uversky_dist, 4),
+        "debye_length_a": debye_length_a,
         "ddg_model_type": "empirical_heuristic",
+        "ligand_instances": lig_summary_list,
+        "pockets": pockets_out,
         "docking_box": {
             "source": box_source,
             "center": [cx, cy, cz],
@@ -3275,22 +4317,22 @@ def _parse_ab1_bytes(raw_bytes: bytes) -> dict:
             return struct.pack(">i", d_off)[:max(0, d_size)]
         return raw_bytes[d_off:d_off + d_size] if d_off + d_size <= len(raw_bytes) else b""
 
-    def get_i16_array(key):
+    def get_u16_array(key):
         b = get_bytes(key)
         cnt = len(b) // 2
-        return list(struct.unpack(f">{cnt}h", b[:cnt * 2])) if cnt > 0 else []
+        return list(struct.unpack(f">{cnt}H", b[:cnt * 2])) if cnt > 0 else []
 
     fwo = get_bytes("FWO_#1").decode("ascii", errors="ignore").upper() or "GATC"
     d_nums = [9, 10, 11, 12] if "DATA#9" in entries else [1, 2, 3, 4]
     traces = {}
     for idx, ch in enumerate(fwo[:4]):
-        traces[ch] = get_i16_array(f"DATA#{d_nums[idx]}")
+        traces[ch] = get_u16_array(f"DATA#{d_nums[idx]}")
 
     pbas_bytes = get_bytes("PBAS#1") or get_bytes("PBAS#2")
-    seq = "".join(ch for ch in pbas_bytes.decode("ascii", errors="ignore").upper() if ch in "ACGTN")
+    seq = "".join(ch for ch in pbas_bytes.decode("ascii", errors="ignore").upper() if ch in "ACGTNRYSWKMBDHV")
     pcon_bytes = get_bytes("PCON#1") or get_bytes("PCON#2")
     quals = list(pcon_bytes[:len(seq)]) if pcon_bytes else [40] * len(seq)
-    plocs = get_i16_array("PLOC#1") or get_i16_array("PLOC#2")
+    plocs = get_u16_array("PLOC#1") or get_u16_array("PLOC#2")
 
     double_peaks = []
     for i, base_ch in enumerate(seq):
@@ -3332,20 +4374,20 @@ def _extract_ab1_peaks_acgt(raw_bytes: bytes) -> Dict[str, Any]:
             return struct.pack(">i", d_off)[:max(0, d_size)]
         return raw_bytes[d_off:d_off + d_size] if d_off + d_size <= len(raw_bytes) else b""
 
-    def get_i16_array(key: str) -> List[int]:
+    def get_u16_array(key: str) -> List[int]:
         b = get_bytes(key)
         cnt = len(b) // 2
-        return list(struct.unpack(f">{cnt}h", b[:cnt * 2])) if cnt > 0 else []
+        return list(struct.unpack(f">{cnt}H", b[:cnt * 2])) if cnt > 0 else []
 
     fwo = get_bytes("FWO_#1").decode("ascii", errors="ignore").upper() or "GATC"
     d_nums = [9, 10, 11, 12] if "DATA#9" in entries else [1, 2, 3, 4]
     traces = {}
     for idx, ch in enumerate(fwo[:4]):
-        traces[ch] = get_i16_array(f"DATA#{d_nums[idx]}")
+        traces[ch] = get_u16_array(f"DATA#{d_nums[idx]}")
 
     pbas_bytes = get_bytes("PBAS#1") or get_bytes("PBAS#2")
-    seq = "".join(ch for ch in pbas_bytes.decode("ascii", errors="ignore").upper() if ch in "ACGTN")
-    plocs = get_i16_array("PLOC#1") or get_i16_array("PLOC#2")
+    seq = "".join(ch for ch in pbas_bytes.decode("ascii", errors="ignore").upper() if ch in "ACGTNRYSWKMBDHV")
+    plocs = get_u16_array("PLOC#1") or get_u16_array("PLOC#2")
     pcon_bytes = get_bytes("PCON#1") or get_bytes("PCON#2")
     qualities = [int(b) for b in pcon_bytes[:len(seq)]] if pcon_bytes else [0] * len(seq)
     if len(qualities) < len(seq):
@@ -3390,17 +4432,24 @@ def _align_single_sanger_read(parsed: dict, sample_name: str, ref_seq: str, ref_
     if n < 16:
         raise ValueError(f"测序读长过短 ({sample_name}: {n} < 16 bp)")
 
-    win = min(10, max(1, n // 4))
+    # Mott 最大累积子数组质量修剪（与 Swift SangerAlignmentEngine 对齐）
     trim_s, trim_e = 0, n
-    if n > win * 2 and len(quals) >= n:
-        for i in range(0, n - win):
-            if quals[i] >= trim_q and (sum(quals[i:i + win]) / win) >= trim_q:
-                trim_s = i
-                break
-        for i in range(n, trim_s + win - 1, -1):
-            if quals[i - 1] >= trim_q and (sum(quals[i - win:i]) / win) >= trim_q:
-                trim_e = i
-                break
+    if n > 12 and len(quals) >= n:
+        cutoff = 10.0 ** (-float(trim_q) / 10.0)
+        cur_sum, cur_s = 0.0, 0
+        best_sum, best_s, best_e = 0.0, 0, n
+        for i in range(n):
+            err = 10.0 ** (-float(max(0, quals[i])) / 10.0)
+            cur_sum += (cutoff - err)
+            if cur_sum <= 0.0:
+                cur_sum = 0.0
+                cur_s = i + 1
+            elif cur_sum > best_sum:
+                best_sum = cur_sum
+                best_s = cur_s
+                best_e = i + 1
+        if best_sum > 0.0 and (best_e - best_s) >= 12:
+            trim_s, trim_e = best_s, best_e
     trimmed_seq = raw_seq[trim_s:trim_e]
 
     doubled_ref = ref_seq + ref_seq
@@ -3420,7 +4469,7 @@ def _align_single_sanger_read(parsed: dict, sample_name: str, ref_seq: str, ref_
                 pos = doubled_ref.find(km, pos + 1)
         if not votes:
             return (0, 0)
-        return max(votes.items(), key=lambda x: x[1])
+        return max(votes.items(), key=lambda x: (x[1], -x[0]))
 
     fwd_start, fwd_hits = best_seed_start(trimmed_seq)
     rev_q = rev_comp(trimmed_seq)
@@ -3430,36 +4479,114 @@ def _align_single_sanger_read(parsed: dict, sample_name: str, ref_seq: str, ref_
     chosen_q = rev_q if is_rev else trimmed_seq
     est_start = rev_start if is_rev else fwd_start
 
-    anchor_k = min(12, len(chosen_q))
-    exact_pos = doubled_ref.find(chosen_q[:anchor_k], max(0, est_start - 8))
-    if exact_pos != -1 and abs(exact_pos - est_start) <= 16:
-        est_start = exact_pos
+    # Gotoh (1982) 带状半全局仿射空位比对（支持小 Indel 而不触发移码雪崩）
+    pad = min(24, ref_len)
+    win_s = max(0, est_start - pad)
+    win_e = min(len(doubled_ref), est_start + len(chosen_q) + pad)
+    ref_win = doubled_ref[win_s:win_e]
+    m_len, n_len = len(ref_win), len(chosen_q)
+    band = max(24, abs(m_len - n_len) + 16)
+    NEG = -10**9
+    M = [[NEG] * (n_len + 1) for _ in range(m_len + 1)]
+    D = [[NEG] * (n_len + 1) for _ in range(m_len + 1)]
+    I = [[NEG] * (n_len + 1) for _ in range(m_len + 1)]
+    trM = [[0] * (n_len + 1) for _ in range(m_len + 1)]
+    trD = [[0] * (n_len + 1) for _ in range(m_len + 1)]
+    trI = [[0] * (n_len + 1) for _ in range(m_len + 1)]
+    for i in range(m_len + 1):
+        M[i][0] = 0
+    for j in range(1, min(n_len, band) + 1):
+        I[0][j] = -6 - (j - 1)
+        trI[0][j] = 2 if j > 1 else 0
+    for i in range(1, m_len + 1):
+        j_lo = max(1, i - band)
+        j_hi = min(n_len, i + band)
+        ri = ref_win[i - 1]
+        for j in range(j_lo, j_hi + 1):
+            # D: deletion in query (gap in query)
+            d_from_m = M[i - 1][j] - 6
+            d_from_d = D[i - 1][j] - 1
+            if d_from_d >= d_from_m:
+                D[i][j] = d_from_d; trD[i][j] = 1
+            else:
+                D[i][j] = d_from_m; trD[i][j] = 0
+            # I: insertion in query (gap in ref)
+            i_from_m = M[i][j - 1] - 6
+            i_from_i = I[i][j - 1] - 1
+            if i_from_i >= i_from_m:
+                I[i][j] = i_from_i; trI[i][j] = 2
+            else:
+                I[i][j] = i_from_m; trI[i][j] = 0
+            # M: match/mismatch
+            sc = 3 if ri == chosen_q[j - 1] else -2
+            best_prev, best_st = M[i - 1][j - 1], 0
+            if D[i - 1][j - 1] > best_prev:
+                best_prev, best_st = D[i - 1][j - 1], 1
+            if I[i - 1][j - 1] > best_prev:
+                best_prev, best_st = I[i - 1][j - 1], 2
+            M[i][j] = best_prev + sc
+            trM[i][j] = best_st
+    best_end_i, best_end_st, best_sc = m_len, 0, NEG
+    for i in range(max(1, n_len - band), m_len + 1):
+        for st, val in ((0, M[i][n_len]), (1, D[i][n_len]), (2, I[i][n_len])):
+            if val > best_sc:
+                best_sc, best_end_i, best_end_st = val, i, st
+    pairs = []
+    ci, cj, cst = best_end_i, n_len, best_end_st
+    while cj > 0:
+        if cst == 0 and ci > 0:
+            prev_st = trM[ci][cj]
+            pairs.append((ref_win[ci - 1], chosen_q[cj - 1], win_s + ci - 1, cj - 1))
+            ci -= 1; cj -= 1; cst = prev_st
+        elif cst == 1 and ci > 0:
+            prev_st = trD[ci][cj]
+            pairs.append((ref_win[ci - 1], "-", win_s + ci - 1, None))
+            ci -= 1; cst = prev_st
+        else:
+            prev_st = trI[ci][cj]
+            pairs.append(("-", chosen_q[cj - 1], win_s + ci, cj - 1))
+            cj -= 1; cst = prev_st
+    pairs.reverse()
+    est_start = pairs[0][2] if pairs else est_start
 
-    ref_window = doubled_ref[est_start:est_start + len(chosen_q)]
     matches = 0
     mismatches = []
     hq_covered_ref_positions = set()
-    for i in range(min(len(ref_window), len(chosen_q))):
-        rb = ref_window[i]
-        qb = chosen_q[i]
-        ref_pos1 = ((est_start + i) % ref_len) + 1
-        read_pos1 = (trim_e - i) if is_rev else (trim_s + i + 1)
-        q_idx = read_pos1 - 1
-        q_val = quals[q_idx] if (0 <= q_idx < len(quals)) else 40
-        if q_val >= trim_q:
+    idx_p = 0
+    while idx_p < len(pairs):
+        rb, qb, r0, q0 = pairs[idx_p]
+        ref_pos1 = (r0 % ref_len) + 1
+        read_pos1 = ((trim_e - q0) if is_rev else (trim_s + q0 + 1)) if q0 is not None else None
+        q_val = quals[read_pos1 - 1] if (read_pos1 is not None and 0 <= read_pos1 - 1 < len(quals)) else 40
+        if rb != "-" and q_val >= trim_q:
             hq_covered_ref_positions.add(ref_pos1)
-        if rb == qb:
+        if rb == qb and rb != "-":
             matches += 1
+            idx_p += 1
+        elif rb != "-" and qb != "-":
+            mismatches.append({"ref_pos_1based": ref_pos1, "read_pos_1based": read_pos1, "ref_base": rb, "read_base": qb, "hgvs": f"g.{ref_pos1}{rb}>{qb}"})
+            idx_p += 1
+        elif rb == "-":
+            ins_b = []
+            first_r1 = ref_pos1
+            first_rp1 = read_pos1
+            while idx_p < len(pairs) and pairs[idx_p][0] == "-":
+                ins_b.append(pairs[idx_p][1])
+                idx_p += 1
+            prev_r1 = (first_r1 - 1) if first_r1 > 1 else ref_len
+            mismatches.append({"ref_pos_1based": first_r1, "read_pos_1based": first_rp1, "ref_base": "-", "read_base": "".join(ins_b), "hgvs": f"g.{prev_r1}_{first_r1}ins{''.join(ins_b)}"})
         else:
-            mismatches.append({
-                "ref_pos_1based": ref_pos1,
-                "read_pos_1based": read_pos1,
-                "ref_base": rb,
-                "read_base": qb,
-                "hgvs": f"g.{ref_pos1}{rb}>{qb}"
-            })
+            del_b = []
+            first_r1 = ref_pos1
+            last_r1 = ref_pos1
+            while idx_p < len(pairs) and pairs[idx_p][1] == "-":
+                del_b.append(pairs[idx_p][0])
+                last_r1 = (pairs[idx_p][2] % ref_len) + 1
+                idx_p += 1
+            hgvs_del = f"g.{first_r1}del{''.join(del_b)}" if len(del_b) == 1 else f"g.{first_r1}_{last_r1}del{''.join(del_b)}"
+            mismatches.append({"ref_pos_1based": first_r1, "read_pos_1based": None, "ref_base": "".join(del_b), "read_base": "-", "hgvs": hgvs_del})
 
-    aligned_len = max(1, len(chosen_q))
+    aligned_len = max(1, len(pairs))
     identity_pct = round(matches * 100.0 / aligned_len, 1)
     is_unaligned = (max_hits == 0 and identity_pct < 60.0)
     if is_unaligned:
@@ -4421,9 +5548,14 @@ def load_plasmid_features_from_sqlite(db_path: str = None) -> list:
 
     conn = sqlite3.connect(f"file:{abs_path}?mode=ro", uri=True)
     try:
-        rows = conn.execute(
-            "SELECT id, name, category, sequence, direction, color_hex FROM plasmid_features ORDER BY id ASC;"
-        ).fetchall()
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(plasmid_features);")}
+        has_src = "source_accession" in cols
+        sql = (
+            "SELECT id, name, category, sequence, direction, color_hex, source_accession FROM plasmid_features ORDER BY id ASC;"
+            if has_src
+            else "SELECT id, name, category, sequence, direction, color_hex FROM plasmid_features ORDER BY id ASC;"
+        )
+        rows = conn.execute(sql).fetchall()
         records = [
             {
                 "id": int(r[0]),
@@ -4432,6 +5564,7 @@ def load_plasmid_features_from_sqlite(db_path: str = None) -> list:
                 "sequence": clean_seq(str(r[3])),
                 "direction": int(r[4]),
                 "color_hex": str(r[5]),
+                "source_accession": (str(r[6]) if (has_src and r[6] is not None) else None),
             }
             for r in rows
         ]
@@ -4589,6 +5722,9 @@ def annotate_plasmid_sequence(
                 match_count = sum(1 for p in range(best_start, best_end) if search_seq[p + d] == pattern_seq[p])
                 identity = match_count / float(aligned_len)
                 coverage = aligned_len / float(ref_len)
+                is_frag_cand = coverage < full_feature_coverage_threshold
+                if is_frag_cand and aligned_len < 21:
+                    continue
                 if identity < min_identity or coverage < effective_min_cov:
                     continue
 
@@ -4626,8 +5762,84 @@ def annotate_plasmid_sequence(
                         "is_fragment": is_frag,
                         "fragment_warning": frag_warn,
                         "color_hex": feat["color_hex"],
+                        "source_accession": feat.get("source_accession"),
                     },
                     s_start,
+                ))
+
+    # 6 框蛋白翻译同源检索（在 candidates.sort 之前汇入，与 Swift PlasmidAnnotationEngine 严格一致）
+    coding_cats = {"CDS", "reporter", "resistance", "tag"}
+    def _tr_dna(s: str) -> str:
+        return "".join(CODON_TO_AA.get(s[i:i + 3], "X") for i in range(0, len(s) - 2, 3))
+    search_rev = rev_comp(search_seq)
+    frames = []
+    for fr in range(3):
+        frames.append(("+", fr, _tr_dna(search_seq[fr:])))
+        frames.append(("-", fr, _tr_dna(search_rev[fr:])))
+    aa_seed = 5
+    aa_idx = [{} for _ in frames]
+    for fi, (_, _, aas) in enumerate(frames):
+        for p in range(max(0, len(aas) - aa_seed + 1)):
+            sd = aas[p:p + aa_seed]
+            if "*" not in sd and "X" not in sd:
+                aa_idx[fi].setdefault(sd, []).append(p)
+    for feat in library:
+        if feat["category"] not in coding_cats:
+            continue
+        ref_clean = clean_seq(feat["sequence"])
+        if len(ref_clean) < 150 or len(ref_clean) % 3 != 0:
+            continue
+        raw_aa = _tr_dna(ref_clean)
+        ref_aa = raw_aa[:-1] if raw_aa.endswith("*") else raw_aa
+        ra_len = len(ref_aa)
+        if ra_len < 50:
+            continue
+        probes = [o for o in (0, ra_len // 4, ra_len // 2, (3 * ra_len) // 4) if o + aa_seed <= ra_len]
+        for fi, (st_dir, fr_off, aas) in enumerate(frames):
+            diag_aa = set()
+            for off in probes:
+                for h in aa_idx[fi].get(ref_aa[off:off + aa_seed], []):
+                    diag_aa.add(h - off)
+            for d_aa in sorted(diag_aa):
+                if d_aa < 0 or d_aa + ra_len > len(aas):
+                    continue
+                aa_m = sum(1 for k in range(ra_len) if aas[d_aa + k] == ref_aa[k])
+                aa_id = aa_m / float(ra_len)
+                if aa_id < 0.85:
+                    continue
+                dna_off = fr_off + d_aa * 3
+                dna_len = ra_len * 3
+                s_start0 = dna_off if st_dir == "+" else (search_len - (dna_off + dna_len))
+                if s_start0 < 0 or s_start0 >= query_len:
+                    continue
+                if not is_circular and (s_start0 + dna_len) > query_len:
+                    continue
+                s_end0 = s_start0 + dna_len
+                wraps = bool(is_circular and s_end0 > query_len)
+                candidates.append((
+                    {
+                        "feature_id": int(feat["id"]),
+                        "name": feat["name"],
+                        "display_name": f"{feat['name']} (protein match)",
+                        "category": feat["category"],
+                        "strand": st_dir,
+                        "canonical_direction": int(feat["direction"]),
+                        "start_1based": s_start0 + 1,
+                        "end_1based": (((s_end0 - 1) % query_len) + 1) if wraps else s_end0,
+                        "matched_length": dna_len,
+                        "reference_length": len(ref_clean),
+                        "feature_start_1based": 1,
+                        "feature_end_1based": dna_len,
+                        "coverage": dna_len / float(len(ref_clean)),
+                        "identity": aa_id,
+                        "alignment_score": float(dna_len) * aa_id * 1.8,
+                        "is_origin_spanning": wraps,
+                        "is_fragment": False,
+                        "fragment_warning": None,
+                        "color_hex": feat["color_hex"],
+                        "source_accession": feat.get("source_accession"),
+                    },
+                    s_start0,
                 ))
 
     def _cmp_cand(lhs, rhs):
@@ -4650,21 +5862,37 @@ def annotate_plasmid_sequence(
 
     candidates.sort(key=cmp_to_key(_cmp_cand))
 
-    occupied = [False] * query_len
+    def _feat_layer(cat: str) -> str:
+        c = (cat or "").lower()
+        if c in ("promoter", "terminator", "enhancer", "polya", "regulator", "regulatory"):
+            return "regulatory"
+        if c in ("ori", "origin", "replication"):
+            return "replication"
+        if c in ("tag", "recombinase", "misc"):
+            return c
+        return "coding"
+
+    occ_by_bucket = {}
+    union_occ = [False] * query_len
     accepted = []
     for feat_hit, s_start0 in candidates:
         mlen = feat_hit["matched_length"]
-        already_occ = sum(1 for off in range(mlen) if occupied[(s_start0 + off) % query_len])
+        layer = _feat_layer(feat_hit["category"])
+        bkey = "replication" if layer == "replication" else f"{feat_hit['strand']}:{layer}"
+        occ = occ_by_bucket.setdefault(bkey, [False] * query_len)
+        already_occ = sum(1 for off in range(mlen) if (union_occ[(s_start0 + off) % query_len] if feat_hit["is_fragment"] else occ[(s_start0 + off) % query_len]))
         if (already_occ / float(mlen)) <= 0.15:
             accepted.append(feat_hit)
             for off in range(mlen):
-                occupied[(s_start0 + off) % query_len] = True
+                pos = (s_start0 + off) % query_len
+                occ[pos] = True
+                union_occ[pos] = True
 
     accepted.sort(key=lambda f: (f["start_1based"], f["end_1based"], f["name"]))
 
     frag_count = sum(1 for f in accepted if f["is_fragment"])
     origin_count = sum(1 for f in accepted if f["is_origin_spanning"])
-    covered_bases = sum(1 for x in occupied if x)
+    covered_bases = sum(1 for x in union_occ if x)
     cov_percent = covered_bases * 100.0 / float(query_len)
 
     warnings = []
@@ -4705,10 +5933,10 @@ def annotate_plasmid_fasta(args: dict) -> dict:
 
 
 TYPE_IIS_ENZYME_SPECS = {
-    "bsai": {"name": "BsaI", "site": "GGTCTC", "rc_site": "GAGACC", "cut_top": 7, "cut_bottom": 11, "overhang_len": 4},
-    "bsmbi": {"name": "BsmBI", "site": "CGTCTC", "rc_site": "GAGACG", "cut_top": 7, "cut_bottom": 11, "overhang_len": 4},
-    "bbsi": {"name": "BbsI", "site": "GAAGAC", "rc_site": "GTCTTC", "cut_top": 8, "cut_bottom": 12, "overhang_len": 4},
-    "sapi": {"name": "SapI", "site": "GCTCTTC", "rc_site": "GAAGAGC", "cut_top": 8, "cut_bottom": 11, "overhang_len": 3},
+    "bsai": {"name": "BsaI", "site": "GGTCTC", "rc_site": "GAGACC", "cut_top": 7, "cut_bottom": 11, "overhang_len": 4, "default_protective_5prime": "GCAATC"},
+    "bsmbi": {"name": "BsmBI", "site": "CGTCTC", "rc_site": "GAGACG", "cut_top": 7, "cut_bottom": 11, "overhang_len": 4, "default_protective_5prime": "GCAATC"},
+    "bbsi": {"name": "BbsI", "site": "GAAGAC", "rc_site": "GTCTTC", "cut_top": 8, "cut_bottom": 12, "overhang_len": 4, "default_protective_5prime": "GCAATC"},
+    "sapi": {"name": "SapI", "site": "GCTCTTC", "rc_site": "GAAGAGC", "cut_top": 8, "cut_bottom": 11, "overhang_len": 3, "default_protective_5prime": "GCAATC"},
 }
 
 DEFAULT_DIAGNOSTIC_ENZYMES = {
@@ -4788,69 +6016,183 @@ GG_CODON_TO_AA = {
     "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G",
 }
 
-GG_PREFERRED_CODONS = {
-    "A": ["GCC", "GCT", "GCA", "GCG"],
-    "C": ["TGC", "TGT"],
-    "D": ["GAC", "GAT"],
-    "E": ["GAG", "GAA"],
-    "F": ["TTC", "TTT"],
-    "G": ["GGC", "GGT", "GGA", "GGG"],
-    "H": ["CAC", "CAT"],
-    "I": ["ATC", "ATT", "ATA"],
-    "K": ["AAG", "AAA"],
-    "L": ["CTG", "CTC", "CTT", "TTG", "TTA", "CTA"],
-    "M": ["ATG"],
-    "N": ["AAC", "AAT"],
-    "P": ["CCC", "CCT", "CCA", "CCG"],
-    "Q": ["CAG", "CAA"],
-    "R": ["CGC", "CGT", "AGG", "AGA", "CGG", "CGA"],
-    "S": ["AGC", "TCC", "TCT", "AGT", "TCA", "TCG"],
-    "T": ["ACC", "ACT", "ACA", "ACG"],
-    "V": ["GTG", "GTC", "GTT", "GTA"],
-    "W": ["TGG"],
-    "Y": ["TAC", "TAT"],
-    "*": ["TGA", "TAA", "TAG"],
+GG_HOST_PREFERRED_CODONS = {
+    "ecoli": {
+        "A": ["GCG", "GCC", "GCA", "GCT"],
+        "C": ["TGC", "TGT"],
+        "D": ["GAT", "GAC"],
+        "E": ["GAA", "GAG"],
+        "F": ["TTT", "TTC"],
+        "G": ["GGC", "GGT", "GGG", "GGA"],
+        "H": ["CAT", "CAC"],
+        "I": ["ATT", "ATC", "ATA"],
+        "K": ["AAA", "AAG"],
+        "L": ["CTG", "TTA", "TTG", "CTT", "CTC", "CTA"],
+        "M": ["ATG"],
+        "N": ["AAC", "AAT"],
+        "P": ["CCG", "CCA", "CCT", "CCC"],
+        "Q": ["CAG", "CAA"],
+        "R": ["CGC", "CGT", "CGG", "CGA", "AGA", "AGG"],
+        "S": ["AGC", "TCT", "TCC", "TCG", "AGT", "TCA"],
+        "T": ["ACC", "ACG", "ACT", "ACA"],
+        "V": ["GTG", "GTT", "GTC", "GTA"],
+        "W": ["TGG"],
+        "Y": ["TAT", "TAC"],
+        "*": ["TAA", "TGA", "TAG"],
+    },
+    "human": {
+        "A": ["GCC", "GCT", "GCA", "GCG"],
+        "C": ["TGC", "TGT"],
+        "D": ["GAC", "GAT"],
+        "E": ["GAG", "GAA"],
+        "F": ["TTC", "TTT"],
+        "G": ["GGC", "GGG", "GGA", "GGT"],
+        "H": ["CAC", "CAT"],
+        "I": ["ATC", "ATT", "ATA"],
+        "K": ["AAG", "AAA"],
+        "L": ["CTG", "CTC", "CTT", "TTG", "TTA", "CTA"],
+        "M": ["ATG"],
+        "N": ["AAC", "AAT"],
+        "P": ["CCC", "CCT", "CCA", "CCG"],
+        "Q": ["CAG", "CAA"],
+        "R": ["CGG", "CGC", "AGG", "AGA", "CGT", "CGA"],
+        "S": ["AGC", "TCC", "TCT", "AGT", "TCA", "TCG"],
+        "T": ["ACC", "ACA", "ACT", "ACG"],
+        "V": ["GTG", "GTC", "GTT", "GTA"],
+        "W": ["TGG"],
+        "Y": ["TAC", "TAT"],
+        "*": ["TGA", "TAA", "TAG"],
+    },
+    "yeast": {
+        "A": ["GCT", "GCC", "GCA", "GCG"],
+        "C": ["TGT", "TGC"],
+        "D": ["GAT", "GAC"],
+        "E": ["GAA", "GAG"],
+        "F": ["TTT", "TTC"],
+        "G": ["GGT", "GGA", "GGC", "GGG"],
+        "H": ["CAT", "CAC"],
+        "I": ["ATT", "ATC", "ATA"],
+        "K": ["AAA", "AAG"],
+        "L": ["TTG", "TTA", "CTT", "CTA", "CTG", "CTC"],
+        "M": ["ATG"],
+        "N": ["AAT", "AAC"],
+        "P": ["CCA", "CCT", "CCC", "CCG"],
+        "Q": ["CAA", "CAG"],
+        "R": ["AGA", "AGG", "CGT", "CGA", "CGC", "CGG"],
+        "S": ["TCT", "TCA", "TCC", "AGT", "AGC", "TCG"],
+        "T": ["ACT", "ACA", "ACC", "ACG"],
+        "V": ["GTT", "GTC", "GTA", "GTG"],
+        "W": ["TGG"],
+        "Y": ["TAT", "TAC"],
+        "*": ["TAA", "TGA", "TAG"],
+    },
 }
 
+GG_PREFERRED_CODONS = GG_HOST_PREFERRED_CODONS["human"]
 
-def load_neb_ligase_fidelity_from_sqlite(db_path: str = None) -> dict:
-    """从 Libraries.sqlite 只读加载 NEB T4 DNA Ligase 4-bp 保真度矩阵"""
+
+def _canonical_gg_enzyme_key(enzyme_name: str) -> str:
+    lower = str(enzyme_name or "bsai").strip().lower()
+    if lower.startswith("bsmbi") or lower.startswith("esp3i"):
+        return "bsmbi"
+    if lower.startswith("bbsi") or lower.startswith("bpii"):
+        return "bbsi"
+    if lower.startswith("sapi") or lower.startswith("bspqi"):
+        return "sapi"
+    return "bsai"
+
+
+def load_neb_ligase_fidelity_from_sqlite(db_path: str = None, enzyme_name: str = "BsaI") -> dict:
+    """从 Libraries.sqlite 只读加载 Pryor et al. (2020) 实测 Type IIS / T4 连接保真度矩阵"""
     import sqlite3
     resolved = db_path or os.path.join(SCRIPT_DIR, "Libraries.sqlite")
+    ekey = _canonical_gg_enzyme_key(enzyme_name)
+    ov_len = 3 if ekey == "sapi" else 4
     if not os.path.exists(resolved):
-        return {"stats": {}, "counts": {}}
+        return {"enzyme_key": ekey, "overhang_length": ov_len, "stats": {}, "counts": {}}
     conn = sqlite3.connect(f"file:{os.path.abspath(resolved)}?mode=ro", uri=True)
     try:
         stats = {}
-        for r in conn.execute(
-            "SELECT overhang, rc_overhang, is_palindromic, gc_count, wc_ligation_count, individual_fidelity, is_neb_verified_hf FROM neb_t4_overhang_stats;"
-        ):
-            stats[str(r[0])] = {
-                "overhang": str(r[0]),
-                "rc_overhang": str(r[1]),
-                "is_palindromic": bool(r[2]),
-                "gc_count": int(r[3]),
-                "wc_ligation_count": int(r[4]),
-                "individual_fidelity": float(r[5]),
-                "is_neb_verified_hf": bool(r[6]),
-            }
         counts = {}
-        for a, b, cnt in conn.execute("SELECT overhang_a, overhang_b, ligation_count FROM neb_t4_ligase_fidelity;"):
-            counts.setdefault(str(a), {})[str(b)] = int(cnt)
-        return {"stats": stats, "counts": counts}
+        citation = ""
+        doi = ""
+        try:
+            row = conn.execute(
+                "SELECT overhang_length, source_citation, source_doi FROM neb_ligase_fidelity_metadata WHERE enzyme_key = ?;",
+                (ekey,),
+            ).fetchone()
+            if row:
+                ov_len = int(row[0])
+                citation = str(row[1])
+                doi = str(row[2])
+        except sqlite3.OperationalError:
+            pass
+
+        try:
+            for r in conn.execute(
+                "SELECT overhang, rc_overhang, is_palindromic, gc_count, wc_ligation_count, self_ligation_count, individual_fidelity, is_neb_verified_hf "
+                "FROM neb_overhang_stats_by_enzyme WHERE enzyme_key = ?;",
+                (ekey,),
+            ):
+                stats[str(r[0])] = {
+                    "overhang": str(r[0]),
+                    "rc_overhang": str(r[1]),
+                    "is_palindromic": bool(r[2]),
+                    "gc_count": int(r[3]),
+                    "wc_ligation_count": int(r[4]),
+                    "self_ligation_count": int(r[5]),
+                    "individual_fidelity": float(r[6]),
+                    "is_neb_verified_hf": bool(r[7]),
+                }
+            for a, b, cnt in conn.execute(
+                "SELECT overhang_a, overhang_b, ligation_count FROM neb_ligase_fidelity_matrices WHERE enzyme_key = ?;",
+                (ekey,),
+            ):
+                counts.setdefault(str(a), {})[str(b)] = int(cnt)
+        except sqlite3.OperationalError:
+            pass
+
+        if not stats and ekey != "sapi":
+            for r in conn.execute(
+                "SELECT overhang, rc_overhang, is_palindromic, gc_count, wc_ligation_count, individual_fidelity, is_neb_verified_hf FROM neb_t4_overhang_stats;"
+            ):
+                stats[str(r[0])] = {
+                    "overhang": str(r[0]),
+                    "rc_overhang": str(r[1]),
+                    "is_palindromic": bool(r[2]),
+                    "gc_count": int(r[3]),
+                    "wc_ligation_count": int(r[4]),
+                    "self_ligation_count": 0,
+                    "individual_fidelity": float(r[5]),
+                    "is_neb_verified_hf": bool(r[6]),
+                }
+            for a, b, cnt in conn.execute("SELECT overhang_a, overhang_b, ligation_count FROM neb_t4_ligase_fidelity;"):
+                counts.setdefault(str(a), {})[str(b)] = int(cnt)
+
+        return {
+            "enzyme_key": ekey,
+            "overhang_length": ov_len,
+            "source_citation": citation,
+            "source_doi": doi,
+            "stats": stats,
+            "counts": counts,
+        }
     finally:
         conn.close()
 
 
 def evaluate_golden_gate_overhangs(overhangs: list, matrix: dict) -> dict:
-    """评估一组 4-bp Golden Gate 接头的组装保真度与交叉错配数"""
+    """评估一组 4-bp/3-bp Golden Gate 接头的组装保真度与交叉/自错配数（含 j == i 自错配扫描）"""
     normalized = [clean_seq(o) for o in overhangs]
     counts = matrix.get("counts", {})
+    expected_len = int(matrix.get("overhang_length") or 4)
     issues = []
     seen_canon = set()
+    has_invalid_len = False
     for ov in normalized:
-        if len(ov) != 4:
-            issues.append(f"接头 {ov} 长度不为 4 bp")
+        if len(ov) != expected_len:
+            has_invalid_len = True
+            issues.append(f"接头 {ov} 长度不为 {expected_len} bp")
             continue
         rc = rev_comp(ov)
         if ov == rc:
@@ -4859,39 +6201,49 @@ def evaluate_golden_gate_overhangs(overhangs: list, matrix: dict) -> dict:
         if canon in seen_canon:
             issues.append(f"接头 {ov} 存在重复或反向互补冲突")
         seen_canon.add(canon)
+        self_fwd = counts.get(ov, {}).get(ov, 0)
+        self_rev = counts.get(rc, {}).get(rc, 0)
+        if ov != rc and (self_fwd > 0 or self_rev > 0):
+            issues.append(f"接头 {ov}/{rc} 存在自我错配连接热点（self={max(self_fwd, self_rev)}）")
 
     exposed = []
     for ov in normalized:
-        if len(ov) == 4:
+        if len(ov) == expected_len:
             exposed.append(ov)
             exposed.append(rev_comp(ov))
 
-    mismatches = []
+    # 完整扫描所有暴露末端对 (i, j) with j >= i（按无序对去重，仅跳过同一接头非回文 WC 配对）
+    mismatch_by_pair = {}
     for i in range(len(exposed)):
         u = exposed[i]
-        rc_u = rev_comp(u)
         u_map = counts.get(u, {})
-        for j in range(i + 1, len(exposed)):
+        for j in range(i, len(exposed)):
             v = exposed[j]
-            if v == rc_u:
+            if j == i + 1 and (i % 2 == 0) and u != v:
                 continue
-            cnt = u_map.get(v, 0)
+            cnt_uv = u_map.get(v, 0)
+            cnt_vu = cnt_uv if j == i else counts.get(v, {}).get(u, 0)
+            cnt = max(cnt_uv, cnt_vu)
             if cnt > 0:
-                mismatches.append({"overhang_a": min(u, v), "overhang_b": max(u, v), "ligation_count": cnt})
-    mismatches.sort(key=lambda x: (x["overhang_a"], x["overhang_b"]))
+                a, b = min(u, v), max(u, v)
+                key = (a, b)
+                if key not in mismatch_by_pair or cnt > mismatch_by_pair[key]["ligation_count"]:
+                    mismatch_by_pair[key] = {"overhang_a": a, "overhang_b": b, "ligation_count": cnt}
+    mismatches = sorted(mismatch_by_pair.values(), key=lambda x: (x["overhang_a"], x["overhang_b"]))
 
-    fidelity = 1.0 if normalized else 0.0
-    for ov in normalized:
-        if len(ov) != 4:
-            continue
-        rc = rev_comp(ov)
-        wc = float(counts.get(ov, {}).get(rc, 0) + counts.get(rc, {}).get(ov, 0))
-        tot = 0.0
-        ov_map = counts.get(ov, {})
-        rc_map = counts.get(rc, {})
-        for end in exposed:
-            tot += float(ov_map.get(end, 0)) + float(rc_map.get(end, 0))
-        fidelity *= (wc / tot) if tot > 0.0 else 0.0
+    fidelity = 0.0 if (not normalized or has_invalid_len) else 1.0
+    if not has_invalid_len:
+        for ov in normalized:
+            if len(ov) != expected_len:
+                continue
+            rc = rev_comp(ov)
+            wc = float(counts.get(ov, {}).get(rc, 0) + counts.get(rc, {}).get(ov, 0))
+            tot = 0.0
+            ov_map = counts.get(ov, {})
+            rc_map = counts.get(rc, {})
+            for end in exposed:
+                tot += float(ov_map.get(end, 0)) + float(rc_map.get(end, 0))
+            fidelity *= (wc / tot) if tot > 0.0 else 0.0
 
     return {
         "overhangs": normalized,
@@ -4911,110 +6263,29 @@ def allocate_golden_gate_overhangs(
     matrix: dict = None,
     db_path: str = None,
 ) -> dict:
-    """为 2–6 片段分配无交叉错配 4-bp/3-bp Golden Gate 高保真接头（对齐 Swift GoldenGateEngine）"""
+    """基于 Pryor (2020) 实测矩阵全局优化分配无交叉/自错配 4-bp/3-bp 高保真接头（对齐 Swift GoldenGateEngine）"""
     from functools import cmp_to_key
 
-    clamped = max(2, min(6, int(fragment_count)))
-    junc_count = clamped if is_circular else (clamped + 1)
-    spec = TYPE_IIS_ENZYME_SPECS.get(enzyme_name.lower(), TYPE_IIS_ENZYME_SPECS["bsai"])
+    canon_ekey = _canonical_gg_enzyme_key(enzyme_name)
+    spec = TYPE_IIS_ENZYME_SPECS.get(canon_ekey, TYPE_IIS_ENZYME_SPECS["bsai"])
     ov_len = spec["overhang_len"]
+    max_frags = 15 if ov_len == 3 else 24
+    clamped = max(2, min(max_frags, int(fragment_count)))
+    junc_count = clamped if is_circular else (clamped + 1)
     warnings = []
     if fragment_count != clamped:
-        warnings.append(f"片段数已调整至支持范围 2–6 ({clamped})。")
+        warnings.append(f"片段数已调整至支持范围 2–{max_frags} ({clamped})。")
 
     fixed_list = fixed_overhangs or []
-
-    if ov_len == 3:
-        import itertools
-        all_3mers = []
-        for tup in itertools.product("ACGT", repeat=3):
-            s = "".join(tup)
-            if s in ("AAA", "TTT", "CCC", "GGG"):
-                continue
-            rc = rev_comp(s)
-            if s < rc:
-                all_3mers.append(s)
-
-        def _cmp_3mer(x, y):
-            gc_x = x.count("G") + x.count("C")
-            gc_y = y.count("G") + y.count("C")
-            bal_x = abs(gc_x - 1) <= 1 and 1 <= gc_x <= 2
-            bal_y = abs(gc_y - 1) <= 1 and 1 <= gc_y <= 2
-            if bal_x != bal_y:
-                return -1 if bal_x else 1
-            return -1 if x < y else (1 if x > y else 0)
-
-        all_3mers.sort(key=cmp_to_key(_cmp_3mer))
-        chosen = []
-        used_canon = set()
-        for raw in fixed_list:
-            ov = clean_seq(raw)
-            if len(ov) != 3:
-                continue
-            canon = min(ov, rev_comp(ov))
-            if canon not in used_canon and len(chosen) < junc_count:
-                chosen.append(ov)
-                used_canon.add(canon)
-
-        def _clash_3bp(u: str, v: str) -> bool:
-            mm = 0
-            all_gt = True
-            for i in range(3):
-                a = u[i]
-                b = v[2 - i]
-                is_wc = (a, b) in (("A", "T"), ("T", "A"), ("C", "G"), ("G", "C"))
-                if not is_wc:
-                    mm += 1
-                    if (a, b) not in (("G", "T"), ("T", "G")):
-                        all_gt = False
-            return mm == 1 or (mm == 2 and all_gt)
-
-        while len(chosen) < junc_count:
-            picked = None
-            for cand in all_3mers:
-                canon = min(cand, rev_comp(cand))
-                if canon in used_canon:
-                    continue
-                trial_ends = []
-                for o in chosen + [cand]:
-                    trial_ends.extend([o, rev_comp(o)])
-                clashes = 0
-                for i in range(len(trial_ends)):
-                    rc_i = rev_comp(trial_ends[i])
-                    for j in range(i + 1, len(trial_ends)):
-                        if trial_ends[j] != rc_i and _clash_3bp(trial_ends[i], trial_ends[j]):
-                            clashes += 1
-                if clashes == 0:
-                    picked = cand
-                    break
-            if picked is not None:
-                chosen.append(picked)
-                used_canon.add(min(picked, rev_comp(picked)))
-            else:
-                warnings.append(f"SapI 3-bp 接头空间不足以完全无错配分配 {junc_count} 个位点。")
-                break
-
-        return {
-            "enzyme_name": spec["name"],
-            "fragment_count": clamped,
-            "junction_count": junc_count,
-            "overhang_length": 3,
-            "assigned_overhangs": chosen,
-            "assembly_fidelity": 1.0 if len(chosen) == junc_count else 0.90,
-            "cross_mismatch_count": 0,
-            "cross_mismatch_pairs": [],
-            "warnings": warnings,
-        }
-
-    mat = matrix if matrix is not None else load_neb_ligase_fidelity_from_sqlite(db_path=db_path)
+    mat = matrix if matrix is not None else load_neb_ligase_fidelity_from_sqlite(db_path=db_path, enzyme_name=spec["name"])
     stats = mat.get("stats", {})
+
     chosen = []
     used_canon = set()
-
     for raw_fixed in fixed_list:
         ov = clean_seq(raw_fixed)
-        if len(ov) != 4:
-            warnings.append(f"已忽略长度非 4 bp 的固定接头: {raw_fixed}")
+        if len(ov) != ov_len:
+            warnings.append(f"已忽略长度非 {ov_len} bp 的固定接头: {raw_fixed}")
             continue
         rc = rev_comp(ov)
         if ov == rc:
@@ -5027,19 +6298,38 @@ def allocate_golden_gate_overhangs(
         if len(chosen) < junc_count:
             chosen.append(ov)
             used_canon.add(canon)
+    fixed_count = len(chosen)
+
+    def _is_homopolymer(s: str) -> bool:
+        return len(s) > 0 and len(set(s)) == 1
 
     seen_pool = set()
-    pool = []
+    full_pool = []
     for rec in stats.values():
-        if rec["is_palindromic"]:
+        if rec["is_palindromic"] or _is_homopolymer(rec["overhang"]):
             continue
         canon = min(rec["overhang"], rec["rc_overhang"])
         if canon in seen_pool:
             continue
         seen_pool.add(canon)
-        pool.append(stats.get(canon, rec))
+        c_rec = stats.get(canon, rec)
+        rc_rec = stats.get(c_rec["rc_overhang"])
+        comb_self = max(int(c_rec.get("self_ligation_count", 0)), int(rc_rec.get("self_ligation_count", 0)) if rc_rec else 0)
+        comb_fid = min(float(c_rec["individual_fidelity"]), float(rc_rec["individual_fidelity"]) if rc_rec else float(c_rec["individual_fidelity"]))
+        full_pool.append({
+            "overhang": c_rec["overhang"],
+            "rc_overhang": c_rec["rc_overhang"],
+            "is_palindromic": False,
+            "gc_count": c_rec["gc_count"],
+            "wc_ligation_count": c_rec["wc_ligation_count"],
+            "self_ligation_count": comb_self,
+            "individual_fidelity": comb_fid,
+            "is_neb_verified_hf": bool(c_rec["is_neb_verified_hf"]) and (comb_self == 0),
+        })
 
     def _cmp_pool(a, b):
+        if a["self_ligation_count"] != b["self_ligation_count"]:
+            return -1 if a["self_ligation_count"] < b["self_ligation_count"] else 1
         if a["is_neb_verified_hf"] != b["is_neb_verified_hf"]:
             return -1 if a["is_neb_verified_hf"] else 1
         if abs(a["individual_fidelity"] - b["individual_fidelity"]) > 1e-9:
@@ -5048,8 +6338,12 @@ def allocate_golden_gate_overhangs(
             return -1 if a["wc_ligation_count"] > b["wc_ligation_count"] else 1
         return -1 if a["overhang"] < b["overhang"] else (1 if a["overhang"] > b["overhang"] else 0)
 
-    pool.sort(key=cmp_to_key(_cmp_pool))
+    full_pool.sort(key=cmp_to_key(_cmp_pool))
+    needed_mutable = max(0, junc_count - fixed_count)
+    zero_self_avail = [c for c in full_pool if c["self_ligation_count"] == 0 and min(c["overhang"], c["rc_overhang"]) not in used_canon]
+    pool = [c for c in full_pool if c["self_ligation_count"] == 0] if len(zero_self_avail) >= needed_mutable else full_pool
 
+    # Phase 1: 确定性贪心初始化
     while len(chosen) < junc_count:
         best_cand = None
         best_eval = None
@@ -5058,13 +6352,18 @@ def allocate_golden_gate_overhangs(
             if canon in used_canon:
                 continue
             trial_eval = evaluate_golden_gate_overhangs(chosen + [cand["overhang"]], mat)
-            if best_eval is not None and best_cand is not None:
-                if trial_eval["cross_mismatch_count"] != best_eval["cross_mismatch_count"]:
-                    better = trial_eval["cross_mismatch_count"] < best_eval["cross_mismatch_count"]
-                elif abs(trial_eval["assembly_fidelity"] - best_eval["assembly_fidelity"]) > 1e-9:
+            if best_eval is None:
+                best_cand = cand
+                best_eval = trial_eval
+            else:
+                if abs(trial_eval["assembly_fidelity"] - best_eval["assembly_fidelity"]) > 1e-9:
                     better = trial_eval["assembly_fidelity"] > best_eval["assembly_fidelity"]
+                elif trial_eval["cross_mismatch_count"] != best_eval["cross_mismatch_count"]:
+                    better = trial_eval["cross_mismatch_count"] < best_eval["cross_mismatch_count"]
+                elif (cand["self_ligation_count"] == 0) != (best_cand["self_ligation_count"] == 0):
+                    better = (cand["self_ligation_count"] == 0)
                 elif cand["is_neb_verified_hf"] != best_cand["is_neb_verified_hf"]:
-                    better = bool(cand["is_neb_verified_hf"]) and not bool(best_cand["is_neb_verified_hf"])
+                    better = cand["is_neb_verified_hf"]
                 elif abs(cand["individual_fidelity"] - best_cand["individual_fidelity"]) > 1e-9:
                     better = cand["individual_fidelity"] > best_cand["individual_fidelity"]
                 else:
@@ -5072,27 +6371,117 @@ def allocate_golden_gate_overhangs(
                 if better:
                     best_cand = cand
                     best_eval = trial_eval
-            else:
-                best_cand = cand
-                best_eval = trial_eval
         if best_cand is None:
             break
         chosen.append(best_cand["overhang"])
         used_canon.add(min(best_cand["overhang"], best_cand["rc_overhang"]))
 
-    final_eval = evaluate_golden_gate_overhangs(chosen, mat)
-    if final_eval["cross_mismatch_count"] > 0:
-        warnings.append(f"当前约束下存在 {final_eval['cross_mismatch_count']} 组潜在交叉错配。")
+    best_set = list(chosen)
+    best_eval = evaluate_golden_gate_overhangs(best_set, mat)
+
+    # Phase 2: 确定性 1-Swap 坐标上升 + 固定种子模拟退火 (NEB DAD)
+    mutable_count = len(best_set) - fixed_count
+    if mutable_count > 0 and (best_eval["assembly_fidelity"] < 1.0 - 1e-12 or best_eval["cross_mismatch_count"] > 0) and len(pool) > len(best_set):
+        search_pool = pool[:min(len(pool), 72)]
+
+        def _is_better(lhs, rhs):
+            if len(lhs["issues"]) != len(rhs["issues"]):
+                return len(lhs["issues"]) < len(rhs["issues"])
+            if abs(lhs["assembly_fidelity"] - rhs["assembly_fidelity"]) > 1e-9:
+                return lhs["assembly_fidelity"] > rhs["assembly_fidelity"]
+            return lhs["cross_mismatch_count"] < rhs["cross_mismatch_count"]
+
+        def _one_swap_polish(start_set, start_eval):
+            cur = list(start_set)
+            cur_eval = start_eval
+            for _ in range(12):
+                improved = False
+                used = {min(o, rev_comp(o)) for o in cur}
+                for pos in range(fixed_count, len(cur)):
+                    old_ov = cur[pos]
+                    old_canon = min(old_ov, rev_comp(old_ov))
+                    used.discard(old_canon)
+                    local_best_ov = old_ov
+                    local_best_eval = cur_eval
+                    for cand in search_pool:
+                        c_canon = min(cand["overhang"], cand["rc_overhang"])
+                        if c_canon in used:
+                            continue
+                        trial = list(cur)
+                        trial[pos] = cand["overhang"]
+                        t_eval = evaluate_golden_gate_overhangs(trial, mat)
+                        if _is_better(t_eval, local_best_eval):
+                            local_best_ov = cand["overhang"]
+                            local_best_eval = t_eval
+                    cur[pos] = local_best_ov
+                    used.add(min(local_best_ov, rev_comp(local_best_ov)))
+                    if _is_better(local_best_eval, cur_eval):
+                        cur_eval = local_best_eval
+                        improved = True
+                if not improved or (cur_eval["assembly_fidelity"] >= 1.0 - 1e-12 and cur_eval["cross_mismatch_count"] == 0):
+                    break
+            return cur, cur_eval
+
+        best_set, best_eval = _one_swap_polish(best_set, best_eval)
+
+        if best_eval["assembly_fidelity"] < 1.0 - 1e-12 or best_eval["cross_mismatch_count"] > 0:
+            rng_state = 0x5EED_DAD0_2020_0001
+            MASK64 = 0xFFFFFFFFFFFFFFFF
+
+            def _next_u64():
+                nonlocal rng_state
+                rng_state = (rng_state * 6364136223846793005 + 1442695040888963407) & MASK64
+                return rng_state
+
+            cur_set = list(best_set)
+            cur_eval = best_eval
+            sa_steps = 300
+            t_start = 0.025
+            t_end = 0.0005
+            for step in range(sa_steps):
+                pos = fixed_count + (_next_u64() % mutable_count if mutable_count > 1 else 0)
+                cand_idx = _next_u64() % len(search_pool) if len(search_pool) > 1 else 0
+                cand = search_pool[cand_idx]
+                cand_canon = min(cand["overhang"], cand["rc_overhang"])
+                if any(min(cur_set[k], rev_comp(cur_set[k])) == cand_canon for k in range(len(cur_set)) if k != pos):
+                    continue
+                trial = list(cur_set)
+                trial[pos] = cand["overhang"]
+                t_eval = evaluate_golden_gate_overhangs(trial, mat)
+                delta = t_eval["assembly_fidelity"] - cur_eval["assembly_fidelity"]
+                frac = float(step) / float(max(1, sa_steps - 1))
+                temp = t_start * ((t_end / t_start) ** frac)
+                accept = delta >= 0.0
+                if not accept:
+                    u01 = (_next_u64() >> 11) / float(1 << 53)
+                    accept = u01 < math.exp(delta / max(1e-9, temp))
+                if accept:
+                    cur_set = trial
+                    cur_eval = t_eval
+                    if _is_better(cur_eval, best_eval):
+                        best_set = list(cur_set)
+                        best_eval = cur_eval
+                        if best_eval["assembly_fidelity"] >= 1.0 - 1e-12 and best_eval["cross_mismatch_count"] == 0:
+                            break
+            best_set, best_eval = _one_swap_polish(best_set, best_eval)
+
+    for iss in best_eval.get("issues", []):
+        if iss not in warnings:
+            warnings.append(iss)
+    if best_eval["cross_mismatch_count"] > 0:
+        warnings.append(f"当前约束下存在 {best_eval['cross_mismatch_count']} 组潜在交叉/自错配。")
+    if len(best_set) < junc_count:
+        warnings.append(f"{spec['name']} {ov_len}-bp 接头空间不足以分配 {junc_count} 个正交位点。")
 
     return {
         "enzyme_name": spec["name"],
         "fragment_count": clamped,
         "junction_count": junc_count,
         "overhang_length": ov_len,
-        "assigned_overhangs": chosen,
-        "assembly_fidelity": final_eval["assembly_fidelity"],
-        "cross_mismatch_count": final_eval["cross_mismatch_count"],
-        "cross_mismatch_pairs": final_eval["cross_mismatch_pairs"],
+        "assigned_overhangs": best_set,
+        "assembly_fidelity": best_eval["assembly_fidelity"],
+        "cross_mismatch_count": best_eval["cross_mismatch_count"],
+        "cross_mismatch_pairs": best_eval["cross_mismatch_pairs"],
         "warnings": warnings,
     }
 
@@ -5104,14 +6493,17 @@ def domesticate_golden_gate_fragment(
     fragment_name: str = "Fragment",
     is_coding_sequence: bool = True,
     reading_frame_offset: int = 0,
+    host_organism: str = "human",
 ) -> dict:
-    """扫描片段内部内源 Type IIS 位点并生成编码区同义密码子抹除方案 (Domestication)"""
+    """扫描片段内部内源 Type IIS 位点并生成宿主特异编码区同义密码子抹除方案（支持单/多碱基与双密码子兜底）"""
     clean = clean_seq(sequence)
     seq_len = len(clean)
-    spec = TYPE_IIS_ENZYME_SPECS.get(enzyme_name.lower(), TYPE_IIS_ENZYME_SPECS["bsai"])
+    canon_ekey = _canonical_gg_enzyme_key(enzyme_name)
+    spec = TYPE_IIS_ENZYME_SPECS.get(canon_ekey, TYPE_IIS_ENZYME_SPECS["bsai"])
     site_fwd = spec["site"]
     site_rev = spec["rc_site"]
     site_len = len(site_fwd)
+    host_codons = GG_HOST_PREFERRED_CODONS.get(str(host_organism or "human").strip().lower(), GG_HOST_PREFERRED_CODONS["human"])
 
     def find_internal_sites(chars_list):
         s = "".join(chars_list)
@@ -5124,13 +6516,26 @@ def domesticate_golden_gate_fragment(
         hits.sort(key=lambda x: (x[0], x[1]))
         return hits
 
-    def introduces_site(chars_list, center_start, center_end):
-        lo = max(0, center_start - site_len + 1)
-        hi = min(len(chars_list), center_end + site_len - 1)
+    def find_site_keys_in_window(chars_list, lo, hi):
         if hi - lo < site_len:
-            return False
+            return set()
         win = "".join(chars_list[lo:hi])
-        return (site_fwd in win) or (site_rev in win)
+        keys = set()
+        for strand, pat in (("+", site_fwd), ("-", site_rev)):
+            pos = win.find(pat)
+            while pos != -1:
+                keys.add((lo + pos, strand))
+                pos = win.find(pat, pos + 1)
+        return keys
+
+    def is_valid_edit(before_chars, after_chars, target_start, target_strand, edit_start, edit_end):
+        win_lo = max(0, min(target_start, edit_start) - site_len + 1)
+        win_hi = min(len(after_chars), max(target_start + site_len, edit_end) + site_len - 1)
+        before_keys = find_site_keys_in_window(before_chars, win_lo, win_hi)
+        after_keys = find_site_keys_in_window(after_chars, win_lo, win_hi)
+        if (target_start, target_strand) in after_keys:
+            return False
+        return len(after_keys - before_keys) == 0
 
     working = list(clean)
     initial_hits = find_internal_sites(working)
@@ -5150,7 +6555,8 @@ def domesticate_golden_gate_fragment(
                 c for c in range(frame, seq_len - 2, 3)
                 if (c + 3) > s0 and c < e0
             ]
-            for req_inside in (True, False):
+            # Tier 1 (1-bp) -> Tier 2 (2/3-bp 单密码子同义替换)，严格要求至少 1 个突变点落在识别位点内部
+            for allow_multi in (False, True):
                 if applied:
                     break
                 for c_start in codon_starts:
@@ -5158,20 +6564,23 @@ def domesticate_golden_gate_fragment(
                         break
                     orig_codon = "".join(working[c_start:c_start + 3])
                     aa = GG_CODON_TO_AA.get(orig_codon)
-                    syn_list = GG_PREFERRED_CODONS.get(aa, []) if aa else []
+                    syn_list = host_codons.get(aa, []) if aa else []
                     for cand_codon in syn_list:
                         if cand_codon == orig_codon:
                             continue
                         diffs = [k for k in range(3) if orig_codon[k] != cand_codon[k]]
-                        if len(diffs) != 1:
+                        if not allow_multi and len(diffs) != 1:
                             continue
-                        mut_off = diffs[0]
+                        if allow_multi and len(diffs) < 2:
+                            continue
+                        inside_offs = [k for k in diffs if s0 <= (c_start + k) < e0]
+                        if not inside_offs:
+                            continue
+                        mut_off = inside_offs[0]
                         mut_pos0 = c_start + mut_off
-                        if req_inside and not (s0 <= mut_pos0 < e0):
-                            continue
                         trial = list(working)
                         trial[c_start:c_start + 3] = list(cand_codon)
-                        if not introduces_site(trial, s0, e0):
+                        if is_valid_edit(working, trial, s0, strand, c_start, c_start + 3):
                             working = trial
                             codon_idx1 = ((c_start - frame) // 3) + 1
                             suggestions.append({
@@ -5196,6 +6605,60 @@ def domesticate_golden_gate_fragment(
                             applied = True
                             break
 
+            # Tier 3: 双密码子协同同义替换兜底
+            if not applied and len(codon_starts) >= 2:
+                for idx_a in range(len(codon_starts)):
+                    if applied:
+                        break
+                    c_a = codon_starts[idx_a]
+                    orig_a = "".join(working[c_a:c_a + 3])
+                    aa_a = GG_CODON_TO_AA.get(orig_a)
+                    syn_a = host_codons.get(aa_a, []) if aa_a else []
+                    for cand_a in syn_a:
+                        if applied:
+                            break
+                        if cand_a == orig_a:
+                            continue
+                        for idx_b in range(idx_a + 1, len(codon_starts)):
+                            if applied:
+                                break
+                            c_b = codon_starts[idx_b]
+                            orig_b = "".join(working[c_b:c_b + 3])
+                            aa_b = GG_CODON_TO_AA.get(orig_b)
+                            syn_b = host_codons.get(aa_b, []) if aa_b else []
+                            for cand_b in syn_b:
+                                if cand_b == orig_b:
+                                    continue
+                                trial = list(working)
+                                trial[c_a:c_a + 3] = list(cand_a)
+                                trial[c_b:c_b + 3] = list(cand_b)
+                                if is_valid_edit(working, trial, s0, strand, min(c_a, c_b), max(c_a, c_b) + 3):
+                                    working = trial
+                                    off_a = next((k for k in range(3) if orig_a[k] != cand_a[k]), 2)
+                                    codon_idx_a = ((c_a - frame) // 3) + 1
+                                    codon_idx_b = ((c_b - frame) // 3) + 1
+                                    suggestions.append({
+                                        "fragment_index": fragment_index,
+                                        "fragment_name": fragment_name,
+                                        "enzyme_name": spec["name"],
+                                        "site_strand": strand,
+                                        "site_start_1based": s0 + 1,
+                                        "site_end_1based": e0,
+                                        "original_site": site_str,
+                                        "is_coding_sequence": True,
+                                        "codon_index_1based": codon_idx_a,
+                                        "original_codon": orig_a,
+                                        "mutated_codon": cand_a,
+                                        "amino_acid": aa_a,
+                                        "mutation_position_1based": c_a + off_a + 1,
+                                        "original_base": orig_a[off_a],
+                                        "mutated_base": cand_a[off_a],
+                                        "is_synonymous": True,
+                                        "note": f"双密码子协同同义抹除 #{codon_idx_a}({orig_a}→{cand_a}) + #{codon_idx_b}({orig_b}→{cand_b})",
+                                    })
+                                    applied = True
+                                    break
+
         if not applied and not is_coding_sequence:
             mid_pos0 = s0 + (site_len // 2)
             orig_ch = working[mid_pos0]
@@ -5204,7 +6667,7 @@ def domesticate_golden_gate_fragment(
                     continue
                 trial = list(working)
                 trial[mid_pos0] = cand_ch
-                if not introduces_site(trial, s0, e0):
+                if is_valid_edit(working, trial, s0, strand, mid_pos0, mid_pos0 + 1):
                     working = trial
                     suggestions.append({
                         "fragment_index": fragment_index,
@@ -5243,14 +6706,56 @@ def domesticate_golden_gate_fragment(
     }
 
 
+def detect_junction_spanning_sites(
+    domesticated_sequences: list,
+    assigned_overhangs: list,
+    enzyme_name: str,
+    is_circular: bool = True,
+) -> list:
+    """检测片段拼接接头跨界处（Junction-spanning）是否意外生成新的 Type IIS 识别位点"""
+    canon_ekey = _canonical_gg_enzyme_key(enzyme_name)
+    spec = TYPE_IIS_ENZYME_SPECS.get(canon_ekey, TYPE_IIS_ENZYME_SPECS["bsai"])
+    site_fwd = spec["site"]
+    site_rev = spec["rc_site"]
+    flank = max(1, len(site_fwd) - 1)
+    n = len(domesticated_sequences)
+    if n == 0 or not assigned_overhangs:
+        return []
+    warnings = []
+    seam_count = min(n, len(assigned_overhangs)) if is_circular else min(n + 1, len(assigned_overhangs))
+    for j in range(seam_count):
+        ov = assigned_overhangs[j]
+        if is_circular:
+            left_seq = domesticated_sequences[(j + n - 1) % n]
+            right_seq = domesticated_sequences[j]
+        else:
+            left_seq = domesticated_sequences[j - 1] if j > 0 else ""
+            right_seq = domesticated_sequences[j] if j < n else ""
+        left_tail = left_seq[-flank:] if (flank > 0 and left_seq) else ""
+        right_head = right_seq[:flank] if right_seq else ""
+        seam = left_tail + ov + right_head
+        hits = []
+        if site_fwd in seam:
+            hits.append(site_fwd)
+        if site_rev in seam:
+            hits.append(site_rev)
+        if hits:
+            hit_desc = "/".join(hits)
+            warnings.append(
+                f"接头 #{j + 1} ({ov}) 跨界拼接区 {left_tail}|{ov}|{right_head} 意外生成了新的 {spec['name']} 位点 ({hit_desc})，建议更换该接头或调整邻接密码子。"
+            )
+    return warnings
+
+
 def design_golden_gate_assembly(args: dict) -> dict:
-    """端到端 Type IIS Golden Gate 接头分配与内源位点 Domestication 设计"""
+    """端到端 Type IIS Golden Gate 全局优化接头分配、内源位点 Domestication 与跨界位点检测"""
     enzyme_name = str(args.get("enzyme_name") or "BsaI").strip()
-    spec = TYPE_IIS_ENZYME_SPECS.get(enzyme_name.lower(), TYPE_IIS_ENZYME_SPECS["bsai"])
+    spec = TYPE_IIS_ENZYME_SPECS.get(_canonical_gg_enzyme_key(enzyme_name), TYPE_IIS_ENZYME_SPECS["bsai"])
     fragments = args.get("fragments") or []
     fixed_overhangs = args.get("fixed_overhangs") or []
     is_circular = bool(args.get("is_circular", True))
     db_path = args.get("db_path")
+    host_organism = str(args.get("host_organism") or "human").strip().lower()
     frag_cnt = int(args.get("fragment_count") or max(2, len(fragments)))
 
     ov_plan = allocate_golden_gate_overhangs(
@@ -5272,10 +6777,21 @@ def design_golden_gate_assembly(args: dict) -> dict:
             fragment_name=f.get("name", f"Fragment_{idx + 1}"),
             is_coding_sequence=bool(f.get("is_coding_sequence", True)),
             reading_frame_offset=int(f.get("reading_frame_offset", 0)),
+            host_organism=host_organism,
         )
         doms.append(d)
         total_sites += d["internal_sites_found"]
         total_frag_len += len(d["domesticated_sequence"])
+
+    junction_warnings = detect_junction_spanning_sites(
+        domesticated_sequences=[d["domesticated_sequence"] for d in doms],
+        assigned_overhangs=ov_plan["assigned_overhangs"],
+        enzyme_name=spec["name"],
+        is_circular=is_circular,
+    )
+    if junction_warnings:
+        ov_plan = dict(ov_plan)
+        ov_plan["warnings"] = list(ov_plan["warnings"]) + junction_warnings
 
     return {
         "enzyme_name": spec["name"],
@@ -5285,6 +6801,7 @@ def design_golden_gate_assembly(args: dict) -> dict:
         "domestications": doms,
         "total_internal_sites_found": total_sites,
         "assembled_sequence_length": total_frag_len + len(ov_plan["assigned_overhangs"]) * spec["overhang_len"],
+        "junction_site_warnings": junction_warnings,
     }
 
 
@@ -5311,7 +6828,74 @@ def agarose_migration_y(size_bp: float, conc_label: str) -> float:
     return min(0.94, max(0.06, y))
 
 
-def _find_enzyme_cut_positions(clean_seq: str, enz_name: str, is_circular: bool) -> list:
+_METHYLATION_SENSITIVITY_TABLE = {
+    "clai": ["Dam", "CpG"], "xbai": ["Dam"], "bcli": ["Dam"], "mboi": ["Dam"], "dpnii": ["Dam"],
+    "hphi": ["Dam"], "taqi": ["Dam"], "nrui": ["Dam", "CpG"],
+    "stui": ["Dcm"], "apai": ["Dcm", "CpG"], "ecorii": ["Dcm"], "sexai": ["Dcm"], "styi": ["Dcm"], "bsai": ["Dcm", "CpG"],
+    "noti": ["CpG"], "hpaii": ["CpG"], "smai": ["CpG"], "sali": ["CpG"], "xhoi": ["CpG"],
+    "agei": ["CpG"], "sacii": ["CpG"], "eagi": ["CpG"], "pvui": ["CpG"], "bsmbi": ["CpG"],
+}
+
+
+def _check_methylation_block(
+    enz_name: str,
+    clean_seq: str,
+    site_start0: int,
+    site_len: int,
+    is_circular: bool,
+    dam_methylated: bool,
+    dcm_methylated: bool,
+    cpg_methylated: bool,
+) -> set:
+    sens = _METHYLATION_SENSITIVITY_TABLE.get(enz_name.lower(), [])
+    n_s = len(clean_seq)
+    if not sens or n_s == 0 or site_len <= 0:
+        return set()
+    pad = 4
+    win = []
+    actual_left_pad = 0
+    for off in range(-pad, site_len + pad):
+        k = site_start0 + off
+        if is_circular:
+            win.append(clean_seq[k % n_s])
+            if off < 0:
+                actual_left_pad += 1
+        elif 0 <= k < n_s:
+            win.append(clean_seq[k])
+            if off < 0:
+                actual_left_pad += 1
+    w_str = "".join(win)
+    s_lo = actual_left_pad
+    s_hi = actual_left_pad + site_len
+
+    def _hits(motif: str, m_offs: tuple) -> bool:
+        p0 = 0
+        while True:
+            mi = w_str.find(motif, p0)
+            if mi == -1:
+                return False
+            if any(s_lo <= mi + mo < s_hi for mo in m_offs):
+                return True
+            p0 = mi + 1
+
+    blocked = set()
+    if dam_methylated and "Dam" in sens and _hits("GATC", (1, 2)):
+        blocked.add("Dam (GATC)")
+    if dcm_methylated and "Dcm" in sens and (_hits("CCAGG", (1, 3)) or _hits("CCTGG", (1, 3))):
+        blocked.add("Dcm (CCWGG)")
+    if cpg_methylated and "CpG" in sens and _hits("CG", (0, 1)):
+        blocked.add("CpG (CG)")
+    return blocked
+
+
+def _find_enzyme_cut_positions(
+    clean_seq: str,
+    enz_name: str,
+    is_circular: bool,
+    dam_methylated: bool = False,
+    dcm_methylated: bool = False,
+    cpg_methylated: bool = False,
+) -> list:
     site, snip_top, snip_bot = DEFAULT_DIAGNOSTIC_ENZYMES[enz_name]
     seq_len = len(clean_seq)
     site_len = len(site)
@@ -5326,20 +6910,39 @@ def _find_enzyme_cut_positions(clean_seq: str, enz_name: str, is_circular: bool)
         raw_top = pos + snip_top
         raw_bot = pos + snip_bot
         if is_circular or (0 <= raw_top <= seq_len and 0 <= raw_bot <= seq_len):
+            if (dam_methylated or dcm_methylated or cpg_methylated) and _check_methylation_block(
+                enz_name, clean_seq, pos, site_len, is_circular, dam_methylated, dcm_methylated, cpg_methylated
+            ):
+                pos = search_seq.find(site, pos + 1)
+                continue
             top_snip = (raw_top % seq_len) if is_circular else raw_top
             snips.append(top_snip)
         pos = search_seq.find(site, pos + 1)
     return snips
 
 
-def simulate_digest_fragments(clean_seq: str, enzyme_names: list, is_circular: bool = True) -> list:
+def simulate_digest_fragments(
+    clean_seq: str,
+    enzyme_names: list,
+    is_circular: bool = True,
+    dam_methylated: bool = False,
+    dcm_methylated: bool = False,
+    cpg_methylated: bool = False,
+) -> list:
     """模拟单/双酶切产生的条带长度列表 (bp, 降序)"""
     total_len = len(clean_seq)
     if total_len == 0:
         return []
     cut_positions = set()
     for e_name in enzyme_names:
-        for pos in _find_enzyme_cut_positions(clean_seq, e_name, is_circular):
+        for pos in _find_enzyme_cut_positions(
+            clean_seq,
+            e_name,
+            is_circular,
+            dam_methylated=dam_methylated,
+            dcm_methylated=dcm_methylated,
+            cpg_methylated=cpg_methylated,
+        ):
             cut_positions.add(pos)
     sorted_pos = sorted(cut_positions)
     frags = []
@@ -5374,6 +6977,9 @@ def recommend_diagnostic_digests(args: dict) -> dict:
     min_bands = int(args.get("min_bands", 2))
     max_bands = int(args.get("max_bands", 4))
     top_n = int(args.get("top_n", 3))
+    dam_m = bool(args.get("dam_methylated", True))
+    dcm_m = bool(args.get("dcm_methylated", True))
+    cpg_m = bool(args.get("cpg_methylated", False))
 
     if not clean_empty or not clean_recomb:
         return {
@@ -5400,12 +7006,12 @@ def recommend_diagnostic_digests(args: dict) -> dict:
     single_empty = {}
     single_recomb = {}
     for enz in pool:
-        neg_cuts = len(_find_enzyme_cut_positions(clean_empty, enz, is_circular))
-        pos_cuts = len(_find_enzyme_cut_positions(clean_recomb, enz, is_circular))
+        neg_cuts = len(_find_enzyme_cut_positions(clean_empty, enz, is_circular, dam_m, dcm_m, cpg_m))
+        pos_cuts = len(_find_enzyme_cut_positions(clean_recomb, enz, is_circular, dam_m, dcm_m, cpg_m))
         if (neg_cuts >= 1 or pos_cuts >= 1) and neg_cuts <= 6 and pos_cuts <= 6:
             viable.append(enz)
-            single_empty[enz] = simulate_digest_fragments(clean_empty, [enz], is_circular)
-            single_recomb[enz] = simulate_digest_fragments(clean_recomb, [enz], is_circular)
+            single_empty[enz] = simulate_digest_fragments(clean_empty, [enz], is_circular, dam_m, dcm_m, cpg_m)
+            single_recomb[enz] = simulate_digest_fragments(clean_recomb, [enz], is_circular, dam_m, dcm_m, cpg_m)
 
     def best_buffer(enz_list):
         compats = [
@@ -5425,8 +7031,8 @@ def recommend_diagnostic_digests(args: dict) -> dict:
             empty_all = single_empty[enz_list[0]]
             recomb_all = single_recomb[enz_list[0]]
         else:
-            empty_all = simulate_digest_fragments(clean_empty, enz_list, is_circular)
-            recomb_all = simulate_digest_fragments(clean_recomb, enz_list, is_circular)
+            empty_all = simulate_digest_fragments(clean_empty, enz_list, is_circular, dam_m, dcm_m, cpg_m)
+            recomb_all = simulate_digest_fragments(clean_recomb, enz_list, is_circular, dam_m, dcm_m, cpg_m)
 
         empty_vis = [b for b in empty_all if b >= 100]
         recomb_vis = [b for b in recomb_all if b >= 100]
@@ -5543,6 +7149,51 @@ def recommend_diagnostic_digests(args: dict) -> dict:
 
     if not top_items:
         warnings.append("在可用酶切面板中未找到可区分空载与重组载体的有效鉴定方案。")
+    else:
+        temp_tbl = {"smai": 25, "apai": 25, "bcli": 50, "sfii": 50, "bsteii": 60, "taqi": 65, "bsmbi": 55, "bsli": 55}
+        star_tbl = {
+            "ecori": "甘油 >5% 或低盐高 pH 易诱发星号活性",
+            "bamhi": "甘油 >5% 或过量酶/过长时间易诱发星号活性（推荐使用 BamHI-HF）",
+            "hindiii": "甘油 >5% 或高酶量/低离子强度易诱发星号活性",
+            "sali": "甘油 >5% 或低盐条件易诱发星号活性",
+            "scai": "甘油 >5% 或过长孵育易诱发星号活性（推荐使用 ScaI-HF）",
+            "psti": "甘油 >5% 或高 pH 易诱发星号活性",
+            "pvuii": "甘油 >5% 或高酶量易诱发星号活性",
+            "xbai": "高甘油或超时孵育易诱发星号活性",
+        }
+        def _collect_meth_blocks_py(ename: str, seq_s: str, site_s: str) -> set:
+            if not seq_s or not site_s:
+                return set()
+            n_s = len(seq_s)
+            sl = len(site_s)
+            scan_s = (seq_s + seq_s[:sl - 1]) if is_circular else seq_s
+            blocked = set()
+            pos = 0
+            while True:
+                idx = scan_s.find(site_s, pos)
+                if idx == -1 or idx >= n_s:
+                    break
+                pos = idx + 1
+                blocked |= _check_methylation_block(ename, seq_s, idx, sl, is_circular, dam_m, dcm_m, cpg_m)
+            return blocked
+        for rec in top_items:
+            enames = rec["enzyme_names"]
+            temps = {temp_tbl.get(e.lower(), 37) for e in enames}
+            if len(temps) > 1:
+                detail = " + ".join(f"{e} ({temp_tbl.get(e.lower(), 37)}°C)" for e in enames)
+                warnings.append(f"方案 #{rec['rank']} 存在反应温度不兼容：{detail}，需分步顺序酶切。")
+            b_descs = []
+            for e in enames:
+                site_s = DEFAULT_DIAGNOSTIC_ENZYMES.get(e, ("", 0, 0))[0] or COMMON_ENZYMES.get(e, "")
+                blks = _collect_meth_blocks_py(e, clean_empty, site_s) | _collect_meth_blocks_py(e, clean_recomb, site_s)
+                if blks:
+                    b_descs.append(f"{e} [{'/'.join(sorted(blks))}]")
+            if b_descs:
+                warnings.append(f"方案 #{rec['rank']} 在当前宿主甲基化条件下存在真实切点阻断 ({', '.join(b_descs)})，建议改用 Dam-/Dcm- 宿主或替换非敏感酶。")
+            for e in enames:
+                sn = star_tbl.get(e.lower())
+                if sn:
+                    warnings.append(f"方案 #{rec['rank']} {e} 星号活性提示：{sn}")
 
     return {
         "empty_vector_length_bp": len(clean_empty),
@@ -5614,14 +7265,38 @@ def detect_cds_region(reference_sequence: str, cut_index_0based: int, min_length
     return None
 
 
-def _hdr_translate_cds(sequence: str, start_0based: int, end_0based: int) -> str:
+def detect_cds_region_with_strand(reference_sequence: str, cut_index_0based: int, min_length_bp: int = 90):
+    """双链（+ / -）并行扫描三读码框，提取覆盖 cut_index_0based 的最长完整 ORF（>= 90 bp）。"""
+    seq = clean_seq(reference_sequence)
+    n = len(seq)
+    if n < min_length_bp:
+        return None
+    fwd = detect_cds_region(seq, cut_index_0based, min_length_bp=min_length_bp)
+    rc = rev_comp(seq)
+    rc_cut = max(0, min(n - 1, n - 1 - cut_index_0based))
+    rev_raw = detect_cds_region(rc, rc_cut, min_length_bp=min_length_bp)
+    rev = (n - rev_raw[1], n - rev_raw[0]) if rev_raw is not None else None
+    if fwd is not None and rev is not None:
+        return (rev[0], rev[1], "-") if (rev[1] - rev[0]) > (fwd[1] - fwd[0]) else (fwd[0], fwd[1], "+")
+    if fwd is not None:
+        return (fwd[0], fwd[1], "+")
+    if rev is not None:
+        return (rev[0], rev[1], "-")
+    return None
+
+
+def _hdr_translate_cds(sequence: str, start_0based: int, end_0based: int, strand: str = "+") -> str:
     seq = clean_seq(sequence)
     s = max(0, int(start_0based))
     e = min(len(seq), int(end_0based))
+    if s >= e:
+        return ""
+    sl = seq[s:e]
+    coding = rev_comp(sl) if strand == "-" else sl
     out = []
-    i = s
-    while i + 3 <= e:
-        out.append(GG_CODON_TO_AA.get(seq[i:i + 3], "X"))
+    i = 0
+    while i + 3 <= len(coding):
+        out.append(GG_CODON_TO_AA.get(coding[i:i + 3], "X"))
         i += 3
     return "".join(out)
 
@@ -5672,15 +7347,15 @@ def design_crispr_hdr_donor(args: dict) -> dict:
     donor_format = str(args.get("donor_format", "ssODN"))
     if donor_format not in ("ssODN", "dsDNAPlasmid"):
         raise ValueError(f"不支持的 donor_format: {donor_format}")
-    default_arm = 60 if donor_format == "ssODN" else 600
-    req_left_arm = max(1, int(args.get("left_arm_length_bp") or default_arm))
-    req_right_arm = max(1, int(args.get("right_arm_length_bp") or default_arm))
+    asymmetric_richardson = bool(args.get("asymmetric_richardson_ssodn", False))
     auto_detect_cds = bool(args.get("auto_detect_cds", True))
     enable_rflp = bool(args.get("enable_rflp", False))
     rflp_radius = max(3, int(args.get("rflp_search_radius_bp", 15)))
     out_out_margin = int(args.get("out_out_margin_bp", 100))
     primer_target_tm = float(args.get("primer_target_tm", 60.0))
     donor_name = str(args.get("donor_name", "HDR_Donor"))
+    req_cds_strand = str(args.get("cds_strand") or "+").strip()
+    req_cds_frame_offset = args.get("cds_frame_offset")
 
     g_len = len(guide)
     # 1. Locate sgRNA and PAM on WT reference
@@ -5718,9 +7393,21 @@ def design_crispr_hdr_donor(args: dict) -> dict:
 
     wt_pam_seq = ref[wt_pam_start0:wt_pam_start0 + 3]
 
-    # 2. Detect or validate CDS
+    # Richardson et al. (Nat Biotechnol 2016) 36/91 nt asymmetric ssODN arm defaults
+    if donor_format == "ssODN" and asymmetric_richardson:
+        default_left_arm = 36 if strand == "+" else 91
+        default_right_arm = 91 if strand == "+" else 36
+    else:
+        default_arm = 60 if donor_format == "ssODN" else 600
+        default_left_arm = default_arm
+        default_right_arm = default_arm
+    req_left_arm = max(1, int(args.get("left_arm_length_bp") or default_left_arm))
+    req_right_arm = max(1, int(args.get("right_arm_length_bp") or default_right_arm))
+
+    # 2. Detect or validate CDS (supports + / - strands & cds_frame_offset)
     is_in_cds = False
     cds_auto_detected = False
+    resolved_cds_strand = "-" if req_cds_strand == "-" else "+"
     wt_cds_start0 = None
     wt_cds_end0 = None
     cs1 = args.get("cds_start_1based")
@@ -5734,12 +7421,20 @@ def design_crispr_hdr_donor(args: dict) -> dict:
             is_in_cds = True
             wt_cds_start0 = s0
             wt_cds_end0 = e0
+    elif req_cds_frame_offset is not None and 0 <= int(req_cds_frame_offset) <= 2:
+        fo = int(req_cds_frame_offset)
+        s0 = fo
+        e0 = s0 + ((L - s0) // 3) * 3
+        if s0 <= wt_cut_index0 < e0 and e0 - s0 >= 9:
+            is_in_cds = True
+            wt_cds_start0 = s0
+            wt_cds_end0 = e0
     elif auto_detect_cds:
-        detected = detect_cds_region(ref, wt_cut_index0)
+        detected = detect_cds_region_with_strand(ref, wt_cut_index0)
         if detected is not None:
             is_in_cds = True
             cds_auto_detected = True
-            wt_cds_start0, wt_cds_end0 = detected
+            wt_cds_start0, wt_cds_end0, resolved_cds_strand = detected
 
     # 3. Apply intentional replacement & map coordinates
     delta = len(rep) - (edit_end0 - edit_start0)
@@ -5759,7 +7454,8 @@ def design_crispr_hdr_donor(args: dict) -> dict:
         edited_cds_start0 = 0
         edited_cds_end0 = 0
 
-    protein_before = _hdr_translate_cds("".join(edited_chars), edited_cds_start0, edited_cds_end0) if is_in_cds else ""
+    protein_before = _hdr_translate_cds("".join(edited_chars), edited_cds_start0, edited_cds_end0, strand=resolved_cds_strand) if is_in_cds else ""
+    cut_to_edit_dist = 0 if (edit_start0 <= wt_cut_index0 <= edit_end0) else min(abs(wt_cut_index0 - edit_start0), abs(wt_cut_index0 - edit_end0))
     edited_pam_start0 = _map_wt(wt_pam_start0)
 
     def _is_pam_intact(chars: list) -> bool:
@@ -5773,52 +7469,105 @@ def design_crispr_hdr_donor(args: dict) -> dict:
     edit_locked = set(range(edit_start0, edit_start0 + len(rep)))
 
     warnings = []
+    if cut_to_edit_dist > 10:
+        warnings.append(
+            f"DSB 切点至编辑位点距离为 {cut_to_edit_dist} bp（>10 bp），据 Paquet et al. (Nature 2016) HDR 效率将显著下降，强烈建议保留沉默阻断突变或改选更近的 sgRNA。"
+        )
     blocking_mutations = []
 
-    def _try_1bp_syn(pos: int, chars: list, locked: set, reason: str):
+    _comp_map = {"A": "T", "T": "A", "C": "G", "G": "C"}
+
+    def _sense_codon_info(pos: int, chars: list):
+        if resolved_cds_strand == "+":
+            rel = pos - edited_cds_start0
+            c_start = edited_cds_start0 + (rel // 3) * 3
+            if c_start + 3 > edited_cds_end0:
+                return None
+            off = pos - c_start
+            orig_codon = "".join(chars[c_start:c_start + 3])
+            return c_start, off, orig_codon
+        rev_rel = (edited_cds_end0 - 1) - pos
+        c_end = edited_cds_end0 - (rev_rel // 3) * 3
+        c_start = c_end - 3
+        if c_start < edited_cds_start0 or c_end > edited_cds_end0:
+            return None
+        off = rev_rel % 3
+        orig_codon = _comp_map.get(chars[c_end - 1], chars[c_end - 1]) + _comp_map.get(chars[c_end - 2], chars[c_end - 2]) + _comp_map.get(chars[c_end - 3], chars[c_end - 3])
+        return c_start, off, orig_codon
+
+    def _fwd_codon_bases(codon_s: str) -> list:
+        if resolved_cds_strand == "+":
+            return list(codon_s)
+        return [_comp_map.get(codon_s[2], codon_s[2]), _comp_map.get(codon_s[1], codon_s[1]), _comp_map.get(codon_s[0], codon_s[0])]
+
+    def _try_1bp_syn_all(pos: int, chars: list, locked: set, reason: str):
         if not is_in_cds or pos < edited_cds_start0 or pos >= edited_cds_end0 or pos in locked:
-            return None
-        rel = pos - edited_cds_start0
-        c_start = edited_cds_start0 + (rel // 3) * 3
-        if c_start + 3 > edited_cds_end0:
-            return None
-        off = pos - c_start
-        orig_codon = "".join(chars[c_start:c_start + 3])
+            return []
+        info = _sense_codon_info(pos, chars)
+        if info is None:
+            return []
+        _, off, orig_codon = info
         aa = GG_CODON_TO_AA.get(orig_codon)
         if aa is None:
-            return None
+            return []
+        out = []
         for alt_codon in GG_PREFERRED_CODONS.get(aa, []):
             if alt_codon == orig_codon:
                 continue
             diffs = [k for k in range(3) if alt_codon[k] != orig_codon[k]]
             if len(diffs) == 1 and diffs[0] == off:
-                return alt_codon[off], {
+                fwd_new = alt_codon[off] if resolved_cds_strand == "+" else _comp_map.get(alt_codon[off], alt_codon[off])
+                out.append((fwd_new, {
                     "position_0based": pos,
                     "position_1based": pos + 1,
-                    "original_base": orig_codon[off],
-                    "mutated_base": alt_codon[off],
+                    "original_base": chars[pos],
+                    "mutated_base": fwd_new,
                     "reason": reason,
                     "codon_before": orig_codon,
                     "codon_after": alt_codon,
                     "amino_acid": aa,
-                }
-        return None
+                }))
+        return out
+
+    def _try_1bp_syn(pos: int, chars: list, locked: set, reason: str):
+        hits = _try_1bp_syn_all(pos, chars, locked, reason)
+        return hits[0] if hits else None
 
     if not _is_pam_intact(edited_chars):
         blocking_strategy = "already_disrupted_by_edit"
     elif is_in_cds:
+        def _is_non_canonical_pam(ch_arr):
+            if edited_pam_start0 < 0 or edited_pam_start0 + 3 > len(ch_arr):
+                return False
+            if strand == "+":
+                b1, b2 = ch_arr[edited_pam_start0 + 1], ch_arr[edited_pam_start0 + 2]
+                return (b1 == "A" and b2 == "G") or (b1 == "G" and b2 == "A")
+            else:
+                b0, b1 = ch_arr[edited_pam_start0], ch_arr[edited_pam_start0 + 1]
+                return (b0 == "C" and b1 == "T") or (b0 == "T" and b1 == "C")
+
         broke_pam = False
+        fallback_hit = None
         for cp in pam_crit_indices:
-            hit = _try_1bp_syn(cp, edited_chars, edit_locked, "pam_block")
-            if hit is not None:
-                nb, rec = hit
+            for nb, rec in _try_1bp_syn_all(cp, edited_chars, edit_locked, "pam_block"):
                 cand = list(edited_chars)
                 cand[cp] = nb
                 if not _is_pam_intact(cand):
-                    edited_chars = cand
-                    blocking_mutations.append(rec)
-                    broke_pam = True
-                    break
+                    if not _is_non_canonical_pam(cand):
+                        edited_chars = cand
+                        blocking_mutations.append(rec)
+                        broke_pam = True
+                        break
+                    elif fallback_hit is None:
+                        fallback_hit = (cp, nb, rec)
+            if broke_pam:
+                break
+        if not broke_pam and fallback_hit is not None:
+            fcp, fnb, frec = fallback_hit
+            edited_chars[fcp] = fnb
+            blocking_mutations.append(frec)
+            broke_pam = True
+            warnings.append("同义突变受限，阻断后产生 SpCas9 次级非典型 PAM (NAG/NGA)，建议结合 Seed 区附加沉默突变以降低残留切割风险。")
         if broke_pam:
             blocking_strategy = "pam_synonymous"
         else:
@@ -5835,7 +7584,10 @@ def design_crispr_hdr_donor(args: dict) -> dict:
                     break
                 if sp < edited_cds_start0 or sp >= edited_cds_end0:
                     continue
-                c_start = edited_cds_start0 + ((sp - edited_cds_start0) // 3) * 3
+                if resolved_cds_strand == "+":
+                    c_start = edited_cds_start0 + ((sp - edited_cds_start0) // 3) * 3
+                else:
+                    c_start = edited_cds_end0 - (((edited_cds_end0 - 1) - sp) // 3 + 1) * 3
                 if c_start in used_codons:
                     continue
                 hit = _try_1bp_syn(sp, edited_chars, edit_locked, "seed_block")
@@ -5851,6 +7603,15 @@ def design_crispr_hdr_donor(args: dict) -> dict:
                 blocking_strategy = "seed_synonymous_fallback"
                 warnings.append(f"PAM 位点无法在不改变氨基酸的前提下同义破坏，已回退并在近 PAM 8-nt Seed 区引入 {len(blocking_mutations)} 处同义突变。")
     else:
+        def _is_non_canonical_pam_nc(ch_arr):
+            if edited_pam_start0 < 0 or edited_pam_start0 + 3 > len(ch_arr):
+                return False
+            if strand == "+":
+                b1, b2 = ch_arr[edited_pam_start0 + 1], ch_arr[edited_pam_start0 + 2]
+                return (b1 == "A" and b2 == "G") or (b1 == "G" and b2 == "A")
+            else:
+                b0, b1 = ch_arr[edited_pam_start0], ch_arr[edited_pam_start0 + 1]
+                return (b0 == "C" and b1 == "T") or (b0 == "T" and b1 == "C")
         mp = None
         for cp in pam_crit_indices:
             if 0 <= cp < len(edited_chars) and cp not in edit_locked:
@@ -5858,7 +7619,18 @@ def design_crispr_hdr_donor(args: dict) -> dict:
                 break
         if mp is not None:
             ob = edited_chars[mp]
-            ab = ("A" if ob == "G" else "G") if strand == "+" else ("T" if ob == "C" else "C")
+            pref = ["C", "T", "A", "G"] if strand == "+" else ["G", "A", "T", "C"]
+            ab = None
+            for b in pref:
+                if b == ob:
+                    continue
+                cand = list(edited_chars)
+                cand[mp] = b
+                if not _is_pam_intact(cand) and not _is_non_canonical_pam_nc(cand):
+                    ab = b
+                    break
+            if ab is None:
+                ab = ("C" if ob == "G" else "T") if strand == "+" else ("G" if ob == "C" else "A")
             edited_chars[mp] = ab
             blocking_mutations.append({
                 "position_0based": mp,
@@ -5903,28 +7675,39 @@ def design_crispr_hdr_donor(args: dict) -> dict:
                             matches.append(sp)
                 matches.sort(key=lambda sp: (abs((sp + 3) - edit_start0), sp))
                 for sp in matches:
-                    overlap_codons = []
-                    cs = edited_cds_start0
-                    while cs + 3 <= edited_cds_end0:
-                        if cs + 3 > sp and cs < sp + 6:
-                            overlap_codons.append(cs)
-                        cs += 3
+                    all_cds_codons = []
+                    if resolved_cds_strand == "+":
+                        cs = edited_cds_start0
+                        while cs + 3 <= edited_cds_end0:
+                            all_cds_codons.append(cs)
+                            cs += 3
+                    else:
+                        cs = edited_cds_end0 - 3
+                        while cs >= edited_cds_start0:
+                            all_cds_codons.append(cs)
+                            cs -= 3
+                    overlap_codons = [c for c in all_cds_codons if c + 3 > sp and c < sp + 6]
                     overlap_codons.sort(key=lambda c: (abs((c + 1) - edit_start0), c))
                     for cs in overlap_codons:
-                        orig_codon = "".join(edited_chars[cs:cs + 3])
+                        info_c = _sense_codon_info(cs, edited_chars)
+                        if info_c is None:
+                            continue
+                        _, _, orig_codon = info_c
+                        orig_arr = edited_chars[cs:cs + 3]
                         aa = GG_CODON_TO_AA.get(orig_codon)
                         if aa is None:
                             continue
                         for alt_codon in GG_PREFERRED_CODONS.get(aa, []):
                             if alt_codon == orig_codon:
                                 continue
-                            diffs = [k for k in range(3) if alt_codon[k] != orig_codon[k]]
+                            alt_arr = _fwd_codon_bases(alt_codon)
+                            diffs = [k for k in range(3) if alt_arr[k] != orig_arr[k]]
                             if len(diffs) == 1:
                                 k = diffs[0]
                                 mut_pos = cs + k
                                 if sp <= mut_pos < sp + 6 and mut_pos not in rflp_locked:
                                     cand = list(edited_chars)
-                                    cand[mut_pos] = alt_codon[k]
+                                    cand[mut_pos] = alt_arr[k]
                                     if pam_broken_before and _is_pam_intact(cand):
                                         continue
                                     if "".join(cand[sp:sp + 6]) != site:
@@ -5932,8 +7715,8 @@ def design_crispr_hdr_donor(args: dict) -> dict:
                                         rflp_muts = [{
                                             "position_0based": mut_pos,
                                             "position_1based": mut_pos + 1,
-                                            "original_base": orig_codon[k],
-                                            "mutated_base": alt_codon[k],
+                                            "original_base": orig_arr[k],
+                                            "mutated_base": alt_arr[k],
                                             "reason": "rflp_destroy",
                                             "codon_before": orig_codon,
                                             "codon_after": alt_codon,
@@ -5953,11 +7736,18 @@ def design_crispr_hdr_donor(args: dict) -> dict:
 
             if not found_destroy:
                 ordered_codons = []
-                cs = edited_cds_start0
-                while cs + 3 <= edited_cds_end0:
-                    if cs >= win_start and cs + 3 <= win_end:
-                        ordered_codons.append(cs)
-                    cs += 3
+                if resolved_cds_strand == "+":
+                    cs = edited_cds_start0
+                    while cs + 3 <= edited_cds_end0:
+                        if cs >= win_start and cs + 3 <= win_end:
+                            ordered_codons.append(cs)
+                        cs += 3
+                else:
+                    cs = edited_cds_end0 - 3
+                    while cs >= edited_cds_start0:
+                        if cs >= win_start and cs + 3 <= win_end:
+                            ordered_codons.append(cs)
+                        cs -= 3
                 ordered_codons.sort(key=lambda c: (abs((c + 1) - edit_start0), c))
                 found_create = False
                 for target_diffs in (1, 2):
@@ -5966,7 +7756,11 @@ def design_crispr_hdr_donor(args: dict) -> dict:
                     for cs in ordered_codons:
                         if found_create:
                             break
-                        orig_codon = "".join(edited_chars[cs:cs + 3])
+                        info_c = _sense_codon_info(cs, edited_chars)
+                        if info_c is None:
+                            continue
+                        _, _, orig_codon = info_c
+                        orig_arr = edited_chars[cs:cs + 3]
                         aa = GG_CODON_TO_AA.get(orig_codon)
                         if aa is None:
                             continue
@@ -5975,7 +7769,8 @@ def design_crispr_hdr_donor(args: dict) -> dict:
                                 break
                             if alt_codon == orig_codon:
                                 continue
-                            diffs = [k for k in range(3) if alt_codon[k] != orig_codon[k]]
+                            alt_arr = _fwd_codon_bases(alt_codon)
+                            diffs = [k for k in range(3) if alt_arr[k] != orig_arr[k]]
                             if len(diffs) != target_diffs:
                                 continue
                             mut_positions = [cs + k for k in diffs]
@@ -5983,7 +7778,7 @@ def design_crispr_hdr_donor(args: dict) -> dict:
                                 continue
                             cand = list(edited_chars)
                             for k in diffs:
-                                cand[cs + k] = alt_codon[k]
+                                cand[cs + k] = alt_arr[k]
                             if pam_broken_before and _is_pam_intact(cand):
                                 continue
                             scan_start = max(left_arm_start0, cs - 5)
@@ -6001,8 +7796,8 @@ def design_crispr_hdr_donor(args: dict) -> dict:
                                             rflp_muts = [{
                                                 "position_0based": cs + k,
                                                 "position_1based": cs + k + 1,
-                                                "original_base": orig_codon[k],
-                                                "mutated_base": alt_codon[k],
+                                                "original_base": orig_arr[k],
+                                                "mutated_base": alt_arr[k],
                                                 "reason": "rflp_create",
                                                 "codon_before": orig_codon,
                                                 "codon_after": alt_codon,
@@ -6090,19 +7885,48 @@ def design_crispr_hdr_donor(args: dict) -> dict:
                                     found_nc = True
                                     break
 
-    # 6. Final locus checks & protein conservation check
+    # 6. Final locus checks, GT-AG splice-site check & protein conservation check
     final_edited_seq = "".join(edited_chars)
-    protein_after = _hdr_translate_cds(final_edited_seq, edited_cds_start0, edited_cds_end0) if is_in_cds else ""
+    protein_after = _hdr_translate_cds(final_edited_seq, edited_cds_start0, edited_cds_end0, strand=resolved_cds_strand) if is_in_cds else ""
     amino_acid_conserved = (not is_in_cds) or (protein_before == protein_after)
+    all_silent_muts = blocking_mutations + rflp_muts
+    if is_in_cds and all_silent_muts:
+        pre_silent = list(edited_chars)
+        for m in all_silent_muts:
+            mp0 = int(m["position_0based"])
+            if 0 <= mp0 < len(pre_silent):
+                pre_silent[mp0] = m["original_base"]
+        splice_dinucs = {"CT", "AC"} if resolved_cds_strand == "-" else {"GT", "AG"}
+        boundary_muts = [
+            int(m["position_0based"]) for m in all_silent_muts
+            if abs(int(m["position_0based"]) - edited_cds_start0) <= 3 or abs(int(m["position_0based"]) - (edited_cds_end0 - 1)) <= 3
+        ]
+        hits_splice = any(
+            ((pre_silent[p - 1] + pre_silent[p]) in splice_dinucs if 0 < p < len(pre_silent) else False)
+            or ((pre_silent[p] + pre_silent[p + 1]) in splice_dinucs if 0 <= p + 1 < len(pre_silent) else False)
+            for p in boundary_muts
+        )
+        if hits_splice:
+            warnings.append("沉默阻断/RFLP 突变位于 CDS 边界 ±3 bp 的经典 GT-AG 剪接供体/受体二核苷酸处，存在破坏 mRNA 剪接风险，请人工复核。")
     edited_pam_seq = final_edited_seq[edited_pam_start0:edited_pam_start0 + 3] if 0 <= edited_pam_start0 <= len(edited_chars) - 3 else ""
     pam_still_intact = _is_pam_intact(edited_chars)
     cas9_recut_blocked = (blocking_strategy != "failed_to_block") and ((not pam_still_intact) or blocking_strategy == "seed_synonymous_fallback")
 
-    # 7. Slice homology arms & donor
+    # 7. Slice homology arms & donor (supports Richardson 2016 36/91 nt target strand)
     left_arm = final_edited_seq[left_arm_start0:edit_start0]
     insert_payload = final_edited_seq[edit_start0:edit_start0 + len(rep)]
     right_arm = final_edited_seq[edit_start0 + len(rep):right_arm_end0_edited]
-    donor_seq = left_arm + insert_payload + right_arm
+    raw_donor_fwd = left_arm + insert_payload + right_arm
+    if donor_format == "ssODN" and asymmetric_richardson:
+        if strand == "+":
+            donor_seq = rev_comp(raw_donor_fwd)
+            donor_strand_orientation = "target_strand_antisense_richardson_36_91"
+        else:
+            donor_seq = raw_donor_fwd
+            donor_strand_orientation = "target_strand_sense_richardson_91_36"
+    else:
+        donor_seq = raw_donor_fwd
+        donor_strand_orientation = "forward_reference"
 
     # 8. Out-Out PCR genotyping primers strictly outside homology arms
     out_out = None
@@ -6114,7 +7938,7 @@ def design_crispr_hdr_donor(args: dict) -> dict:
         fwd_search_end = left_arm_start0 - eff_left_margin
         fwd_search_start = max(0, fwd_search_end - 40)
         fwd_window = ref[fwd_search_start:fwd_search_end]
-        fwd_seq = pick_specific_annealing_seq(fwd_window, five_prime_overhang="", target_tm=primer_target_tm, tolerance=0.0)
+        fwd_seq = pick_specific_annealing_seq(fwd_window, five_prime_overhang="", target_tm=primer_target_tm, tolerance=1.5)
         fwd_tm = calc_snapgene_tm(fwd_seq)
         fwd_start0 = fwd_search_start
         fwd_end0 = fwd_start0 + len(fwd_seq)
@@ -6122,7 +7946,7 @@ def design_crispr_hdr_donor(args: dict) -> dict:
         rev_search_start = right_arm_end0_wt + eff_right_margin
         rev_search_end = min(L, rev_search_start + 40)
         rev_window = ref[rev_search_start:rev_search_end]
-        rev_seq = pick_specific_annealing_seq(rev_comp(rev_window), five_prime_overhang="", target_tm=primer_target_tm, tolerance=0.0)
+        rev_seq = pick_specific_annealing_seq(rev_comp(rev_window), five_prime_overhang="", target_tm=primer_target_tm, tolerance=1.5)
         rev_tm = calc_snapgene_tm(rev_seq)
         rev_end0 = rev_search_end
         rev_start0 = rev_end0 - len(rev_seq)
@@ -6163,13 +7987,20 @@ def design_crispr_hdr_donor(args: dict) -> dict:
     if rflp_spec is not None and rflp_mode != "none":
         wt_target = out_out["wt_amplicon_sequence"] if out_out is not None else ref
         hdr_target = out_out["hdr_amplicon_sequence"] if out_out is not None else final_edited_seq
+        wt_bands = _hdr_predict_linear_digest_bands(wt_target, rflp_spec["site"], rflp_spec["top_cut_offset"])
+        hdr_bands = _hdr_predict_linear_digest_bands(hdr_target, rflp_spec["site"], rflp_spec["top_cut_offset"])
+        has_extra_bg = (len(wt_bands) > 1 or len(hdr_bands) > 2) if rflp_mode == "created" else (len(wt_bands) > 2 or len(hdr_bands) > 1)
+        if has_extra_bg:
+            warnings.append(
+                f"RFLP 诊断酶 {rflp_spec['name']} 在扩增子全长内存在额外背景切点（WT {len(wt_bands)} 条带 / HDR {len(hdr_bands)} 条带），电泳判读时请注意区分背景片段。"
+            )
         rflp_res = {
             "mode": rflp_mode,
             "enzyme_name": rflp_spec["name"],
             "recognition_site": rflp_spec["site"],
             "top_cut_offset": rflp_spec["top_cut_offset"],
-            "wt_amplicon_bands_bp": _hdr_predict_linear_digest_bands(wt_target, rflp_spec["site"], rflp_spec["top_cut_offset"]),
-            "hdr_amplicon_bands_bp": _hdr_predict_linear_digest_bands(hdr_target, rflp_spec["site"], rflp_spec["top_cut_offset"]),
+            "wt_amplicon_bands_bp": wt_bands,
+            "hdr_amplicon_bands_bp": hdr_bands,
             "silent_mutations": rflp_muts,
             "note": rflp_note,
         }
@@ -6179,9 +8010,11 @@ def design_crispr_hdr_donor(args: dict) -> dict:
         "sgrna_sequence": guide,
         "strand": strand,
         "wt_cut_index_0based": wt_cut_index0,
+        "cut_to_edit_distance_bp": cut_to_edit_dist,
         "wt_pam_start_0based": wt_pam_start0,
         "wt_pam_sequence": wt_pam_seq,
         "is_in_cds": is_in_cds,
+        "cds_strand": resolved_cds_strand,
         "cds_start_1based": (wt_cds_start0 + 1) if wt_cds_start0 is not None else None,
         "cds_end_1based": wt_cds_end0,
         "cds_auto_detected": cds_auto_detected,
@@ -6200,6 +8033,7 @@ def design_crispr_hdr_donor(args: dict) -> dict:
         "right_arm_length_bp": len(right_arm),
         "donor_sequence": donor_seq,
         "donor_length_bp": len(donor_seq),
+        "donor_strand_orientation": donor_strand_orientation,
         "final_edited_locus_sequence": final_edited_seq,
         "rflp": rflp_res,
         "out_out_pcr": out_out,
@@ -6318,6 +8152,7 @@ class DesignGoldenGateAssemblyInputDict(TypedDict, total=False):
     fragment_count: Optional[int]
     is_circular: bool
     fixed_overhangs: List[str]
+    host_organism: str
     fragments: List[GoldenGateFragmentInputDict]
     db_path: Optional[str]
 
@@ -6378,6 +8213,7 @@ class DesignGoldenGateAssemblyOutputDict(TypedDict):
     domestications: List[FragmentDomesticationDict]
     total_internal_sites_found: int
     assembled_sequence_length: int
+    junction_site_warnings: List[str]
 
 
 class SilentMutationDict(TypedDict):
@@ -6437,12 +8273,15 @@ class DesignHdrDonorInputDict(TypedDict, total=False):
     right_arm_length_bp: Optional[int]
     cds_start_1based: Optional[int]
     cds_end_1based: Optional[int]
+    cds_strand: str
+    cds_frame_offset: Optional[int]
     auto_detect_cds: bool
     enable_rflp: bool
     rflp_search_radius_bp: int
     out_out_margin_bp: int
     primer_target_tm: float
     donor_name: str
+    asymmetric_richardson_ssodn: bool
 
 
 class DesignHdrDonorOutputDict(TypedDict):
@@ -6450,9 +8289,11 @@ class DesignHdrDonorOutputDict(TypedDict):
     sgrna_sequence: str
     strand: str
     wt_cut_index_0based: int
+    cut_to_edit_distance_bp: int
     wt_pam_start_0based: int
     wt_pam_sequence: str
     is_in_cds: bool
+    cds_strand: str
     cds_start_1based: Optional[int]
     cds_end_1based: Optional[int]
     cds_auto_detected: bool
@@ -6471,6 +8312,7 @@ class DesignHdrDonorOutputDict(TypedDict):
     right_arm_length_bp: int
     donor_sequence: str
     donor_length_bp: int
+    donor_strand_orientation: str
     final_edited_locus_sequence: str
     rflp: Optional[RFLPDesignDict]
     out_out_pcr: Optional[OutOutPCRDict]
@@ -6724,19 +8566,21 @@ if _HAS_PYDANTIC:
     class DesignGoldenGateAssemblyInput(BaseModel):
         model_config = ConfigDict(extra="forbid")
         enzyme_name: Literal["BsaI", "BsmBI", "BbsI", "SapI"] = "BsaI"
-        fragment_count: Optional[int] = Field(default=None, ge=2, le=6)
+        fragment_count: Optional[int] = Field(default=None, ge=2, le=24)
         is_circular: bool = True
         fixed_overhangs: List[str] = Field(default_factory=list)
+        host_organism: Literal["human", "ecoli", "yeast"] = "human"
         fragments: List[GoldenGateFragmentInput] = Field(default_factory=list)
         db_path: Optional[str] = None
 
         @model_validator(mode="after")
         def _validate_cross(self) -> "DesignGoldenGateAssemblyInput":
+            max_frags = 15 if self.enzyme_name == "SapI" else 24
             if not self.fragments and self.fragment_count is None:
-                raise ValueError("未传入 fragments 时必须显式指定 fragment_count (2–6)")
+                raise ValueError(f"未传入 fragments 时必须显式指定 fragment_count (2–{max_frags})")
             eff = self.fragment_count if self.fragment_count is not None else len(self.fragments)
-            if not (2 <= eff <= 6):
-                raise ValueError(f"有效组装片段数必须在 2–6 之间，当前为 {eff}")
+            if not (2 <= eff <= max_frags):
+                raise ValueError(f"有效组装片段数必须在 2–{max_frags} 之间，当前为 {eff}")
             return self
 
 
@@ -6796,6 +8640,7 @@ if _HAS_PYDANTIC:
         domestications: List[FragmentDomesticationModel]
         total_internal_sites_found: int
         assembled_sequence_length: int
+        junction_site_warnings: List[str] = Field(default_factory=list)
 
 
     class DesignHdrDonorInput(BaseModel):
@@ -6811,12 +8656,15 @@ if _HAS_PYDANTIC:
         right_arm_length_bp: Optional[int] = Field(default=None, ge=1)
         cds_start_1based: Optional[int] = Field(default=None, ge=1)
         cds_end_1based: Optional[int] = Field(default=None, ge=3)
+        cds_strand: str = "+"
+        cds_frame_offset: Optional[int] = Field(default=None, ge=0, le=2)
         auto_detect_cds: bool = True
         enable_rflp: bool = False
         rflp_search_radius_bp: int = Field(default=15, ge=3)
         out_out_margin_bp: int = Field(default=100, ge=0)
         primer_target_tm: float = Field(default=60.0, ge=40.0, le=85.0)
         donor_name: str = "HDR_Donor"
+        asymmetric_richardson_ssodn: bool = False
 
         @model_validator(mode="after")
         def _validate_cross(self) -> "DesignHdrDonorInput":
@@ -6879,9 +8727,11 @@ if _HAS_PYDANTIC:
         sgrna_sequence: str
         strand: str
         wt_cut_index_0based: int
+        cut_to_edit_distance_bp: int = 0
         wt_pam_start_0based: int
         wt_pam_sequence: str
         is_in_cds: bool
+        cds_strand: str = "+"
         cds_start_1based: Optional[int] = None
         cds_end_1based: Optional[int] = None
         cds_auto_detected: bool
@@ -6900,6 +8750,7 @@ if _HAS_PYDANTIC:
         right_arm_length_bp: int
         donor_sequence: str
         donor_length_bp: int
+        donor_strand_orientation: str = "forward_reference"
         final_edited_locus_sequence: str
         rflp: Optional[RFLPDesignModel] = None
         out_out_pcr: Optional[OutOutPCRModel] = None
@@ -6969,13 +8820,17 @@ def _stdlib_validate_annotate(raw: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _stdlib_validate_gg(raw: Dict[str, Any]) -> Dict[str, Any]:
-    allowed = {"enzyme_name", "fragment_count", "is_circular", "fixed_overhangs", "fragments", "db_path"}
+    allowed = {"enzyme_name", "fragment_count", "is_circular", "fixed_overhangs", "fragments", "db_path", "host_organism"}
     unknown = set(raw.keys()) - allowed
     if unknown:
         raise ValueError(f"design_golden_gate_assembly 存在未定义字段: {sorted(unknown)}")
     d = _prepare_gg_input_dict(raw)
     if d["enzyme_name"] not in ("BsaI", "BsmBI", "BbsI", "SapI"):
         raise ValueError(f"enzyme_name 仅支持 BsaI/BsmBI/BbsI/SapI，收到 {d['enzyme_name']}")
+    host = str(d.get("host_organism") or "human").strip().lower()
+    if host not in ("human", "ecoli", "yeast"):
+        raise ValueError(f"host_organism 仅支持 human/ecoli/yeast，收到 {host}")
+    d["host_organism"] = host
     frags = d.get("fragments") or []
     frag_allowed = {"name", "sequence", "is_coding_sequence", "reading_frame_offset"}
     for idx, f in enumerate(frags):
@@ -6987,14 +8842,15 @@ def _stdlib_validate_gg(raw: Dict[str, Any]) -> Dict[str, Any]:
         rfo = f.get("reading_frame_offset", 0)
         if not (0 <= int(rfo) <= 2):
             raise ValueError(f"fragments[{idx}].reading_frame_offset 必须为 0、1 或 2")
+    max_frags = 15 if d["enzyme_name"] == "SapI" else 24
     fc = d.get("fragment_count")
-    if fc is not None and not (2 <= int(fc) <= 6):
-        raise ValueError("fragment_count 必须在 2–6 之间")
+    if fc is not None and not (2 <= int(fc) <= max_frags):
+        raise ValueError(f"fragment_count 必须在 2–{max_frags} 之间")
     if not frags and fc is None:
-        raise ValueError("未传入 fragments 时必须显式指定 fragment_count (2–6)")
+        raise ValueError(f"未传入 fragments 时必须显式指定 fragment_count (2–{max_frags})")
     eff = int(fc) if fc is not None else len(frags)
-    if not (2 <= eff <= 6):
-        raise ValueError(f"有效组装片段数必须在 2–6 之间，当前为 {eff}")
+    if not (2 <= eff <= max_frags):
+        raise ValueError(f"有效组装片段数必须在 2–{max_frags} 之间，当前为 {eff}")
     return d
 
 
@@ -7003,8 +8859,10 @@ def _stdlib_validate_hdr(raw: Dict[str, Any]) -> Dict[str, Any]:
         "reference_sequence", "sgrna_sequence", "strand", "edit_start_0based",
         "edit_end_0based", "replacement_sequence", "donor_format",
         "left_arm_length_bp", "right_arm_length_bp", "cds_start_1based",
-        "cds_end_1based", "auto_detect_cds", "enable_rflp",
+        "cds_end_1based", "cds_strand", "cds_frame_offset",
+        "auto_detect_cds", "enable_rflp",
         "rflp_search_radius_bp", "out_out_margin_bp", "primer_target_tm", "donor_name",
+        "asymmetric_richardson_ssodn",
     }
     d = _prepare_hdr_input_dict(raw)
     unknown = set(d.keys()) - allowed
@@ -7675,15 +9533,16 @@ MCP_TOOLS = [
     },
     {
         "name": "design_golden_gate_assembly",
-        "description": "Type IIS（BsaI / BsmBI / BbsI / SapI）Golden Gate 组装引擎：基于 Libraries.sqlite NEB T4 黏性末端保真度矩阵实现 2–6 片段无交叉错配 4-bp/3-bp 接头自动分配，并对片段内部双链内源酶切位点执行编码区同义密码子抹除（Domestication）。",
+        "description": "Type IIS（BsaI / BsmBI / BbsI / SapI）Golden Gate 组装引擎：基于 Libraries.sqlite 中 Pryor et al. (PLoS ONE 2020) 真实 PacBio SMRT 连接保真度矩阵实现 2–24 片段（SapI 2–15 片段）全局优化无交叉/自错配接头分配、宿主特异编码区同义密码子抹除（Domestication）与跨界新生位点检测。",
         "inputSchema": {
             "type": "object",
             "additionalProperties": False,
             "properties": {
                 "enzyme_name": {"type": "string", "enum": ["BsaI", "BsmBI", "BbsI", "SapI"], "default": "BsaI", "description": "Type IIS 内切酶名称"},
-                "fragment_count": {"type": ["integer", "null"], "minimum": 2, "maximum": 6, "description": "待组装片段总数 (2–6)；未传 fragments 时必填"},
-                "is_circular": {"type": "boolean", "default": True, "description": "是否为环状多片段组装（决定接点数=fragment_count 或 fragment_count-1）"},
+                "fragment_count": {"type": ["integer", "null"], "minimum": 2, "maximum": 24, "description": "待组装片段总数 (4-bp 酶 2–24, SapI 2–15)；未传 fragments 时必填"},
+                "is_circular": {"type": "boolean", "default": True, "description": "是否为环状多片段组装（决定接点数=fragment_count 或 fragment_count+1）"},
                 "fixed_overhangs": {"type": "array", "items": {"type": "string"}, "default": [], "description": "可选：用户锁定保留的黏性末端接头列表（如 ['GGAG', 'CGCT']）"},
+                "host_organism": {"type": "string", "enum": ["human", "ecoli", "yeast"], "default": "human", "description": "Domestication 同义密码子偏好宿主 (human / ecoli / yeast)"},
                 "fragments": {
                     "type": "array",
                     "default": [],
@@ -7792,7 +9651,8 @@ MCP_TOOLS = [
                     }
                 },
                 "total_internal_sites_found": {"type": "integer"},
-                "assembled_sequence_length": {"type": "integer"}
+                "assembled_sequence_length": {"type": "integer"},
+                "junction_site_warnings": {"type": "array", "items": {"type": "string"}}
             },
             "required": [
                 "enzyme_name", "recognition_site", "overhang_length", "overhang_plan",

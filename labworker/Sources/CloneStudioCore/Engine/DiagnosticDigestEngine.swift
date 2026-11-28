@@ -69,6 +69,7 @@ public struct DiagnosticDigestEngine: Sendable {
         public let isCircular: Bool
         public let evaluatedCombinations: Int
         public let topRecommendations: [DiagnosticDigestRecommendation]
+        public let insertOnlyCutters: [String]
         public let warnings: [String]
 
         public init(
@@ -77,6 +78,7 @@ public struct DiagnosticDigestEngine: Sendable {
             isCircular: Bool,
             evaluatedCombinations: Int,
             topRecommendations: [DiagnosticDigestRecommendation],
+            insertOnlyCutters: [String] = [],
             warnings: [String]
         ) {
             self.emptyVectorLengthBp = emptyVectorLengthBp
@@ -84,25 +86,44 @@ public struct DiagnosticDigestEngine: Sendable {
             self.isCircular = isCircular
             self.evaluatedCombinations = evaluatedCombinations
             self.topRecommendations = topRecommendations
+            self.insertOnlyCutters = insertOnlyCutters
             self.warnings = warnings
         }
     }
 
     // MARK: - 3. 理论酶切片段计算与 Top 3 推荐
 
-    /// 模拟单酶切或双酶切产生的 DNA 条带长度列表 (bp，按降序排列)
+    /// 模拟单酶切或双酶切产生的 DNA 条带长度列表 (bp，按降序排列)；支持大肠杆菌 Dam/Dcm/CpG 甲基化阻断模拟
     public static func digestFragments(
         sequence: String,
         enzymes: [RestrictionEnzyme],
-        isCircular: Bool = true
+        isCircular: Bool = true,
+        damMethylated: Bool = false,
+        dcmMethylated: Bool = false,
+        cpgMethylated: Bool = false
     ) -> [Int] {
         let cleanSeq = BioSequence.clean(sequence)
         let totalLen = cleanSeq.count
         guard totalLen > 0 else { return [] }
+        let db = RestrictionEnzymeDatabase.shared
+        let checkMeth = damMethylated || dcmMethylated || cpgMethylated
 
         var cutPositions = Set<Int>()
         for enz in enzymes {
             for hit in enz.findDualStrandSites(in: cleanSeq, circular: isCircular) {
+                if checkMeth {
+                    let blocked = db.checkMethylationBlock(
+                        enzymeName: enz.name,
+                        sequence: cleanSeq,
+                        siteStart0Based: hit.recognitionStart0Based,
+                        siteLength: enz.site.count,
+                        circular: isCircular,
+                        damMethylated: damMethylated,
+                        dcmMethylated: dcmMethylated,
+                        cpgMethylated: cpgMethylated
+                    )
+                    if !blocked.isEmpty { continue }
+                }
                 cutPositions.insert(hit.topSnip0Based)
             }
         }
@@ -153,7 +174,10 @@ public struct DiagnosticDigestEngine: Sendable {
         enzymeNames: [String]? = nil,
         minBands: Int = 2,
         maxBands: Int = 4,
-        topN: Int = 3
+        topN: Int = 3,
+        damMethylated: Bool = true,
+        dcmMethylated: Bool = true,
+        cpgMethylated: Bool = false
     ) -> DiagnosticDigestReport {
         let cleanEmpty = BioSequence.clean(emptyVectorSequence)
         let cleanRecomb = BioSequence.clean(recombinantSequence)
@@ -181,17 +205,51 @@ public struct DiagnosticDigestEngine: Sendable {
         }
         pool.sort { $0.name < $1.name }
 
-        // 预扫描各酶在空载与重组载体上的单酶切位点数，过滤掉无切点或超频切割 (>6 切点) 的酶
+        // 预扫描各酶在空载与重组载体上的真实未阻断酶切位点数，过滤掉无切点或超频切割 (>6 切点) 的酶
+        func unblockedCutCount(for enz: RestrictionEnzyme, in seq: String) -> Int {
+            let sites = enz.findDualStrandSites(in: seq, circular: isCircular)
+            guard damMethylated || dcmMethylated || cpgMethylated else { return sites.count }
+            return sites.filter { site in
+                db.checkMethylationBlock(
+                    enzymeName: enz.name,
+                    sequence: seq,
+                    siteStart0Based: site.recognitionStart0Based,
+                    siteLength: enz.site.count,
+                    circular: isCircular,
+                    damMethylated: damMethylated,
+                    dcmMethylated: dcmMethylated,
+                    cpgMethylated: cpgMethylated
+                ).isEmpty
+            }.count
+        }
         var viableEnzymes: [RestrictionEnzyme] = []
+        var insertOnlyCutters: [String] = []
         var singleCacheEmpty: [String: [Int]] = [:]
         var singleCacheRecomb: [String: [Int]] = [:]
         for enz in pool {
-            let negCuts = enz.findDualStrandSites(in: cleanEmpty, circular: isCircular).count
-            let posCuts = enz.findDualStrandSites(in: cleanRecomb, circular: isCircular).count
+            let negCuts = unblockedCutCount(for: enz, in: cleanEmpty)
+            let posCuts = unblockedCutCount(for: enz, in: cleanRecomb)
+            if negCuts == 0 && posCuts >= 1 {
+                insertOnlyCutters.append(enz.name)
+            }
             guard (negCuts >= 1 || posCuts >= 1), negCuts <= 6, posCuts <= 6 else { continue }
             viableEnzymes.append(enz)
-            singleCacheEmpty[enz.name] = digestFragments(sequence: cleanEmpty, enzymes: [enz], isCircular: isCircular)
-            singleCacheRecomb[enz.name] = digestFragments(sequence: cleanRecomb, enzymes: [enz], isCircular: isCircular)
+            singleCacheEmpty[enz.name] = digestFragments(
+                sequence: cleanEmpty,
+                enzymes: [enz],
+                isCircular: isCircular,
+                damMethylated: damMethylated,
+                dcmMethylated: dcmMethylated,
+                cpgMethylated: cpgMethylated
+            )
+            singleCacheRecomb[enz.name] = digestFragments(
+                sequence: cleanRecomb,
+                enzymes: [enz],
+                isCircular: isCircular,
+                damMethylated: damMethylated,
+                dcmMethylated: dcmMethylated,
+                cpgMethylated: cpgMethylated
+            )
         }
 
         func bestBuffer(for enzymes: [RestrictionEnzyme]) -> (name: String, activity: Int) {
@@ -221,8 +279,22 @@ public struct DiagnosticDigestEngine: Sendable {
                 emptyAll = singleCacheEmpty[enzymes[0].name] ?? []
                 recombAll = singleCacheRecomb[enzymes[0].name] ?? []
             } else {
-                emptyAll = digestFragments(sequence: cleanEmpty, enzymes: enzymes, isCircular: isCircular)
-                recombAll = digestFragments(sequence: cleanRecomb, enzymes: enzymes, isCircular: isCircular)
+                emptyAll = digestFragments(
+                    sequence: cleanEmpty,
+                    enzymes: enzymes,
+                    isCircular: isCircular,
+                    damMethylated: damMethylated,
+                    dcmMethylated: dcmMethylated,
+                    cpgMethylated: cpgMethylated
+                )
+                recombAll = digestFragments(
+                    sequence: cleanRecomb,
+                    enzymes: enzymes,
+                    isCircular: isCircular,
+                    damMethylated: damMethylated,
+                    dcmMethylated: dcmMethylated,
+                    cpgMethylated: cpgMethylated
+                )
             }
 
             let emptyVis = emptyAll.filter { $0 >= 100 }
@@ -371,6 +443,49 @@ public struct DiagnosticDigestEngine: Sendable {
 
         if topItems.isEmpty {
             warnings.append(L10n.t("在可用酶切面板中未找到可区分空载与重组载体的有效鉴定方案。"))
+        } else {
+            // 对推荐 Top 方案进行反应温度兼容性、Dam/Dcm/CpG 甲基化敏感性与星号活性告警
+            for rec in topItems {
+                let comps = rec.enzymeNames.map { db.bufferCompatibility(for: $0) }
+                let temps = Set(comps.map(\.incubationTempC))
+                if temps.count > 1 {
+                    let detail = zip(rec.enzymeNames, comps).map { "\($0.0) (\($0.1.incubationTempC)°C)" }.joined(separator: " + ")
+                    warnings.append(L10n.tr("方案 #\(rec.rank) 存在反应温度不兼容：\(detail)，需分步顺序酶切。", "Digest #\(rec.rank) has incompatible incubation temperatures: \(detail); perform sequential digestion."))
+                }
+                var blockedDescList: [String] = []
+                for (eName, _) in zip(rec.enzymeNames, comps) {
+                    guard let enz = db.find(name: eName) else { continue }
+                    var hitBlocks = Set<String>()
+                    for seq in [cleanEmpty, cleanRecomb] {
+                        for site0 in enz.findDualStrandSites(in: seq, circular: isCircular) {
+                            for blk in db.checkMethylationBlock(
+                                enzymeName: enz.name,
+                                sequence: seq,
+                                siteStart0Based: site0.recognitionStart0Based,
+                                siteLength: enz.site.count,
+                                circular: isCircular,
+                                damMethylated: damMethylated,
+                                dcmMethylated: dcmMethylated,
+                                cpgMethylated: cpgMethylated
+                            ) {
+                                hitBlocks.insert(blk)
+                            }
+                        }
+                    }
+                    if !hitBlocks.isEmpty {
+                        blockedDescList.append("\(eName) [\(hitBlocks.sorted().joined(separator: "/"))]")
+                    }
+                }
+                if !blockedDescList.isEmpty {
+                    let mDesc = blockedDescList.joined(separator: ", ")
+                    warnings.append(L10n.tr("方案 #\(rec.rank) 在当前宿主甲基化条件下存在真实切点阻断 (\(mDesc))，建议改用 Dam-/Dcm- 宿主或替换非敏感酶。", "Digest #\(rec.rank) has methylation-blocked cutsite(s) (\(mDesc)) under current host methylation state."))
+                }
+                for (eName, comp) in zip(rec.enzymeNames, comps) {
+                    if let starNote = comp.starActivityNote {
+                        warnings.append(L10n.tr("方案 #\(rec.rank) \(eName) 星号活性提示：\(starNote)", "Digest #\(rec.rank) \(eName) star activity advisory: \(starNote)"))
+                    }
+                }
+            }
         }
 
         return DiagnosticDigestReport(
@@ -379,6 +494,7 @@ public struct DiagnosticDigestEngine: Sendable {
             isCircular: isCircular,
             evaluatedCombinations: combinations.count,
             topRecommendations: topItems,
+            insertOnlyCutters: insertOnlyCutters,
             warnings: warnings
         )
     }

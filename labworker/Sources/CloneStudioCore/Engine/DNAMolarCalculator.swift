@@ -53,16 +53,20 @@ public struct DNAMolarCalculator {
         public let isCustomNg: Bool
         public let recommendedVol: Double?
         
+        public let unitWarning: String?
+        
         public init(
             recommendedNg: Double,
             actualNg: Double? = nil,
             isCustomNg: Bool = false,
-            recommendedVol: Double?
+            recommendedVol: Double?,
+            unitWarning: String? = nil
         ) {
             self.recommendedNg = recommendedNg
             self.actualNg = actualNg ?? recommendedNg
             self.isCustomNg = isCustomNg
             self.recommendedVol = recommendedVol
+            self.unitWarning = unitWarning
         }
         
         public var volFormatted: String {
@@ -82,7 +86,23 @@ public struct DNAMolarCalculator {
         }
     }
     
-    /// 智能将用户输入的数值解析为 kb（若输入值 >= 40，如 5340，则自动按 bp 换算为 5.34 kb）
+    /// dsDNA 平均碱基对摩尔质量口径（明确区分 650 Da/bp 无水均重 vs 660 Da/bp 水合二钠盐均重）
+    public enum DSDNAMolarMassConvention: Double, CaseIterable, Sendable {
+        /// 无水均重 (650 Da/bp，NEBioCalculator / 无缝克隆连接配比标准)
+        case anhydrous650 = 650.0
+        /// 水合二钠盐均重 (660 Da/bp，常规 dsDNA 质量–摩尔换算标准)
+        case hydrated660 = 660.0
+
+        public var daPerBp: Double { rawValue }
+        public var label: String {
+            switch self {
+            case .anhydrous650: return "650 Da/bp (Anhydrous)"
+            case .hydrated660:  return "660 Da/bp (Hydrated Na2-salt)"
+            }
+        }
+    }
+
+    /// 显式 bp → kb 换算辅助函数（不再在 calculate 中静默猜改用户输入单位）
     public static func normalizeLengthToKb(_ rawValue: Double) -> Double {
         guard rawValue > 0 else { return 0 }
         return rawValue >= 40.0 ? (rawValue / 1000.0) : rawValue
@@ -90,55 +110,45 @@ public struct DNAMolarCalculator {
     
     /// 计算最适 DNA 用量 (ng) 与移液体积 (μL)
     /// - Parameters:
-    ///   - cloneType: 克隆模式 (SimpleClone / SingleClone / MultiClone)
+    ///   - cloneType: 克隆模式 (SimpleClone / SingleClone / MultiClone / LigationRatio)
     ///   - isVector: 是否为载体 (若是 false，则为插入片段)
-    ///   - lengthKb: 片段长度 (kb，若传入 >= 40 自动识别为 bp 并折算为 kb)
+    ///   - lengthKb: 片段长度 (显式单位 kb；若 >= 40 kb 将发出显式单位复核提示，不再静默除以 1000)
     ///   - concentrationNgPerUl: 浓度 (ng/μL)，可选
     ///   - customNg: 用户自定义的投入量 (ng)，若为 nil 或 <= 0 则使用标准推荐量
+    ///   - molarMass: dsDNA 平均碱基对摩尔质量口径（默认 650 Da/bp）
     public static func calculate(
         cloneType: CloneType,
         isVector: Bool,
         lengthKb rawLength: Double,
         concentrationNgPerUl: Double? = nil,
-        customNg: Double? = nil
+        customNg: Double? = nil,
+        molarMass: DSDNAMolarMassConvention = .anhydrous650
     ) -> CalculationResult {
-        let lengthKb = normalizeLengthToKb(rawLength)
+        let lengthKb = rawLength
         guard lengthKb > 0 else {
             return CalculationResult(recommendedNg: 0, actualNg: 0, isCustomNg: false, recommendedVol: nil)
         }
+        let unitWarn: String? = (rawLength >= 40.0)
+            ? L10n.tr("输入长度为 \(rawLength) kb（≥40 kb，常见于 BAC/超大质粒）；若实际单位为 bp，请手动除以 1000 后输入 kb。", "Input length is \(rawLength) kb (>=40 kb); if this value is in bp, divide by 1000 and enter kb explicitly.")
+            : nil
         
         var recNg: Double = 0.0
         
         switch cloneType {
         case .simple:
-            if lengthKb <= 0.5 {
-                recNg = 20.0
-            } else {
-                recNg = min(200.0, 40.0 * lengthKb)
-            }
+            recNg = min(200.0, max(20.0, 40.0 * lengthKb))
             
         case .single:
             if isVector {
-                if lengthKb <= 2.0 {
-                    recNg = 50.0
-                } else {
-                    recNg = min(200.0, 20.0 * lengthKb)
-                }
+                // 消除原 2.0 kb 处 50 ng -> 40.02 ng 的不连续阶跃：采用平滑单调下限 max(50.0, 20.0 * lengthKb)
+                recNg = min(200.0, max(50.0, 20.0 * lengthKb))
             } else {
-                if lengthKb <= 0.5 {
-                    recNg = 20.0
-                } else {
-                    recNg = min(200.0, 40.0 * lengthKb)
-                }
+                recNg = min(200.0, max(20.0, 40.0 * lengthKb))
             }
             
         case .multi:
             if isVector {
-                if lengthKb <= 2.0 {
-                    recNg = 50.0
-                } else {
-                    recNg = min(200.0, 20.0 * lengthKb)
-                }
+                recNg = min(200.0, max(50.0, 20.0 * lengthKb))
             } else {
                 if lengthKb <= 0.5 {
                     recNg = 10.0
@@ -148,8 +158,7 @@ public struct DNAMolarCalculator {
             }
 
         case .ligationRatio:
-            // 默认按 0.03 pmol × bp × 0.65 (即 19.5 ng/kb) 计算基准投入
-            recNg = 0.03 * (lengthKb * 1000.0) * 0.65
+            recNg = 0.03 * (lengthKb * 1000.0) * (molarMass.daPerBp / 1000.0)
         }
         
         let useCustom = (customNg != nil && customNg! > 0)
@@ -164,7 +173,8 @@ public struct DNAMolarCalculator {
             recommendedNg: recNg,
             actualNg: effectiveNg,
             isCustomNg: useCustom,
-            recommendedVol: vol
+            recommendedVol: vol,
+            unitWarning: unitWarn
         )
     }
 

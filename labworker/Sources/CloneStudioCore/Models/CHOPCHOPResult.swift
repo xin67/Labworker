@@ -71,9 +71,9 @@ public enum CHOPCHOPLocalMatchKind: Hashable, Sendable {
     
     public var priority: Int {
         switch self {
-        case .exact: return 3
-        case .coreOverlap(let len): return 2 * 100 + len
-        case .reverseComplementOverlap(let len): return 1 * 100 + len
+        case .exact: return 3_000
+        case .coreOverlap(let len): return 2_000 + len
+        case .reverseComplementOverlap(let len): return 1_000 + len
         }
     }
 }
@@ -317,6 +317,8 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             hasCHOPCHOPOffTargets: hasCHOPCHOPOffTargets,
             vbcScore: vbcScore,
             vbcActivity: vbcActivity,
+            vbcFrameshift: vbcFrameshift,
+            vbcBioscore: vbcBioscore,
             vbcVeryLikelyOT: vbcVeryLikelyOT,
             vbcLikelyOT: vbcLikelyOT,
             vbcOT90: vbcOT90,
@@ -437,6 +439,8 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
         hasCHOPCHOPOffTargets: Bool,
         vbcScore: Double?,
         vbcActivity: Double?,
+        vbcFrameshift: Double? = nil,
+        vbcBioscore: Double? = nil,
         vbcVeryLikelyOT: Int?,
         vbcLikelyOT: Int?,
         vbcOT90: Int?,
@@ -504,16 +508,7 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             }
             
             total = max(0.0, min(100.0, total))
-            let tier: TargetScoreTier
-            if fatalMsg != nil || total < 45 {
-                tier = .poor
-            } else if total >= 80 {
-                tier = .excellent
-            } else if total >= 65 {
-                tier = .good
-            } else {
-                tier = .fair
-            }
+            let tier: TargetScoreTier = (fatalMsg != nil) ? .poor : TargetScoreTier.from(score: total)
             
             let summaryText = L10n.tr("全维综合评分 \(Int(total)) 分 = 脱靶安全 \(offInt)/45 + Doench效率 \(effInt)/35 + 序列规则 \(seqInt)/20", "Composite Score \(Int(total)) = Off-Target \(offInt)/45 + Doench Eff. \(effInt)/35 + Sequence Rules \(seqInt)/20")
             return TargetScore(
@@ -526,18 +521,19 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             )
         }
         
-        // 多源融合评分（VBC-Score / UCSC CRISPOR / CHOPCHOP）
-        var offTargetPts = 45.0
+        // 多源融合评分（VBC-Score / UCSC CRISPOR / CHOPCHOP）；无脱靶索引时严禁静默给予 45/45 满分
+        var offTargetPts: Double? = nil
         if hasCHOPCHOPOffTargets {
             var chopOff = 45.0
             if mm0 > 0 { chopOff -= Double(mm0) * 35.0 }
             if mm1 > 0 { chopOff -= Double(mm1) * 20.0 }
             if mm2 > 0 { chopOff -= Double(mm2) * 4.5 }
             if mm3 > 0 { chopOff -= min(12.0, Double(mm3) * 1.2) }
-            offTargetPts = max(0.0, min(45.0, chopOff))
+            let clamped = max(0.0, min(45.0, chopOff))
+            offTargetPts = clamped
             tags.append(ScoreTag(
                 name: L10n.tr("CHOP 脱靶 (\(mm0)/\(mm1)/\(mm2)/\(mm3))", "CHOP Off-Target (\(mm0)/\(mm1)/\(mm2)/\(mm3))"),
-                points: Int(round(offTargetPts)),
+                points: Int(round(clamped)),
                 type: (mm0 == 0 && mm1 == 0) ? .bonus : (mm0 > 0 ? .fatal : .penalty)
             ))
         } else {
@@ -567,9 +563,16 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             }
             if !specSamples.isEmpty {
                 offTargetPts = specSamples.reduce(0.0, +) / Double(specSamples.count)
+            } else {
+                tags.append(ScoreTag(
+                    name: L10n.t("脱靶数据缺失 (未评分)"),
+                    points: 0,
+                    type: .penalty
+                ))
             }
         }
-        let offInt = Int(round(offTargetPts))
+        let offResolved = offTargetPts ?? 0.0
+        let offInt = Int(round(offResolved))
         
         var effSamples: [Double] = []
         if hasCHOPCHOPOffTargets {
@@ -588,6 +591,20 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
                 name: L10n.tr("VBC 敲除分 (\(String(format: "%.2f", vbc)))", "VBC Score (\(String(format: "%.2f", vbc)))"),
                 points: Int(round(vbcEff)),
                 type: vbc >= 0.60 ? .bonus : .penalty
+            ))
+        }
+        if let fs = vbcFrameshift {
+            tags.append(ScoreTag(
+                name: L10n.tr("VBC 移码率 (\(String(format: "%.0f%%", fs * 100.0)))", "VBC Frameshift (\(String(format: "%.0f%%", fs * 100.0)))"),
+                points: 0,
+                type: fs >= 0.65 ? .bonus : .penalty
+            ))
+        }
+        if let bio = vbcBioscore {
+            tags.append(ScoreTag(
+                name: L10n.tr("VBC 功能保守度 (\(String(format: "%.2f", bio)))", "VBC Bioscore (\(String(format: "%.2f", bio)))"),
+                points: 0,
+                type: bio >= 0.60 ? .bonus : .penalty
             ))
         }
         if mitSpecificity != nil || crisporDoenchPerc != nil {
@@ -625,7 +642,10 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
             ))
         }
         
-        var total = round(offTargetPts + effNormalized + seqPts + consensusBonus)
+        var total = round(offResolved + effNormalized + seqPts + consensusBonus)
+        if offTargetPts == nil {
+            total = min(total, 55.0)
+        }
         var fatalMsg = localScore.fatalWarning
         
         if mm0 > 0 {
@@ -636,20 +656,13 @@ public struct CHOPCHOPTarget: Identifiable, Hashable, Codable, Sendable {
         }
         
         total = max(0.0, min(100.0, total))
-        let tier: TargetScoreTier
-        if fatalMsg != nil || total < 45 {
-            tier = .poor
-        } else if total >= 80 {
-            tier = .excellent
-        } else if total >= 65 {
-            tier = .good
-        } else {
-            tier = .fair
-        }
+        let tier: TargetScoreTier = (fatalMsg != nil) ? .poor : TargetScoreTier.from(score: total)
         
         let srcDesc = sources.map(\.shortTitle).joined(separator: "+")
         let bonusDesc = consensusBonus > 0 ? L10n.tr(" + 共识 +\(Int(consensusBonus))", " + Consensus +\(Int(consensusBonus))") : ""
-        let summaryText = L10n.tr("[\(srcDesc)] 全维综合评分 \(Int(total)) 分 = 特异性 \(offInt)/45 + 效率 \(effInt)/35 + 序列规则 \(seqInt)/20\(bonusDesc)", "[\(srcDesc)] Composite Score \(Int(total)) = Specificity \(offInt)/45 + Efficiency \(effInt)/35 + Sequence Rules \(seqInt)/20\(bonusDesc)")
+        let offTextZh = offTargetPts == nil ? "未评分 (无脱靶索引)" : "\(offInt)/45"
+        let offTextEn = offTargetPts == nil ? "Unscored (no off-target index)" : "\(offInt)/45"
+        let summaryText = L10n.tr("[\(srcDesc)] 全维综合评分 \(Int(total)) 分 = 特异性 \(offTextZh) + 效率 \(effInt)/35 + 序列规则 \(seqInt)/20\(bonusDesc)", "[\(srcDesc)] Composite Score \(Int(total)) = Specificity \(offTextEn) + Efficiency \(effInt)/35 + Sequence Rules \(seqInt)/20\(bonusDesc)")
         return TargetScore(
             score: total,
             tier: tier,

@@ -155,7 +155,10 @@ public struct HDRDonorRequest: Codable, Sendable {
     public var rightArmLengthBp: Int?
     public var cdsStart1Based: Int?
     public var cdsEnd1Based: Int?
+    public var cdsStrand: String
+    public var cdsFrameOffset: Int?
     public var autoDetectCDS: Bool
+    public var asymmetricRichardsonSSODN: Bool
     public var enableRFLP: Bool
     public var rflpSearchRadiusBp: Int
     public var outOutMarginBp: Int
@@ -174,7 +177,10 @@ public struct HDRDonorRequest: Codable, Sendable {
         rightArmLengthBp: Int? = nil,
         cdsStart1Based: Int? = nil,
         cdsEnd1Based: Int? = nil,
+        cdsStrand: String = "+",
+        cdsFrameOffset: Int? = nil,
         autoDetectCDS: Bool = true,
+        asymmetricRichardsonSSODN: Bool = false,
         enableRFLP: Bool = false,
         rflpSearchRadiusBp: Int = 15,
         outOutMarginBp: Int = 100,
@@ -192,7 +198,10 @@ public struct HDRDonorRequest: Codable, Sendable {
         self.rightArmLengthBp = rightArmLengthBp
         self.cdsStart1Based = cdsStart1Based
         self.cdsEnd1Based = cdsEnd1Based
+        self.cdsStrand = (cdsStrand == "-") ? "-" : "+"
+        self.cdsFrameOffset = cdsFrameOffset
         self.autoDetectCDS = autoDetectCDS
+        self.asymmetricRichardsonSSODN = asymmetricRichardsonSSODN
         self.enableRFLP = enableRFLP
         self.rflpSearchRadiusBp = rflpSearchRadiusBp
         self.outOutMarginBp = outOutMarginBp
@@ -206,9 +215,11 @@ public struct HDRDonorDesignReport: Codable, Equatable, Sendable {
     public let sgRNASequence: String
     public let strand: String
     public let wtCutIndex0Based: Int
+    public let cutToEditDistanceBp: Int
     public let wtPamStart0Based: Int
     public let wtPamSequence: String
     public let isInCDS: Bool
+    public let cdsStrand: String
     public let cdsStart1Based: Int?
     public let cdsEnd1Based: Int?
     public let cdsAutoDetected: Bool
@@ -227,6 +238,7 @@ public struct HDRDonorDesignReport: Codable, Equatable, Sendable {
     public let rightArmLengthBp: Int
     public let donorSequence: String
     public let donorLengthBp: Int
+    public let donorStrandOrientation: String
     public let finalEditedLocusSequence: String
     public let rflp: RFLPDesignResult?
     public let outOutPCR: OutOutPCRDesign?
@@ -359,14 +371,47 @@ public enum HDRDonorEngine {
         return nil
     }
 
-    public static func translateCDS(_ sequence: String, start0Based: Int, end0Based: Int) -> String {
-        let chars = Array(BioSequence.clean(sequence)).map { String($0) }
+    /// 支持正向链与反向互补链 (-) 的双链 CDS 识别（双链并行扫描并择优选取最长覆盖 ORF）
+    public static func detectCDSRegionWithStrand(
+        in referenceSequence: String,
+        coveringIndex0Based cutIndex0: Int,
+        minLengthBp: Int = 90
+    ) -> (start0Based: Int, end0Based: Int, strand: String)? {
+        let clean = BioSequence.clean(referenceSequence)
+        let n = clean.count
+        guard n >= minLengthBp else { return nil }
+        let fwd = detectCDSRegion(in: clean, coveringIndex0Based: cutIndex0, minLengthBp: minLengthBp)
+        let rc = BioSequence.reverseComplement(clean)
+        let rcCut = max(0, min(n - 1, n - 1 - cutIndex0))
+        let revRaw = detectCDSRegion(in: rc, coveringIndex0Based: rcCut, minLengthBp: minLengthBp)
+        let rev: (start0Based: Int, end0Based: Int)? = revRaw.map { (n - $0.end0Based, n - $0.start0Based) }
+        switch (fwd, rev) {
+        case let (f?, r?):
+            let fLen = f.end0Based - f.start0Based
+            let rLen = r.end0Based - r.start0Based
+            return (rLen > fLen) ? (r.start0Based, r.end0Based, "-") : (f.start0Based, f.end0Based, "+")
+        case let (f?, nil):
+            return (f.start0Based, f.end0Based, "+")
+        case let (nil, r?):
+            return (r.start0Based, r.end0Based, "-")
+        case (nil, nil):
+            return nil
+        }
+    }
+
+    public static func translateCDS(_ sequence: String, start0Based: Int, end0Based: Int, strand: String = "+") -> String {
+        let clean = BioSequence.clean(sequence)
+        let chars = Array(clean).map { String($0) }
         let s = max(0, start0Based)
         let e = min(chars.count, end0Based)
+        guard s < e else { return "" }
+        let sliceStr = chars[s..<e].joined()
+        let codingStr = (strand == "-") ? BioSequence.reverseComplement(sliceStr) : sliceStr
+        let cArr = Array(codingStr).map { String($0) }
         var aa = ""
-        var i = s
-        while i + 3 <= e {
-            let codon = chars[i] + chars[i + 1] + chars[i + 2]
+        var i = 0
+        while i + 3 <= cArr.count {
+            let codon = cArr[i] + cArr[i + 1] + cArr[i + 2]
             aa += codonToAA[codon] ?? "X"
             i += 3
         }
@@ -496,9 +541,10 @@ public enum HDRDonorEngine {
         }
         let wtPamSeq = refChars[wtPamStart0] + refChars[wtPamStart0 + 1] + refChars[wtPamStart0 + 2]
 
-        // 2. Detect or validate CDS
+        // 2. Detect or validate CDS (supports forward/reverse strand & non-ATG internal exon frameOffset)
         var isInCDS = false
         var cdsAutoDetected = false
+        var resolvedCdsStrand = (request.cdsStrand == "-") ? "-" : "+"
         var wtCdsStart0: Int?
         var wtCdsEnd0: Int?
         if let cs1 = request.cdsStart1Based, let ce1 = request.cdsEnd1Based {
@@ -512,12 +558,21 @@ public enum HDRDonorEngine {
                 wtCdsStart0 = s0
                 wtCdsEnd0 = e0
             }
+        } else if let frameOff = request.cdsFrameOffset, frameOff >= 0 && frameOff <= 2 {
+            let s0 = frameOff
+            let e0 = s0 + ((L - s0) / 3) * 3
+            if s0 <= wtCutIndex0 && wtCutIndex0 < e0 && e0 - s0 >= 9 {
+                isInCDS = true
+                wtCdsStart0 = s0
+                wtCdsEnd0 = e0
+            }
         } else if request.autoDetectCDS {
-            if let detected = detectCDSRegion(in: ref, coveringIndex0Based: wtCutIndex0) {
+            if let detected = detectCDSRegionWithStrand(in: ref, coveringIndex0Based: wtCutIndex0) {
                 isInCDS = true
                 cdsAutoDetected = true
                 wtCdsStart0 = detected.start0Based
                 wtCdsEnd0 = detected.end0Based
+                resolvedCdsStrand = detected.strand
             }
         }
 
@@ -543,8 +598,13 @@ public enum HDRDonorEngine {
         }
 
         let proteinBeforeBlocking = isInCDS
-            ? translateCDS(editedChars.joined(), start0Based: editedCdsStart0, end0Based: editedCdsEnd0)
+            ? translateCDS(editedChars.joined(), start0Based: editedCdsStart0, end0Based: editedCdsEnd0, strand: resolvedCdsStrand)
             : ""
+
+        let cutToEditDistanceBp: Int = {
+            if wtCutIndex0 >= editStart0 && wtCutIndex0 <= editEnd0 { return 0 }
+            return min(abs(wtCutIndex0 - editStart0), abs(wtCutIndex0 - editEnd0))
+        }()
 
         let editedPamStart0 = mapWTIndex(wtPamStart0)
         func isPamIntact(_ chars: [String]) -> Bool {
@@ -556,34 +616,76 @@ public enum HDRDonorEngine {
             }
         }
 
+        /// 检测非典型 SpCas9 活性 PAM（正链 NAG/NGA，负链对应 CTN/TCN），防止阻断突变误引入仍可切割的次级 PAM
+        func isNonCanonicalActivePam(_ chars: [String]) -> Bool {
+            guard editedPamStart0 >= 0 && editedPamStart0 + 3 <= chars.count else { return false }
+            if strand == "+" {
+                let b1 = chars[editedPamStart0 + 1], b2 = chars[editedPamStart0 + 2]
+                return (b1 == "A" && b2 == "G") || (b1 == "G" && b2 == "A")
+            } else {
+                let b0 = chars[editedPamStart0], b1 = chars[editedPamStart0 + 1]
+                return (b0 == "C" && b1 == "T") || (b0 == "T" && b1 == "C")
+            }
+        }
+
         let pamCritIndices: [Int] = strand == "+"
             ? [editedPamStart0 + 1, editedPamStart0 + 2]
             : [editedPamStart0, editedPamStart0 + 1]
         let editLockedSet = Set(editStart0..<(editStart0 + rep.count))
 
         var warnings: [String] = []
+        if cutToEditDistanceBp > 10 {
+            warnings.append(L10n.tr(
+                "DSB 切点至编辑位点距离为 \(cutToEditDistanceBp) bp（>10 bp），据 Paquet et al. (Nature 2016) HDR 效率将显著下降，强烈建议保留沉默阻断突变或改选更近的 sgRNA。",
+                "DSB-to-edit distance is \(cutToEditDistanceBp) bp (>10 bp); per Paquet et al. (Nature 2016), HDR efficiency drops sharply—retain silent blocking mutations or choose a closer sgRNA."
+            ))
+        }
         var blockingMutations: [SilentMutationRecord] = []
         let blockingStrategy: HDRBlockingStrategy
 
-        // Helper for 1-bp synonymous mutation inside editedChars
-        func try1bpSynonymousAt(
+        func complementBase(_ b: String) -> String {
+            switch b {
+            case "A": return "T"
+            case "T": return "A"
+            case "C": return "G"
+            case "G": return "C"
+            default: return b
+            }
+        }
+
+        // Helper for 1-bp synonymous mutation inside editedChars (supports both + and - CDS strands)
+        func try1bpSynonymousCandidatesAt(
             pos: Int,
             chars: [String],
             locked: Set<Int>,
             reason: String
-        ) -> (newBase: String, record: SilentMutationRecord)? {
+        ) -> [(newBase: String, record: SilentMutationRecord)] {
             guard isInCDS, pos >= editedCdsStart0, pos < editedCdsEnd0, !locked.contains(pos) else {
-                return nil
+                return []
             }
-            let rel = pos - editedCdsStart0
-            let cStart = editedCdsStart0 + (rel / 3) * 3
-            guard cStart + 3 <= editedCdsEnd0 else { return nil }
-            let offsetInCodon = pos - cStart
-            let origCodon = chars[cStart] + chars[cStart + 1] + chars[cStart + 2]
+            let cStart: Int
+            let offsetInCodon: Int
+            let origCodon: String
+            if resolvedCdsStrand == "+" {
+                let rel = pos - editedCdsStart0
+                cStart = editedCdsStart0 + (rel / 3) * 3
+                guard cStart + 3 <= editedCdsEnd0 else { return [] }
+                offsetInCodon = pos - cStart
+                origCodon = chars[cStart] + chars[cStart + 1] + chars[cStart + 2]
+            } else {
+                let revRel = (editedCdsEnd0 - 1) - pos
+                let revCodonIdx = revRel / 3
+                let cEnd = editedCdsEnd0 - revCodonIdx * 3
+                cStart = cEnd - 3
+                guard cStart >= editedCdsStart0 && cEnd <= editedCdsEnd0 else { return [] }
+                offsetInCodon = revRel % 3
+                origCodon = complementBase(chars[cEnd - 1]) + complementBase(chars[cEnd - 2]) + complementBase(chars[cEnd - 3])
+            }
             guard let aa = codonToAA[origCodon], let alts = preferredCodonsByAA[aa] else {
-                return nil
+                return []
             }
-            let origArr = [chars[cStart], chars[cStart + 1], chars[cStart + 2]]
+            let origArr = Array(origCodon).map { String($0) }
+            var out: [(newBase: String, record: SilentMutationRecord)] = []
             for altCodon in alts where altCodon != origCodon {
                 let altArr = Array(altCodon).map { String($0) }
                 var diffOffsets: [Int] = []
@@ -591,37 +693,60 @@ public enum HDRDonorEngine {
                     diffOffsets.append(k)
                 }
                 if diffOffsets.count == 1 && diffOffsets[0] == offsetInCodon {
+                    let fwdNewBase = (resolvedCdsStrand == "+") ? altArr[offsetInCodon] : complementBase(altArr[offsetInCodon])
                     let rec = SilentMutationRecord(
                         position0Based: pos,
                         position1Based: pos + 1,
-                        originalBase: origArr[offsetInCodon],
-                        mutatedBase: altArr[offsetInCodon],
+                        originalBase: chars[pos],
+                        mutatedBase: fwdNewBase,
                         reason: reason,
                         codonBefore: origCodon,
                         codonAfter: altCodon,
                         aminoAcid: aa
                     )
-                    return (altArr[offsetInCodon], rec)
+                    out.append((fwdNewBase, rec))
                 }
             }
-            return nil
+            return out
+        }
+
+        func try1bpSynonymousAt(
+            pos: Int,
+            chars: [String],
+            locked: Set<Int>,
+            reason: String
+        ) -> (newBase: String, record: SilentMutationRecord)? {
+            try1bpSynonymousCandidatesAt(pos: pos, chars: chars, locked: locked, reason: reason).first
         }
 
         if !isPamIntact(editedChars) {
             blockingStrategy = .alreadyDisruptedByEdit
         } else if isInCDS {
             var brokePam = false
-            for critPos in pamCritIndices {
-                if let hit = try1bpSynonymousAt(pos: critPos, chars: editedChars, locked: editLockedSet, reason: "pam_block") {
+            var fallbackHit: (pos: Int, newBase: String, record: SilentMutationRecord)? = nil
+            // 第一优先级：同义破坏 NGG 且同时避开 NAG/NGA 非典型 SpCas9 PAM
+            outerPamSearch: for critPos in pamCritIndices {
+                let cands = try1bpSynonymousCandidatesAt(pos: critPos, chars: editedChars, locked: editLockedSet, reason: "pam_block")
+                for hit in cands {
                     var cand = editedChars
                     cand[critPos] = hit.newBase
                     if !isPamIntact(cand) {
-                        editedChars = cand
-                        blockingMutations.append(hit.record)
-                        brokePam = true
-                        break
+                        if !isNonCanonicalActivePam(cand) {
+                            editedChars = cand
+                            blockingMutations.append(hit.record)
+                            brokePam = true
+                            break outerPamSearch
+                        } else if fallbackHit == nil {
+                            fallbackHit = (critPos, hit.newBase, hit.record)
+                        }
                     }
                 }
+            }
+            if !brokePam, let fb = fallbackHit {
+                editedChars[fb.pos] = fb.newBase
+                blockingMutations.append(fb.record)
+                brokePam = true
+                warnings.append(L10n.t("同义突变受限，阻断后产生 SpCas9 次级非典型 PAM (NAG/NGA)，建议结合 Seed 区附加沉默突变以降低残留切割风险。"))
             }
 
             if brokePam {
@@ -642,7 +767,9 @@ public enum HDRDonorEngine {
                 for sPos in seedPositions {
                     if blockingMutations.count >= 2 { break }
                     guard sPos >= editedCdsStart0 && sPos < editedCdsEnd0 else { continue }
-                    let cStart = editedCdsStart0 + ((sPos - editedCdsStart0) / 3) * 3
+                    let cStart = (resolvedCdsStrand == "+")
+                        ? (editedCdsStart0 + ((sPos - editedCdsStart0) / 3) * 3)
+                        : (editedCdsEnd0 - (((editedCdsEnd0 - 1) - sPos) / 3 + 1) * 3)
                     if usedCodonStarts.contains(cStart) { continue }
                     if let hit = try1bpSynonymousAt(pos: sPos, chars: editedChars, locked: editLockedSet, reason: "seed_block") {
                         editedChars[sPos] = hit.newBase
@@ -666,12 +793,18 @@ public enum HDRDonorEngine {
             }
             if let mp = mutPos {
                 let origBase = editedChars[mp]
-                let altBase: String
-                if strand == "+" {
-                    altBase = origBase == "G" ? "A" : "G"
-                } else {
-                    altBase = origBase == "C" ? "T" : "C"
+                // 非编码区严格避开 NAG/NGA（正链优选 C/T，负链优选 G/A）
+                let preferredAlts = (strand == "+") ? ["C", "T", "A", "G"] : ["G", "A", "T", "C"]
+                var chosenBase: String? = nil
+                for b in preferredAlts where b != origBase {
+                    var cand = editedChars
+                    cand[mp] = b
+                    if !isPamIntact(cand) && !isNonCanonicalActivePam(cand) {
+                        chosenBase = b
+                        break
+                    }
                 }
+                let altBase = chosenBase ?? (strand == "+" ? (origBase == "G" ? "C" : "T") : (origBase == "C" ? "G" : "A"))
                 editedChars[mp] = altBase
                 blockingMutations.append(
                     SilentMutationRecord(
@@ -689,9 +822,18 @@ public enum HDRDonorEngine {
             }
         }
 
-        // 4. Arm bounds on editedChars & WT ref
-        let reqLeftArm = max(1, request.leftArmLengthBp ?? request.donorFormat.defaultArmLengthBp)
-        let reqRightArm = max(1, request.rightArmLengthBp ?? request.donorFormat.defaultArmLengthBp)
+        // 4. Arm bounds on editedChars & WT ref (supports Richardson et al. Nat Biotechnol 2016 36/91 nt asymmetric ssODN)
+        let defaultLeftArm: Int
+        let defaultRightArm: Int
+        if request.donorFormat == .ssODN && request.asymmetricRichardsonSSODN {
+            defaultLeftArm = (strand == "+") ? 36 : 91
+            defaultRightArm = (strand == "+") ? 91 : 36
+        } else {
+            defaultLeftArm = request.donorFormat.defaultArmLengthBp
+            defaultRightArm = request.donorFormat.defaultArmLengthBp
+        }
+        let reqLeftArm = max(1, request.leftArmLengthBp ?? defaultLeftArm)
+        let reqRightArm = max(1, request.rightArmLengthBp ?? defaultRightArm)
         let leftArmStart0 = max(0, editStart0 - reqLeftArm)
         let rightArmEnd0InEdited = min(editedChars.count, editStart0 + rep.count + reqRightArm)
         let rightArmEnd0InWT = min(L, editEnd0 + (rightArmEnd0InEdited - (editStart0 + rep.count)))
@@ -739,27 +881,41 @@ public enum HDRDonorEngine {
                         let db = abs((b + 3) - editStart0)
                         return da != db ? da < db : a < b
                     }
-                    for sp in matches {
-                        // Overlap codons aligned to editedCdsStart0
-                        var overlapCodons: [Int] = []
-                        var cStart = editedCdsStart0
-                        while cStart + 3 <= editedCdsEnd0 {
-                            if cStart + 3 > sp && cStart < sp + 6 {
-                                overlapCodons.append(cStart)
-                            }
-                            cStart += 3
+                    let allCdsCodonStarts: [Int] = { () -> [Int] in
+                        var out: [Int] = []
+                        if resolvedCdsStrand == "+" {
+                            var c = editedCdsStart0
+                            while c + 3 <= editedCdsEnd0 { out.append(c); c += 3 }
+                        } else {
+                            var c = editedCdsEnd0 - 3
+                            while c >= editedCdsStart0 { out.append(c); c -= 3 }
                         }
+                        return out
+                    }()
+                    func senseCodonAndFwdBases(at cs: Int) -> (origCodon: String, fwdOrig: [String]) {
+                        let f0 = editedChars[cs], f1 = editedChars[cs + 1], f2 = editedChars[cs + 2]
+                        let origCodon = (resolvedCdsStrand == "+")
+                            ? (f0 + f1 + f2)
+                            : (complementBase(f2) + complementBase(f1) + complementBase(f0))
+                        return (origCodon, [f0, f1, f2])
+                    }
+                    func fwdBasesForSenseCodon(_ altCodon: String) -> [String] {
+                        let a = Array(altCodon).map { String($0) }
+                        return (resolvedCdsStrand == "+") ? a : [complementBase(a[2]), complementBase(a[1]), complementBase(a[0])]
+                    }
+
+                    for sp in matches {
+                        var overlapCodons = allCdsCodonStarts.filter { $0 + 3 > sp && $0 < sp + 6 }
                         overlapCodons.sort { a, b in
                             let da = abs((a + 1) - editStart0)
                             let db = abs((b + 1) - editStart0)
                             return da != db ? da < db : a < b
                         }
                         for cs in overlapCodons {
-                            let origCodon = editedChars[cs] + editedChars[cs + 1] + editedChars[cs + 2]
+                            let (origCodon, origArr) = senseCodonAndFwdBases(at: cs)
                             guard let aa = codonToAA[origCodon], let alts = preferredCodonsByAA[aa] else { continue }
-                            let origArr = [editedChars[cs], editedChars[cs + 1], editedChars[cs + 2]]
                             for altCodon in alts where altCodon != origCodon {
-                                let altArr = Array(altCodon).map { String($0) }
+                                let altArr = fwdBasesForSenseCodon(altCodon)
                                 var diffs: [Int] = []
                                 for k in 0..<3 where altArr[k] != origArr[k] { diffs.append(k) }
                                 if diffs.count == 1 {
@@ -799,15 +955,21 @@ public enum HDRDonorEngine {
                     if foundDestroy { break }
                 }
 
-                // Else try CREATE a new 6-bp enzyme site via 1-bp then 2-bp synonymous substitution
+                // Else try CREATE a new 6-bp enzyme site via 1-bp then 2-bp synonymous substitution (supports + and - CDS strands)
                 if !foundDestroy {
                     var orderedCodons: [Int] = []
-                    var cs = editedCdsStart0
-                    while cs + 3 <= editedCdsEnd0 {
-                        if cs >= winStart && cs + 3 <= winEnd {
-                            orderedCodons.append(cs)
+                    if resolvedCdsStrand == "+" {
+                        var cs = editedCdsStart0
+                        while cs + 3 <= editedCdsEnd0 {
+                            if cs >= winStart && cs + 3 <= winEnd { orderedCodons.append(cs) }
+                            cs += 3
                         }
-                        cs += 3
+                    } else {
+                        var cs = editedCdsEnd0 - 3
+                        while cs >= editedCdsStart0 {
+                            if cs >= winStart && cs + 3 <= winEnd { orderedCodons.append(cs) }
+                            cs -= 3
+                        }
                     }
                     orderedCodons.sort { a, b in
                         let da = abs((a + 1) - editStart0)
@@ -818,11 +980,17 @@ public enum HDRDonorEngine {
                     var foundCreate = false
                     for targetDiffs in [1, 2] where !foundCreate {
                         for cs in orderedCodons where !foundCreate {
-                            let origCodon = editedChars[cs] + editedChars[cs + 1] + editedChars[cs + 2]
+                            let f0 = editedChars[cs], f1 = editedChars[cs + 1], f2 = editedChars[cs + 2]
+                            let origArr = [f0, f1, f2]
+                            let origCodon = (resolvedCdsStrand == "+")
+                                ? (f0 + f1 + f2)
+                                : (complementBase(f2) + complementBase(f1) + complementBase(f0))
                             guard let aa = codonToAA[origCodon], let alts = preferredCodonsByAA[aa] else { continue }
-                            let origArr = [editedChars[cs], editedChars[cs + 1], editedChars[cs + 2]]
                             for altCodon in alts where altCodon != origCodon && !foundCreate {
-                                let altArr = Array(altCodon).map { String($0) }
+                                let senseAlt = Array(altCodon).map { String($0) }
+                                let altArr = (resolvedCdsStrand == "+")
+                                    ? senseAlt
+                                    : [complementBase(senseAlt[2]), complementBase(senseAlt[1]), complementBase(senseAlt[0])]
                                 var diffs: [Int] = []
                                 for k in 0..<3 where altArr[k] != origArr[k] { diffs.append(k) }
                                 guard diffs.count == targetDiffs else { continue }
@@ -951,12 +1119,32 @@ public enum HDRDonorEngine {
             }
         }
 
-        // 6. Final locus checks & protein conservation check
+        // 6. Final locus checks, GT-AG splice-site check & protein conservation check
         let finalEditedSeq = editedChars.joined()
         let proteinAfterBlocking = isInCDS
-            ? translateCDS(finalEditedSeq, start0Based: editedCdsStart0, end0Based: editedCdsEnd0)
+            ? translateCDS(finalEditedSeq, start0Based: editedCdsStart0, end0Based: editedCdsEnd0, strand: resolvedCdsStrand)
             : ""
         let aminoAcidConserved = !isInCDS || (proteinBeforeBlocking == proteinAfterBlocking)
+
+        let allSilentMuts = blockingMutations + rflpMutations
+        if isInCDS && !allSilentMuts.isEmpty {
+            var preSilentEdited = editedChars
+            for m in allSilentMuts where m.position0Based >= 0 && m.position0Based < preSilentEdited.count {
+                preSilentEdited[m.position0Based] = m.originalBase
+            }
+            let spliceDinucs: Set<String> = (resolvedCdsStrand == "-") ? ["CT", "AC"] : ["GT", "AG"]
+            let boundaryMuts = allSilentMuts.map(\.position0Based).filter { p in
+                abs(p - editedCdsStart0) <= 3 || abs(p - (editedCdsEnd0 - 1)) <= 3
+            }
+            let hitsSpliceDinuc = boundaryMuts.contains { p in
+                let leftPair = (p > 0 && p < preSilentEdited.count) ? (preSilentEdited[p - 1] + preSilentEdited[p]) : ""
+                let rightPair = (p >= 0 && p + 1 < preSilentEdited.count) ? (preSilentEdited[p] + preSilentEdited[p + 1]) : ""
+                return spliceDinucs.contains(leftPair) || spliceDinucs.contains(rightPair)
+            }
+            if hitsSpliceDinuc {
+                warnings.append(L10n.t("沉默阻断/RFLP 突变位于 CDS 边界 ±3 bp 的经典 GT-AG 剪接供体/受体二核苷酸处，存在破坏 mRNA 剪接风险，请人工复核。"))
+            }
+        }
 
         let editedPamSeq = (editedPamStart0 >= 0 && editedPamStart0 + 3 <= editedChars.count)
             ? (editedChars[editedPamStart0] + editedChars[editedPamStart0 + 1] + editedChars[editedPamStart0 + 2])
@@ -964,11 +1152,25 @@ public enum HDRDonorEngine {
         let pamStillIntact = isPamIntact(editedChars)
         let cas9RecutBlocked = (blockingStrategy != .failedToBlock) && (!pamStillIntact || blockingStrategy == .seedSynonymousFallback)
 
-        // 7. Slice homology arms & donor from final edited locus
+        // 7. Slice homology arms & donor from final edited locus (Richardson 2016 asymmetric ssODN targets non-target strand)
         let leftHomologyArm = editedChars[leftArmStart0..<editStart0].joined()
         let insertPayload = editedChars[editStart0..<(editStart0 + rep.count)].joined()
         let rightHomologyArm = editedChars[(editStart0 + rep.count)..<rightArmEnd0InEdited].joined()
-        let donorSequence = leftHomologyArm + insertPayload + rightHomologyArm
+        let rawDonorForward = leftHomologyArm + insertPayload + rightHomologyArm
+        let donorSequence: String
+        let donorStrandOrientation: String
+        if request.donorFormat == .ssODN && request.asymmetricRichardsonSSODN {
+            if strand == "+" {
+                donorSequence = BioSequence.reverseComplement(rawDonorForward)
+                donorStrandOrientation = "target_strand_antisense_richardson_36_91"
+            } else {
+                donorSequence = rawDonorForward
+                donorStrandOrientation = "target_strand_sense_richardson_91_36"
+            }
+        } else {
+            donorSequence = rawDonorForward
+            donorStrandOrientation = "forward_reference"
+        }
 
         // 8. Out-Out PCR genotyping primers strictly outside homology arms
         var outOutResult: OutOutPCRDesign?
@@ -985,7 +1187,7 @@ public enum HDRDonorEngine {
                 from: fwdWindow,
                 fivePrimeOverhang: "",
                 targetTm: request.primerTargetTm,
-                tolerance: 0.0,
+                tolerance: 1.5,
                 isForward: true
             )
             let fwdStart0 = fwdSearchStart
@@ -998,7 +1200,7 @@ public enum HDRDonorEngine {
                 from: revWindow,
                 fivePrimeOverhang: "",
                 targetTm: request.primerTargetTm,
-                tolerance: 0.0,
+                tolerance: 1.5,
                 isForward: false
             )
             let revEnd0 = revSearchEnd
@@ -1057,13 +1259,32 @@ public enum HDRDonorEngine {
         if let spec = rflpSelectedSpec, rflpMode != .none {
             let wtTarget = outOutResult?.wtAmpliconSequence ?? ref
             let hdrTarget = outOutResult?.hdrAmpliconSequence ?? finalEditedSeq
+            let wtBands = predictLinearDigestBands(sequence: wtTarget, site: spec.site, topCutOffset: spec.topCutOffset)
+            let hdrBands = predictLinearDigestBands(sequence: hdrTarget, site: spec.site, topCutOffset: spec.topCutOffset)
+            let hasExtraBackgroundCut = (rflpMode == .created) ? (wtBands.count > 1 || hdrBands.count > 2) : (wtBands.count > 2 || hdrBands.count > 1)
+            if hasExtraBackgroundCut {
+                warnings.append(L10n.tr(
+                    "RFLP 诊断酶 \(spec.name) 在扩增子全长内存在额外背景切点（WT \(wtBands.count) 条带 / HDR \(hdrBands.count) 条带），电泳判读时请注意区分背景片段。",
+                    "RFLP enzyme \(spec.name) cuts additional background site(s) within the amplicon (WT \(wtBands.count) bands / HDR \(hdrBands.count) bands); interpret gel bands carefully."
+                ))
+            }
+            let methSensitiveRFLP: [String: String] = [
+                "ClaI": "Dam / CpG", "XbaI": "Dam", "StuI": "Dcm",
+                "AgeI": "CpG", "SmaI": "CpG", "XhoI": "CpG", "SalI": "CpG", "NotI": "CpG"
+            ]
+            if let methType = methSensitiveRFLP[spec.name] {
+                warnings.append(L10n.tr(
+                    "RFLP 酶 \(spec.name) 受 \(methType) 甲基化敏感阻断，建议仅对 PCR 扩增产物（无甲基化）而非基因组/质粒原液执行酶切鉴定。",
+                    "RFLP enzyme \(spec.name) is sensitive to \(methType) methylation; digest unmethylated PCR amplicons rather than genomic/plasmid DNA."
+                ))
+            }
             finalRFLP = RFLPDesignResult(
                 mode: rflpMode,
                 enzymeName: spec.name,
                 recognitionSite: spec.site,
                 topCutOffset: spec.topCutOffset,
-                wtAmpliconBandsBp: predictLinearDigestBands(sequence: wtTarget, site: spec.site, topCutOffset: spec.topCutOffset),
-                hdrAmpliconBandsBp: predictLinearDigestBands(sequence: hdrTarget, site: spec.site, topCutOffset: spec.topCutOffset),
+                wtAmpliconBandsBp: wtBands,
+                hdrAmpliconBandsBp: hdrBands,
                 silentMutations: rflpMutations,
                 note: rflpNote
             )
@@ -1074,9 +1295,11 @@ public enum HDRDonorEngine {
             sgRNASequence: guide,
             strand: strand,
             wtCutIndex0Based: wtCutIndex0,
+            cutToEditDistanceBp: cutToEditDistanceBp,
             wtPamStart0Based: wtPamStart0,
             wtPamSequence: wtPamSeq,
             isInCDS: isInCDS,
+            cdsStrand: resolvedCdsStrand,
             cdsStart1Based: wtCdsStart0.map { $0 + 1 },
             cdsEnd1Based: wtCdsEnd0,
             cdsAutoDetected: cdsAutoDetected,
@@ -1095,6 +1318,7 @@ public enum HDRDonorEngine {
             rightArmLengthBp: rightHomologyArm.count,
             donorSequence: donorSequence,
             donorLengthBp: donorSequence.count,
+            donorStrandOrientation: donorStrandOrientation,
             finalEditedLocusSequence: finalEditedSeq,
             rflp: finalRFLP,
             outOutPCR: outOutResult,

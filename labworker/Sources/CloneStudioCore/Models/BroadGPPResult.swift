@@ -221,21 +221,32 @@ public struct BroadGPPShRNATarget: Identifiable, Hashable, Codable, Sendable {
             type: matchesOtherGene ? .penalty : .bonus
         ))
         
-        // 2. Broad GPP Knockdown 综合效价 (满分 35 分)
-        let adj = adjustedScore ?? intrinsicScore ?? 2.0
-        let intr = intrinsicScore ?? adj
-        let blended = max(0.0, 0.7 * adj + 0.3 * intr)
-        var broadPts = min(33.0, (blended / (blended + 1.8)) * 42.0)
-        if matchRegions.uppercased().contains("CDS") {
-            broadPts += 2.0
+        // 2. Broad GPP Knockdown 综合效价 (满分 35 分；缺失时严禁乐观填充 2.0，标记未评分)
+        let hasBroadScore = (adjustedScore != nil || intrinsicScore != nil)
+        let broadPts: Double
+        if hasBroadScore {
+            let adj = adjustedScore ?? intrinsicScore!
+            let intr = intrinsicScore ?? adj
+            let blended = max(0.0, 0.7 * adj + 0.3 * intr)
+            var pts = min(33.0, (blended / (blended + 1.8)) * 42.0)
+            if matchRegions.uppercased().contains("CDS") {
+                pts += 2.0
+            }
+            broadPts = max(0.0, min(35.0, pts))
+            tags.append(ScoreTag(
+                name: "Broad Adjusted (\(String(format: "%.2f", adj)))",
+                points: Int(round(broadPts)),
+                type: adj >= 2.5 ? .bonus : .penalty
+            ))
+        } else {
+            broadPts = 0.0
+            tags.append(ScoreTag(
+                name: L10n.t("Broad 效价缺失 (未评分)"),
+                points: 0,
+                type: .penalty
+            ))
         }
-        broadPts = max(0.0, min(35.0, broadPts))
         let broadInt = Int(round(broadPts))
-        tags.append(ScoreTag(
-            name: "Broad Adjusted (\(String(format: "%.2f", adj)))",
-            points: broadInt,
-            type: adj >= 2.5 ? .bonus : .penalty
-        ))
         
         // 3. 本地热力学与 pLKO.1 Pol III 转录规则 (满分 20 分)
         let seqPts = max(0.0, min(20.0, (localScore.score / 100.0) * 20.0))
@@ -243,26 +254,20 @@ public struct BroadGPPShRNATarget: Identifiable, Hashable, Codable, Sendable {
         tags.append(ScoreTag(
             name: L10n.t("热力学与 Pol III 规则"),
             points: seqInt,
-            type: localScore.hasFatalIssue ? .fatal : (localScore.score >= 65.0 ? .bonus : .penalty)
+            type: localScore.hasFatalIssue ? .fatal : (localScore.score >= 60.0 ? .bonus : .penalty)
         ))
         
         var total = round(specPts + broadPts + seqPts)
+        if !hasBroadScore {
+            total = min(total, 65.0)
+        }
         let fatalMsg = localScore.fatalWarning
         if localScore.hasFatalIssue {
             total = min(total, 35.0)
         }
         total = max(0.0, min(100.0, total))
         
-        let tier: TargetScoreTier
-        if fatalMsg != nil || total < 45 {
-            tier = .poor
-        } else if total >= 80 {
-            tier = .excellent
-        } else if total >= 65 {
-            tier = .good
-        } else {
-            tier = .fair
-        }
+        let tier: TargetScoreTier = (fatalMsg != nil) ? .poor : TargetScoreTier.from(score: total)
         
         let summary = L10n.tr("综合评分 \(Int(total)) 分 = 特异性 \(specInt)/45 + Broad效价 \(broadInt)/35 + 序列规则 \(seqInt)/20", "Composite Score \(Int(total)) = Specificity \(specInt)/45 + Broad Efficacy \(broadInt)/35 + Sequence Rules \(seqInt)/20")
         return TargetScore(

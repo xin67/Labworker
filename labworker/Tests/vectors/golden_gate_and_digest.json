@@ -46,8 +46,8 @@
         "assigned_overhangs": [
           "GGAG",
           "CGCT",
-          "CAAC",
-          "CACA"
+          "TCAA",
+          "ACTA"
         ],
         "assembly_fidelity": 1.0,
         "cross_mismatch_count": 0,
@@ -138,12 +138,12 @@
         "recognition_site": "CGTCTC",
         "overhang_length": 4,
         "assigned_overhangs": [
-          "CAAC",
-          "CACA",
-          "CCAA",
-          "AAGC",
-          "CTCC",
-          "AGGA"
+          "TCAA",
+          "AGGA",
+          "ACTA",
+          "ATAG",
+          "GATA",
+          "CACA"
         ],
         "assembly_fidelity": 1.0,
         "cross_mismatch_count": 0,
@@ -224,8 +224,8 @@
         "recognition_site": "GAAGAC",
         "overhang_length": 4,
         "assigned_overhangs": [
-          "CAAC",
-          "CACA"
+          "ACTA",
+          "AGGA"
         ],
         "assembly_fidelity": 1.0,
         "cross_mismatch_count": 0,
@@ -303,9 +303,9 @@
         "recognition_site": "GCTCTTC",
         "overhang_length": 3,
         "assigned_overhangs": [
-          "AAC",
-          "ACA",
-          "AGG"
+          "AGA",
+          "CTA",
+          "GAA"
         ],
         "assembly_fidelity": 1.0,
         "cross_mismatch_count": 0,

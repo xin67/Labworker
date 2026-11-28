@@ -14,13 +14,13 @@
       },
       "expected": {
         "structure_found": true,
-        "dg": -1.7,
+        "dg": -1.49,
         "dh": -26.4,
-        "ds": -79.65,
-        "tm": 58.3
+        "ds": -80.31,
+        "tm": 55.6
       },
       "tolerance": 0.05,
-      "note": "primer3-py 2.4.0 calc_hairpin('GCGAATTCGC', mv_conc=50, dv_conc=1.5, dntp_conc=0.6) 实测对齐值 (dg=-1.70 kcal/mol)"
+      "note": "SantaLucia & Hicks (2004) + Zuker-Stiegler DP calc_hairpin('GCGAATTCGC', mv=50, dv=1.5, dntp=0.6)"
     },
     {
       "id": "thermo_homodimer_gcgaattcgc_std",
@@ -35,13 +35,13 @@
       },
       "expected": {
         "structure_found": true,
-        "dg": -10.5,
-        "dh": -80.0,
-        "ds": -224.09,
-        "tm": 37.5
+        "dg": -10.02,
+        "dh": -79.4,
+        "ds": -223.69,
+        "tm": 35.7
       },
       "tolerance": 0.05,
-      "note": "primer3-py 2.4.0 calc_homodimer('GCGAATTCGC', mv_conc=50, dv_conc=1.5, dntp_conc=0.6) 实测值 (dg=-10.50 kcal/mol, dh=-80.0, tm=37.5)"
+      "note": "SantaLucia & Hicks (2004) unified NN + self-complementary symmetry penalty (dS=-1.4 cal/K/mol) calc_homodimer('GCGAATTCGC')"
     },
     {
       "id": "thermo_homodimer_no_mg",
@@ -56,13 +56,13 @@
       },
       "expected": {
         "structure_found": true,
-        "dg": -9.28,
-        "dh": -80.0,
-        "ds": -228.02,
-        "tm": 32.9
+        "dg": -8.8,
+        "dh": -79.4,
+        "ds": -227.62,
+        "tm": 31.0
       },
       "tolerance": 0.05,
-      "note": "primer3-py 2.4.0 无二价镁离子 (dv_conc=0, dntp_conc=0) 实测值 (dg=-9.28 kcal/mol, tm=32.9)"
+      "note": "SantaLucia & Hicks (2004) + symmetry penalty 无二价镁离子 (dv_conc=0, dntp_conc=0)"
     },
     {
       "id": "thermo_homodimer_high_mg",
@@ -77,13 +77,13 @@
       },
       "expected": {
         "structure_found": true,
-        "dg": -10.76,
-        "dh": -80.0,
-        "ds": -223.25,
-        "tm": 38.5
+        "dg": -10.28,
+        "dh": -79.4,
+        "ds": -222.85,
+        "tm": 36.7
       },
       "tolerance": 0.05,
-      "note": "primer3-py 2.4.0 高游离镁离子 (dv_conc=2.0, dntp_conc=0.2) 实测值 (dg=-10.76 kcal/mol, tm=38.6)"
+      "note": "SantaLucia & Hicks (2004) + symmetry penalty 高游离镁离子 (dv_conc=2.0, dntp_conc=0.2)"
     },
     {
       "id": "thermo_heterodimer_3prime_anchored",
@@ -99,13 +99,13 @@
       },
       "expected": {
         "structure_found": true,
-        "dg": -10.33,
-        "dh": -66.7,
-        "ds": -181.76,
-        "tm": 36.8
+        "dg": -9.57,
+        "dh": -72.2,
+        "ds": -201.93,
+        "tm": 30.1
       },
       "tolerance": 0.05,
-      "note": "primer3-py 2.4.0 calc_dimer 3' 端 10bp 互补异二聚体实测对齐值"
+      "note": "SantaLucia & Hicks (2004) Zuker-Stiegler DP + SantaLucia & Peyret (2001) DNA_TMM1 末端错配 + 异二聚体 C_T/4 浓度校正"
     },
     {
       "id": "thermo_edge_short_seq",

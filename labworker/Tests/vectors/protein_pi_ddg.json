@@ -8,22 +8,22 @@
         "ph": 7.0,
         "mutations": [
           "V18A",
-          "E45P"
+          "V45P"
         ]
       },
       "expected": {
         "length_aa": 113,
         "molecular_weight_da": 12157.0,
-        "isoelectric_point": 4.65,
-        "net_charge_at_ph": -3.03,
+        "isoelectric_point": 4.85,
+        "net_charge_at_ph": -3.49,
         "gravy": 0.225,
         "mutant_ddg": [
-          0.49,
-          0.33
+          1.04,
+          3.66
         ]
       },
       "tolerance": 0.02,
-      "note": "ExPASy ProtParam / Henderson-Hasselbalch 二分法 pI 与 Kyte-Doolittle GRAVY 标准实测值"
+      "note": "ExPASy ProtParam Bjellqvist (1993/1994) 二分法 pI、Kyte-Doolittle GRAVY 与 WT 校验零偏置启发式 ΔΔG 基准值"
     },
     {
       "id": "protein_all20_standard_aa_ph74",
@@ -37,15 +37,15 @@
       "expected": {
         "length_aa": 20,
         "molecular_weight_da": 2395.7,
-        "isoelectric_point": 7.15,
-        "net_charge_at_ph": -0.07,
+        "isoelectric_point": 6.78,
+        "net_charge_at_ph": -0.38,
         "gravy": -0.49,
         "mutant_ddg": [
-          0.19
+          0.74
         ]
       },
       "tolerance": 0.02,
-      "note": "20 种标准氨基酸各出现 1 次的基准多肽分子量 (2395.7 Da) 与 pH 7.4 净电荷手算核对"
+      "note": "20 种标准氨基酸各出现 1 次的基准多肽分子量 (2395.7 Da) 与 ExPASy Bjellqvist pH 7.4 净电荷核对"
     }
   ]
 }

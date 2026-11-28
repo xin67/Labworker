@@ -165,6 +165,7 @@ public enum CodonOptimizationEngine {
         public var maxDirectRepeatLength: Int
         public var optimizeFivePrimeStructure: Bool
         public var preserveOriginalTerminalStop: Bool
+        public var useHighExpressionWeights: Bool
 
         public init(
             host: CodonHostOrganism = .human,
@@ -177,7 +178,8 @@ public enum CodonOptimizationEngine {
             maxHomopolymerLength: Int = 5,
             maxDirectRepeatLength: Int = 10,
             optimizeFivePrimeStructure: Bool = true,
-            preserveOriginalTerminalStop: Bool = true
+            preserveOriginalTerminalStop: Bool = true,
+            useHighExpressionWeights: Bool = false
         ) {
             self.host = host
             self.preset = preset
@@ -190,6 +192,7 @@ public enum CodonOptimizationEngine {
             self.maxDirectRepeatLength = max(8, min(20, maxDirectRepeatLength))
             self.optimizeFivePrimeStructure = optimizeFivePrimeStructure
             self.preserveOriginalTerminalStop = preserveOriginalTerminalStop
+            self.useHighExpressionWeights = useHighExpressionWeights
         }
 
         public static func presetConfig(_ preset: SynthesisVendorPreset, host: CodonHostOrganism = .human) -> OptimizationConfig {
@@ -324,8 +327,8 @@ public enum CodonOptimizationEngine {
         return out
     }
 
-    public static func calculateCAI(_ dna: String, host: CodonHostOrganism) -> Double {
-        let wTable = host.relativeAdaptivenessTable
+    public static func calculateCAI(_ dna: String, host: CodonHostOrganism, useHighExpressionWeights: Bool = false) -> Double {
+        let wTable = useHighExpressionWeights ? highExpressionCodonWeights(for: host) : host.relativeAdaptivenessTable
         let chars = Array(BioSequence.clean(dna))
         let nCodons = chars.count / 3
         guard nCodons > 0 else { return 0.0 }
@@ -451,7 +454,7 @@ public enum CodonOptimizationEngine {
         }
 
         let motifs = resolveForbiddenMotifs(config: config)
-        let wTable = config.host.relativeAdaptivenessTable
+        let wTable = config.useHighExpressionWeights ? highExpressionCodonWeights(for: config.host) : config.host.relativeAdaptivenessTable
         var rankedSynonymous: [Character: [String]] = [:]
         for (aa, list) in synonymousCodonsByAA {
             rankedSynonymous[aa] = list.sorted { (wTable[$0] ?? 0) > (wTable[$1] ?? 0) }
@@ -481,22 +484,23 @@ public enum CodonOptimizationEngine {
             baseBuffer[b + 2] = cChars[2]
         }
 
-        // Pass 1: 5' 端二级结构初步缓解
+        // Pass 1: 基于 RNA Turner 2004 参数（含 G:U 摇摆配对 + 上游 Kozak/RBS 5'-UTR 上下文）的 5' mRNA 二级结构缓解
+        let upstream5UTR = (config.host == .eColi) ? "AGGAGGTA" : "GCCACC"
         let fivePrimeCodonLimit = min(15, codons.count)
         if config.optimizeFivePrimeStructure && fivePrimeCodonLimit >= 4 {
             for _ in 0..<2 {
                 let prefixSeq = String(baseBuffer.prefix(min(45, baseBuffer.count)))
-                if PrimerQualityEngine.calcHairpin(prefixSeq).dg >= -3.0 { break }
+                if calcRNA5PrimeHairpinDG(dnaSeq: prefixSeq, upstreamUTR: upstream5UTR) >= -3.0 { break }
                 for cIdx in 0..<fivePrimeCodonLimit {
                     let aa = aaChars[cIdx]
                     guard let candidates = rankedSynonymous[aa], candidates.count > 1 else { continue }
                     if cIdx == codons.count - 1 && aa == "*" && config.preserveOriginalTerminalStop { continue }
                     let origCodon = codons[cIdx]
                     var bestCodon = origCodon
-                    var bestScore = scoreFivePrimePrefix(baseBuffer: baseBuffer, wTable: wTable, codon: origCodon)
+                    var bestScore = scoreFivePrimePrefix(baseBuffer: baseBuffer, wTable: wTable, codon: origCodon, upstreamUTR: upstream5UTR)
                     for cand in candidates where cand != origCodon {
                         setCodon(cIdx, to: cand)
-                        let s = scoreFivePrimePrefix(baseBuffer: baseBuffer, wTable: wTable, codon: cand)
+                        let s = scoreFivePrimePrefix(baseBuffer: baseBuffer, wTable: wTable, codon: cand, upstreamUTR: upstream5UTR)
                         if s > bestScore + 1e-6 {
                             bestScore = s
                             bestCodon = cand
@@ -536,7 +540,7 @@ public enum CodonOptimizationEngine {
             }
             if config.optimizeFivePrimeStructure {
                 let prefixSeq = String(baseBuffer.prefix(min(45, baseBuffer.count)))
-                if PrimerQualityEngine.calcHairpin(prefixSeq).dg < -3.0 {
+                if calcRNA5PrimeHairpinDG(dnaSeq: prefixSeq, upstreamUTR: upstream5UTR) < -3.0 {
                     for c in 0..<fivePrimeCodonLimit { dirtyCodons.insert(c) }
                 }
             }
@@ -607,12 +611,12 @@ public enum CodonOptimizationEngine {
         let checks = buildConstraintChecks(optimizedDNA: optimizedDNA, config: config, motifs: motifs)
         let isReady = checks.allSatisfy(\.passed)
 
-        let origCAI = originalDNA.map { calculateCAI($0, host: config.host) }
-        let optCAI = calculateCAI(optimizedDNA, host: config.host)
+        let origCAI = originalDNA.map { calculateCAI($0, host: config.host, useHighExpressionWeights: config.useHighExpressionWeights) }
+        let optCAI = calculateCAI(optimizedDNA, host: config.host, useHighExpressionWeights: config.useHighExpressionWeights)
         let origGC = originalDNA.map { BioSequence.gcContent($0) }
         let optGC = BioSequence.gcContent(optimizedDNA)
-        let origDG = originalDNA.map { PrimerQualityEngine.calcHairpin(String($0.prefix(45))).dg }
-        let optDG = PrimerQualityEngine.calcHairpin(String(optimizedDNA.prefix(45))).dg
+        let origDG = originalDNA.map { calcRNA5PrimeHairpinDG(dnaSeq: String($0.prefix(45)), upstreamUTR: upstream5UTR) }
+        let optDG = calcRNA5PrimeHairpinDG(dnaSeq: String(optimizedDNA.prefix(45)), upstreamUTR: upstream5UTR)
 
         var changedCodons: [Int] = []
         if let orig = originalDNA {
@@ -792,7 +796,8 @@ public enum CodonOptimizationEngine {
         guard w >= 12 else { return [] }
         let prefixGC = buildPrefixGC(baseBuffer: chars)
         var dirty = Set<Int>()
-        for s in 0...(chars.count - w) {
+        // 与 evaluateConstraints 统一为 step=3 密码子同相 O(N) 前缀和滑动窗，消除跨相位不一致
+        for s in stride(from: 0, through: chars.count - w, by: 3) {
             let gc = Double(prefixGC[s + w] - prefixGC[s]) / Double(w)
             if gc < config.minWindowGC || gc > config.maxWindowGC {
                 let cStart = s / 3
@@ -803,11 +808,169 @@ public enum CodonOptimizationEngine {
         return Array(dirty)
     }
 
-    private static func scoreFivePrimePrefix(baseBuffer: [Character], wTable: [String: Double], codon: String) -> Double {
+    /// RNA Turner 2004 (Mathews et al., PNAS 2004) 5' mRNA 局部发夹自由能 ΔG37 (kcal/mol)
+    /// 支持 Watson–Crick (AU/UA/CG/GC) 与 RNA 专属 G:U / U:G 摇摆配对，并自动拼接上游 Kozak/RBS 5'-UTR 上下文
+    public static func calcRNA5PrimeHairpinDG(dnaSeq: String, upstreamUTR: String = "GCCACC") -> Double {
+        let combined = (upstreamUTR + dnaSeq).uppercased().replacingOccurrences(of: "T", with: "U")
+        let rna = Array(combined.filter { $0 == "A" || $0 == "U" || $0 == "C" || $0 == "G" })
+        let n = rna.count
+        guard n >= 10 else { return 0.0 }
+
+        func canPair(_ a: Character, _ b: Character) -> Bool {
+            (a == "A" && b == "U") || (a == "U" && b == "A") ||
+            (a == "C" && b == "G") || (a == "G" && b == "C") ||
+            (a == "G" && b == "U") || (a == "U" && b == "G")
+        }
+        // Turner 2004 (Mathews et al., PNAS 2004 Table 1) RNA 37°C 最近邻堆叠 ΔG (kcal/mol)，含全部 G:U 摇摆配对参数
+        let rnaStackDG: [String: Double] = [
+            "AA/UU": -0.93, "UU/AA": -0.93, "AU/UA": -1.10, "UA/AU": -1.33,
+            "CA/GU": -2.11, "UG/AC": -2.11, "CU/GA": -2.08, "AG/UC": -2.08,
+            "GA/CU": -2.35, "UC/AG": -2.35, "GU/CA": -2.24, "AC/UG": -2.24,
+            "CG/GC": -2.36, "GC/CG": -3.42, "GG/CC": -3.26, "CC/GG": -3.26,
+            // G:U 摇摆堆叠 (Turner 2004)
+            "AG/UU": -0.55, "UU/GA": -0.55, "AU/UG": -1.36, "GU/UA": -1.36,
+            "CG/GU": -1.41, "UG/GC": -1.41, "CU/GG": -2.11, "GG/UC": -2.11,
+            "GA/UU": -1.27, "UU/AG": -1.27, "GG/CU": -1.53, "UC/GG": -1.53,
+            "GU/CG": -2.51, "GC/UG": -2.51,
+            "GG/UU": -0.50, "UU/GG": -0.50, "GU/UG": +1.29, "UG/GU": +0.30,
+            "UA/GU": -1.00, "UG/AU": -1.00
+        ]
+        // Turner 2004 发夹环起始 ΔG37 (环长 3..9 nt；>9 nt 按 Jacobson-Stockmayer 对数项外推)
+        let loopInit: [Int: Double] = [3: 5.4, 4: 5.6, 5: 5.7, 6: 5.4, 7: 6.0, 8: 5.5, 9: 6.4]
+        func hairpinLoopPenalty(_ loopLen: Int) -> Double {
+            if let exact = loopInit[loopLen] { return exact }
+            return 6.4 + 1.08 * log(Double(max(9, loopLen)) / 9.0)
+        }
+
+        var bestDG = 0.0
+        for i in 0..<(n - 6) {
+            for j in (i + 5)..<n {
+                if !canPair(rna[i], rna[j]) { continue }
+                var stem = 0
+                var stackSum = 0.0
+                while (i + stem) < (j - stem - 3) && canPair(rna[i + stem], rna[j - stem]) {
+                    if stem > 0 {
+                        let k = "\(rna[i + stem - 1])\(rna[i + stem])/\(rna[j - stem + 1])\(rna[j - stem])"
+                        stackSum += rnaStackDG[k] ?? -1.0
+                    }
+                    stem += 1
+                }
+                guard stem >= 3 else { continue }
+                let loopLen = (j - stem) - (i + stem) + 1
+                guard loopLen >= 3 else { continue }
+                let terminalAU = ((rna[i] == "A" && rna[j] == "U") || (rna[i] == "U" && rna[j] == "A") || (rna[i] == "G" && rna[j] == "U") || (rna[i] == "U" && rna[j] == "G")) ? 0.45 : 0.0
+                let dg = stackSum + hairpinLoopPenalty(loopLen) + terminalAU
+                if dg < bestDG { bestDG = dg }
+            }
+        }
+        return (bestDG * 100.0).rounded() / 100.0
+    }
+
+    /// 扫描生物调控隐患基序：隐匿剪接供体/受体、提前 Poly(A)、原核伪 SD、CpG/UpA 免疫二核苷酸密度与长反向重复
+    public static func scanBiologicalMotifs(dna: String, host: CodonHostOrganism) -> [String] {
+        let s = BioSequence.clean(dna)
+        guard s.count >= 12 else { return [] }
+        var findings: [String] = []
+        if host == .eColi {
+            if s.contains("AGGAGG") || s.contains("AAGGAG") {
+                findings.append(L10n.t("检出内部原核伪 Shine-Dalgarno (AGGAGG/AAGGAG) 基序，可能导致异常内部起始翻译"))
+            }
+            if let re = try? NSRegularExpression(pattern: "TTGACA[ACGT]{15,19}TATAAT"),
+               re.firstMatch(in: s, range: NSRange(location: 0, length: s.utf16.count)) != nil {
+                findings.append(L10n.t("检出内部原核伪 σ70 启动子 (-35 TTGACA + 15–19 bp + -10 TATAAT) 基序"))
+            }
+        } else {
+            if s.contains("AGGTAAGT") || s.contains("CAGGTAAG") || s.contains("CAGGTGAG") {
+                findings.append(L10n.t("检出真核隐匿 5' 剪接供体基序 (AGGTAAGT/CAGGTAAG/CAGGTGAG)，存在异常剪接风险"))
+            }
+            if let reAcc = try? NSRegularExpression(pattern: "[CT]{6,}[ACGT]{0,2}[CT]AG"),
+               reAcc.firstMatch(in: s, range: NSRange(location: 0, length: s.utf16.count)) != nil {
+                findings.append(L10n.t("检出真核隐匿 3' 剪接受体基序 (多嘧啶区 + YAG)，存在异常剪接风险"))
+            }
+            if s.contains("AATAAA") || s.contains("ATTAAA") {
+                findings.append(L10n.t("检出内部提前 Poly(A) 加尾信号 (AATAAA/ATTAAA)，可能导致 mRNA 截短"))
+            }
+            let chars = Array(s)
+            var cpg = 0, upa = 0
+            for i in 0..<(chars.count - 1) {
+                if chars[i] == "C" && chars[i + 1] == "G" { cpg += 1 }
+                if chars[i] == "T" && chars[i + 1] == "A" { upa += 1 }
+            }
+            let cpgRate = Double(cpg) * 100.0 / Double(chars.count)
+            let upaRate = Double(upa) * 100.0 / Double(chars.count)
+            if cpgRate > 8.0 {
+                findings.append(L10n.tr("CpG 二核苷酸密度偏高 (\(String(format: "%.1f%%", cpgRate)))，可能诱发 ZAP/TLR9 固有免疫沉默", "Elevated CpG dinucleotide density (\(String(format: "%.1f%%", cpgRate))); potential ZAP/TLR9 innate immune silencing"))
+            }
+            if upaRate > 7.5 {
+                findings.append(L10n.tr("UpA (TA) 二核苷酸密度偏高 (\(String(format: "%.1f%%", upaRate)))，可能增加 RNase L 降解敏感性", "Elevated UpA (TA) dinucleotide density (\(String(format: "%.1f%%", upaRate))); increased RNase L cleavage risk"))
+            }
+        }
+        let n = s.count
+        if n >= 24 {
+            let irStem = 10
+            var foundIR = false
+            for i in 0...(n - 2 * irStem) where !foundIR {
+                let stemStart = s.index(s.startIndex, offsetBy: i)
+                let stemEnd = s.index(stemStart, offsetBy: irStem)
+                let rcStem = BioSequence.reverseComplement(String(s[stemStart..<stemEnd]))
+                let searchLo = i + irStem + 3
+                let searchHi = min(n - irStem, i + irStem + 20)
+                if searchLo <= searchHi {
+                    for j in searchLo...searchHi {
+                        let jStart = s.index(s.startIndex, offsetBy: j)
+                        let jEnd = s.index(jStart, offsetBy: irStem)
+                        if String(s[jStart..<jEnd]) == rcStem {
+                            foundIR = true
+                            break
+                        }
+                    }
+                }
+            }
+            if foundIR {
+                findings.append(L10n.t("检出 ≥10 bp 局部长反向重复 (Inverted Repeat)，存在基因合成失败或强发夹结构风险"))
+            }
+        }
+        return findings
+    }
+
+    /// CoCoPUTs / 高表达基因参考集 (HEG) 完整 64 密码子相对适应度权重（全 5 宿主覆盖，缺失密码子按宿主基础表补全）
+    public static func highExpressionCodonWeights(for host: CodonHostOrganism) -> [String: Double] {
+        var base = host.relativeAdaptivenessTable
+        let overrides: [String: Double]
+        switch host {
+        case .eColi:
+            overrides = [
+                "CTG": 1.00, "CCG": 1.00, "ACC": 1.00, "CAG": 1.00, "GAA": 1.00, "AAA": 1.00,
+                "GGT": 1.00, "GGC": 0.96, "CGT": 1.00, "CGC": 0.72, "GTT": 1.00, "GTA": 0.50,
+                "ATC": 1.00, "ATT": 0.48, "TTC": 1.00, "TTT": 0.34, "TAC": 1.00, "TAT": 0.36,
+                "AAC": 1.00, "AAT": 0.25, "GAC": 1.00, "GAT": 0.55, "CAC": 1.00, "CAT": 0.35,
+                "TCT": 1.00, "TCC": 0.90, "AGC": 0.72, "GCG": 1.00, "GCT": 0.95, "GCC": 0.60,
+                "TGC": 1.00, "TGT": 0.65, "ATG": 1.00, "TGG": 1.00, "TAA": 1.00
+            ]
+        case .yeast:
+            overrides = [
+                "TTG": 1.00, "GCT": 1.00, "GGT": 1.00, "AGA": 1.00, "GTT": 1.00, "GTC": 0.90,
+                "ATT": 1.00, "ATC": 0.92, "TTC": 1.00, "TAC": 1.00, "AAC": 1.00, "GAC": 1.00,
+                "GAA": 1.00, "AAG": 1.00, "CAA": 1.00, "CAC": 1.00, "CCA": 1.00, "TCT": 1.00,
+                "TCC": 0.92, "ACT": 1.00, "ACC": 0.90, "TGT": 1.00, "ATG": 1.00, "TGG": 1.00, "TAA": 1.00
+            ]
+        default:
+            overrides = [
+                "CTG": 1.00, "GTG": 1.00, "GCC": 1.00, "GGC": 1.00, "CAG": 1.00, "GAG": 1.00,
+                "AAG": 1.00, "ACC": 1.00, "CCC": 1.00, "TCC": 1.00, "AGC": 0.92, "ATC": 1.00,
+                "TTC": 1.00, "TAC": 1.00, "AAC": 1.00, "GAC": 1.00, "CAC": 1.00, "TGC": 1.00,
+                "CGC": 1.00, "CGG": 0.95, "AGA": 0.88, "AGG": 0.88, "ATG": 1.00, "TGG": 1.00, "TGA": 1.00
+            ]
+        }
+        for (k, v) in overrides { base[k] = v }
+        return base
+    }
+
+    private static func scoreFivePrimePrefix(baseBuffer: [Character], wTable: [String: Double], codon: String, upstreamUTR: String = "GCCACC") -> Double {
         let prefixSeq = String(baseBuffer.prefix(min(45, baseBuffer.count)))
-        let dg = PrimerQualityEngine.calcHairpin(prefixSeq).dg
+        let dg = calcRNA5PrimeHairpinDG(dnaSeq: prefixSeq, upstreamUTR: upstreamUTR)
         let fit = wTable[codon] ?? 0.5
-        // 目标是 dg >= -3.0，再以适应度破平
+        // 目标是 RNA ΔG37 >= -3.0 kcal/mol，再以适应度破平
         let dgScore = min(0.0, dg) * 100.0
         return dgScore + fit * 1.5
     }
@@ -842,27 +1005,45 @@ public enum CodonOptimizationEngine {
             penalty += Double(excess) * 1_500.0
         }
 
-        // 3. 局部 50 bp GC 窗检查（跨越 bStart..bEnd 的窗口）
+        // 3. 局部 50 bp GC 窗检查（严格对齐 3 的倍数相位，O(w) 局部滑动计数，消除 O(N^2) 全长重建）
         let w = min(n, config.gcWindowSizeBp)
         if w >= 12 {
-            let winStartMin = max(0, bEnd - w + 1)
+            let rawMin = max(0, bEnd - w + 1)
+            let winStartMin = ((rawMin + 2) / 3) * 3
             let winStartMax = min(n - w, bStart)
             if winStartMin <= winStartMax {
-                // 使用局部直接计数避免每次 O(n) 全扫
-                let pGC = prefixGC ?? buildPrefixGC(baseBuffer: baseBuffer)
                 let midTarget = 0.5 * (config.minWindowGC + config.maxWindowGC)
                 var worstDev = 0.0
                 var sumMidDist = 0.0
                 var winCount = 0
-                for s in stride(from: winStartMin, through: winStartMax, by: 3) {
-                    let gc = Double(pGC[s + w] - pGC[s]) / Double(w)
-                    if gc < config.minWindowGC {
-                        worstDev = max(worstDev, config.minWindowGC - gc)
-                    } else if gc > config.maxWindowGC {
-                        worstDev = max(worstDev, gc - config.maxWindowGC)
+                if let pGC = prefixGC {
+                    for s in stride(from: winStartMin, through: winStartMax, by: 3) {
+                        let gc = Double(pGC[s + w] - pGC[s]) / Double(w)
+                        if gc < config.minWindowGC { worstDev = max(worstDev, config.minWindowGC - gc) }
+                        else if gc > config.maxWindowGC { worstDev = max(worstDev, gc - config.maxWindowGC) }
+                        sumMidDist += abs(gc - midTarget)
+                        winCount += 1
                     }
-                    sumMidDist += abs(gc - midTarget)
-                    winCount += 1
+                } else {
+                    var curGC = 0
+                    for p in winStartMin..<(winStartMin + w) {
+                        if baseBuffer[p] == "G" || baseBuffer[p] == "C" { curGC += 1 }
+                    }
+                    var s = winStartMin
+                    while s <= winStartMax {
+                        let gc = Double(curGC) / Double(w)
+                        if gc < config.minWindowGC { worstDev = max(worstDev, config.minWindowGC - gc) }
+                        else if gc > config.maxWindowGC { worstDev = max(worstDev, gc - config.maxWindowGC) }
+                        sumMidDist += abs(gc - midTarget)
+                        winCount += 1
+                        if s + 3 <= winStartMax {
+                            for t in 0..<3 {
+                                if baseBuffer[s + t] == "G" || baseBuffer[s + t] == "C" { curGC -= 1 }
+                                if baseBuffer[s + w + t] == "G" || baseBuffer[s + w + t] == "C" { curGC += 1 }
+                            }
+                        }
+                        s += 3
+                    }
                 }
                 penalty += worstDev * 2_500.0
                 if worstDev > 0 {
@@ -887,12 +1068,25 @@ public enum CodonOptimizationEngine {
             }
         }
 
-        // 5. 前 45 bp 二级结构护栏
+        // 5. 前 45 bp RNA Turner 2004 二级结构护栏（含上游 Kozak/RBS 5'-UTR 上下文）
         if config.optimizeFivePrimeStructure && codonIdx < 15 {
             let prefixSeq = String(baseBuffer.prefix(min(45, n)))
-            let dg = PrimerQualityEngine.calcHairpin(prefixSeq).dg
+            let utr = (config.host == .eColi) ? "AGGAGGTA" : "GCCACC"
+            let dg = calcRNA5PrimeHairpinDG(dnaSeq: prefixSeq, upstreamUTR: utr)
             if dg < -3.0 {
                 penalty += (-3.0 - dg) * 180.0
+            }
+        }
+
+        // 5b. 局部生物调控隐患基序（隐匿剪接供体/提前 Poly(A)/原核伪 SD）软惩罚
+        let bioLo = max(0, bStart - 8)
+        let bioHi = min(n, bEnd + 9)
+        let bioWin = String(baseBuffer[bioLo..<bioHi])
+        if config.host == .eColi {
+            if bioWin.contains("AGGAGG") || bioWin.contains("AAGGAG") { penalty += 600.0 }
+        } else {
+            if bioWin.contains("AATAAA") || bioWin.contains("ATTAAA") || bioWin.contains("AGGTAAGT") || bioWin.contains("CAGGTAAG") || bioWin.contains("CAGGTGAG") {
+                penalty += 600.0
             }
         }
 
@@ -975,16 +1169,29 @@ public enum CodonOptimizationEngine {
             )
         )
 
-        // 5. 5' 端前 45 bp mRNA 二级结构
-        let fivePrimeDG = PrimerQualityEngine.calcHairpin(String(optimizedDNA.prefix(45))).dg
+        // 5. 5' 端前 45 bp RNA Turner 2004 二级结构（含 5'-UTR 上下文与 G:U 摇摆配对）
+        let upstream5UTR = (config.host == .eColi) ? "AGGAGGTA" : "GCCACC"
+        let fivePrimeDG = calcRNA5PrimeHairpinDG(dnaSeq: String(optimizedDNA.prefix(45)), upstreamUTR: upstream5UTR)
         let structPassed = !config.optimizeFivePrimeStructure || fivePrimeDG >= -3.0
         checks.append(
             ConstraintCheckItem(
                 id: "five_prime_hairpin",
                 title: L10n.t("5' 起始区前 45 bp 发夹稳定性"),
                 passed: structPassed,
-                detail: String(format: L10n.tr("5' 端前 45 bp 发夹 ΔG = %.2f kcal/mol（建议 ≥ -3.0 kcal/mol）", "5' first 45-bp hairpin ΔG = %.2f kcal/mol (>= -3.0 kcal/mol recommended)"), fivePrimeDG),
+                detail: String(format: L10n.tr("5' 端前 45 bp RNA 发夹 ΔG37 = %.2f kcal/mol（建议 ≥ -3.0 kcal/mol）", "5' first 45-bp RNA hairpin ΔG37 = %.2f kcal/mol (>= -3.0 kcal/mol recommended)"), fivePrimeDG),
                 violationPositions1Based: structPassed ? [] : [1]
+            )
+        )
+
+        // 6. 生物调控隐患基序扫描（隐匿剪接供体/受体、提前 Poly(A)、原核伪 SD/σ70、长反向重复）
+        let bioHazards = scanBiologicalMotifs(dna: optimizedDNA, host: config.host)
+        checks.append(
+            ConstraintCheckItem(
+                id: "biological_motifs",
+                title: L10n.t("生物调控隐患基序审查"),
+                passed: bioHazards.isEmpty,
+                detail: bioHazards.isEmpty ? L10n.t("未检出隐匿剪接位点、提前 Poly(A)、伪 SD 或长反向重复") : bioHazards.joined(separator: "；"),
+                violationPositions1Based: bioHazards.isEmpty ? [] : [1]
             )
         )
 

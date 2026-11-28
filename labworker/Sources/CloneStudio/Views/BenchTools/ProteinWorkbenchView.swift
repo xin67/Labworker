@@ -33,7 +33,7 @@ public struct ProteinWorkbenchView: View {
 
     // 精简为 4 个短标签，消除窄窗口分段控件挤压
     @State private var analysisTab: ProteinAnalysisTab = .dockingBox
-    @State private var mutantInputText: String = "V13A\nI15L + L19M\nK27R\nF42W\nT48P"
+    @State private var mutantInputText: String = "R82H\nR155Q\nR180H\nV50A + Y127C"
     @State private var showOnlineFetchSheet: Bool = false
     @State private var onlineSourceNote: String? = nil
 
@@ -116,8 +116,9 @@ public struct ProteinWorkbenchView: View {
         )
         let initialMutants = ProteinBiophysicsEngine.evaluateMutantsBatch(
             wildTypeSequence: initialReport.sequence,
-            mutationSpecs: ["V13A", "I15L + L19M", "K27R", "F42W", "T48P"],
-            env: initialEnv
+            mutationSpecs: ["R82H", "R155Q", "R180H", "V50A + Y127C"],
+            env: initialEnv,
+            residues3D: initialReport.isSyntheticTeachingModel ? nil : initialReport.residues
         )
         _cachedReport = State(initialValue: initialReport)
         _cachedMutants = State(initialValue: initialMutants)
@@ -139,16 +140,18 @@ public struct ProteinWorkbenchView: View {
         )
         cachedReport = nextReport
         if analysisTab == .mutants {
-            recomputeMutants(wildTypeSequence: nextReport.sequence)
+            recomputeMutants(wildTypeSequence: nextReport.sequence, residues3D: nextReport.isSyntheticTeachingModel ? nil : nextReport.residues)
         }
     }
 
-    private func recomputeMutants(wildTypeSequence: String? = nil) {
+    private func recomputeMutants(wildTypeSequence: String? = nil, residues3D: [ProteinResidue3D]? = nil) {
         let lines = mutantInputText.components(separatedBy: .newlines)
+        let effective3D = residues3D ?? (cachedReport.isSyntheticTeachingModel ? nil : cachedReport.residues)
         cachedMutants = ProteinBiophysicsEngine.evaluateMutantsBatch(
             wildTypeSequence: wildTypeSequence ?? cachedReport.sequence,
             mutationSpecs: lines,
-            env: env
+            env: env,
+            residues3D: effective3D
         )
     }
 
@@ -275,7 +278,7 @@ public struct ProteinWorkbenchView: View {
                 )
                 StudioMetricBadge(
                     label: L10n.t("坐标源"),
-                    value: onlineSourceNote.map { L10n.t($0) } ?? L10n.t(importedPDBText != nil ? "外部 PDB / mmCIF" : "SPICE 启发式折叠"),
+                    value: onlineSourceNote.map { L10n.t($0) } ?? (importedPDBText != nil ? L10n.t("外部 PDB / mmCIF") : L10n.tr("教学示意骨架 (无 3D PDB)", "Synthetic Teaching Trace (No 3D PDB)")),
                     color: importedPDBText != nil ? .green : .teal
                 )
                 StudioCompactPillButton(
@@ -369,11 +372,21 @@ public struct ProteinWorkbenchView: View {
                                     .foregroundColor(.secondary)
                                 Slider(value: $env.ionicStrengthM, in: 0.0...1.0, step: 0.05)
                                     .frame(width: 85)
-                                Text(String(format: "%.2f M", env.ionicStrengthM))
+                                Text(String(format: "%.2f M · κ⁻¹ %.1f Å", env.ionicStrengthM, currentReport.debyeLengthA))
                                     .font(.system(size: 11.5, weight: .semibold))
                                     .monospacedDigit()
-                                    .frame(width: 46, alignment: .trailing)
                             }
+
+                            StudioMenuPicker(
+                                selection: $env.pkaScale,
+                                options: ProteinPKaScale.allCases.map {
+                                    StudioMenuPickerOption(value: $0, title: $0.displayTitle)
+                                },
+                                prefix: "pKa",
+                                icon: "scalemass",
+                                tint: .teal,
+                                compact: true
+                            )
                         }
                     }
                     .transition(.opacity)
@@ -439,8 +452,18 @@ public struct ProteinWorkbenchView: View {
                 if viewerMode == .nativeCanvas {
                     StudioSegmentedPicker(
                         selection: $colorSchemeMode,
-                        options: StructureColorMode.allCases.map {
-                            StudioSegmentedOption(value: $0, title: $0.title, tint: .blue)
+                        options: StructureColorMode.allCases.map { mode in
+                            let label: String
+                            if mode == .plddt {
+                                switch report.temperatureFactorMetric {
+                                case .bFactor: label = "B-factor"
+                                case .syntheticHeuristic: label = L10n.tr("示意分值", "Synthetic")
+                                case .pLDDT: label = "pLDDT"
+                                }
+                            } else {
+                                label = mode.title
+                            }
+                            return StudioSegmentedOption(value: mode, title: label, tint: .blue)
                         }
                     )
                 }
@@ -515,7 +538,14 @@ public struct ProteinWorkbenchView: View {
 
                         if let selIdx = selectedResidueIndex,
                            let res = report.residues.first(where: { $0.index == selIdx }) {
-                            Text("\(res.threeLetter)\(res.index) (\(res.oneLetter)) · \(res.secondary.title) · pLDDT \(String(format: "%.1f", res.plddt))")
+                            let tfBadge: String = {
+                                switch report.temperatureFactorMetric {
+                                case .bFactor: return "B-factor \(String(format: "%.1f", res.temperatureFactor)) Å²"
+                                case .syntheticHeuristic: return L10n.tr("无实验置信度", "No 3D Confidence")
+                                case .pLDDT: return "pLDDT \(String(format: "%.1f", res.plddt))"
+                                }
+                            }()
+                            Text("\(res.threeLetter)\(res.resSeq) (\(res.oneLetter)) · \(res.secondary.title) · \(tfBadge)")
                                 .font(.system(size: 11, weight: .semibold))
                                 .monospacedDigit()
                                 .foregroundColor(.white)
@@ -769,11 +799,12 @@ public struct ProteinWorkbenchView: View {
         for i in 0..<(projected.count - 1) {
             let a = projected[i]
             let b = projected[i + 1]
+            if a.res.chainID != b.res.chainID { continue }
             var seg = Path()
             seg.move(to: CGPoint(x: a.pt.px, y: a.pt.py))
             seg.addLine(to: CGPoint(x: b.pt.px, y: b.pt.py))
             let isPocketSeg = a.res.isPocketResidue && b.res.isPocketResidue
-            let col = colorForResidue(a.res)
+            let col = colorForResidue(a.res, metric: report.temperatureFactorMetric)
             let alpha: Double = focusPocketOnly ? (isPocketSeg ? 0.95 : 0.14) : 0.88
             let lineW: CGFloat = focusPocketOnly
                 ? (isPocketSeg ? 3.2 : 1.1)
@@ -786,7 +817,7 @@ public struct ProteinWorkbenchView: View {
             if focusPocketOnly && !item.res.isPocketResidue {
                 continue
             }
-            let col = colorForResidue(item.res)
+            let col = colorForResidue(item.res, metric: report.temperatureFactorMetric)
             let rad: CGFloat = item.res.isPocketResidue ? 5.4 : 4.0
             let rect = CGRect(
                 x: item.pt.px - rad,
@@ -801,9 +832,16 @@ public struct ProteinWorkbenchView: View {
         }
     }
 
-    private func colorForResidue(_ r: ProteinResidue3D) -> Color {
+    private func colorForResidue(_ r: ProteinResidue3D, metric: TemperatureFactorMetric) -> Color {
         switch colorSchemeMode {
         case .plddt:
+            if metric == .bFactor {
+                // B-factor (Å²)：低值=刚性蓝，高值=柔性红（与 pLDDT 严格反向区分）
+                if r.temperatureFactor <= 20 { return Color(red: 0.12, green: 0.48, blue: 0.96) }
+                if r.temperatureFactor <= 40 { return Color(red: 0.25, green: 0.78, blue: 0.88) }
+                if r.temperatureFactor <= 65 { return Color(red: 0.96, green: 0.75, blue: 0.18) }
+                return Color(red: 0.92, green: 0.30, blue: 0.22)
+            }
             if r.plddt >= 90 { return Color(red: 0.12, green: 0.48, blue: 0.96) }
             if r.plddt >= 70 { return Color(red: 0.25, green: 0.78, blue: 0.88) }
             if r.plddt >= 50 { return Color(red: 0.96, green: 0.80, blue: 0.18) }
@@ -885,34 +923,34 @@ public struct ProteinWorkbenchView: View {
                 spacing: 8
             ) {
                 metricTile(
-                    title: "分子量 (MW)",
+                    title: L10n.t("分子量 (MW)"),
                     value: String(format: "%.2f kDa", report.molecularWeightDa / 1000.0),
                     sub: "\(Int(report.molecularWeightDa)) Da"
                 )
                 metricTile(
-                    title: "理论等电点 (pI)",
+                    title: L10n.tr("理论等电点 (pI · \(report.pkaScale.displayTitle))", "Theoretical pI (\(report.pkaScale.displayTitle))"),
                     value: String(format: "%.2f", report.isoelectricPoint),
-                    sub: L10n.tr("pH \(String(format: "%.1f", env.ph)) 电荷 \(String(format: "%+.1f", report.netChargeAtEnvPh))", "Charge at pH \(String(format: "%.1f", env.ph)): \(String(format: "%+.1f", report.netChargeAtEnvPh))")
+                    sub: L10n.tr("pH \(String(format: "%.1f", env.ph)) 电荷 \(String(format: "%+.1f", report.netChargeAtEnvPh)) · κ⁻¹ \(String(format: "%.1f", report.debyeLengthA)) Å", "pH \(String(format: "%.1f", env.ph)) Charge \(String(format: "%+.1f", report.netChargeAtEnvPh)) · κ⁻¹ \(String(format: "%.1f", report.debyeLengthA)) Å")
                 )
                 metricTile(
-                    title: "消光系数 ε280",
+                    title: L10n.t("消光系数 ε280"),
                     value: "\(report.extinctionReduced)",
                     sub: "A0.1% = \(String(format: "%.2f", report.abs01PctReduced))"
                 )
                 metricTile(
-                    title: "平均疏水性 GRAVY",
+                    title: L10n.t("平均疏水性 GRAVY"),
                     value: String(format: "%+.3f", report.gravy),
                     sub: L10n.tr("脂溶指数 \(String(format: "%.1f", report.aliphaticIndex))", "Aliphatic Index \(String(format: "%.1f", report.aliphaticIndex))")
                 )
                 metricTile(
-                    title: "不稳定指数 (II)",
+                    title: L10n.t("不稳定指数 (II)"),
                     value: String(format: "%.1f", report.instabilityIndex),
                     sub: L10n.tr("无序倾向 \(String(format: "%.1f%%", report.disorderPct))", "Disorder Propensity \(String(format: "%.1f%%", report.disorderPct))")
                 )
                 metricTile(
-                    title: "二级结构分布",
-                    value: "H \(Int(report.helixPct))% · E \(Int(report.sheetPct))%",
-                    sub: "Coil \(Int(report.coilPct))%"
+                    title: L10n.t("二级结构分布"),
+                    value: report.dsspComputed ? "H \(Int(report.helixPct))% · E \(Int(report.sheetPct))%" : L10n.tr("需导入 3D PDB", "Requires 3D PDB"),
+                    sub: report.dsspComputed ? "Coil \(Int(report.coilPct))%" : L10n.tr("未运行主链 DSSP", "DSSP not computed")
                 )
             }
         }
@@ -987,15 +1025,41 @@ public struct ProteinWorkbenchView: View {
             // 2. 中心坐标与尺寸自适应网格（窄窗单列，宽窗双列）
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 380), spacing: 8)], spacing: 8) {
                 metricTile(
-                    title: "对接盒子中心 (Center X, Y, Z)",
+                    title: L10n.t("对接盒子中心 (Center X, Y, Z)"),
                     value: String(format: "(%.2f, %.2f, %.2f) Å", box.centerX, box.centerY, box.centerZ),
                     sub: "Vina center_x / center_y / center_z"
                 )
                 metricTile(
-                    title: "对接盒子尺寸 (Size X × Y × Z)",
+                    title: L10n.t("对接盒子尺寸 (Size X × Y × Z)"),
                     value: String(format: "%.1f × %.1f × %.1f Å", box.sizeX, box.sizeY, box.sizeZ),
-                    sub: "已包含 ±4.0 Å 配体旋转安全边距"
+                    sub: L10n.t("已包含 ±4.0 Å 配体旋转安全边距")
                 )
+            }
+
+            if report.pockets.count > 1 {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.tr("检测到 \(report.pockets.count) 个独立 LIGSITE 3D 连通口袋：", "Detected \(report.pockets.count) independent LIGSITE 3D pockets:"))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    ForEach(report.pockets.prefix(5)) { pk in
+                        HStack(spacing: 8) {
+                            Text("#\(pk.id)")
+                                .font(.system(size: 10.5, weight: .bold))
+                                .monospacedDigit()
+                                .foregroundColor(.orange)
+                            Text(String(format: "(%.1f, %.1f, %.1f) Å", pk.centerX, pk.centerY, pk.centerZ))
+                                .font(.system(size: 10.5))
+                                .monospacedDigit()
+                            Spacer()
+                            Text(String(format: "V %.0f Å³ · Ψ %.2f · Score %.2f", pk.volumeA3, pk.compactness, pk.druggabilityScore))
+                                .font(.system(size: 10.5, weight: .medium))
+                                .monospacedDigit()
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .studioInnerBox(paddingH: 9, paddingV: 7)
             }
 
             // 3. 柔性侧链 (--flex) 推荐与耗时提示（使用 ViewThatFits 适配窄窗）
@@ -1181,7 +1245,20 @@ public struct ProteinWorkbenchView: View {
                 }
             }
 
+            if report.isSyntheticTeachingModel && selectedDockingTool.isDockingEngine {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    Text(L10n.t("当前结构为教学用 SPICE 虚拟 Cα 模型，已阻止直接运行 Vina/Smina/Gnina 对接。请先导入/在线拉取实验 PDB/mmCIF 或 AlphaFold 全原子结构，或切换至 Boltz 共折叠。"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .studioInnerBox(tint: .orange, paddingH: 8, paddingV: 6)
+            }
+
             StudioActionBar {
+                let blockedSyntheticDocking = report.isSyntheticTeachingModel && selectedDockingTool.isDockingEngine
                 StudioPrimaryActionButton(
                     title: isRunningLocalCompute
                         ? L10n.tr("正在运行 \(selectedDockingTool.cliName)...", "Running \(selectedDockingTool.cliName)...")
@@ -1189,7 +1266,7 @@ public struct ProteinWorkbenchView: View {
                     icon: "play.circle.fill",
                     tint: .indigo,
                     isLoading: isRunningLocalCompute,
-                    isDisabled: isRunningLocalCompute || (detectedSelected?.isAvailable != true)
+                    isDisabled: isRunningLocalCompute || (detectedSelected?.isAvailable != true) || blockedSyntheticDocking
                 ) {
                     launchLocalCompute(report: report, obabelPath: obabelDetected?.executablePath)
                 }
@@ -1545,43 +1622,51 @@ public struct ProteinWorkbenchView: View {
                 )
 
             ForEach(mutantResults) { m in
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        Text(m.mutationSpec)
-                            .font(.system(size: 11.5, weight: .bold))
-                            .monospacedDigit()
-                            .frame(minWidth: 80, alignment: .leading)
-                        Text(String(format: "ΔΔG = %+.2f kcal/mol", m.ddgKcalMol))
-                            .font(.system(size: 11))
-                            .monospacedDigit()
-                            .foregroundColor(m.ddgKcalMol <= 0 ? .green : .orange)
-                        Spacer()
-                        StudioMetricBadge(
-                            label: "",
-                            value: m.stabilityVerdict,
-                            color: m.ddgKcalMol <= -0.4 ? .green : (m.ddgKcalMol <= 0.5 ? .blue : .red)
-                        )
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
                             Text(m.mutationSpec)
                                 .font(.system(size: 11.5, weight: .bold))
                                 .monospacedDigit()
-                            Spacer()
-                            Text(String(format: "ΔΔG = %+.2f kcal/mol", m.ddgKcalMol))
+                                .frame(minWidth: 80, alignment: .leading)
+                            Text(m.isValidWildType ? String(format: "ΔΔG = %+.2f kcal/mol", m.ddgKcalMol) : L10n.t("校验失败"))
                                 .font(.system(size: 11))
                                 .monospacedDigit()
-                                .foregroundColor(m.ddgKcalMol <= 0 ? .green : .orange)
+                                .foregroundColor(!m.isValidWildType ? .red : (m.ddgKcalMol <= 0 ? .green : .orange))
+                            Spacer()
+                            StudioMetricBadge(
+                                label: "",
+                                value: m.stabilityVerdict,
+                                color: !m.isValidWildType ? .red : (m.ddgKcalMol <= -0.4 ? .green : (m.ddgKcalMol <= 0.5 ? .blue : .red))
+                            )
                         }
-                        StudioMetricBadge(
-                            label: "",
-                            value: m.stabilityVerdict,
-                            color: m.ddgKcalMol <= -0.4 ? .green : (m.ddgKcalMol <= 0.5 ? .blue : .red)
-                        )
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(m.mutationSpec)
+                                    .font(.system(size: 11.5, weight: .bold))
+                                    .monospacedDigit()
+                                Spacer()
+                                Text(m.isValidWildType ? String(format: "ΔΔG = %+.2f kcal/mol", m.ddgKcalMol) : L10n.t("校验失败"))
+                                    .font(.system(size: 11))
+                                    .monospacedDigit()
+                                    .foregroundColor(!m.isValidWildType ? .red : (m.ddgKcalMol <= 0 ? .green : .orange))
+                            }
+                            StudioMetricBadge(
+                                label: "",
+                                value: m.stabilityVerdict,
+                                color: !m.isValidWildType ? .red : (m.ddgKcalMol <= -0.4 ? .green : (m.ddgKcalMol <= 0.5 ? .blue : .red))
+                            )
+                        }
+                    }
+                    if let warn = m.validationWarning, !warn.isEmpty {
+                        Text(warn)
+                            .font(.system(size: 10.5))
+                            .foregroundColor(.red)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .studioInnerBox(paddingH: 8, paddingV: 6)
+                .studioInnerBox(tint: m.isValidWildType ? nil : .red, paddingH: 8, paddingV: 6)
             }
         }
     }

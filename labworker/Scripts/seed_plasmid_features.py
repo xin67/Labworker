@@ -301,6 +301,13 @@ def validate_seed_catalog() -> None:
     assert len(diffs) == 1, f"Expected 1 canonical SNP between pUC ori and ColE1 ori, found {diffs}"
 
 
+CANONICAL_SHORT_WHITELIST = {
+    "t7 promoter", "sp6 promoter", "t3 promoter", "his",
+    "m13-fwd", "m13 reverse primer (m13-rp1)", "bgh reverse primer",
+    "thrombin recognition and cleavage site",
+}
+
+
 def load_extended_catalog() -> list:
     if not os.path.exists(CATALOG_PATH):
         return []
@@ -316,16 +323,19 @@ def load_extended_catalog() -> list:
         seq = str(item["sequence"]).strip().upper()
         direction = int(item.get("direction", 1))
         color_hex = str(item["color_hex"]).strip()
+        src_acc = str(item.get("source_accession") or "pLannotate-Catalog").strip()
         if not name or name.lower() in used_names_lower:
             continue
         if not seq or not (set(seq) <= {"A", "C", "G", "T"}):
+            continue
+        if len(seq) < 21 and name.lower() not in CANONICAL_SHORT_WHITELIST:
             continue
         if direction not in (-1, 0, 1):
             direction = 1
         if not (color_hex.startswith("#") and len(color_hex) == 7):
             color_hex = "#6B7280"
         used_names_lower.add(name.lower())
-        rows.append((name, cat, seq, direction, color_hex))
+        rows.append((name, cat, seq, direction, color_hex, src_acc))
     return rows
 
 
@@ -335,7 +345,8 @@ def seed_database(db_path: str = DB_PATH) -> int:
 
     validate_seed_catalog()
     extended_rows = load_extended_catalog()
-    all_rows = list(PLASMID_FEATURES_SEED) + extended_rows
+    seed_rows = [(n, c, s, d, col, "Labworker-Canonical-Seed") for (n, c, s, d, col) in PLASMID_FEATURES_SEED]
+    all_rows = seed_rows + extended_rows
 
     conn = sqlite3.connect(db_path)
     try:
@@ -348,10 +359,14 @@ def seed_database(db_path: str = DB_PATH) -> int:
                 category TEXT NOT NULL,
                 sequence TEXT NOT NULL,
                 direction INTEGER NOT NULL DEFAULT 1,
-                color_hex TEXT NOT NULL
+                color_hex TEXT NOT NULL,
+                source_accession TEXT
             );
             """
         )
+        existing_cols = {r[1] for r in cur.execute("PRAGMA table_info(plasmid_features);")}
+        if "source_accession" not in existing_cols:
+            cur.execute("ALTER TABLE plasmid_features ADD COLUMN source_accession TEXT;")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_plasmid_features_category ON plasmid_features(category);")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_plasmid_features_name ON plasmid_features(name);")
 
@@ -359,8 +374,8 @@ def seed_database(db_path: str = DB_PATH) -> int:
         cur.execute("DELETE FROM sqlite_sequence WHERE name = 'plasmid_features';")
         cur.executemany(
             """
-            INSERT INTO plasmid_features (name, category, sequence, direction, color_hex)
-            VALUES (?, ?, ?, ?, ?);
+            INSERT INTO plasmid_features (name, category, sequence, direction, color_hex, source_accession)
+            VALUES (?, ?, ?, ?, ?, ?);
             """,
             all_rows,
         )

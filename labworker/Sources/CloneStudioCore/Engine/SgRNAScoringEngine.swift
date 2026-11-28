@@ -97,18 +97,19 @@ public struct SgRNAScoringEngine {
         }
         
         let finalScore = min(max(rawScore, 0.0), 100.0)
-        let tier = TargetScoreTier.from(score: finalScore)
+        let tier = (fatalWarning != nil) ? .poor : TargetScoreTier.from(score: finalScore)
         
+        let provenanceNote = L10n.t("（基于 Doench Rule Set 1/2 序列启发式权重，不含全基因组脱靶与染色质可及性评估；高置信敲除请联查 VBC-Score / Rule Set 3 / CHOPCHOP）")
         let summary: String
         switch tier {
         case .excellent:
-            summary = L10n.t("优质靶点：GC平衡、PAM邻接碱基优选、无终止信号")
+            summary = L10n.t("高分序列靶点：GC平衡、PAM邻接碱基优选、无终止信号") + provenanceNote
         case .good:
-            summary = L10n.t("良好靶点：参数正常，适于常规敲除实验")
+            summary = L10n.t("良好靶点：参数正常，适于常规敲除实验") + provenanceNote
         case .fair:
-            summary = L10n.t("次选靶点：存在一定偏好偏差，建议优先考虑高分靶点")
+            summary = L10n.t("次选靶点：存在一定偏好偏差，建议优先考虑高分靶点") + provenanceNote
         case .poor:
-            summary = fatalWarning ?? L10n.t("低分靶点：存在显著切割抑制或极端GC")
+            summary = (fatalWarning ?? L10n.t("低分靶点：存在显著切割抑制或极端GC")) + provenanceNote
         }
         
         return TargetScore(

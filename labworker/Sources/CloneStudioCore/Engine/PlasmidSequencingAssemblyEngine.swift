@@ -184,6 +184,7 @@ public enum PlasmidSequencingAssemblyEngine {
             var totalDepth: Int = 0
         }
         var buckets = Array(repeating: PosBucket(), count: refLen + 1)
+        var insertVotes: [Int: [String: Int]] = [:]
         var briefs: [AlignedSangerReadBrief] = []
 
         for (rIdx, read) in reads.enumerated() {
@@ -220,14 +221,26 @@ public enum PlasmidSequencingAssemblyEngine {
             )
 
             var seenRefPosInRead = Set<Int>()
+            var pendingInsAfterPos: [Int: (seq: String, qMin: Int)] = [:]
+            var lastRefPos = 0
             for col in rep.columns {
                 guard col.refPos1Based >= 1 && col.refPos1Based <= refLen else { continue }
-                guard col.readBase != "-", col.refBase != "-" else { continue }
+                let q = max(5, min(60, col.phredQuality))
+                if col.refBase == "-" && col.readBase != "-" {
+                    // 保留插入碱基事件，不再静默丢弃
+                    let anchor = max(1, lastRefPos > 0 ? lastRefPos : col.refPos1Based)
+                    var cur = pendingInsAfterPos[anchor] ?? ("", q)
+                    cur.seq.append(col.readBase)
+                    cur.qMin = min(cur.qMin, q)
+                    pendingInsAfterPos[anchor] = cur
+                    continue
+                }
+                lastRefPos = col.refPos1Based
                 guard !seenRefPosInRead.contains(col.refPos1Based) else { continue }
                 seenRefPosInRead.insert(col.refPos1Based)
 
+                // 同时计入正常碱基与缺失 '-' 投票
                 let base = col.readBase
-                let q = max(5, min(60, col.phredQuality))
                 buckets[col.refPos1Based].qSum[base, default: 0] += q
                 buckets[col.refPos1Based].totalDepth += 1
                 if rep.isReverseComplement {
@@ -235,6 +248,12 @@ public enum PlasmidSequencingAssemblyEngine {
                 } else {
                     buckets[col.refPos1Based].fwdCount += 1
                 }
+            }
+            for (anchor, ins) in pendingInsAfterPos {
+                let key: Character = "+"
+                _ = key
+                // 通过插入投票桶记录共识插入
+                insertVotes[anchor, default: [:]][ins.seq, default: 0] += 1
             }
         }
 
@@ -287,13 +306,24 @@ public enum PlasmidSequencingAssemblyEngine {
                 let secondScore = sortedCalls.count > 1 ? sortedCalls[1].value : 0
                 let conflict = secondScore > 0
                 if conflict { conflictCount += 1 }
-                let netQ = conflict ? max(10, min(60, bestScore - secondScore)) : min(60, bestScore)
+                // 消除平局时虚高 Q10 下限：精确平局 (bestScore == secondScore) 置信度下限为 Q2
+                let netQ = conflict ? max(2, min(60, bestScore - secondScore)) : min(60, bestScore)
                 let matchRef = (bestBase == refBase)
                 if !matchRef { mismatchCount += 1 }
                 phredSum += netQ
-                contigChars.append(bestBase)
-                fullCharsWithN.append(bestBase)
-                fullQuals.append(netQ)
+                if bestBase != "-" {
+                    contigChars.append(bestBase)
+                    fullCharsWithN.append(bestBase)
+                    fullQuals.append(netQ)
+                }
+                // 若该位点后方存在多数读段共识插入，将其拼接进 contig 序列
+                if let insMap = insertVotes[pos1],
+                   let topIns = insMap.sorted(by: { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }).first,
+                   topIns.value * 2 >= b.totalDepth {
+                    contigChars.append(contentsOf: topIns.key)
+                    fullCharsWithN.append(contentsOf: topIns.key)
+                    for _ in topIns.key { fullQuals.append(netQ) }
+                }
 
                 consensusBases.append(
                     ContigConsensusBase(
@@ -542,7 +572,29 @@ public enum PlasmidSequencingAssemblyEngine {
         var majorBlocks: [AnchorBlock] = []
         var coveredRefIntervals: [(rStart0: Int, rEnd0: Int, qStart0: Int, qEnd0: Int)] = []
 
-        for blk in sigFwd {
+        for rawBlk in sigFwd {
+            var blk = rawBlk
+            if let last = majorBlocks.last {
+                // 共线相邻锚点在均聚物/微同源边缘双向延伸发生重叠时，裁齐后块前缀以暴露真实 1-bp Indel 缺口
+                if blk.refStart0 >= last.refStart0 && blk.refEnd0 > last.refEnd0 && blk.qEnd0 > last.qEnd0 {
+                    let skipRef = max(0, last.refEnd0 - blk.refStart0)
+                    let skipQ = max(0, last.qEnd0 - blk.qStart0)
+                    let trim = max(skipRef, skipQ)
+                    if trim > 0 && trim < blk.len {
+                        blk = AnchorBlock(
+                            refStart0: blk.refStart0 + trim,
+                            refEnd0: blk.refEnd0,
+                            qStart0: blk.qStart0 + trim,
+                            qEnd0: blk.qEnd0,
+                            isRev: blk.isRev
+                        )
+                    }
+                }
+                // 先跳过被前一块完全包含或重叠的次优冗余短命中，避免误判串联重复
+                if blk.qStart0 >= last.qStart0 && blk.qEnd0 <= last.qEnd0 { continue }
+                if blk.qStart0 < last.qEnd0 && blk.len < last.len { continue }
+            }
+
             // 串联重复检测：当前块是否重复命中之前已强覆盖的大段参考区间 (>= 70 bp)
             let isTandem = coveredRefIntervals.contains { prev in
                 let ov = min(prev.rEnd0, blk.refEnd0) - max(prev.rStart0, blk.refStart0)
@@ -566,9 +618,6 @@ public enum PlasmidSequencingAssemblyEngine {
             }
 
             if let last = majorBlocks.last {
-                // 跳过被前一块完全包含的次优冗余短命中
-                if blk.qStart0 >= last.qStart0 && blk.qEnd0 <= last.qEnd0 { continue }
-                if blk.qStart0 < last.qEnd0 && blk.len < last.len { continue }
                 if blk.refStart0 + 25 < last.refEnd0 && blk.len >= 60 {
                     variants.append(
                         WholePlasmidVariant(
@@ -678,14 +727,14 @@ public enum PlasmidSequencingAssemblyEngine {
             } else if rSpan <= 360 && qSpan <= 360 {
                 let refSlice = Array(refChars[gap.rS..<gap.rE])
                 let qSlice = Array(rotatedChars[gap.qS..<gap.qE])
-                let res = alignLocalGap(refSlice: refSlice, qSlice: qSlice, refStart0: gap.rS, qStart0: gap.qS)
+                let res = alignLocalGap(refSlice: refSlice, qSlice: qSlice, refStart0: gap.rS, qStart0: gap.qS, fullRefChars: refChars)
                 alignedMatchBp += res.matches
                 for rPos in res.matchedRefPositions where rPos >= 0 && rPos < refLen {
                     refCoveredFlags[rPos] = true
                 }
                 variants.append(contentsOf: res.variants)
             } else {
-                // 超过局部 DP 安全上限的大间隙统一判定为结构性插入或缺失
+                // 超过局部 DP 安全上限的大间隙：严格区分缺失 (delta > 0)、插入 (delta < 0) 与等长高分化替换 (delta == 0，严禁误报 +0 bp 插入)
                 if delta > 0 {
                     variants.append(
                         WholePlasmidVariant(
@@ -700,7 +749,7 @@ public enum PlasmidSequencingAssemblyEngine {
                             detail: L10n.tr("参考 \(rSpan) bp vs Query \(qSpan) bp。", "Ref \(rSpan) bp vs Query \(qSpan) bp.")
                         )
                     )
-                } else {
+                } else if delta < 0 {
                     variants.append(
                         WholePlasmidVariant(
                             id: "lsv_ins_\(gap.qS)",
@@ -712,6 +761,20 @@ public enum PlasmidSequencingAssemblyEngine {
                             sizeBp: -delta,
                             summary: L10n.tr("大区段插入 +\(-delta) bp @ Ref \(gap.rS + 1)", "Large Segment Insertion +\(-delta) bp @ Ref \(gap.rS + 1)"),
                             detail: L10n.tr("参考 \(rSpan) bp vs Query \(qSpan) bp。", "Ref \(rSpan) bp vs Query \(qSpan) bp.")
+                        )
+                    )
+                } else if rSpan > 0 {
+                    variants.append(
+                        WholePlasmidVariant(
+                            id: "lsv_sub_\(gap.rS)",
+                            kind: .snp,
+                            refStart1Based: gap.rS + 1,
+                            refEnd1Based: gap.rE,
+                            queryStart1Based: gap.qS + 1,
+                            queryEnd1Based: gap.qE,
+                            sizeBp: rSpan,
+                            summary: L10n.tr("等长高分化区段替换 (\(rSpan) bp) @ Ref \(gap.rS + 1)..\(gap.rE)", "Equal-length divergent substitution (\(rSpan) bp) @ Ref \(gap.rS + 1)..\(gap.rE)"),
+                            detail: L10n.tr("参考与 Query 长度均为 \(rSpan) bp（无净长度增减）。", "Both Ref and Query span \(rSpan) bp (zero net length change).")
                         )
                     )
                 }
@@ -797,7 +860,7 @@ public enum PlasmidSequencingAssemblyEngine {
                 bins[bin, default: 0] += 1
             }
         }
-        guard let best = bins.max(by: { $0.value < $1.value }) else { return (0, 0) }
+        guard let best = bins.max(by: { $0.value != $1.value ? $0.value < $1.value : $0.key > $1.key }) else { return (0, 0) }
         return (best.key, best.value)
     }
 
@@ -864,23 +927,41 @@ public enum PlasmidSequencingAssemblyEngine {
                 }
             }
         }
-        for (_, cur) in activeByDiag {
-            finished.append(AnchorBlock(refStart0: cur.rS, refEnd0: cur.rE, qStart0: cur.qS, qEnd0: cur.qE, isRev: isRev))
+        for diagKey in activeByDiag.keys.sorted() {
+            if let cur = activeByDiag[diagKey] {
+                finished.append(AnchorBlock(refStart0: cur.rS, refEnd0: cur.rE, qStart0: cur.qS, qEnd0: cur.qE, isRev: isRev))
+            }
         }
-        return finished.sorted { ($0.qStart0, -$0.len) < ($1.qStart0, -$1.len) }
+        return finished.sorted { ($0.qStart0, -$0.len, $0.refStart0) < ($1.qStart0, -$1.len, $1.refStart0) }
     }
 
     private static func alignLocalGap(
         refSlice: [Character],
         qSlice: [Character],
         refStart0: Int,
-        qStart0: Int
+        qStart0: Int,
+        fullRefChars: [Character]
     ) -> (matches: Int, matchedRefPositions: [Int], variants: [WholePlasmidVariant]) {
+        func isHomopolymerRun(base: Character, atRefIndex0 refIdx0: Int) -> Bool {
+            guard !fullRefChars.isEmpty else { return false }
+            let nRef = fullRefChars.count
+            let clamped = max(0, min(nRef, refIdx0))
+            var run = 0
+            var kL = clamped - 1
+            while kL >= 0 && fullRefChars[kL] == base { run += 1; kL -= 1 }
+            var kR = clamped
+            while kR < nRef && fullRefChars[kR] == base { run += 1; kR += 1 }
+            return run >= 4
+        }
         let m = refSlice.count
         let n = qSlice.count
         if m == 0 && n == 0 { return (0, [], []) }
         if m == 0 {
             let insStr = String(qSlice)
+            let isHp = (n == 1) && isHomopolymerRun(base: qSlice[0], atRefIndex0: refStart0)
+            let hpNote = isHp
+                ? L10n.tr(" [Nanopore 均聚物提示：位于 ≥4 nt 均聚物区，可能为均聚物长度误差]", " [Nanopore homopolymer note: ≥4 nt homopolymer run, possible run-length artifact]")
+                : ""
             return (0, [], [
                 WholePlasmidVariant(
                     id: "ins_\(refStart0)_\(qStart0)",
@@ -891,12 +972,16 @@ public enum PlasmidSequencingAssemblyEngine {
                     queryEnd1Based: qStart0 + n,
                     sizeBp: n,
                     summary: L10n.tr("小插入 +\(n) bp (\(insStr)) @ Ref \(refStart0 + 1)", "Small Insertion +\(n) bp (\(insStr)) @ Ref \(refStart0 + 1)"),
-                    detail: L10n.tr("参考位点 \(refStart0 + 1) 前插入 \(n) bp 序列 \(insStr)。", "Inserted \(n) bp (\(insStr)) before Ref \(refStart0 + 1).")
+                    detail: L10n.tr("参考位点 \(refStart0 + 1) 前插入 \(n) bp 序列 \(insStr)。", "Inserted \(n) bp (\(insStr)) before Ref \(refStart0 + 1).") + hpNote
                 )
             ])
         }
         if n == 0 {
             let delStr = String(refSlice)
+            let isHp = (m == 1) && isHomopolymerRun(base: refSlice[0], atRefIndex0: refStart0)
+            let hpNote = isHp
+                ? L10n.tr(" [Nanopore 均聚物提示：位于 ≥4 nt 均聚物区，可能为均聚物长度误差]", " [Nanopore homopolymer note: ≥4 nt homopolymer run, possible run-length artifact]")
+                : ""
             return (0, [], [
                 WholePlasmidVariant(
                     id: "del_\(refStart0)_\(qStart0)",
@@ -907,7 +992,7 @@ public enum PlasmidSequencingAssemblyEngine {
                     queryEnd1Based: qStart0 + 1,
                     sizeBp: m,
                     summary: L10n.tr("小缺失 -\(m) bp (\(delStr)) @ Ref \(refStart0 + 1)..\(refStart0 + m)", "Small Deletion -\(m) bp (\(delStr)) @ Ref \(refStart0 + 1)..\(refStart0 + m)"),
-                    detail: L10n.tr("参考区间 \(refStart0 + 1)..\(refStart0 + m) 缺失 \(m) bp。", "Deleted \(m) bp across Ref \(refStart0 + 1)..\(refStart0 + m).")
+                    detail: L10n.tr("参考区间 \(refStart0 + 1)..\(refStart0 + m) 缺失 \(m) bp。", "Deleted \(m) bp across Ref \(refStart0 + 1)..\(refStart0 + m).") + hpNote
                 )
             ])
         }
@@ -976,11 +1061,16 @@ public enum PlasmidSequencingAssemblyEngine {
                 let r1 = p.rPos0 + 1
                 let q1S = p.qPos0 + 1
                 var q1E = q1S
+                let insRefPos0 = p.rPos0
                 while idx < pairs.count && pairs[idx].r == "-" {
                     insSeq.append(pairs[idx].q)
                     q1E = pairs[idx].qPos0 + 1
                     idx += 1
                 }
+                let isHomopolymerIns = (insSeq.count == 1) && isHomopolymerRun(base: insSeq.first ?? " ", atRefIndex0: insRefPos0)
+                let insNote = isHomopolymerIns
+                    ? L10n.tr(" [Nanopore 均聚物提示：位于 ≥4 nt 均聚物区，可能为均聚物长度误差]", " [Nanopore homopolymer note: ≥4 nt homopolymer run, possible run-length artifact]")
+                    : ""
                 outVars.append(
                     WholePlasmidVariant(
                         id: "sins_\(r1)_\(q1S)",
@@ -991,7 +1081,7 @@ public enum PlasmidSequencingAssemblyEngine {
                         queryEnd1Based: q1E,
                         sizeBp: insSeq.count,
                         summary: L10n.tr("小插入 +\(insSeq.count) bp (\(insSeq)) @ Ref \(r1)", "Small Insertion +\(insSeq.count) bp (\(insSeq)) @ Ref \(r1)"),
-                        detail: L10n.tr("参考第 \(r1) 位处插入 \(insSeq.count) bp：\(insSeq)。", "Inserted \(insSeq.count) bp at Ref \(r1): \(insSeq).")
+                        detail: L10n.tr("参考第 \(r1) 位处插入 \(insSeq.count) bp：\(insSeq)。", "Inserted \(insSeq.count) bp at Ref \(r1): \(insSeq).") + insNote
                     )
                 )
             } else {
@@ -999,11 +1089,16 @@ public enum PlasmidSequencingAssemblyEngine {
                 let r1S = p.rPos0 + 1
                 var r1E = r1S
                 let q1 = p.qPos0 + 1
+                let delRefPos0 = p.rPos0
                 while idx < pairs.count && pairs[idx].q == "-" {
                     delSeq.append(pairs[idx].r)
                     r1E = pairs[idx].rPos0 + 1
                     idx += 1
                 }
+                let isHomopolymerDel = (delSeq.count == 1) && isHomopolymerRun(base: delSeq.first ?? " ", atRefIndex0: delRefPos0)
+                let delNote = isHomopolymerDel
+                    ? L10n.tr(" [Nanopore 均聚物提示：位于 ≥4 nt 均聚物区，可能为均聚物长度误差]", " [Nanopore homopolymer note: ≥4 nt homopolymer run, possible run-length artifact]")
+                    : ""
                 outVars.append(
                     WholePlasmidVariant(
                         id: "sdel_\(r1S)_\(q1)",
@@ -1014,7 +1109,7 @@ public enum PlasmidSequencingAssemblyEngine {
                         queryEnd1Based: q1,
                         sizeBp: delSeq.count,
                         summary: L10n.tr("小缺失 -\(delSeq.count) bp (\(delSeq)) @ Ref \(r1S)..\(r1E)", "Small Deletion -\(delSeq.count) bp (\(delSeq)) @ Ref \(r1S)..\(r1E)"),
-                        detail: L10n.tr("参考第 \(r1S)..\(r1E) 位缺失 \(delSeq.count) bp：\(delSeq)。", "Deleted \(delSeq.count) bp at Ref \(r1S)..\(r1E): \(delSeq).")
+                        detail: L10n.tr("参考第 \(r1S)..\(r1E) 位缺失 \(delSeq.count) bp：\(delSeq)。", "Deleted \(delSeq.count) bp at Ref \(r1S)..\(r1E): \(delSeq).") + delNote
                     )
                 )
             }

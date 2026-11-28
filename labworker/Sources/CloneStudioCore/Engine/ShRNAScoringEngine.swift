@@ -117,18 +117,19 @@ public struct ShRNAScoringEngine {
         }
         
         let finalScore = min(max(rawScore, 0.0), 100.0)
-        let tier = TargetScoreTier.from(score: finalScore)
+        let tier = (fatalWarning != nil) ? .poor : TargetScoreTier.from(score: finalScore)
         
+        let provenanceNote = L10n.t("（基于 Reynolds / Ui-Tei 热力学不对称启发式权重，不含全转录组脱靶比对；建议联查 Broad GPP / SplashRNA）")
         let summary: String
         switch tier {
         case .excellent:
-            summary = L10n.t("优质靶点：热力学不对称性显著、RISC加载专一、无终止信号")
+            summary = L10n.t("高分序列靶点：热力学不对称性显著、RISC加载专一、无终止信号") + provenanceNote
         case .good:
-            summary = L10n.t("良好靶点：下调效能稳定，适于常规基因敲低实验")
+            summary = L10n.t("良好靶点：下调效能稳定，适于常规基因敲低实验") + provenanceNote
         case .fair:
-            summary = L10n.t("次选靶点：存在过客链竞争或解旋偏离，建议优先选高分")
+            summary = L10n.t("次选靶点：存在过客链竞争或解旋偏离，建议优先选高分") + provenanceNote
         case .poor:
-            summary = fatalWarning ?? L10n.t("低分靶点：存在早停信号或严重解旋阻力")
+            summary = (fatalWarning ?? L10n.t("低分靶点：存在早停信号或严重解旋阻力")) + provenanceNote
         }
         
         return TargetScore(

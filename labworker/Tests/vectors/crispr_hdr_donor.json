@@ -51,16 +51,16 @@
         "out_out_pcr": {
           "forward_sequence": "AATGGCTGCCCAGGAGCT",
           "forward_tm": 60.1,
-          "reverse_sequence": "TACGTACTTAGTTCACGGTGATGAACAGC",
-          "reverse_tm": 61.7,
+          "reverse_sequence": "TACGTACTTAGTTCACGGTGATGAACAG",
+          "reverse_tm": 59.7,
           "forward_start_0based": 119,
           "forward_end_0based": 137,
-          "reverse_start_0based": 371,
+          "reverse_start_0based": 372,
           "reverse_end_0based": 400,
           "wt_amplicon_length_bp": 281,
           "hdr_amplicon_length_bp": 281,
           "left_margin_from_arm_bp": 62,
-          "right_margin_from_arm_bp": 51
+          "right_margin_from_arm_bp": 52
         }
       },
       "tolerance": 1e-05,
@@ -126,16 +126,16 @@
         "out_out_pcr": {
           "forward_sequence": "AATGGCTGCCCAGGAGCT",
           "forward_tm": 60.1,
-          "reverse_sequence": "TACGTACTTAGTTCACGGTGATGAACAGC",
-          "reverse_tm": 61.7,
+          "reverse_sequence": "TACGTACTTAGTTCACGGTGATGAACAG",
+          "reverse_tm": 59.7,
           "forward_start_0based": 119,
           "forward_end_0based": 137,
-          "reverse_start_0based": 371,
+          "reverse_start_0based": 372,
           "reverse_end_0based": 400,
           "wt_amplicon_length_bp": 281,
           "hdr_amplicon_length_bp": 281,
           "left_margin_from_arm_bp": 62,
-          "right_margin_from_arm_bp": 51
+          "right_margin_from_arm_bp": 52
         }
       },
       "tolerance": 1e-05,
@@ -189,18 +189,18 @@
         "donor_sequence": "ATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACATGGCTATCCACTACGAGGACTACAAAGACGATGACGACAAGTTCCGCGCTGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATC",
         "rflp": null,
         "out_out_pcr": {
-          "forward_sequence": "TAGCTAACTGACGTAGCTAATGGCTGC",
-          "forward_tm": 61.7,
-          "reverse_sequence": "CAGTGTCAACATCGCAGTCAGTACG",
-          "reverse_tm": 61.4,
+          "forward_sequence": "TAGCTAACTGACGTAGCTAATGGCTG",
+          "forward_tm": 59.6,
+          "reverse_sequence": "CAGTGTCAACATCGCAGTCAGTAC",
+          "reverse_tm": 59.5,
           "forward_start_0based": 131,
-          "forward_end_0based": 158,
-          "reverse_start_0based": 1506,
+          "forward_end_0based": 157,
+          "reverse_start_0based": 1507,
           "reverse_end_0based": 1531,
           "wt_amplicon_length_bp": 1400,
           "hdr_amplicon_length_bp": 1424,
-          "left_margin_from_arm_bp": 73,
-          "right_margin_from_arm_bp": 75
+          "left_margin_from_arm_bp": 74,
+          "right_margin_from_arm_bp": 76
         }
       },
       "tolerance": 1e-05,
@@ -328,20 +328,20 @@
             "position_0based": 245,
             "position_1based": 246,
             "original_base": "C",
-            "mutated_base": "T",
+            "mutated_base": "A",
             "reason": "pam_block",
             "codon_before": "GCC",
-            "codon_after": "GCT",
+            "codon_after": "GCA",
             "amino_acid": "A"
           }
         ],
-        "edited_pam_sequence": "TCA",
+        "edited_pam_sequence": "ACA",
         "pam_still_intact": false,
         "cas9_recut_blocked": true,
         "left_arm_length_bp": 60,
         "right_arm_length_bp": 60,
         "donor_length_bp": 121,
-        "donor_sequence": "GAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTCAGATCTACTACGAGTTCGGCTCCGCCGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGG",
+        "donor_sequence": "GAGCTGTTCATCACCGTGAACGCTGCCCAGGAGCTGTTCATCACCGTGAACGCACAGATCTACTACGAGTTCGGCTCCGCCGCTGCCCAGGAGCTGTTCATCACCGTGAACGCTGCCCAGG",
         "rflp": {
           "mode": "destroyed",
           "enzyme_name": "BamHI",
@@ -367,18 +367,18 @@
           ]
         },
         "out_out_pcr": {
-          "forward_sequence": "CGTAGCTAATGGCTGCCCAGG",
-          "forward_tm": 61.2,
-          "reverse_sequence": "GTTCACGGTGATGAACAGCTCCT",
-          "reverse_tm": 60.6,
+          "forward_sequence": "CGTAGCTAATGGCTGCCCAG",
+          "forward_tm": 59.2,
+          "reverse_sequence": "GTTCACGGTGATGAACAGCTCC",
+          "reverse_tm": 59.6,
           "forward_start_0based": 112,
-          "forward_end_0based": 133,
-          "reverse_start_0based": 370,
+          "forward_end_0based": 132,
+          "reverse_start_0based": 371,
           "reverse_end_0based": 393,
           "wt_amplicon_length_bp": 281,
           "hdr_amplicon_length_bp": 281,
-          "left_margin_from_arm_bp": 59,
-          "right_margin_from_arm_bp": 57
+          "left_margin_from_arm_bp": 60,
+          "right_margin_from_arm_bp": 58
         }
       },
       "tolerance": 1e-05,

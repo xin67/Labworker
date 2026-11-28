@@ -998,7 +998,6 @@ public enum HomologousPCRGelSimulator {
                             suggestedLadderID: nil
                         )
                     )
-                    break
                 } else if dy < 0.032 {
                     let bestConc = AgaroseGelConcentration.allCases.max { lhs, rhs in
                         abs(lhs.migrationY(sizeBp: b1.sizeBp) - lhs.migrationY(sizeBp: b2.sizeBp))
@@ -1008,16 +1007,29 @@ public enum HomologousPCRGelSimulator {
                     let concHint = suggest.map { L10n.tr("建议改用 \($0.rawValue) 琼脂糖凝胶以提高分离度。", "Switch to \($0.rawValue) agarose gel for better separation.") } ?? L10n.t("条带尺寸极为接近，建议单管独立 PCR 并在不同泳道点样。")
                     warnings.append(
                         GelResolutionWarning(
-                            id: "warn-comigrate-\(lane.id)-\(b1.sizeBp)-\(b2.sizeBp)",
+                            id: "warn-comigrate-\(lane.id)-\(b1.sizeBp)-\(b2.sizeBp)-\(idx)",
                             severity: .warning,
                             message: L10n.tr("「\(lane.fullTitle)」中 \(b1.sizeBp) bp 与 \(b2.sizeBp) bp 条带在 \(currentConcentration.rawValue) 胶中迁移接近，\(concHint)", "In \"\(lane.fullTitle)\", \(b1.sizeBp) bp and \(b2.sizeBp) bp migrate closely on \(currentConcentration.rawValue) gel; \(concHint)"),
                             suggestedConcentration: suggest,
                             suggestedLadderID: nil
                         )
                     )
-                    break
                 }
             }
+        }
+
+        // 若泳道中含环状质粒对照，补充超螺旋 (cccDNA) / 开环 (ocDNA) / 线性拓扑迁移差异说明
+        let hasCircularVector = lanes.contains { l in l.bands.contains { $0.role == .linearVector } }
+        if hasCircularVector {
+            warnings.append(
+                GelResolutionWarning(
+                    id: "info-plasmid-topology-ccc-oc",
+                    severity: .info,
+                    message: L10n.t("拓扑迁移提示：未酶切环状质粒在琼脂糖胶上以超螺旋 (cccDNA，表观迁移率约为线性长度 0.65–0.75×) 与开环切刻态 (ocDNA，迁移慢于线性态) 双带呈现；仅线性化载体与线性 DNA Marker 具有直接长度可比性。"),
+                    suggestedConcentration: nil,
+                    suggestedLadderID: nil
+                )
+            )
         }
 
         return warnings
